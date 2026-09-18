@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../app/routes.dart';
 import '../../../core/constants/app_strings.dart';
 import '../../../core/widgets/brand_mark.dart';
+import '../../../core/widgets/illustration_placeholder.dart';
 import '../../../core/widgets/primary_button.dart';
 
 class WelcomeScreen extends StatelessWidget {
@@ -17,23 +18,26 @@ class WelcomeScreen extends StatelessWidget {
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24),
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const Spacer(),
-              const BrandMark(),
-              const SizedBox(height: 16),
+              const SizedBox(height: 24),
+              const Align(
+                alignment: Alignment.centerLeft,
+                child: BrandMark(),
+              ),
+              const SizedBox(height: 24),
+              const Expanded(child: IllustrationPlaceholder()),
+              const SizedBox(height: 24),
               Text(
                 AppStrings.tagline,
                 textAlign: TextAlign.center,
                 style: theme.textTheme.bodyLarge,
               ),
-              const Spacer(),
+              const SizedBox(height: 24),
               PrimaryButton(
                 label: AppStrings.getStarted,
                 onPressed: () {
-                  Navigator.pushReplacementNamed(
-                    context,
-                    AppRoutes.discover,
-                  );
+                  Navigator.pushNamed(context, AppRoutes.login);
                 },
               ),
               const SizedBox(height: 24),
