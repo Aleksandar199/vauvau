@@ -15,6 +15,10 @@ class Dog {
     required this.area,
     required this.photoUrls,
     this.weightKg,
+    this.bio = '',
+    this.vaccinated = true,
+    this.chipped = true,
+    this.sterilized = false,
   });
 
   final String id;
@@ -29,4 +33,12 @@ class Dog {
   final List<DogTemperament> temperament;
   final DogArea area;
   final List<String> photoUrls;
+  final String bio;
+  final bool vaccinated;
+  final bool chipped;
+  final bool sterilized;
+
+  String get location => '${area.cityName} - ${area.neighborhoodName}';
+
+  String get photoUrl => photoUrls.isEmpty ? '' : photoUrls.first;
 }

@@ -24,7 +24,7 @@ class FirestoreChatRepository implements ChatRepository {
       _messageSubs = {};
 
   CollectionReference<Map<String, dynamic>> get _rooms =>
-      _firestore.collection('chatRooms');
+      _firestore.collection('chats');
 
   void start() {
     _roomsSub = _rooms

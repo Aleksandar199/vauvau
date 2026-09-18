@@ -10,9 +10,16 @@ class DogPhotoStorage {
     required String dogId,
     required int index,
     required XFile file,
-  }) async {
+  }) {
+    final path = index == 0
+        ? 'dogs/$dogId/profile.jpg'
+        : 'dogs/$dogId/gallery/$index.jpg';
+    return _put(path, file);
+  }
+
+  Future<String> _put(String path, XFile file) async {
     final bytes = await file.readAsBytes();
-    final ref = _storage.ref('dogs/$dogId/photos/$index.jpg');
+    final ref = _storage.ref(path);
     await ref.putData(bytes, SettableMetadata(contentType: 'image/jpeg'));
     return ref.getDownloadURL();
   }

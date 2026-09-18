@@ -1,5 +1,7 @@
+import '../../../core/constants/app_strings.dart';
+
 class DogsException implements Exception {
-  const DogsException([this.message = 'Could not save the dog profile.']);
+  const DogsException([this.message = AppStrings.dogSaveFailed]);
 
   final String message;
 

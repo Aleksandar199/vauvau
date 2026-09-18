@@ -41,20 +41,30 @@ class DogsRepositoryImpl implements DogsRepository {
       final area = _resolveArea(draft);
       final dogRef = _dogs.doc();
       final now = FieldValue.serverTimestamp();
+      final location = '${area.cityName} - ${area.neighborhoodName}';
       final dogPayload = <String, dynamic>{
         'id': dogRef.id,
         'ownerId': owner.uid,
         'name': draft.name.trim(),
         'breed': draft.breed.trim(),
         'gender': draft.gender!.firestoreValue,
+        'age': draft.ageYears,
         'ageYears': draft.ageYears,
         'size': draft.size!.firestoreValue,
+        'bio': '',
+        'photoUrl': '',
+        'galleryUrls': <String>[],
+        'isVaccinated': true,
+        'isMicrochipped': true,
+        'isSterilized': false,
+        'location': location,
         'weightKg': draft.weightKg,
         'energyLevel': draft.energyLevel!.firestoreValue,
         'temperament':
             draft.temperament.map((tag) => tag.firestoreValue).toList(),
         'area': area.toMap(),
         'photoUrls': <String>[],
+        'ownerName': owner.displayName ?? '',
         'createdAt': now,
         'updatedAt': now,
       };
@@ -73,13 +83,15 @@ class DogsRepositoryImpl implements DogsRepository {
 
       await dogRef.update({
         'photoUrls': photoUrls,
+        'photoUrl': photoUrls.isEmpty ? '' : photoUrls.first,
+        'galleryUrls': photoUrls,
         'updatedAt': FieldValue.serverTimestamp(),
       });
 
       await _users.doc(owner.uid).set(
         {
           'uid': owner.uid,
-          'displayName': owner.displayName,
+          'name': owner.displayName,
           'email': owner.email,
           'primaryDogId': dogRef.id,
           'area': area.toMap(),
@@ -106,7 +118,7 @@ class DogsRepositoryImpl implements DogsRepository {
     } on DogsException {
       rethrow;
     } catch (error) {
-      throw DogsException(error.toString());
+      throw const DogsException();
     }
   }
 
@@ -120,7 +132,9 @@ class DogsRepositoryImpl implements DogsRepository {
       name: data['name'] as String? ?? '',
       breed: data['breed'] as String? ?? '',
       gender: _enumByName(DogGender.values, data['gender'], DogGender.unknown),
-      ageYears: (data['ageYears'] as num?)?.toInt() ?? 0,
+      ageYears: (data['ageYears'] as num?)?.toInt() ??
+          (data['age'] as num?)?.toInt() ??
+          0,
       size: _enumByName(DogSize.values, data['size'], DogSize.medium),
       weightKg: (data['weightKg'] as num?)?.toDouble(),
       energyLevel: _enumByName(
@@ -138,16 +152,22 @@ class DogsRepositoryImpl implements DogsRepository {
           )
           .toList(),
       area: DogArea.fromMap(areaMap),
-      photoUrls: (data['photoUrls'] as List<dynamic>? ?? [])
+      photoUrls: (data['galleryUrls'] as List<dynamic>? ??
+              data['photoUrls'] as List<dynamic>? ??
+              [])
           .map((url) => url.toString())
           .toList(),
+      bio: data['bio'] as String? ?? '',
+      vaccinated: data['isVaccinated'] as bool? ?? true,
+      chipped: data['isMicrochipped'] as bool? ?? true,
+      sterilized: data['isSterilized'] as bool? ?? false,
     );
   }
 
   DogArea _resolveArea(DogDraft draft) {
     final city = SerbiaLocations.cityById(draft.cityId ?? '');
     if (city == null) {
-      throw const DogsException('Select a city and neighborhood.');
+      throw const DogsException('Izaberite grad i naselje.');
     }
     Neighborhood? neighborhood;
     for (final item in city.neighborhoods) {
@@ -157,7 +177,7 @@ class DogsRepositoryImpl implements DogsRepository {
       }
     }
     if (neighborhood == null) {
-      throw const DogsException('Select a city and neighborhood.');
+      throw const DogsException('Izaberite grad i naselje.');
     }
     return DogArea(
       cityId: city.id,

@@ -181,12 +181,40 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen> {
       backgroundColor: Colors.transparent,
       builder: (sheetContext) => DogDetailSheet(
         profile: profile,
+        onPass: () {
+          Navigator.of(sheetContext).pop();
+          _swipe(profile, 'dislike');
+        },
+        onLike: () {
+          Navigator.of(sheetContext).pop();
+          _swipe(profile, 'like');
+        },
         onMessage: () {
           Navigator.of(sheetContext).pop();
           _openChat(profile);
         },
       ),
     );
+  }
+
+  Future<void> _swipe(DiscoverProfile profile, String action) async {
+    final matched = await ref
+        .read(discoverControllerProvider.notifier)
+        .swipe(profile, action);
+    if (!mounted) {
+      return;
+    }
+    final message = matched
+        ? DiscoverStrings.newMatch
+        : action == 'like'
+            ? DiscoverStrings.likedToast
+            : DiscoverStrings.passedToast;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
+    if (matched) {
+      _openChat(profile);
+    }
   }
 
   void _openChat(DiscoverProfile profile) {

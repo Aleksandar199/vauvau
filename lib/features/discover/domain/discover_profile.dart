@@ -19,6 +19,7 @@ class DiscoverProfile {
     this.distanceKm = 1.2,
     this.weightKg = 22,
     this.walking = false,
+    this.ownerId = '',
   });
 
   final String id;
@@ -40,6 +41,7 @@ class DiscoverProfile {
   final double distanceKm;
   final double weightKg;
   final bool walking;
+  final String ownerId;
 
   String get headline => '$name, $ageYears god.';
 
@@ -93,6 +95,7 @@ class DiscoverProfile {
     double? distanceKm,
     double? weightKg,
     bool? walking,
+    String? ownerId,
   }) {
     return DiscoverProfile(
       id: id ?? this.id,
@@ -114,6 +117,7 @@ class DiscoverProfile {
       distanceKm: distanceKm ?? this.distanceKm,
       weightKg: weightKg ?? this.weightKg,
       walking: walking ?? this.walking,
+      ownerId: ownerId ?? this.ownerId,
     );
   }
 }

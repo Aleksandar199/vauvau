@@ -166,7 +166,7 @@ class DogOnboardingController extends Notifier<DogOnboardingState> {
     if (owner == null) {
       state = state.copyWith(
         submit: AsyncError(
-          const DogsException('You must be signed in.'),
+          const DogsException(AppStrings.mustBeSignedIn),
           StackTrace.current,
         ),
       );

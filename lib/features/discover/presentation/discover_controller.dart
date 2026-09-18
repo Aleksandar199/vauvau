@@ -1,9 +1,15 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/firebase/firebase_status.dart';
+import '../../auth/presentation/auth_providers.dart';
 import '../../profile/domain/matching_filters.dart';
 import '../../profile/presentation/profile_controller.dart';
+import '../data/firestore_discover_repository.dart';
+import '../data/local_discover_repository.dart';
 import '../data/mock_discover_profiles.dart';
 import '../domain/discover_profile.dart';
+import '../domain/discover_repository.dart';
 
 enum DiscoverCategory { all, nearby, walking, small, large, playful }
 
@@ -85,7 +91,7 @@ class DiscoverController extends Notifier<DiscoverState> {
   DiscoverState build() {
     return DiscoverState(
       catalog: ref.watch(matchingFiltersProvider).apply(
-            ref.watch(discoverProfilesProvider),
+            ref.watch(discoverFeedProvider),
           ),
       myDog: ref.watch(currentDiscoverDogProvider),
     );
@@ -103,6 +109,16 @@ class DiscoverController extends Notifier<DiscoverState> {
     state = state.copyWith(gridMode: !state.gridMode);
   }
 
+  Future<bool> swipe(DiscoverProfile target, String action) {
+    final uid = ref.read(authStateProvider).asData?.value?.uid ?? 'local-user';
+    return ref.read(discoverRepositoryProvider).swipe(
+          userId: uid,
+          myDogId: state.myDog.id,
+          target: target,
+          action: action,
+        );
+  }
+
   void resetFilters() {
     ref.read(matchingFiltersProvider.notifier).apply(const MatchingFilters());
     state = state.copyWith(query: '', category: DiscoverCategory.all);
@@ -111,6 +127,30 @@ class DiscoverController extends Notifier<DiscoverState> {
 
 final discoverProfilesProvider = Provider<List<DiscoverProfile>>((ref) {
   return mockDiscoverProfiles;
+});
+
+final discoverRepositoryProvider = Provider<DiscoverRepository>((ref) {
+  if (isFirebaseReady) {
+    return FirestoreDiscoverRepository(FirebaseFirestore.instance);
+  }
+  return LocalDiscoverRepository(
+    seed: ref.watch(discoverProfilesProvider),
+  );
+});
+
+final liveDiscoverProfilesProvider =
+    StreamProvider<List<DiscoverProfile>>((ref) {
+  return ref.watch(discoverRepositoryProvider).watchProfiles(
+        excludeOwnerId: ref.watch(authStateProvider).asData?.value?.uid ?? '',
+      );
+});
+
+final discoverFeedProvider = Provider<List<DiscoverProfile>>((ref) {
+  if (isFirebaseReady) {
+    return ref.watch(liveDiscoverProfilesProvider).asData?.value ??
+        ref.watch(discoverProfilesProvider);
+  }
+  return ref.watch(discoverProfilesProvider);
 });
 
 final discoverControllerProvider =

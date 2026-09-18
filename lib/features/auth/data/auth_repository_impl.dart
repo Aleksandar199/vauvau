@@ -1,15 +1,18 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
+import '../../../core/constants/app_strings.dart';
 import '../domain/app_user.dart';
 import '../domain/auth_exception.dart';
 import '../domain/auth_repository.dart';
 import 'firebase_auth_datasource.dart';
 
 class AuthRepositoryImpl implements AuthRepository {
-  AuthRepositoryImpl(this._datasource);
+  AuthRepositoryImpl(this._datasource, {this._firestore});
 
   final FirebaseAuthDatasource _datasource;
+  final FirebaseFirestore? _firestore;
 
   @override
   Stream<AppUser?> watchUser() {
@@ -26,7 +29,9 @@ class AuthRepositoryImpl implements AuthRepository {
         email: email,
         password: password,
       );
-      return _requireUser(credential.user);
+      final user = _requireUser(credential.user);
+      await _upsertUser(user);
+      return user;
     } on FirebaseAuthException catch (error) {
       throw _mapFirebase(error);
     }
@@ -44,7 +49,9 @@ class AuthRepositoryImpl implements AuthRepository {
         password: password,
       );
       await _datasource.updateDisplayName(name.trim());
-      return _requireUser(_datasource.currentUser ?? credential.user);
+      final user = _requireUser(_datasource.currentUser ?? credential.user);
+      await _upsertUser(user, name: name.trim());
+      return user;
     } on FirebaseAuthException catch (error) {
       throw _mapFirebase(error);
     }
@@ -54,12 +61,14 @@ class AuthRepositoryImpl implements AuthRepository {
   Future<AppUser> signInWithGoogle() async {
     try {
       final credential = await _datasource.signInWithGoogle();
-      return _requireUser(credential.user);
+      final user = _requireUser(credential.user);
+      await _upsertUser(user);
+      return user;
     } on GoogleSignInException catch (error) {
       if (error.code == GoogleSignInExceptionCode.canceled) {
         throw const AuthException(
           AuthErrorCode.cancelled,
-          'Google Sign-In was cancelled.',
+          AppStrings.authCancelled,
         );
       }
       throw AuthException(AuthErrorCode.unknown, error.description ?? error.code.name);
@@ -101,39 +110,59 @@ class AuthRepositoryImpl implements AuthRepository {
       case 'invalid-email':
         return const AuthException(
           AuthErrorCode.invalidEmail,
-          'Enter a valid email address.',
+          AppStrings.authInvalidEmail,
         );
       case 'wrong-password':
       case 'invalid-credential':
         return const AuthException(
           AuthErrorCode.wrongPassword,
-          'Incorrect email or password.',
+          AppStrings.authWrongPassword,
         );
       case 'user-not-found':
         return const AuthException(
           AuthErrorCode.userNotFound,
-          'No account exists for this email.',
+          AppStrings.authUserNotFound,
         );
       case 'weak-password':
         return const AuthException(
           AuthErrorCode.weakPassword,
-          'Password must be at least 6 characters.',
+          AppStrings.authWeakPassword,
         );
       case 'email-already-in-use':
         return const AuthException(
           AuthErrorCode.emailInUse,
-          'An account already exists for this email.',
+          AppStrings.authEmailInUse,
         );
       case 'network-request-failed':
         return const AuthException(
           AuthErrorCode.network,
-          'Check your connection and try again.',
+          AppStrings.authNetwork,
         );
       default:
-        return AuthException(
+        return const AuthException(
           AuthErrorCode.unknown,
-          error.message ?? 'Authentication failed.',
+          AppStrings.authUnknownError,
         );
     }
+  }
+
+  Future<void> _upsertUser(AppUser user, {String? name}) async {
+    final firestore = _firestore;
+    if (firestore == null) {
+      return;
+    }
+    final ref = firestore.collection('users').doc(user.uid);
+    await firestore.runTransaction((transaction) async {
+      final snapshot = await transaction.get(ref);
+      final payload = <String, dynamic>{
+        'uid': user.uid,
+        'name': name ?? user.displayName ?? '',
+        'email': user.email ?? '',
+      };
+      if (!snapshot.exists || snapshot.data()?['createdAt'] == null) {
+        payload['createdAt'] = FieldValue.serverTimestamp();
+      }
+      transaction.set(ref, payload, SetOptions(merge: true));
+    });
   }
 }

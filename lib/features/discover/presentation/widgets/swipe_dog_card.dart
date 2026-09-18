@@ -209,10 +209,14 @@ class DogDetailSheet extends StatelessWidget {
     super.key,
     required this.profile,
     this.onMessage,
+    this.onLike,
+    this.onPass,
   });
 
   final DiscoverProfile profile;
   final VoidCallback? onMessage;
+  final VoidCallback? onLike;
+  final VoidCallback? onPass;
 
   @override
   Widget build(BuildContext context) {
@@ -304,6 +308,29 @@ class DogDetailSheet extends StatelessWidget {
               const SizedBox(height: 8),
               Text(profile.bio),
               const SizedBox(height: 20),
+              if (onLike != null || onPass != null) ...[
+                Row(
+                  children: [
+                    if (onPass != null)
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: onPass,
+                          child: const Text(DiscoverStrings.pass),
+                        ),
+                      ),
+                    if (onLike != null && onPass != null)
+                      const SizedBox(width: 8),
+                    if (onLike != null)
+                      Expanded(
+                        child: FilledButton(
+                          onPressed: onLike,
+                          child: const Text(DiscoverStrings.like),
+                        ),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+              ],
               if (onMessage != null) ...[
                 FilledButton(
                   onPressed: onMessage,
