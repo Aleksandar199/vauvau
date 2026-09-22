@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "461477755452",
+    "project_id": "vauvau-3195a",
+    "storage_bucket": "vauvau-3195a.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:461477755452:android:e8f133d0500fcb05912139",
+        "android_client_info": {
+          "package_name": "com.example.vauvau"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD2WpCWpsaj0lM15ort_OpVd1-l-0g0vCI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
