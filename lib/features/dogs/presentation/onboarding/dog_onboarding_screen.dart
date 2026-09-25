@@ -5,7 +5,6 @@ import '../../../../core/constants/app_strings.dart';
 import '../../../../core/widgets/primary_button.dart';
 import '../../../auth/presentation/auth_controller.dart';
 import 'dog_onboarding_controller.dart';
-import 'steps/area_step.dart';
 import 'steps/basics_step.dart';
 import 'steps/personality_step.dart';
 import 'steps/photos_step.dart';
@@ -26,7 +25,7 @@ class DogOnboardingScreen extends ConsumerWidget {
         ),
         actions: [
           TextButton(
-            onPressed: state.isSubmitting
+            onPressed: state.isSubmitting || state.uploadingPhotos
                 ? null
                 : () => ref.read(authControllerProvider.notifier).signOut(),
             child: const Text(AppStrings.signOut),
@@ -38,7 +37,18 @@ class DogOnboardingScreen extends ConsumerWidget {
           LinearProgressIndicator(
             value: (state.step + 1) / DogOnboardingController.stepCount,
           ),
-          Expanded(child: _step(state, controller)),
+          Expanded(
+            child: Stack(
+              children: [
+                _step(state, controller),
+                if (state.isSubmitting || state.uploadingPhotos)
+                  const ColoredBox(
+                    color: Color(0x66FFFFFF),
+                    child: Center(child: CircularProgressIndicator()),
+                  ),
+              ],
+            ),
+          ),
           if (error != null)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -55,14 +65,16 @@ class DogOnboardingScreen extends ConsumerWidget {
                   if (state.step > 0)
                     Expanded(
                       child: OutlinedButton(
-                        onPressed: state.isSubmitting ? null : controller.previousStep,
+                        onPressed: state.isSubmitting || state.uploadingPhotos
+                            ? null
+                            : controller.previousStep,
                         child: const Text(AppStrings.back),
                       ),
                     ),
                   if (state.step > 0) const SizedBox(width: 12),
                   Expanded(
                     flex: 2,
-                    child: state.isSubmitting
+                    child: state.isSubmitting || state.uploadingPhotos
                         ? const Center(child: CircularProgressIndicator())
                         : PrimaryButton(
                             label: state.step == DogOnboardingController.stepCount - 1
@@ -100,14 +112,10 @@ class DogOnboardingScreen extends ConsumerWidget {
           onChanged: controller.updateDraft,
           onToggleTemperament: controller.toggleTemperament,
         );
-      case 2:
-        return AreaStep(
-          draft: state.draft,
-          onChanged: controller.updateDraft,
-        );
       default:
         return PhotosStep(
           photos: state.draft.photos,
+          uploading: state.uploadingPhotos,
           onAddGallery: controller.addPhotos,
           onAddCamera: controller.addFromCamera,
           onRemove: controller.removePhoto,

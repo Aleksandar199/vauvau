@@ -46,12 +46,11 @@ void main() {
 
     expect(find.text('Luna'), findsWidgets);
     expect(find.text('Maks'), findsOneWidget);
-    expect(find.text('Zlatni retriver • 3 god.'), findsOneWidget);
-    expect(find.text(ProfileStrings.sizeLarge), findsOneWidget);
+    expect(find.text('Zlatni retriver · 3 god.'), findsOneWidget);
+    expect(find.text('Ženka · Veliki'), findsOneWidget);
     expect(find.text(ProfileStrings.badgeChipped), findsOneWidget);
     expect(find.text(ProfileStrings.badgeVaccinated), findsOneWidget);
-    expect(find.text('Novi Sad - Liman'), findsOneWidget);
-    expect(find.text('Novi Sad - Liman 3'), findsOneWidget);
+    expect(find.text('Novi Sad · Liman 3'), findsWidgets);
     expect(find.text('Aleksandar'), findsOneWidget);
     expect(
       find.text('Šetač iz Limana. Tražim druženje za Lunu uz Dunav.'),
@@ -59,12 +58,24 @@ void main() {
     );
     expect(find.text(ProfileStrings.editProfile), findsOneWidget);
     expect(find.text(ProfileStrings.settings), findsOneWidget);
+    expect(find.text(ProfileStrings.signOut), findsOneWidget);
+    expect(find.byType(CircleAvatar), findsOneWidget);
+
+    await tester.tap(find.byType(CircleAvatar));
+    await tester.pumpAndSettle();
+    expect(find.text(ProfileStrings.setOwnerPhoto), findsOneWidget);
+    expect(find.text(ProfileStrings.ownerPhotoCamera), findsOneWidget);
   });
 
   testWidgets('edits dog details and saves', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(412, 1200));
+    addTearDown(() async {
+      await tester.binding.setSurfaceSize(null);
+    });
     final container = await _pumpProfile(tester);
 
-    await tester.tap(find.text(ProfileStrings.editProfile));
+    await tester.ensureVisible(find.text(ProfileStrings.editDog));
+    await tester.tap(find.text(ProfileStrings.editDog));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
 

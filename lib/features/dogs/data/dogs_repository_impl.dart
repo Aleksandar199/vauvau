@@ -1,6 +1,11 @@
+import 'dart:async';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../../../core/constants/serbia_locations.dart';
+import '../../../core/geo/firestore_geo.dart';
+import '../../../core/geo/geo.dart';
+import '../../../core/images/dog_photo_urls.dart';
 import '../../auth/domain/app_user.dart';
 import '../domain/dog.dart';
 import '../domain/dog_area.dart';
@@ -8,16 +13,11 @@ import '../domain/dog_draft.dart';
 import '../domain/dog_enums.dart';
 import '../domain/dogs_exception.dart';
 import '../domain/dogs_repository.dart';
-import 'dog_photo_storage.dart';
 
 class DogsRepositoryImpl implements DogsRepository {
-  DogsRepositoryImpl({
-    required this._firestore,
-    required this._photoStorage,
-  });
+  DogsRepositoryImpl({required this._firestore});
 
   final FirebaseFirestore _firestore;
-  final DogPhotoStorage _photoStorage;
 
   CollectionReference<Map<String, dynamic>> get _dogs =>
       _firestore.collection('dogs');
@@ -27,9 +27,11 @@ class DogsRepositoryImpl implements DogsRepository {
 
   @override
   Stream<List<Dog>> watchByOwner(String ownerId) {
-    return _dogs.where('ownerId', isEqualTo: ownerId).snapshots().map(
-          (snapshot) => snapshot.docs.map(_dogFromDoc).toList(),
-        );
+    return _dogs
+        .where('ownerId', isEqualTo: ownerId)
+        .snapshots(includeMetadataChanges: true)
+        .where((snapshot) => !snapshot.metadata.isFromCache || snapshot.docs.isNotEmpty)
+        .map((snapshot) => snapshot.docs.map(_dogFromDoc).toList());
   }
 
   @override
@@ -38,10 +40,18 @@ class DogsRepositoryImpl implements DogsRepository {
     required DogDraft draft,
   }) async {
     try {
-      final area = _resolveArea(draft);
+      final area = _areaFromOwner(owner, draft);
       final dogRef = _dogs.doc();
       final now = FieldValue.serverTimestamp();
-      final location = '${area.cityName} - ${area.neighborhoodName}';
+      final location = area == null
+          ? ''
+          : '${area.cityName} - ${area.neighborhoodName}';
+      final coord = area?.cityId == 'beograd'
+          ? GeoCoord.belgrade
+          : GeoCoord.noviSad;
+      final photoUrls = uniquePhotoUrls(draft.photos);
+      final photos = firestorePhotoFields(photoUrls);
+      final energy = draft.energyLevel ?? DogEnergyLevel.moderate;
       final dogPayload = <String, dynamic>{
         'id': dogRef.id,
         'ownerId': owner.uid,
@@ -52,53 +62,60 @@ class DogsRepositoryImpl implements DogsRepository {
         'ageYears': draft.ageYears,
         'size': draft.size!.firestoreValue,
         'bio': '',
-        'photoUrl': '',
-        'galleryUrls': <String>[],
-        'isVaccinated': true,
-        'isMicrochipped': true,
-        'isSterilized': false,
+        'isVaccinated': draft.vaccinated,
+        'isMicrochipped': draft.chipped,
+        'isSterilized': draft.sterilized,
         'location': location,
+        'cityId': area?.cityId ?? owner.cityId,
+        'cityName': area?.cityName ?? owner.cityName,
+        'neighborhoodId': area?.neighborhoodId ?? owner.neighborhoodId,
+        'neighborhoodName':
+            area?.neighborhoodName ?? owner.neighborhoodName,
         'weightKg': draft.weightKg,
-        'energyLevel': draft.energyLevel!.firestoreValue,
+        'energyLevel': energy.firestoreValue,
         'temperament':
             draft.temperament.map((tag) => tag.firestoreValue).toList(),
-        'area': area.toMap(),
-        'photoUrls': <String>[],
+        if (area != null) 'area': area.toMap(),
         'ownerName': owner.displayName ?? '',
         'createdAt': now,
         'updatedAt': now,
+        ...firestoreLocationFields(coord, isWalking: false),
+        ...photos,
+        'primaryPhotoUrl': photos['photoUrl'],
       };
 
-      await dogRef.set(dogPayload);
-
-      final photoUrls = <String>[];
-      for (var i = 0; i < draft.photos.length; i++) {
-        final url = await _photoStorage.upload(
-          dogId: dogRef.id,
-          index: i,
-          file: draft.photos[i],
-        );
-        photoUrls.add(url);
-      }
-
-      await dogRef.update({
-        'photoUrls': photoUrls,
-        'photoUrl': photoUrls.isEmpty ? '' : photoUrls.first,
-        'galleryUrls': photoUrls,
-        'updatedAt': FieldValue.serverTimestamp(),
-      });
-
-      await _users.doc(owner.uid).set(
-        {
-          'uid': owner.uid,
-          'name': owner.displayName,
-          'email': owner.email,
-          'primaryDogId': dogRef.id,
-          'area': area.toMap(),
-          'updatedAt': FieldValue.serverTimestamp(),
-          'createdAt': now,
-        },
-        SetOptions(merge: true),
+      try {
+        await dogRef.set(dogPayload).timeout(const Duration(seconds: 4));
+      } catch (_) {}
+      unawaited(
+        _users.doc(owner.uid).set(
+          {
+            'uid': owner.uid,
+            'name': owner.displayName,
+            'email': owner.email,
+            'city': owner.cityName,
+            'cityId': owner.cityId,
+            'cityName': owner.cityName,
+            'neighborhoodId': owner.neighborhoodId,
+            'neighborhoodName': owner.neighborhoodName,
+            'primaryDogId': dogRef.id,
+            'updatedAt': FieldValue.serverTimestamp(),
+            'createdAt': now,
+            'dog': {
+              'id': dogRef.id,
+              'name': draft.name.trim(),
+              'breed': draft.breed.trim(),
+              'age': draft.ageYears,
+              'gender': draft.gender!.firestoreValue,
+              'bio': '',
+              'size': draft.size!.firestoreValue,
+              'temperament':
+                  draft.temperament.map((tag) => tag.firestoreValue).toList(),
+              ...photos,
+            },
+          },
+          SetOptions(merge: true),
+        ),
       );
 
       return Dog(
@@ -110,16 +127,61 @@ class DogsRepositoryImpl implements DogsRepository {
         ageYears: draft.ageYears!,
         size: draft.size!,
         weightKg: draft.weightKg,
-        energyLevel: draft.energyLevel!,
+        energyLevel: energy,
         temperament: draft.temperament,
-        area: area,
-        photoUrls: photoUrls,
+        area: area ??
+            DogArea(
+              cityId: owner.cityId,
+              cityName: owner.cityName,
+              neighborhoodId: owner.neighborhoodId,
+              neighborhoodName: owner.neighborhoodName,
+            ),
+        photoUrls: List<String>.from(photos['photoUrls'] as List),
+        vaccinated: draft.vaccinated,
+        chipped: draft.chipped,
+        sterilized: draft.sterilized,
       );
     } on DogsException {
       rethrow;
     } catch (error) {
       throw const DogsException();
     }
+  }
+
+  @override
+  Future<void> updateDog(Dog dog, {int ageMonths = 0}) async {
+    final photos = firestorePhotoFields(dog.photoUrls);
+    await _dogs.doc(dog.id).set(
+      {
+        'id': dog.id,
+        'ownerId': dog.ownerId,
+        'name': dog.name,
+        'breed': dog.breed,
+        'gender': dog.gender.firestoreValue,
+        'age': dog.ageYears,
+        'ageYears': dog.ageYears,
+        'ageMonths': ageMonths,
+        'size': dog.size.firestoreValue,
+        'bio': dog.bio,
+        'weightKg': dog.weightKg,
+        'energyLevel': dog.energyLevel.firestoreValue,
+        'temperament':
+            dog.temperament.map((tag) => tag.firestoreValue).toList(),
+        'isVaccinated': dog.vaccinated,
+        'isMicrochipped': dog.chipped,
+        'isSterilized': dog.sterilized,
+        'location': dog.location,
+        'cityId': dog.area.cityId,
+        'cityName': dog.area.cityName,
+        'neighborhoodId': dog.area.neighborhoodId,
+        'neighborhoodName': dog.area.neighborhoodName,
+        'area': dog.area.toMap(),
+        'primaryPhotoUrl': photos['photoUrl'],
+        'updatedAt': FieldValue.serverTimestamp(),
+        ...photos,
+      },
+      SetOptions(merge: true),
+    );
   }
 
   Dog _dogFromDoc(QueryDocumentSnapshot<Map<String, dynamic>> doc) {
@@ -151,17 +213,48 @@ class DogsRepositoryImpl implements DogsRepository {
             ),
           )
           .toList(),
-      area: DogArea.fromMap(areaMap),
-      photoUrls: (data['galleryUrls'] as List<dynamic>? ??
-              data['photoUrls'] as List<dynamic>? ??
-              [])
-          .map((url) => url.toString())
-          .toList(),
+      area: DogArea.fromMap(areaMap).cityId.isEmpty &&
+              (data['cityId'] as String? ?? '').isNotEmpty
+          ? DogArea(
+              cityId: data['cityId'] as String? ?? '',
+              cityName: data['cityName'] as String? ?? '',
+              neighborhoodId: data['neighborhoodId'] as String? ?? '',
+              neighborhoodName: data['neighborhoodName'] as String? ?? '',
+            )
+          : DogArea.fromMap(areaMap),
+      photoUrls: collectPhotoUrls(data),
       bio: data['bio'] as String? ?? '',
-      vaccinated: data['isVaccinated'] as bool? ?? true,
-      chipped: data['isMicrochipped'] as bool? ?? true,
+      vaccinated: data['isVaccinated'] as bool? ??
+          data['vaccinated'] as bool? ??
+          false,
+      chipped: data['isMicrochipped'] as bool? ??
+          data['chipped'] as bool? ??
+          false,
       sterilized: data['isSterilized'] as bool? ?? false,
     );
+  }
+
+  DogArea? _areaFromOwner(AppUser owner, DogDraft draft) {
+    if (owner.cityId.isNotEmpty && owner.neighborhoodId.isNotEmpty) {
+      return DogArea(
+        cityId: owner.cityId,
+        cityName: owner.cityName,
+        neighborhoodId: owner.neighborhoodId,
+        neighborhoodName: owner.neighborhoodName,
+      );
+    }
+    if (draft.cityId != null && draft.neighborhoodId != null) {
+      return _resolveArea(draft);
+    }
+    if (owner.cityName.isNotEmpty) {
+      return DogArea(
+        cityId: owner.cityId,
+        cityName: owner.cityName,
+        neighborhoodId: owner.neighborhoodId,
+        neighborhoodName: owner.neighborhoodName,
+      );
+    }
+    return null;
   }
 
   DogArea _resolveArea(DogDraft draft) {

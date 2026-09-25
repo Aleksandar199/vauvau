@@ -9,7 +9,21 @@ class NotificationController extends Notifier<List<AppNotification>> {
     return seedNotifications(DateTime.now());
   }
 
-  int get unreadCount => state.where((item) => !item.isRead).length;
+  void addWalkRequest({required String dogName, required String ownerName}) {
+    prepend(
+      AppNotification(
+        id: 'walk-${DateTime.now().microsecondsSinceEpoch}',
+        kind: NotificationKind.walkRequest,
+        title: 'Zahtev za šetnju',
+        body: 'Poziv za šetnju sa $dogName je poslat vlasniku $ownerName.',
+        createdAt: DateTime.now(),
+      ),
+    );
+  }
+
+  void prepend(AppNotification item) {
+    state = [item, ...state];
+  }
 
   void markRead(String id) {
     state = [

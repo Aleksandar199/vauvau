@@ -10,12 +10,19 @@ abstract final class AppStrings {
   static const String firebaseInitError =
       'Firebase nije pokrenut. Pokrenite flutterfire configure i pokušajte ponovo.';
   static const String logInTitle = 'Prijava';
+  static const String signUpTab = 'Registracija';
   static const String registerTitle = 'Napravi nalog';
   static const String emailLabel = 'Email';
   static const String passwordLabel = 'Lozinka';
   static const String confirmPasswordLabel = 'Potvrdi lozinku';
-  static const String nameLabel = 'Ime';
-  static const String continueWithGoogle = 'Nastavi sa Google nalogom';
+  static const String nameLabel = 'Ime vlasnika';
+  static const String nameHint = 'npr. Ana';
+  static const String emailHint = 'npr. ana@email.com';
+  static const String passwordHint = 'Najmanje 6 karaktera';
+  static const String dogNameHint = 'npr. Luna';
+  static const String dogBreedHint = 'npr. Zlatni retriver';
+  static const String dogAgeHint = 'npr. 3';
+  static const String continueWithGoogle = 'Nastavi putem Google naloga';
   static const String orDivider = 'ili';
   static const String createAccountPrompt = 'Napravi nalog';
   static const String createAccount = 'Napravi nalog';
@@ -26,24 +33,25 @@ abstract final class AppStrings {
   static const String passwordsDoNotMatch = 'Lozinke se ne poklapaju.';
   static const String nameRequired = 'Unesite ime.';
   static const String authUnknownError = 'Došlo je do greške. Pokušajte ponovo.';
-  static const String authWrongPassword = 'Pogrešna lozinka';
-  static const String authUserNotFound = 'Korisnik ne postoji';
-  static const String authEmailInUse = 'Nalog sa ovim emailom već postoji.';
-  static const String authWeakPassword = 'Lozinka mora imati najmanje 6 karaktera.';
+  static const String authWrongPassword = 'Pogrešni podaci za prijavu';
+  static const String authUserNotFound = 'Pogrešni podaci za prijavu';
+  static const String authEmailInUse = 'Korisnik već postoji';
+  static const String authWeakPassword = 'Slaba lozinka';
   static const String authInvalidEmail = 'Unesite ispravnu email adresu.';
   static const String authNetwork = 'Proverite internet konekciju i pokušajte ponovo.';
   static const String authCancelled = 'Prijava je otkazana.';
   static const String onboardingTitle = 'Vaš pas';
   static const String next = 'Dalje';
   static const String back = 'Nazad';
-  static const String createDogProfile = 'Napravi profil';
+  static const String createDogProfile = 'Završi';
   static const String stepBasicsTitle = 'Osnovni podaci';
-  static const String stepPersonalityTitle = 'Veličina i karakter';
+  static const String stepPersonalityTitle = 'Detalji psa';
   static const String stepAreaTitle = 'Gde šetate';
   static const String stepAreaPrivacy =
       'Čuvamo samo grad i naselje — nikad kućnu adresu ni GPS.';
-  static const String stepPhotosTitle = 'Fotografije';
-  static const String stepPhotosHint = 'Dodajte 1 do 5 fotografija vašeg psa.';
+  static const String stepPhotosTitle = 'Fotografije psa';
+  static const String stepPhotosHint =
+      'Dodajte fotografije vašeg psa (opciono, do 5). Ovo nisu slike vlasnika.';
   static const String dogNameLabel = 'Ime psa';
   static const String dogBreedLabel = 'Rasa';
   static const String dogGenderLabel = 'Pol';
@@ -54,8 +62,16 @@ abstract final class AppStrings {
   static const String dogTemperamentLabel = 'Temperament';
   static const String cityLabel = 'Grad';
   static const String neighborhoodLabel = 'Naselje';
+  static const String neighborhoodRequired = 'Izaberite naselje.';
+  static const String ownerPhotoLabel = 'Profilna slika vlasnika';
+  static const String addOwnerPhoto = 'Dodaj profilnu sliku';
+  static const String ownerBioLabel = 'Kratak opis (opciono)';
+  static const String dogVaccinatedLabel = 'Vakcinisan';
+  static const String dogChippedLabel = 'Čipovan';
+  static const String dogSterilizedLabel = 'Kastriran / Sterilisan';
   static const String addFromGallery = 'Galerija';
   static const String addFromCamera = 'Kamera';
+  static const String removePhoto = 'Ukloni fotografiju';
   static const String dogNameRequired = 'Unesite ime psa.';
   static const String dogBreedRequired = 'Unesite rasu.';
   static const String dogGenderRequired = 'Izaberite pol.';
@@ -65,6 +81,8 @@ abstract final class AppStrings {
   static const String dogTemperamentRequired = 'Izaberite bar jednu osobinu.';
   static const String dogAreaRequired = 'Izaberite grad i naselje.';
   static const String dogPhotosRequired = 'Dodajte između 1 i 5 fotografija.';
+  static const String photoUploadFailed =
+      'Greška prilikom dodavanja slike. Pokušajte ponovo.';
   static const String dogSaveFailed = 'Profil psa nije sačuvan.';
   static const String mustBeSignedIn = 'Morate biti prijavljeni.';
 }

@@ -1,9 +1,12 @@
+import 'dart:async';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/firebase/firebase_status.dart';
 import '../../auth/presentation/auth_providers.dart';
 import '../../discover/domain/discover_profile.dart';
+import '../../notifications/presentation/push_controller.dart';
 import '../../profile/presentation/profile_controller.dart';
 import '../data/firestore_chat_repository.dart';
 import '../data/local_chat_repository.dart';
@@ -60,6 +63,19 @@ class ChatInboxController extends Notifier<List<ChatConversation>> {
   void sendMessage(String conversationId, String rawText) {
     _repo.sendMessage(conversationId, rawText);
     state = _repo.currentInbox;
+    final chat = byId(conversationId);
+    final preview = rawText.trim();
+    if (chat == null || preview.isEmpty) {
+      return;
+    }
+    unawaited(
+      ref.read(pushControllerProvider.notifier).notifyMessage(
+            senderName: chat.ownerName,
+            preview: preview,
+            dogId: chat.dogId,
+            peerUserId: chat.peerUserId,
+          ),
+    );
   }
 
   void sendWalkInvite({
@@ -73,6 +89,17 @@ class ChatInboxController extends Notifier<List<ChatConversation>> {
       walkLocationName: walkLocationName,
     );
     state = _repo.currentInbox;
+    final chat = byId(conversationId);
+    if (chat != null) {
+      unawaited(
+        ref.read(pushControllerProvider.notifier).notifyWalk(
+              dogName: chat.dogName,
+              ownerName: chat.ownerName,
+              dogId: chat.dogId,
+              peerUserId: chat.peerUserId,
+            ),
+      );
+    }
   }
 
   void sendLocationPin({
@@ -162,4 +189,15 @@ final scheduledWalksProvider = Provider<List<ScheduledWalk>>((ref) {
   }
   walks.sort((a, b) => a.walkTime.compareTo(b.walkTime));
   return walks;
+});
+
+
+
+final totalUnreadChatCountProvider = Provider<int>((ref) {
+  final inbox = ref.watch(chatInboxProvider);
+  var total = 0;
+  for (final chat in inbox) {
+    total += chat.unreadCount;
+  }
+  return total;
 });

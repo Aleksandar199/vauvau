@@ -7,16 +7,18 @@ class UserProfile {
     required this.ownerBio,
     required this.dogs,
     required this.selectedDogId,
-    this.ownerLocation = 'Novi Sad - Liman 3',
-    this.phone = '+381 64 123 4567',
-    this.joinedAt,
+    this.ownerEmail = '',
+    this.ownerLocation = '',
+    this.ownerCityId = '',
+    this.ownerNeighborhoodId = '',
   });
 
   final String ownerName;
+  final String ownerEmail;
   final String ownerBio;
   final String ownerLocation;
-  final String phone;
-  final DateTime? joinedAt;
+  final String ownerCityId;
+  final String ownerNeighborhoodId;
   final List<DiscoverProfile> dogs;
   final String selectedDogId;
 
@@ -33,19 +35,21 @@ class UserProfile {
 
   UserProfile copyWith({
     String? ownerName,
+    String? ownerEmail,
     String? ownerBio,
     String? ownerLocation,
-    String? phone,
-    DateTime? joinedAt,
+    String? ownerCityId,
+    String? ownerNeighborhoodId,
     List<DiscoverProfile>? dogs,
     String? selectedDogId,
   }) {
     return UserProfile(
       ownerName: ownerName ?? this.ownerName,
+      ownerEmail: ownerEmail ?? this.ownerEmail,
       ownerBio: ownerBio ?? this.ownerBio,
       ownerLocation: ownerLocation ?? this.ownerLocation,
-      phone: phone ?? this.phone,
-      joinedAt: joinedAt ?? this.joinedAt,
+      ownerCityId: ownerCityId ?? this.ownerCityId,
+      ownerNeighborhoodId: ownerNeighborhoodId ?? this.ownerNeighborhoodId,
       dogs: dogs ?? this.dogs,
       selectedDogId: selectedDogId ?? this.selectedDogId,
     );
@@ -54,10 +58,11 @@ class UserProfile {
 
 final UserProfile mockUserProfile = UserProfile(
   ownerName: 'Aleksandar',
+  ownerEmail: 'aleksandar@vauvau.local',
   ownerBio: 'Šetač iz Limana. Tražim druženje za Lunu uz Dunav.',
-  ownerLocation: 'Novi Sad - Liman 3',
-  phone: '+381 64 123 4567',
-  joinedAt: DateTime(2025, 4, 12),
+  ownerLocation: 'Novi Sad · Liman 3',
+  ownerCityId: 'novi_sad',
+  ownerNeighborhoodId: 'liman_3',
   selectedDogId: mockMyDog.id,
   dogs: const [mockMyDog, mockSecondDog],
 );

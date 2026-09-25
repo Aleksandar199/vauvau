@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import '../../../core/images/dog_photo_urls.dart';
 import '../../discover/domain/discover_profile.dart';
 import '../domain/chat_conversation.dart';
 import '../domain/chat_message.dart';
@@ -127,31 +128,59 @@ class FirestoreChatRepository implements ChatRepository {
     required String myUserId,
     required String myDogId,
   }) {
-    final id = 'chat-${profile.id}';
+    final peerId = profile.ownerId;
+    final ids = [myUserId, peerId]..sort();
+    final id = '${ids[0]}_${ids[1]}';
     final existing = _byId(id);
     if (existing != null) {
       return existing.id;
     }
-    unawaited(
-      _rooms.doc(id).set({
-        'id': id,
-        'participantIds': [myUserId, 'owner-${profile.id}'],
-        'dogIds': [myDogId, profile.id],
-        'peerUserId': 'owner-${profile.id}',
-        'dogId': profile.id,
-        'dogName': profile.name,
-        'ownerName': profile.ownerName,
-        'breed': profile.breed,
-        'location': profile.location,
-        'photoUrl': profile.photoUrls.isEmpty ? '' : profile.photoUrls.first,
-        'lastMessage': '',
-        'lastMessageTimestamp': FieldValue.serverTimestamp(),
-        'unreadCount': 0,
-        'unreadByUser': <String, int>{myUserId: 0},
-        'isNewMatch': true,
-      }, SetOptions(merge: true)),
-    );
+    unawaited(_createRoom(
+      id: id,
+      myUserId: myUserId,
+      myDogId: myDogId,
+      peerId: peerId,
+      peerProfile: profile,
+    ));
     return id;
+  }
+
+  Future<void> _createRoom({
+    required String id,
+    required String myUserId,
+    required String myDogId,
+    required String peerId,
+    required DiscoverProfile peerProfile,
+  }) async {
+    final myDogSnap = await _firestore.collection('dogs').doc(myDogId).get();
+    final myDogData = myDogSnap.data() ?? <String, dynamic>{};
+    final myDogName = myDogData['name'] as String? ?? '';
+    final myOwnerName = myDogData['ownerName'] as String? ?? '';
+    final myBreed = myDogData['breed'] as String? ?? '';
+    final myPhotoUrl = resolvedDogPhotoUrl(collectPhotoUrls(myDogData));
+    final peerPhotoUrl = resolvedDogPhotoUrl(peerProfile.photoUrls);
+
+    await _rooms.doc(id).set({
+      'id': id,
+      'participantIds': [myUserId, peerId],
+      'dogIds': [myDogId, peerProfile.id],
+      'peerUserId': peerId,
+      'dogId': peerProfile.id,
+      'dogName': peerProfile.name,
+      'ownerName': peerProfile.ownerName,
+      'breed': peerProfile.breed,
+      'location': peerProfile.location,
+      'photoUrl': peerPhotoUrl,
+      'dogNames': {myUserId: myDogName, peerId: peerProfile.name},
+      'ownerNames': {myUserId: myOwnerName, peerId: peerProfile.ownerName},
+      'breeds': {myUserId: myBreed, peerId: peerProfile.breed},
+      'photoUrls': {myUserId: myPhotoUrl, peerId: peerPhotoUrl},
+      'lastMessage': '',
+      'lastMessageTimestamp': FieldValue.serverTimestamp(),
+      'unreadCount': 0,
+      'unreadByUser': <String, int>{myUserId: 0, peerId: 0},
+      'isNewMatch': true,
+    }, SetOptions(merge: true));
   }
 
   @override
@@ -159,6 +188,7 @@ class FirestoreChatRepository implements ChatRepository {
     unawaited(
       _rooms.doc(conversationId).set({
         'unreadCount': 0,
+        'unreadByUser': {currentUserId: 0},
       }, SetOptions(merge: true)),
     );
   }
@@ -259,10 +289,13 @@ class FirestoreChatRepository implements ChatRepository {
     String preview,
   ) async {
     await _rooms.doc(conversationId).collection('messages').add(payload);
+    final peerId = _byId(conversationId)?.peerUserId ?? '';
     await _rooms.doc(conversationId).set({
       'lastMessage': preview,
       'lastMessageTimestamp': FieldValue.serverTimestamp(),
       'isNewMatch': false,
+      if (peerId.isNotEmpty)
+        'unreadByUser': {peerId: FieldValue.increment(1)},
     }, SetOptions(merge: true));
   }
 
@@ -270,17 +303,34 @@ class FirestoreChatRepository implements ChatRepository {
     QueryDocumentSnapshot<Map<String, dynamic>> doc,
   ) {
     final data = doc.data();
+    final participantIds = _stringList(data['participantIds']);
+    final dogIds = _stringList(data['dogIds']);
+    final fallbackPeerId = data['peerUserId'] as String? ?? '';
+    final peerId = participantIds.firstWhere(
+      (uid) => uid != currentUserId,
+      orElse: () => fallbackPeerId,
+    );
+    final dogNames = data['dogNames'] as Map<String, dynamic>? ?? {};
+    final ownerNames = data['ownerNames'] as Map<String, dynamic>? ?? {};
+    final breeds = data['breeds'] as Map<String, dynamic>? ?? {};
+    final photoUrls = data['photoUrls'] as Map<String, dynamic>? ?? {};
+    final peerIndex = participantIds.indexOf(peerId);
+    final peerDogId = (peerIndex >= 0 && peerIndex < dogIds.length)
+        ? dogIds[peerIndex]
+        : (data['dogId'] as String? ?? '');
     return ChatConversation(
       id: doc.id,
-      dogId: data['dogId'] as String? ?? '',
-      dogName: data['dogName'] as String? ?? '',
-      ownerName: data['ownerName'] as String? ?? '',
-      breed: data['breed'] as String? ?? '',
+      dogId: peerDogId,
+      dogName: dogNames[peerId] as String? ?? data['dogName'] as String? ?? '',
+      ownerName:
+          ownerNames[peerId] as String? ?? data['ownerName'] as String? ?? '',
+      breed: breeds[peerId] as String? ?? data['breed'] as String? ?? '',
       location: data['location'] as String? ?? '',
-      photoUrl: data['photoUrl'] as String? ?? '',
-      participantIds: _stringList(data['participantIds']),
-      dogIds: _stringList(data['dogIds']),
-      peerUserId: data['peerUserId'] as String? ?? '',
+      photoUrl:
+          photoUrls[peerId] as String? ?? data['photoUrl'] as String? ?? '',
+      participantIds: participantIds,
+      dogIds: dogIds,
+      peerUserId: peerId,
       messages: _byId(doc.id)?.messages ?? const [],
       lastActivityAt: _date(data['lastMessageTimestamp']) ?? DateTime.now(),
       isNewMatch: data['isNewMatch'] as bool? ?? false,

@@ -60,28 +60,98 @@ void main() {
   testWidgets('renders map pins and location bottom sheet', (tester) async {
     await _pumpMap(tester);
 
-    expect(find.byKey(const Key('place-liman-park')), findsOneWidget);
-    expect(find.byKey(const Key('place-dvoriste')), findsOneWidget);
-    expect(find.byKey(const Key('place-za-moju-dusu')), findsOneWidget);
+    expect(find.byKey(const Key('place-park-ive-andrica')), findsOneWidget);
+    expect(find.byKey(const Key('place-cafe-gabby')), findsOneWidget);
+    expect(find.byKey(const Key('place-pet-house')), findsOneWidget);
+    expect(find.byKey(const Key('place-dog-tales')), findsOneWidget);
     expect(find.byKey(const Key('walker-bobi')), findsOneWidget);
 
+    await tester.ensureVisible(find.text(MapStrings.filterCafes));
     await tester.tap(find.text(MapStrings.filterCafes));
     await tester.pump();
-    expect(find.byKey(const Key('place-dvoriste')), findsOneWidget);
+    expect(find.byKey(const Key('place-cafe-gabby')), findsOneWidget);
+    expect(find.byKey(const Key('place-park-ive-andrica')), findsNothing);
     expect(find.byKey(const Key('walker-bobi')), findsNothing);
 
+    await tester.ensureVisible(find.text(MapStrings.filterMore));
+    await tester.tap(find.text(MapStrings.filterMore));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.tap(find.text(MapStrings.filterPetShops));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.byKey(const Key('place-pet-house')), findsOneWidget);
+    expect(find.byKey(const Key('place-cafe-gabby')), findsNothing);
+
+    await tester.ensureVisible(find.text(MapStrings.filterMore));
+    await tester.tap(find.text(MapStrings.filterMore));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.tap(find.text(MapStrings.filterGroomers));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.byKey(const Key('place-dog-tales')), findsOneWidget);
+    expect(find.byKey(const Key('place-pet-house')), findsNothing);
+
+    await tester.ensureVisible(find.text(MapStrings.filterParks));
     await tester.tap(find.text(MapStrings.filterParks));
     await tester.pump();
 
-    await tester.tap(find.byKey(const Key('place-liman-park')));
+    await tester.ensureVisible(find.byKey(const Key('place-park-ive-andrica')));
+    await tester.tap(find.byKey(const Key('place-park-ive-andrica')));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
 
-    expect(find.text('Limanski park istrčavalište'), findsWidgets);
-    expect(find.text(MapStrings.park), findsOneWidget);
-    expect(find.text('Liman 3, Novi Sad'), findsOneWidget);
-    expect(find.text(MapStrings.nearbyCount(4)), findsOneWidget);
-    expect(find.text(MapStrings.join), findsOneWidget);
-    expect(find.text(MapStrings.directions), findsOneWidget);
+    expect(find.text('Park za pse — Ive Andrića'), findsWidgets);
+    expect(find.text(MapStrings.dogParkBadge), findsOneWidget);
+    expect(find.textContaining('Ive Andrića •'), findsOneWidget);
+    expect(find.textContaining(MapStrings.verifiedBadge), findsOneWidget);
+    expect(find.text(MapStrings.openProfile), findsOneWidget);
+    expect(find.text(MapStrings.navigation), findsOneWidget);
+    expect(find.text(MapStrings.reportChange), findsOneWidget);
+  });
+
+  testWidgets('switches map city to Belgrade', (tester) async {
+    await _pumpMap(tester);
+
+    expect(find.text(MapStrings.cityNoviSad), findsOneWidget);
+    expect(find.text(MapStrings.cityBelgrade), findsOneWidget);
+    expect(find.byKey(const Key('place-cafe-gabby')), findsOneWidget);
+    expect(find.byKey(const Key('place-bg-cafe-witch')), findsNothing);
+
+    await tester.tap(find.text(MapStrings.cityBelgrade));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 250));
+
+    expect(find.byKey(const Key('place-bg-cafe-witch')), findsOneWidget);
+    expect(find.byKey(const Key('place-cafe-gabby')), findsNothing);
+    expect(find.byKey(const Key('walker-bobi')), findsNothing);
+  });
+
+  testWidgets('adds a user-submitted place to the map', (tester) async {
+    await _pumpMap(tester);
+
+    await tester.ensureVisible(find.text(MapStrings.addPlace));
+    await tester.tap(find.text(MapStrings.addPlace));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+
+    await tester.enterText(
+      find.widgetWithText(TextFormField, MapStrings.placeName),
+      'Moj park',
+    );
+    await tester.enterText(
+      find.widgetWithText(TextFormField, MapStrings.placeAddress),
+      'Liman',
+    );
+    await tester.ensureVisible(find.text(MapStrings.submitPlace));
+    await tester.tap(find.text(MapStrings.submitPlace));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+
+    expect(find.text(MapStrings.placeAdded), findsOneWidget);
+    await tester.enterText(find.byType(TextField).first, 'Moj park');
+    await tester.pump();
+    expect(find.byTooltip('Moj park'), findsOneWidget);
   });
 }

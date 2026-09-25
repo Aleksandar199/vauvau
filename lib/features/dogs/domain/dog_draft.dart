@@ -1,5 +1,4 @@
-import 'package:image_picker/image_picker.dart';
-
+import '../../../core/constants/serbia_locations.dart';
 import 'dog_enums.dart';
 
 class DogDraft {
@@ -12,9 +11,12 @@ class DogDraft {
     this.weightKg,
     this.energyLevel,
     this.temperament = const [],
-    this.cityId,
+    this.cityId = SerbiaLocations.noviSadId,
     this.neighborhoodId,
     this.photos = const [],
+    this.vaccinated = false,
+    this.chipped = false,
+    this.sterilized = false,
   });
 
   final String name;
@@ -27,7 +29,10 @@ class DogDraft {
   final List<DogTemperament> temperament;
   final String? cityId;
   final String? neighborhoodId;
-  final List<XFile> photos;
+  final List<String> photos;
+  final bool vaccinated;
+  final bool chipped;
+  final bool sterilized;
 
   DogDraft copyWith({
     String? name,
@@ -42,7 +47,10 @@ class DogDraft {
     String? cityId,
     bool clearNeighborhood = false,
     String? neighborhoodId,
-    List<XFile>? photos,
+    List<String>? photos,
+    bool? vaccinated,
+    bool? chipped,
+    bool? sterilized,
   }) {
     return DogDraft(
       name: name ?? this.name,
@@ -57,6 +65,9 @@ class DogDraft {
       neighborhoodId:
           clearNeighborhood ? null : (neighborhoodId ?? this.neighborhoodId),
       photos: photos ?? this.photos,
+      vaccinated: vaccinated ?? this.vaccinated,
+      chipped: chipped ?? this.chipped,
+      sterilized: sterilized ?? this.sterilized,
     );
   }
 }

@@ -1,9 +1,15 @@
+import 'dart:async';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../../../core/constants/app_strings.dart';
-import '../../../../core/constants/serbia_locations.dart';
+import '../../../../core/images/image_upload_service.dart';
+import '../../../../core/utils/content_validation_service.dart';
 import '../../../auth/presentation/auth_providers.dart';
+import '../../../discover/data/dog_profile_mapper.dart';
+import '../../../profile/presentation/profile_controller.dart';
 import '../../domain/dog_draft.dart';
 import '../../domain/dog_enums.dart';
 import '../../domain/dogs_exception.dart';
@@ -14,11 +20,13 @@ class DogOnboardingState {
     this.step = 0,
     this.draft = const DogDraft(),
     this.submit = const AsyncData<void>(null),
+    this.uploadingPhotos = false,
   });
 
   final int step;
   final DogDraft draft;
   final AsyncValue<void> submit;
+  final bool uploadingPhotos;
 
   bool get isSubmitting => submit.isLoading;
 
@@ -26,20 +34,25 @@ class DogOnboardingState {
     int? step,
     DogDraft? draft,
     AsyncValue<void>? submit,
+    bool? uploadingPhotos,
   }) {
     return DogOnboardingState(
       step: step ?? this.step,
       draft: draft ?? this.draft,
       submit: submit ?? this.submit,
+      uploadingPhotos: uploadingPhotos ?? this.uploadingPhotos,
     );
   }
 }
 
 class DogOnboardingController extends Notifier<DogOnboardingState> {
-  static const int stepCount = 4;
+  static const int stepCount = 3;
 
   @override
-  DogOnboardingState build() => const DogOnboardingState();
+  DogOnboardingState build() {
+    ref.watch(authStateProvider.select((value) => value.value?.uid));
+    return const DogOnboardingState();
+  }
 
   void updateDraft(DogDraft draft) {
     state = state.copyWith(draft: draft, submit: const AsyncData<void>(null));
@@ -61,28 +74,18 @@ class DogOnboardingController extends Notifier<DogOnboardingState> {
         if (draft.ageYears == null || draft.ageYears! < 0 || draft.ageYears! > 30) {
           return AppStrings.dogAgeRequired;
         }
-        return null;
+        return ContentValidationService.validateText(draft.name) ??
+            ContentValidationService.validateText(draft.breed);
       case 1:
         if (draft.size == null) {
           return AppStrings.dogSizeRequired;
-        }
-        if (draft.energyLevel == null) {
-          return AppStrings.dogEnergyRequired;
         }
         if (draft.temperament.isEmpty) {
           return AppStrings.dogTemperamentRequired;
         }
         return null;
       case 2:
-        if (draft.cityId == null || draft.neighborhoodId == null) {
-          return AppStrings.dogAreaRequired;
-        }
-        if (SerbiaLocations.cityById(draft.cityId!) == null) {
-          return AppStrings.dogAreaRequired;
-        }
-        return null;
-      case 3:
-        if (draft.photos.isEmpty || draft.photos.length > 5) {
+        if (draft.photos.length > 5) {
           return AppStrings.dogPhotosRequired;
         }
         return null;
@@ -118,19 +121,18 @@ class DogOnboardingController extends Notifier<DogOnboardingState> {
   Future<void> addPhotos() async {
     final picker = ImagePicker();
     final remaining = 5 - state.draft.photos.length;
-    if (remaining <= 0) {
+    if (remaining <= 0 || state.uploadingPhotos) {
       return;
     }
     final picked = await picker.pickMultiImage(limit: remaining);
     if (picked.isEmpty) {
       return;
     }
-    final next = [...state.draft.photos, ...picked].take(5).toList();
-    updateDraft(state.draft.copyWith(photos: next));
+    await _uploadPicked(picked);
   }
 
   Future<void> addFromCamera() async {
-    if (state.draft.photos.length >= 5) {
+    if (state.draft.photos.length >= 5 || state.uploadingPhotos) {
       return;
     }
     final picker = ImagePicker();
@@ -138,7 +140,45 @@ class DogOnboardingController extends Notifier<DogOnboardingState> {
     if (photo == null) {
       return;
     }
-    updateDraft(state.draft.copyWith(photos: [...state.draft.photos, photo]));
+    await _uploadPicked([photo]);
+  }
+
+  Future<void> _uploadPicked(List<XFile> files) async {
+    state = state.copyWith(
+      uploadingPhotos: true,
+      submit: const AsyncData<void>(null),
+    );
+    final urls = [...state.draft.photos];
+    var failed = false;
+    Object? lastError;
+    for (final file in files) {
+      if (urls.length >= 5) {
+        break;
+      }
+      try {
+        final bytes = await file.readAsBytes();
+        debugPrint(
+          '[IMAGE UPLOAD] Onboarding file name=${file.name} mime=${file.mimeType} bytes=${bytes.length}',
+        );
+        urls.add(await ImageUploadService.upload(bytes));
+      } catch (error) {
+        debugPrint('[IMAGE UPLOAD] Onboarding caller caught: $error');
+        failed = true;
+        lastError = error;
+      }
+    }
+    state = state.copyWith(
+      draft: state.draft.copyWith(photos: urls),
+      uploadingPhotos: false,
+      submit: failed
+          ? AsyncError(
+              DogsException(
+                lastError?.toString() ?? AppStrings.photoUploadFailed,
+              ),
+              StackTrace.current,
+            )
+          : const AsyncData<void>(null),
+    );
   }
 
   void removePhoto(int index) {
@@ -174,9 +214,35 @@ class DogOnboardingController extends Notifier<DogOnboardingState> {
     }
     state = state.copyWith(submit: const AsyncLoading());
     try {
-      await ref.read(dogsRepositoryProvider).createFirstDog(
-            owner: owner,
-            draft: state.draft,
+      final seeded = state.draft.copyWith(
+        cityId: owner.cityId.isNotEmpty ? owner.cityId : state.draft.cityId,
+        neighborhoodId: owner.neighborhoodId.isNotEmpty
+            ? owner.neighborhoodId
+            : state.draft.neighborhoodId,
+      );
+      final dog = await ref
+          .read(dogsRepositoryProvider)
+          .createFirstDog(owner: owner, draft: seeded)
+          .timeout(const Duration(seconds: 20));
+      final existing = ref.read(localOwnerDogsProvider);
+      ref.read(localOwnerDogsProvider.notifier).replace([...existing, dog]);
+      final ownerName = owner.displayName ?? '';
+      final profileDog = discoverProfileFromDog(dog, ownerName: ownerName);
+      final current = ref.read(profileControllerProvider);
+      final dogs = [
+        for (final item in current.dogs)
+          if (item.id != profileDog.id) item,
+        profileDog,
+      ];
+      ref.read(profileControllerProvider.notifier).save(
+            current.copyWith(
+              ownerName: ownerName.isEmpty ? current.ownerName : ownerName,
+              ownerLocation: owner.locationLabel.isEmpty
+                  ? current.ownerLocation
+                  : owner.locationLabel,
+              dogs: dogs,
+              selectedDogId: dog.id,
+            ),
           );
       state = state.copyWith(submit: const AsyncData<void>(null));
       return true;

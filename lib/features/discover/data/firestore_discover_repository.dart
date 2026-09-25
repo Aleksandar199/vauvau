@@ -1,7 +1,13 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'dart:async';
 
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
+
+import '../../../core/geo/geo.dart';
+import '../../../core/images/dog_photo_urls.dart';
 import '../domain/discover_profile.dart';
 import '../domain/discover_repository.dart';
+import '../domain/geo_query.dart';
 import 'dog_profile_mapper.dart';
 
 class FirestoreDiscoverRepository implements DiscoverRepository {
@@ -22,13 +28,89 @@ class FirestoreDiscoverRepository implements DiscoverRepository {
       _firestore.collection('chats');
 
   @override
-  Stream<List<DiscoverProfile>> watchProfiles({required String excludeOwnerId}) {
-    return _dogs.snapshots().map((snapshot) {
-      return snapshot.docs
-          .map((doc) => discoverProfileFromMap(doc.id, doc.data()))
-          .where((profile) => profile.ownerId != excludeOwnerId)
-          .toList();
-    });
+  Stream<List<DiscoverProfile>> watchProfiles({
+    required String excludeOwnerId,
+    GeoQuery? geo,
+  }) {
+    if (geo == null) {
+      return _dogs.snapshots().map(
+            (snapshot) => _fromDocs(snapshot.docs, geo),
+          );
+    }
+    final prefixes = GeoHash.coveragePrefixes(
+      latitude: geo.origin.latitude,
+      longitude: geo.origin.longitude,
+      radiusKm: geo.radiusKm,
+    );
+    return _mergeGeohashQueries(prefixes, geo);
+  }
+
+  Stream<List<DiscoverProfile>> _mergeGeohashQueries(
+    List<String> prefixes,
+    GeoQuery geo,
+  ) {
+    final controller = StreamController<List<DiscoverProfile>>.broadcast();
+    final latest = List<List<QueryDocumentSnapshot<Map<String, dynamic>>>?>.filled(
+      prefixes.length,
+      null,
+    );
+    final subs = <StreamSubscription<QuerySnapshot<Map<String, dynamic>>>>[];
+
+    void emit() {
+      final byId = <String, QueryDocumentSnapshot<Map<String, dynamic>>>{};
+      for (final docs in latest) {
+        if (docs == null) {
+          continue;
+        }
+        for (final doc in docs) {
+          byId[doc.id] = doc;
+        }
+      }
+      if (!controller.isClosed) {
+        controller.add(_fromDocs(byId.values, geo));
+      }
+    }
+
+    for (var i = 0; i < prefixes.length; i++) {
+      final prefix = prefixes[i];
+      subs.add(
+        _dogs
+            .orderBy('geohash')
+            .startAt([prefix])
+            .endAt(['$prefix\uf8ff'])
+            .snapshots()
+            .listen((snapshot) {
+          latest[i] = snapshot.docs;
+          emit();
+        }),
+      );
+    }
+
+    controller.onCancel = () {
+      for (final sub in subs) {
+        sub.cancel();
+      }
+    };
+    return controller.stream;
+  }
+
+  List<DiscoverProfile> _fromDocs(
+    Iterable<QueryDocumentSnapshot<Map<String, dynamic>>> docs,
+    GeoQuery? geo,
+  ) {
+    final profiles = <DiscoverProfile>[];
+    for (final doc in docs) {
+      final data = doc.data();
+      final profile = discoverProfileFromMap(doc.id, data);
+      debugPrint(
+        '🐶 DOG DEBUG: Name: ${profile.name}, imageUrl: ${profile.imageUrl}, photoUrl: ${data['photoUrl']}, photos: ${data['photos']}',
+      );
+      debugPrint(
+        '🐶 DOG DEBUG RAW id=${profile.id} photoUrls=${data['photoUrls']} galleryUrls=${data['galleryUrls']} imageUrl=${data['imageUrl']} image=${data['image']}',
+      );
+      profiles.add(profile);
+    }
+    return geo == null ? profiles : geo.apply(profiles);
   }
 
   @override
@@ -75,7 +157,7 @@ class FirestoreDiscoverRepository implements DiscoverRepository {
       'ownerName': target.ownerName,
       'breed': target.breed,
       'location': target.location,
-      'photoUrl': target.photoUrls.isEmpty ? '' : target.photoUrls.first,
+      'photoUrl': resolvedDogPhotoUrl(target.photoUrls),
       'peerUserId': target.ownerId,
       'lastMessage': '',
       'lastMessageTimestamp': FieldValue.serverTimestamp(),

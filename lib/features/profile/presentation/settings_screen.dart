@@ -3,9 +3,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../auth/presentation/auth_controller.dart';
+import '../../notifications/presentation/notification_strings.dart';
+import '../../notifications/presentation/push_bootstrap.dart';
+import '../../notifications/presentation/push_controller.dart';
 import 'matching_filters_sheet.dart';
 import 'profile_controller.dart';
 import 'profile_strings.dart';
+import 'sign_out_action.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -25,6 +29,20 @@ class SettingsScreen extends ConsumerWidget {
           Text(
             ProfileStrings.notifications,
             style: Theme.of(context).textTheme.titleMedium,
+          ),
+          ListTile(
+            title: const Text(ProfileStrings.enableNotifications),
+            subtitle: const Text(NotificationStrings.enableBody),
+            trailing: const Icon(Icons.notifications_active_outlined),
+            onTap: () async {
+              final enable = await showEnableNotificationsDialog(context);
+              if (enable == true && context.mounted) {
+                await ref.read(pushControllerProvider.notifier).requestPermission();
+                ref.read(appSettingsProvider.notifier).update(
+                      settings.copyWith(pushPrompted: true),
+                    );
+              }
+            },
           ),
           SwitchListTile(
             title: const Text(ProfileStrings.notifyWalks),
@@ -84,7 +102,7 @@ class SettingsScreen extends ConsumerWidget {
             title: const Text(ProfileStrings.signOut),
             onTap: isSigningOut
                 ? null
-                : () => _confirmSignOut(context, ref),
+                : () => confirmAndSignOut(context, ref),
           ),
           ListTile(
             title: const Text(
@@ -106,31 +124,6 @@ class SettingsScreen extends ConsumerWidget {
         ),
       ),
     );
-  }
-
-  Future<void> _confirmSignOut(BuildContext context, WidgetRef ref) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) {
-        return AlertDialog(
-          title: const Text(ProfileStrings.signOutTitle),
-          content: const Text(ProfileStrings.signOutBody),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(false),
-              child: const Text(ProfileStrings.cancel),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.of(dialogContext).pop(true),
-              child: const Text(ProfileStrings.signOut),
-            ),
-          ],
-        );
-      },
-    );
-    if (confirmed == true) {
-      await ref.read(authControllerProvider.notifier).signOut();
-    }
   }
 
   Future<void> _confirmDelete(BuildContext context, WidgetRef ref) async {

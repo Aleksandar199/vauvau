@@ -1,3 +1,5 @@
+import '../../../core/geo/geo.dart';
+
 class DiscoverProfile {
   const DiscoverProfile({
     required this.id,
@@ -16,10 +18,16 @@ class DiscoverProfile {
     this.sterilized = false,
     this.ageMonths = 0,
     this.traits = const [],
-    this.distanceKm = 1.2,
-    this.weightKg = 22,
+    this.distanceKm = 0,
+    this.weightKg = 0,
     this.walking = false,
+    this.activityStatus = '',
     this.ownerId = '',
+    this.latitude,
+    this.longitude,
+    this.goodWithDogs = true,
+    this.goodWithCats = false,
+    this.goodWithKids = true,
   });
 
   final String id;
@@ -41,38 +49,167 @@ class DiscoverProfile {
   final double distanceKm;
   final double weightKg;
   final bool walking;
+  final String activityStatus;
   final String ownerId;
+  final double? latitude;
+  final double? longitude;
+  final bool goodWithDogs;
+  final bool goodWithCats;
+  final bool goodWithKids;
 
-  String get headline => '$name, $ageYears god.';
+  String get imageUrl => photoUrls.isEmpty ? '' : photoUrls.first;
+
+  String get photoUrl => imageUrl;
+
+  List<String> get photos => photoUrls;
+
+  String get headline => '$name, $ageLabel';
 
   String get subtitle {
-    final city = location.split(' - ').first;
+    final city = cityName;
     return '$breed • $city';
   }
 
   String get conversationTitle => '$name ($ownerName)';
 
-  String get cityName => location.split(' - ').first;
+  List<String> get _placeParts {
+    if (location.contains(' · ')) {
+      return location.split(' · ');
+    }
+    return location.split(' - ');
+  }
+
+  String get cityName => _placeParts.first;
 
   String get neighborhoodName {
-    final parts = location.split(' - ');
-    return parts.length > 1 ? parts[1] : '';
+    final parts = _placeParts;
+    return parts.length > 1 ? parts.sublist(1).join(' · ') : '';
   }
 
   String get distanceLabel {
-    final area = neighborhoodName.isEmpty ? cityName : neighborhoodName;
-    return '$area, ${distanceKm.toStringAsFixed(1)} km';
+    if (neighborhoodName.isNotEmpty) {
+      return neighborhoodName;
+    }
+    return cityName;
+  }
+
+  String get statusBadge {
+    if (activityStatus.isNotEmpty) {
+      return activityStatus;
+    }
+    return walking ? '🟢 U šetnji' : 'Odmaram';
+  }
+
+  String get ageLabel {
+    if (ageYears <= 0 && ageMonths > 0) {
+      return _count(ageMonths, 'mesec', 'meseca', 'meseci');
+    }
+    return _count(ageYears <= 0 ? 1 : ageYears, 'godina', 'godine', 'godina');
+  }
+
+  String get genderLabel {
+    switch (gender) {
+      case 'male':
+      case 'mužjak':
+        return 'Mužjak';
+      case 'female':
+      case 'ženka':
+        return 'Ženka';
+      default:
+        return gender.isEmpty ? 'Nije navedeno' : gender;
+    }
+  }
+
+  String get sizeLabel {
+    switch (size) {
+      case 'small':
+      case 'mali':
+        return 'Mali';
+      case 'medium':
+      case 'srednji':
+        return 'Srednji';
+      case 'large':
+      case 'xlarge':
+      case 'veliki':
+        return 'Veliki';
+      default:
+        return size.isEmpty ? 'Srednji' : size;
+    }
   }
 
   String get energyLabel {
     switch (energyLevel) {
       case 'visoka':
-        return 'Visoka';
+      case 'high':
+        return 'Visok';
       case 'niska':
-        return 'Niska';
+      case 'low':
+        return 'Nizak';
       default:
-        return 'Umerena';
+        return 'Umeren';
     }
+  }
+
+  List<String> get traitLabels => [
+        for (final tag in traits) localizeTrait(tag),
+      ];
+
+  List<String> get getsAlongLabels => [
+        if (goodWithDogs) 'Psi 🐕',
+        if (goodWithCats) 'Mačke 🐈',
+        if (goodWithKids) 'Deca 👶',
+      ];
+
+  static String localizeTrait(String raw) {
+    switch (raw.trim().toLowerCase()) {
+      case 'friendly':
+      case 'druželjubiv':
+        return 'Društven';
+      case 'playful':
+      case 'igračka':
+      case 'razigran':
+        return 'Razigran';
+      case 'energetic':
+      case 'energičan':
+        return 'Energičan';
+      case 'calm':
+      case 'miran':
+      case 'mirna':
+        return 'Miran';
+      case 'shy':
+      case 'sramežljiv':
+        return 'Sramežljiv';
+      case 'protective':
+      case 'zaštitnički':
+        return 'Zaštitnički';
+      case 'social':
+      case 'društven':
+        return 'Društven';
+      default:
+        return raw;
+    }
+  }
+
+  static String _count(int value, String one, String few, String many) {
+    final n = value.abs();
+    final mod10 = n % 10;
+    final mod100 = n % 100;
+    if (n == 1) {
+      return '$n $one';
+    }
+    if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) {
+      return '$n $few';
+    }
+    return '$n $many';
+  }
+
+  GeoCoord? get coord {
+    final lat = latitude;
+    final lng = longitude;
+    if (lat == null || lng == null) {
+      return null;
+    }
+    return GeoCoord(lat, lng);
   }
 
   DiscoverProfile copyWith({
@@ -95,7 +232,13 @@ class DiscoverProfile {
     double? distanceKm,
     double? weightKg,
     bool? walking,
+    String? activityStatus,
     String? ownerId,
+    double? latitude,
+    double? longitude,
+    bool? goodWithDogs,
+    bool? goodWithCats,
+    bool? goodWithKids,
   }) {
     return DiscoverProfile(
       id: id ?? this.id,
@@ -117,7 +260,13 @@ class DiscoverProfile {
       distanceKm: distanceKm ?? this.distanceKm,
       weightKg: weightKg ?? this.weightKg,
       walking: walking ?? this.walking,
+      activityStatus: activityStatus ?? this.activityStatus,
       ownerId: ownerId ?? this.ownerId,
+      latitude: latitude ?? this.latitude,
+      longitude: longitude ?? this.longitude,
+      goodWithDogs: goodWithDogs ?? this.goodWithDogs,
+      goodWithCats: goodWithCats ?? this.goodWithCats,
+      goodWithKids: goodWithKids ?? this.goodWithKids,
     );
   }
 }

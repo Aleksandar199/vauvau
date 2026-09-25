@@ -9,10 +9,14 @@ class MessageBubble extends StatelessWidget {
     super.key,
     required this.message,
     required this.now,
+    this.onReport,
+    this.onTap,
   });
 
   final ChatMessage message;
   final DateTime now;
+  final VoidCallback? onReport;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -26,7 +30,11 @@ class MessageBubble extends StatelessWidget {
 
     return Align(
       alignment: isMine ? Alignment.centerRight : Alignment.centerLeft,
-      child: ConstrainedBox(
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: message.isMine ? null : onTap,
+        onLongPress: message.isMine ? null : onReport,
+        child: ConstrainedBox(
         constraints: BoxConstraints(
           maxWidth: MediaQuery.sizeOf(context).width * 0.78,
         ),
@@ -71,6 +79,7 @@ class MessageBubble extends StatelessWidget {
               ),
             ],
           ),
+        ),
         ),
       ),
     );

@@ -1,0 +1,64 @@
+import '../domain/adoption_dog.dart';
+
+final List<AdoptionDog> mockAdoptionDogs = [
+  AdoptionDog(
+    id: 'adopt-bara',
+    name: 'Bara',
+    breed: 'Mešanac',
+    age: '1 god.',
+    gender: 'ženka',
+    size: 'srednji',
+    location: 'Novi Sad - Telep',
+    description:
+        'Bara je nežna i druželjubiva. Traži miran dom sa dvorištem i strpljivim ljudima.',
+    imageUrls: const [
+      'https://images.unsplash.com/photo-1552053831-71594a27632d?auto=format&fit=crop&w=800&q=80',
+    ],
+    contactPhone: '+381 64 111 2233',
+    uploaderUserId: 'shelter-ns',
+    uploaderName: 'Prihvatilište Novi Sad',
+    isVaccinated: true,
+    isSterilized: true,
+    createdAt: DateTime(2026, 8, 12),
+  ),
+  AdoptionDog(
+    id: 'adopt-dzeki',
+    name: 'Džeki',
+    breed: 'Labrador',
+    age: '3 god.',
+    gender: 'mužjak',
+    size: 'veliki',
+    location: 'Novi Sad - Liman',
+    description:
+        'Džeki voli šetnje uz Dunav i loptu. Uči se osnovnim komandama i voli decu.',
+    imageUrls: const [
+      'https://images.unsplash.com/photo-1558788353-f76d92427f16?auto=format&fit=crop&w=800&q=80',
+    ],
+    contactPhone: '+381 63 555 0199',
+    uploaderUserId: 'ana-udomi',
+    uploaderName: 'Ana Petrović',
+    isVaccinated: true,
+    isSterilized: false,
+    createdAt: DateTime(2026, 9, 2),
+  ),
+  AdoptionDog(
+    id: 'adopt-mili',
+    name: 'Mili',
+    breed: 'Mops',
+    age: '6 meseci',
+    gender: 'ženka',
+    size: 'mali',
+    location: 'Beograd - Vračar',
+    description:
+        'Mala Mili traži stan i puno maženja. Vakcinisana, vesela i slatka kao bombona.',
+    imageUrls: const [
+      'https://images.unsplash.com/photo-1517849845537-4d257902454a?auto=format&fit=crop&w=800&q=80',
+    ],
+    contactPhone: '+381 61 222 3344',
+    uploaderUserId: 'vracar-pets',
+    uploaderName: 'Udruženje Šapa',
+    isVaccinated: true,
+    isSterilized: false,
+    createdAt: DateTime(2026, 9, 10),
+  ),
+];

@@ -66,6 +66,7 @@ class _BasicsStepState extends State<BasicsStep> {
           textCapitalization: TextCapitalization.words,
           decoration: const InputDecoration(
             labelText: AppStrings.dogNameLabel,
+            hintText: AppStrings.dogNameHint,
             border: OutlineInputBorder(),
           ),
           onChanged: (_) => _emit(),
@@ -76,6 +77,7 @@ class _BasicsStepState extends State<BasicsStep> {
           textCapitalization: TextCapitalization.words,
           decoration: const InputDecoration(
             labelText: AppStrings.dogBreedLabel,
+            hintText: AppStrings.dogBreedHint,
             border: OutlineInputBorder(),
           ),
           onChanged: (_) => _emit(),
@@ -84,7 +86,7 @@ class _BasicsStepState extends State<BasicsStep> {
         Text(AppStrings.dogGenderLabel, style: Theme.of(context).textTheme.titleMedium),
         const SizedBox(height: 8),
         OptionChips<DogGender>(
-          values: DogGender.values,
+          values: const [DogGender.male, DogGender.female],
           labelOf: genderLabel,
           isSelected: (value) => widget.draft.gender == value,
           onSelected: (value) => _emit(gender: value),
@@ -96,6 +98,7 @@ class _BasicsStepState extends State<BasicsStep> {
           inputFormatters: [FilteringTextInputFormatter.digitsOnly],
           decoration: const InputDecoration(
             labelText: AppStrings.dogAgeLabel,
+            hintText: AppStrings.dogAgeHint,
             border: OutlineInputBorder(),
           ),
           onChanged: (_) => _emit(),

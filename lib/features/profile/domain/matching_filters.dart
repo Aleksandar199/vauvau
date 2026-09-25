@@ -8,7 +8,7 @@ enum FilterEnergy { any, low, medium, high }
 
 class MatchingFilters {
   const MatchingFilters({
-    this.sizes = const {'mali', 'srednji', 'veliki', 'gigantski'},
+    this.sizes = const {'mali', 'srednji', 'veliki'},
     this.gender = FilterGender.any,
     this.city = FilterCity.any,
     this.radiusKm = 20,

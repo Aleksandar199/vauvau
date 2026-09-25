@@ -16,8 +16,8 @@ final authRepositoryProvider = Provider<AuthRepository>((ref) {
   }
   return AuthRepositoryImpl(
     FirebaseAuthDatasource(
-      auth: FirebaseAuth.instance,
-      googleSignIn: GoogleSignIn.instance,
+      FirebaseAuth.instance,
+      googleSignIn: GoogleSignIn(scopes: const ['email', 'profile']),
     ),
     firestore: FirebaseFirestore.instance,
   );
@@ -25,4 +25,8 @@ final authRepositoryProvider = Provider<AuthRepository>((ref) {
 
 final authStateProvider = StreamProvider<AppUser?>((ref) {
   return ref.watch(authRepositoryProvider).watchUser();
+});
+
+final isAdminProvider = Provider<bool>((ref) {
+  return ref.watch(authStateProvider).asData?.value?.isAdmin ?? false;
 });

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../../discover/presentation/discover_image.dart';
+import '../../../../core/images/dog_image.dart';
 import '../../domain/chat_conversation.dart';
 
 class DogAvatar extends StatelessWidget {
@@ -20,21 +20,7 @@ class DogAvatar extends StatelessWidget {
       child: SizedBox(
         width: size,
         height: size,
-        child: photoUrl.isEmpty
-            ? ColoredBox(
-                color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.4),
-                child: const Icon(Icons.pets),
-              )
-            : Image(
-                image: discoverImageOf(context, photoUrl),
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) {
-                  return ColoredBox(
-                    color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.4),
-                    child: const Icon(Icons.pets),
-                  );
-                },
-              ),
+        child: buildDogImage(photoUrl, width: size, height: size),
       ),
     );
   }

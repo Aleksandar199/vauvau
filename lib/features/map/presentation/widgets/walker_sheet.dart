@@ -1,15 +1,16 @@
 import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_colors.dart';
-import '../../../../core/widgets/ui_bits.dart';
 import '../../../chat/presentation/widgets/dog_avatar.dart';
 import '../../../discover/domain/discover_profile.dart';
+import '../../../discover/presentation/widgets/discover_filter_chip.dart';
 import '../../domain/walking_dog_pin.dart';
 import '../map_strings.dart';
 
 Future<void> showWalkerSheet({
   required BuildContext context,
   required WalkingDogPin pin,
+  required VoidCallback onJoinWalk,
   required VoidCallback onOpenChat,
 }) {
   return showModalBottomSheet<void>(
@@ -33,6 +34,17 @@ Future<void> showWalkerSheet({
             SizedBox(
               width: double.infinity,
               child: FilledButton(
+                onPressed: () {
+                  Navigator.of(sheetContext).pop();
+                  onJoinWalk();
+                },
+                child: const Text(MapStrings.joinWalk),
+              ),
+            ),
+            const SizedBox(height: 8),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton(
                 onPressed: () {
                   Navigator.of(sheetContext).pop();
                   onOpenChat();
@@ -110,40 +122,77 @@ class WalkerPin extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final url = pin.profile.photoUrls.isEmpty ? '' : pin.profile.photoUrls.first;
-    final size = selected ? 50.0 : 44.0;
+    final size = selected ? 40.0 : 36.0;
     return Semantics(
       button: true,
       label: pin.profile.name,
-      child: Tooltip(
-        message: pin.profile.name,
-        child: Material(
-          key: Key('walker-${pin.profile.id}'),
-          color: Colors.transparent,
-          child: InkWell(
-            onTap: onTap,
-            customBorder: const CircleBorder(),
-            child: PulseBadge(
-              color: AppColors.success,
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 180),
-                width: size,
-                height: size,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(color: AppColors.success, width: 3),
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppColors.success.withValues(alpha: 0.4),
-                      blurRadius: selected ? 16 : 8,
-                      offset: const Offset(0, 3),
+      child: Material(
+        key: Key('walker-${pin.profile.id}'),
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SizedBox(
+                width: size + 4,
+                height: size + 4,
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    Positioned.fill(
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: selected
+                                ? AppColors.primary
+                                : Colors.white,
+                            width: 2,
+                          ),
+                          boxShadow: const [
+                            BoxShadow(
+                              color: Colors.black26,
+                              blurRadius: 6,
+                              offset: Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.all(2),
+                          child: ClipOval(
+                            child: DogAvatar(photoUrl: url, size: size - 2),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const Positioned(
+                      top: 0,
+                      right: 0,
+                      child: WalkStatusDot(size: 10),
                     ),
                   ],
                 ),
-                child: ClipOval(
-                  child: DogAvatar(photoUrl: url, size: size - 6),
+              ),
+              const SizedBox(height: 4),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: const Color(0xF22A2D3E),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  '${pin.profile.name} • ${pin.profile.distanceKm.toStringAsFixed(1)} km',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
-            ),
+            ],
           ),
         ),
       ),

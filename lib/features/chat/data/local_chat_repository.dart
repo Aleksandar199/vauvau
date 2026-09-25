@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import '../../../core/images/dog_photo_urls.dart';
 import '../../discover/domain/discover_profile.dart';
 import '../domain/chat_conversation.dart';
 import '../domain/chat_message.dart';
@@ -65,7 +66,7 @@ class LocalChatRepository implements ChatRepository {
       ownerName: profile.ownerName,
       breed: profile.breed,
       location: profile.location,
-      photoUrl: profile.photoUrls.isEmpty ? '' : profile.photoUrls.first,
+      photoUrl: resolvedDogPhotoUrl(profile.photoUrls),
       participantIds: [myUserId, 'owner-${profile.id}'],
       dogIds: [myDogId, profile.id],
       peerUserId: 'owner-${profile.id}',

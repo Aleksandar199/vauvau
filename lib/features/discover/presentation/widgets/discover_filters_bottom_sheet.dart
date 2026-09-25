@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../profile/domain/matching_filters.dart';
 import '../../../profile/presentation/profile_controller.dart';
 import '../discover_strings.dart';
+import 'discover_filter_chip.dart';
 
 Future<void> showDiscoverFiltersSheet(BuildContext context) {
   return showModalBottomSheet<void>(
@@ -65,10 +66,29 @@ class _DiscoverFiltersBottomSheetState
             const SizedBox(height: 8),
             Wrap(
               spacing: 8,
+              runSpacing: 8,
               children: [
-                _genderChip(DiscoverStrings.genderAll, FilterGender.any),
-                _genderChip(DiscoverStrings.genderMale, FilterGender.male),
-                _genderChip(DiscoverStrings.genderFemale, FilterGender.female),
+                _filterChip(
+                  DiscoverStrings.genderAll,
+                  _draft.gender == FilterGender.any,
+                  () => setState(
+                    () => _draft = _draft.copyWith(gender: FilterGender.any),
+                  ),
+                ),
+                _filterChip(
+                  DiscoverStrings.genderMale,
+                  _draft.gender == FilterGender.male,
+                  () => setState(
+                    () => _draft = _draft.copyWith(gender: FilterGender.male),
+                  ),
+                ),
+                _filterChip(
+                  DiscoverStrings.genderFemale,
+                  _draft.gender == FilterGender.female,
+                  () => setState(
+                    () => _draft = _draft.copyWith(gender: FilterGender.female),
+                  ),
+                ),
               ],
             ),
             const SizedBox(height: 16),
@@ -78,10 +98,21 @@ class _DiscoverFiltersBottomSheetState
               spacing: 8,
               runSpacing: 8,
               children: [
-                _sizeChip(DiscoverStrings.sizeTiny, 'mali'),
-                _sizeChip(DiscoverStrings.sizeMid, 'srednji'),
-                _sizeChip(DiscoverStrings.sizeBig, 'veliki'),
-                _sizeChip(DiscoverStrings.sizeGiant, 'gigantski'),
+                _filterChip(
+                  DiscoverStrings.sizeSmall,
+                  _draft.sizes.contains('mali'),
+                  () => _toggleSize('mali'),
+                ),
+                _filterChip(
+                  DiscoverStrings.sizeMid,
+                  _draft.sizes.contains('srednji'),
+                  () => _toggleSize('srednji'),
+                ),
+                _filterChip(
+                  DiscoverStrings.sizeBig,
+                  _draft.sizes.contains('veliki'),
+                  () => _toggleSize('veliki'),
+                ),
               ],
             ),
             const SizedBox(height: 16),
@@ -89,11 +120,36 @@ class _DiscoverFiltersBottomSheetState
             const SizedBox(height: 8),
             Wrap(
               spacing: 8,
+              runSpacing: 8,
               children: [
-                _energyChip(DiscoverStrings.genderAll, FilterEnergy.any),
-                _energyChip(DiscoverStrings.energyLow, FilterEnergy.low),
-                _energyChip(DiscoverStrings.energyMid, FilterEnergy.medium),
-                _energyChip(DiscoverStrings.energyHigh, FilterEnergy.high),
+                _filterChip(
+                  DiscoverStrings.genderAll,
+                  _draft.energy == FilterEnergy.any,
+                  () => setState(
+                    () => _draft = _draft.copyWith(energy: FilterEnergy.any),
+                  ),
+                ),
+                _filterChip(
+                  DiscoverStrings.energyLow,
+                  _draft.energy == FilterEnergy.low,
+                  () => setState(
+                    () => _draft = _draft.copyWith(energy: FilterEnergy.low),
+                  ),
+                ),
+                _filterChip(
+                  DiscoverStrings.energyMid,
+                  _draft.energy == FilterEnergy.medium,
+                  () => setState(
+                    () => _draft = _draft.copyWith(energy: FilterEnergy.medium),
+                  ),
+                ),
+                _filterChip(
+                  DiscoverStrings.energyHigh,
+                  _draft.energy == FilterEnergy.high,
+                  () => setState(
+                    () => _draft = _draft.copyWith(energy: FilterEnergy.high),
+                  ),
+                ),
               ],
             ),
             const SizedBox(height: 16),
@@ -161,13 +217,18 @@ class _DiscoverFiltersBottomSheetState
                   },
                   child: const Text(DiscoverStrings.reset),
                 ),
-                const Spacer(),
-                FilledButton(
-                  onPressed: () {
-                    ref.read(matchingFiltersProvider.notifier).apply(_draft);
-                    Navigator.of(context).pop();
-                  },
-                  child: const Text(DiscoverStrings.applyFilters),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: FilledButton(
+                    style: FilledButton.styleFrom(
+                      minimumSize: const Size(0, 48),
+                    ),
+                    onPressed: () {
+                      ref.read(matchingFiltersProvider.notifier).apply(_draft);
+                      Navigator.of(context).pop();
+                    },
+                    child: const Text(DiscoverStrings.applyFilters),
+                  ),
                 ),
               ],
             ),
@@ -177,28 +238,11 @@ class _DiscoverFiltersBottomSheetState
     );
   }
 
-  Widget _genderChip(String label, FilterGender gender) {
-    return ChoiceChip(
-      label: Text(label),
-      selected: _draft.gender == gender,
-      onSelected: (_) => setState(() => _draft = _draft.copyWith(gender: gender)),
-    );
-  }
-
-  Widget _sizeChip(String label, String size) {
-    return FilterChip(
-      label: Text(label),
-      selected: _draft.sizes.contains(size),
-      onSelected: (_) => _toggleSize(size),
-    );
-  }
-
-  Widget _energyChip(String label, FilterEnergy energy) {
-    return ChoiceChip(
-      label: Text(label),
-      selected: _draft.energy == energy,
-      onSelected: (_) =>
-          setState(() => _draft = _draft.copyWith(energy: energy)),
+  Widget _filterChip(String label, bool selected, VoidCallback onTap) {
+    return DiscoverFilterChip(
+      label: label,
+      selected: selected,
+      onTap: onTap,
     );
   }
 }

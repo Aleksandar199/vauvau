@@ -9,7 +9,11 @@ import 'package:vauvau/features/auth/domain/app_user.dart';
 import 'package:vauvau/features/auth/presentation/auth_providers.dart';
 import 'package:vauvau/features/discover/presentation/discover_image.dart';
 import 'package:vauvau/features/discover/presentation/discover_strings.dart';
+import 'package:vauvau/features/home/domain/app_drawer_catalog.dart';
+import 'package:vauvau/features/profile/presentation/profile_screen.dart';
+import 'package:vauvau/features/profile/presentation/profile_strings.dart';
 import 'package:vauvau/features/dogs/presentation/dog_providers.dart';
+import 'package:vauvau/features/splash/presentation/screens/splash_screen.dart';
 
 import 'fakes/fake_auth_repository.dart';
 import 'fakes/fake_dogs_repository.dart';
@@ -22,6 +26,13 @@ final Uint8List _transparentPng = Uint8List.fromList(const [
   0x05, 0x00, 0x01, 0x0D, 0x0A, 0x2D, 0xB4, 0x00, 0x00, 0x00, 0x00, 0x49,
   0x45, 0x4E, 0x44, 0xAE, 0x42, 0x60, 0x82,
 ]);
+
+Future<void> _pumpPastSplash(WidgetTester tester) async {
+  await tester.pump();
+  await tester.pump(SplashScreen.hold);
+  await tester.pump(const Duration(milliseconds: 520));
+  await tester.pump();
+}
 
 void main() {
   const signedInUser = AppUser(
@@ -43,13 +54,16 @@ void main() {
         child: const VauVauApp(),
       ),
     );
-    await tester.pumpAndSettle();
+    await _pumpPastSplash(tester);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 120));
 
     expect(find.text(AppStrings.appName), findsWidgets);
     expect(find.text(AppStrings.getStarted), findsOneWidget);
 
     await tester.tap(find.text(AppStrings.getStarted));
-    await tester.pumpAndSettle();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
 
     expect(find.text(AppStrings.logInTitle), findsWidgets);
     expect(find.text(AppStrings.continueWithGoogle), findsOneWidget);
@@ -69,6 +83,7 @@ void main() {
         child: const VauVauApp(),
       ),
     );
+    await _pumpPastSplash(tester);
     await tester.pumpAndSettle();
 
     expect(find.textContaining(AppStrings.onboardingTitle), findsOneWidget);
@@ -93,11 +108,37 @@ void main() {
         child: const VauVauApp(),
       ),
     );
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 50));
+    await _pumpPastSplash(tester);
 
     expect(find.text(DiscoverStrings.title), findsWidgets);
-    expect(find.text(DiscoverStrings.signOut), findsOneWidget);
-    expect(find.text('Bobi, 2 god.'), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byType(AppBar),
+        matching: find.text(DiscoverStrings.signOut),
+      ),
+      findsNothing,
+    );
+    expect(find.byTooltip(AppDrawerCatalog.menuTooltip), findsOneWidget);
+    expect(find.text('Bobi 2 godine'), findsOneWidget);
+
+    await tester.tap(find.text(ProfileStrings.tabLabel));
+    await tester.pump();
+    expect(
+      find.descendant(
+        of: find.byType(ProfileScreen),
+        matching: find.text(ProfileStrings.signOut),
+      ),
+      findsOneWidget,
+    );
+
+    await tester.tap(find.text(DiscoverStrings.title));
+    await tester.pump();
+    await tester.tap(find.byTooltip(AppDrawerCatalog.menuTooltip));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.text(AppStrings.appName), findsWidgets);
+    expect(find.text(AppDrawerCatalog.adopt), findsOneWidget);
+    expect(find.text(AppDrawerCatalog.rules), findsOneWidget);
+    expect(find.text(AppDrawerCatalog.support), findsOneWidget);
   });
 }

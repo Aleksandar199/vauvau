@@ -39,6 +39,16 @@ class FakeDogsRepository implements DogsRepository {
     dogs.add(dog);
     return dog;
   }
+
+  @override
+  Future<void> updateDog(Dog dog, {int ageMonths = 0}) async {
+    final index = dogs.indexWhere((item) => item.id == dog.id);
+    if (index < 0) {
+      dogs.add(dog);
+    } else {
+      dogs[index] = dog;
+    }
+  }
 }
 
 Dog fakeDog({String ownerId = '1'}) {

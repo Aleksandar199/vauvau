@@ -1,63 +1,71 @@
 import 'package:flutter/material.dart';
 
-import '../../../../core/theme/app_colors.dart';
-import '../../../../core/widgets/ui_bits.dart';
 import '../../domain/discover_profile.dart';
-import '../discover_image.dart';
 import '../discover_strings.dart';
+import 'discover_dog_photo.dart';
+import 'discover_filter_chip.dart';
 
 class DiscoverGridCard extends StatelessWidget {
   const DiscoverGridCard({
     super.key,
     required this.profile,
     required this.onTap,
+    this.isMine = false,
+    this.onLongPress,
   });
 
   final DiscoverProfile profile;
   final VoidCallback onTap;
+  final VoidCallback? onLongPress;
+  final bool isMine;
 
   @override
   Widget build(BuildContext context) {
-    final url = profile.photoUrls.isEmpty ? '' : profile.photoUrls.first;
+    final theme = Theme.of(context);
     return Material(
-      color: Theme.of(context).cardTheme.color,
-      elevation: 0,
+      color: theme.cardTheme.color ?? theme.colorScheme.surface,
+      elevation: isMine ? 4 : 2,
+      shadowColor: isMine
+          ? theme.colorScheme.primary.withValues(alpha: 0.4)
+          : Colors.black26,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
         side: BorderSide(
-          color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.5),
+          color: isMine
+              ? theme.colorScheme.primary
+              : theme.colorScheme.outline.withValues(alpha: 0.35),
+          width: isMine ? 2.5 : 1,
         ),
       ),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: onTap,
+        onLongPress: onLongPress,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Expanded(
-              child: Stack(
+                child: Stack(
                 fit: StackFit.expand,
                 children: [
-                  url.isEmpty
-                      ? const ColoredBox(
-                          color: AppColors.primarySoft,
-                          child: Icon(Icons.pets, size: 48),
-                        )
-                      : Image(
-                          image: discoverImageOf(context, url),
-                          fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) {
-                            return const ColoredBox(
-                              color: AppColors.primarySoft,
-                              child: Icon(Icons.pets, size: 48),
-                            );
-                          },
-                        ),
-                  if (profile.walking)
-                    const Positioned(
+                  DiscoverDogPhoto(
+                    urls: profile.photoUrls,
+                    dogName: profile.name,
+                  ),
+                  if (profile.statusBadge.isNotEmpty)
+                    Positioned(
                       top: 8,
                       left: 8,
-                      child: _WalkingBadge(),
+                      child: _StatusBadge(
+                        label: profile.statusBadge,
+                        highlight: profile.walking,
+                      ),
+                    ),
+                  if (isMine)
+                    const Positioned(
+                      top: 8,
+                      right: 8,
+                      child: _OwnerBadge(),
                     ),
                 ],
               ),
@@ -67,23 +75,41 @@ class DiscoverGridCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    profile.headline,
+                  Text.rich(
+                    TextSpan(
+                      children: [
+                        TextSpan(
+                          text: profile.name,
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        TextSpan(
+                          text: ' ${profile.ageLabel}',
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: theme.colorScheme.onSurface
+                                .withValues(alpha: 0.68),
+                          ),
+                        ),
+                      ],
+                    ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.titleMedium,
                   ),
                   Text(
-                    profile.subtitle,
+                    profile.breed,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.bodyMedium,
+                    style: theme.textTheme.bodyMedium,
                   ),
-                  const SizedBox(height: 4),
-                  FittedBox(
-                    alignment: Alignment.centerLeft,
-                    fit: BoxFit.scaleDown,
-                    child: DistancePill(label: profile.distanceLabel),
+                  const SizedBox(height: 2),
+                  Text(
+                    profile.distanceLabel,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurface.withValues(alpha: 0.68),
+                    ),
                   ),
                 ],
               ),
@@ -95,113 +121,59 @@ class DiscoverGridCard extends StatelessWidget {
   }
 }
 
-class DiscoverListCard extends StatelessWidget {
-  const DiscoverListCard({
-    super.key,
-    required this.profile,
-    required this.onTap,
-    required this.onMessage,
-  });
+class _StatusBadge extends StatelessWidget {
+  const _StatusBadge({required this.label, required this.highlight});
 
-  final DiscoverProfile profile;
-  final VoidCallback onTap;
-  final VoidCallback onMessage;
+  final String label;
+  final bool highlight;
 
   @override
   Widget build(BuildContext context) {
-    final url = profile.photoUrls.isEmpty ? '' : profile.photoUrls.first;
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: Material(
-        color: Theme.of(context).cardTheme.color,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-          side: BorderSide(
-            color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.5),
-          ),
-        ),
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTap: onTap,
-          child: Padding(
-            padding: const EdgeInsets.all(10),
-            child: Row(
-              children: [
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(12),
-                  child: SizedBox(
-                    width: 92,
-                    height: 92,
-                    child: url.isEmpty
-                        ? const ColoredBox(
-                            color: AppColors.primarySoft,
-                            child: Icon(Icons.pets),
-                          )
-                        : Image(
-                            image: discoverImageOf(context, url),
-                            fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) {
-                              return const ColoredBox(
-                                color: AppColors.primarySoft,
-                                child: Icon(Icons.pets),
-                              );
-                            },
-                          ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        profile.headline,
-                        style: Theme.of(context).textTheme.titleMedium,
-                      ),
-                      Text(profile.subtitle),
-                      const SizedBox(height: 4),
-                      Text(
-                        profile.bio,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 6),
-                      Text('${DiscoverStrings.energy}: ${profile.energyLabel}'),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 8),
-                FilledButton(
-                  onPressed: onMessage,
-                  style: FilledButton.styleFrom(
-                    minimumSize: const Size(72, 40),
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                  ),
-                  child: const Text(DiscoverStrings.message),
-                ),
-              ],
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+      decoration: BoxDecoration(
+        color: const Color(0xCC1F1F2A),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (highlight) ...[
+            const WalkStatusDot(),
+            const SizedBox(width: 6),
+          ],
+          Text(
+            label,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 10,
+              fontWeight: FontWeight.w700,
             ),
           ),
-        ),
+        ],
       ),
     );
   }
 }
 
-class _WalkingBadge extends StatelessWidget {
-  const _WalkingBadge();
+class _OwnerBadge extends StatelessWidget {
+  const _OwnerBadge();
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
       decoration: BoxDecoration(
-        color: AppColors.success,
+        color: Colors.white.withValues(alpha: 0.88),
         borderRadius: BorderRadius.circular(999),
       ),
       child: const Text(
-        DiscoverStrings.chipWalking,
-        style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w700),
+        DiscoverStrings.yourPet,
+        style: TextStyle(
+          color: Color(0xFF1F1F2A),
+          fontSize: 10,
+          fontWeight: FontWeight.w700,
+        ),
       ),
     );
   }

@@ -1,8 +1,12 @@
 abstract final class ProfileStrings {
   static const String tabLabel = 'Profil';
   static const String title = 'Profil';
-  static const String editProfile = 'Izmeni profil';
+  static const String editProfile = 'Izmeni moj profil';
+  static const String editDog = 'Izmeni psa';
+  static const String addDog = '+ Dodaj psa';
+  static const String addDogHint = 'Još nemate sačuvanog psa.';
   static const String settings = 'Podešavanja';
+  static const String adminPanel = 'Administracija';
   static const String searchFilters = 'Filteri za pretragu';
   static const String signOut = 'Odjavi se';
   static const String signOutTitle = 'Odjava';
@@ -16,6 +20,13 @@ abstract final class ProfileStrings {
   static const String ageMonths = 'Starost (meseci)';
   static const String gender = 'Pol';
   static const String bio = 'Opis psa';
+  static const String bioHint =
+      'Kratko opišite karakter, navike i kako pas voli da se druži...';
+  static const String ownerBioHint =
+      'Npr. Šetačica sa Limana, volim jutarnje šetnje uz Dunav.';
+  static const String ownerNameHint = 'npr. Ana';
+  static const String dogNameHint = 'npr. Luna';
+  static const String breedHint = 'npr. Zlatni retriver';
   static const String ownerName = 'Ime vlasnika';
   static const String ownerBio = 'Kratak opis vlasnika';
   static const String ownerLocation = 'Lokacija';
@@ -57,6 +68,7 @@ abstract final class ProfileStrings {
   static const String contact = 'Kontakt';
   static const String myDogs = 'Moji psi';
   static const String notifications = 'Notifikacije';
+  static const String enableNotifications = 'Omogući obaveštenja';
   static const String notifyWalks = 'Zahtevi za šetnju';
   static const String notifyMessages = 'Poruke';
   static const String notifyMatches = 'Novi mečevi';
@@ -69,6 +81,11 @@ abstract final class ProfileStrings {
   static const String deleteConfirm = 'Obriši';
   static const String appVersion = 'VauVau v1.0.0';
   static const String closePhoto = 'Zatvori';
+  static const String setOwnerPhoto = 'Postavi sliku';
+  static const String changeOwnerPhoto = 'Izmeni sliku';
+  static const String ownerPhotoCamera = 'Kamera';
+  static const String ownerPhotoUploadFailed =
+      'Greška prilikom dodavanja slike. Pokušajte ponovo.';
 
   static String radiusValue(double km) => '${km.round()} km';
 
@@ -80,8 +97,7 @@ abstract final class ProfileStrings {
   static const List<String> personalityOptions = [
     'Energičan',
     'Druželjubiv',
-    'Mirna',
-    'Igračka',
+    'Miran',
     'Zaštitnički',
     'Sramežljiv',
     'Voli loptice',

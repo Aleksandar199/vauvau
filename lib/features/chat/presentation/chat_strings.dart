@@ -20,6 +20,7 @@ abstract final class ChatStrings {
   static const String walkDate = 'Datum';
   static const String walkTime = 'Vreme';
   static const String walkLocation = 'Lokacija';
+  static const String walkCustomLocationHint = 'Ili unesi svoju lokaciju...';
   static const String sendInvite = 'Pošalji poziv';
   static const String cancel = 'Otkaži';
   static const String accept = 'Prihvati';

@@ -16,7 +16,8 @@ class AreaStep extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final city = SerbiaLocations.cityById(draft.cityId ?? '');
+    final selectedCityId = draft.cityId ?? SerbiaLocations.noviSadId;
+    final city = SerbiaLocations.cityById(selectedCityId);
     final neighborhoods = city?.neighborhoods ?? [];
 
     return ListView(
@@ -34,9 +35,10 @@ class AreaStep extends StatelessWidget {
         const SizedBox(height: 16),
         DropdownButtonFormField<String>(
           key: ValueKey('city-${draft.cityId}'),
-          initialValue: draft.cityId,
+          initialValue: selectedCityId,
           decoration: const InputDecoration(
             labelText: AppStrings.cityLabel,
+            hintText: 'Izaberite grad u koj šetate',
             border: OutlineInputBorder(),
           ),
           items: [
@@ -58,6 +60,7 @@ class AreaStep extends StatelessWidget {
           initialValue: draft.neighborhoodId,
           decoration: const InputDecoration(
             labelText: AppStrings.neighborhoodLabel,
+            hintText: 'Izaberite naselje',
             border: OutlineInputBorder(),
           ),
           items: [

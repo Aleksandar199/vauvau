@@ -51,7 +51,7 @@ List<ChatConversation> seedChatConversations(DateTime now) {
       isNewMatch: true,
     ),
     fromDog(
-      profile: dog('nugget'),
+      profile: dog('maza'),
       messages: const [],
       lastActivityAt: now.subtract(const Duration(minutes: 8)),
       isNewMatch: true,

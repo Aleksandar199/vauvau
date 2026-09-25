@@ -1,3 +1,4 @@
+import '../../../core/constants/serbia_locations.dart';
 import 'dog_area.dart';
 import 'dog_enums.dart';
 
@@ -16,8 +17,8 @@ class Dog {
     required this.photoUrls,
     this.weightKg,
     this.bio = '',
-    this.vaccinated = true,
-    this.chipped = true,
+    this.vaccinated = false,
+    this.chipped = false,
     this.sterilized = false,
   });
 
@@ -38,7 +39,45 @@ class Dog {
   final bool chipped;
   final bool sterilized;
 
-  String get location => '${area.cityName} - ${area.neighborhoodName}';
+  String get location =>
+      SerbiaLocations.formatPlace(area.cityName, area.neighborhoodName);
 
   String get photoUrl => photoUrls.isEmpty ? '' : photoUrls.first;
+
+  Dog copyWith({
+    String? name,
+    String? breed,
+    DogGender? gender,
+    int? ageYears,
+    DogSize? size,
+    double? weightKg,
+    bool clearWeight = false,
+    DogEnergyLevel? energyLevel,
+    List<DogTemperament>? temperament,
+    DogArea? area,
+    List<String>? photoUrls,
+    String? bio,
+    bool? vaccinated,
+    bool? chipped,
+    bool? sterilized,
+  }) {
+    return Dog(
+      id: id,
+      ownerId: ownerId,
+      name: name ?? this.name,
+      breed: breed ?? this.breed,
+      gender: gender ?? this.gender,
+      ageYears: ageYears ?? this.ageYears,
+      size: size ?? this.size,
+      weightKg: clearWeight ? null : (weightKg ?? this.weightKg),
+      energyLevel: energyLevel ?? this.energyLevel,
+      temperament: temperament ?? this.temperament,
+      area: area ?? this.area,
+      photoUrls: photoUrls ?? this.photoUrls,
+      bio: bio ?? this.bio,
+      vaccinated: vaccinated ?? this.vaccinated,
+      chipped: chipped ?? this.chipped,
+      sterilized: sterilized ?? this.sterilized,
+    );
+  }
 }

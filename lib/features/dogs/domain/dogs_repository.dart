@@ -9,4 +9,6 @@ abstract class DogsRepository {
     required AppUser owner,
     required DogDraft draft,
   });
+
+  Future<void> updateDog(Dog dog, {int ageMonths = 0});
 }

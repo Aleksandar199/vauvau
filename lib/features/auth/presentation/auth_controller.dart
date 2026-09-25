@@ -3,7 +3,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../domain/auth_exception.dart';
 import 'auth_providers.dart';
 
+enum AuthBusy { none, email, google }
+
 class AuthController extends Notifier<AsyncValue<void>> {
+  AuthBusy _busy = AuthBusy.none;
+
+  AuthBusy get busy => state.isLoading ? _busy : AuthBusy.none;
+
   @override
   AsyncValue<void> build() => const AsyncData(null);
 
@@ -12,7 +18,8 @@ class AuthController extends Notifier<AsyncValue<void>> {
     required String password,
   }) {
     return _run(
-      () => ref.read(authRepositoryProvider).signInWithEmail(
+      AuthBusy.email,
+      () => ref.read(authRepositoryProvider).signInWithEmailAndPassword(
             email: email,
             password: password,
           ),
@@ -23,34 +30,56 @@ class AuthController extends Notifier<AsyncValue<void>> {
     required String name,
     required String email,
     required String password,
+    String city = '',
+    String cityId = '',
+    String neighborhoodId = '',
+    String neighborhoodName = '',
+    String bio = '',
   }) {
     return _run(
-      () => ref.read(authRepositoryProvider).register(
-            name: name,
+      AuthBusy.email,
+      () => ref.read(authRepositoryProvider).signUpWithEmailAndPassword(
             email: email,
             password: password,
+            name: name,
+            city: city,
+            cityId: cityId,
+            neighborhoodId: neighborhoodId,
+            neighborhoodName: neighborhoodName,
+            bio: bio,
           ),
     );
   }
 
   Future<bool> signInWithGoogle() {
-    return _run(() => ref.read(authRepositoryProvider).signInWithGoogle());
+    return _run(
+      AuthBusy.google,
+      () => ref.read(authRepositoryProvider).signInWithGoogle(),
+    );
   }
 
   Future<void> signOut() async {
-    await _run(() => ref.read(authRepositoryProvider).signOut());
+    await _run(AuthBusy.email, () => ref.read(authRepositoryProvider).signOut());
   }
 
-  Future<bool> _run(Future<void> Function() action) async {
+  Future<bool> _run(AuthBusy busy, Future<void> Function() action) async {
+    _busy = busy;
     state = const AsyncLoading();
     try {
       await action();
+      _busy = AuthBusy.none;
       state = const AsyncData(null);
       return true;
     } on AuthException catch (error, stackTrace) {
+      _busy = AuthBusy.none;
+      if (error.code == AuthErrorCode.cancelled) {
+        state = const AsyncData(null);
+        return false;
+      }
       state = AsyncError(error, stackTrace);
       return false;
     } catch (error, stackTrace) {
+      _busy = AuthBusy.none;
       state = AsyncError(
         AuthException(AuthErrorCode.unknown, error.toString()),
         stackTrace,

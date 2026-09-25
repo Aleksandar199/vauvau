@@ -12,10 +12,9 @@ abstract final class DiscoverStrings {
       'Pokušajte sa širenjem filtera.';
   static const String resetFilters = 'Resetuj filtere';
   static const String genderAll = 'Svi';
-  static const String sizeTiny = 'Mala';
-  static const String sizeMid = 'Srednja';
-  static const String sizeBig = 'Velika';
-  static const String sizeGiant = 'Gigantska';
+  static const String sizeSmall = 'Mali';
+  static const String sizeMid = 'Srednji';
+  static const String sizeBig = 'Veliki';
   static const String energyTitle = 'Energetski nivo';
   static const String energyLow = 'Nizak';
   static const String energyMid = 'Srednji';
@@ -30,16 +29,19 @@ abstract final class DiscoverStrings {
   static const String genderMale = 'Mužjak';
   static const String genderFemale = 'Ženka';
   static const String sizeTitle = 'Veličina psa';
+  static const String search = 'Pretraga';
+  static const String nearbyTitle = 'Psi u tvojoj blizini';
+  static const String yourPet = 'Tvoj ljubimac';
+  static const String walkingBadge = '🟢 U šetnji';
+  static const String restingBadge = 'Odmaram';
+  static const String lookingForPlayBadge = 'Tražim društvo za igru';
   static const String searchHint = 'Pretraži po rasi, imenu ili lokaciji...';
-  static const String chipAll = 'Svi psi';
-  static const String chipNearby = 'U blizini 📍';
-  static const String chipWalking = 'U šetnji 🟢';
-  static const String chipSmall = 'Mali 🐾';
-  static const String chipLarge = 'Veliki 🐕';
-  static const String chipPlayful = 'Razigrani 🎾';
-  static const String gridView = 'Mreža';
-  static const String listView = 'Lista';
-  static const String filters = 'Filteri';
+  static const String chipAll = 'Svi';
+  static const String chipWalking = 'U šetnji';
+  static const String chipSmall = 'Mali';
+  static const String chipMedium = 'Srednji';
+  static const String chipLarge = 'Veliki';
+  static const String filters = 'Napredni filteri';
   static const String message = 'Poruka';
   static const String location = 'Lokacija';
   static const String chatPlaceholder = 'Poruke uskoro stižu.';
@@ -48,6 +50,16 @@ abstract final class DiscoverStrings {
   static const String likedToast = 'Lajk poslat';
   static const String passedToast = 'Preskočeno';
   static const String superLikedToast = 'Super lajk poslat!';
+  static const String gender = 'Pol';
+  static const String about = 'O psu';
+  static const String getsAlong = 'Slaganje sa';
+  static const String sterilized = 'Sterilisan / Kastriran';
+  static const String reportProfile = 'Prijavi profil';
+  static const String reportConfirmTitle = 'Prijavi profil?';
+  static const String reportConfirmBody =
+      'Prijava će biti poslata moderatorima na pregled.';
+  static const String reportConfirmAction = 'Prijavi';
+  static const String cancel = 'Otkaži';
   static const String details = 'Detaljan profil';
   static const String breed = 'Rasa';
   static const String age = 'Starost';
@@ -62,7 +74,25 @@ abstract final class DiscoverStrings {
   static const String no = 'Ne';
   static const String weight = 'Težina';
 
-  static String years(int value) => '$value god.';
+  static String years(int value) {
+    final n = value.abs();
+    final mod10 = n % 10;
+    final mod100 = n % 100;
+    if (n == 1) {
+      return '$n godina';
+    }
+    if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) {
+      return '$n godine';
+    }
+    return '$n godina';
+  }
 
   static String kg(double value) => '${value.toStringAsFixed(0)} kg';
+
+  static String locationBadge(String city, double km) {
+    final value = km == km.roundToDouble()
+        ? km.toStringAsFixed(0)
+        : km.toStringAsFixed(1);
+    return '$city · $value km';
+  }
 }

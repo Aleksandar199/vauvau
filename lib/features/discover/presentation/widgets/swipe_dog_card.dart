@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 
+import '../../../../core/images/dog_image.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/ui_bits.dart';
 import '../../domain/discover_profile.dart';
-import '../discover_image.dart';
 import '../discover_strings.dart';
 
 class SwipeDogCard extends StatefulWidget {
@@ -56,15 +56,7 @@ class _SwipeDogCardState extends State<SwipeDogCard> {
           children: [
             ColoredBox(
               color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.35),
-              child: url.isEmpty
-                  ? const Icon(Icons.pets, size: 72)
-                  : Image(
-                      image: discoverImageOf(context, url),
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) {
-                        return const Center(child: Icon(Icons.pets, size: 72));
-                      },
-                    ),
+              child: buildDogImage(url),
             ),
             const DecoratedBox(
               decoration: BoxDecoration(
@@ -109,7 +101,9 @@ class _SwipeDogCardState extends State<SwipeDogCard> {
               Positioned(
                 top: 28,
                 right: 16,
-                child: DistancePill(label: profile.distanceLabel),
+                child: DistancePill(
+                  label: widget.profile.distanceLabel,
+                ),
               ),
             Align(
               alignment: Alignment.bottomLeft,
@@ -140,7 +134,7 @@ class _SwipeDogCardState extends State<SwipeDogCard> {
                         spacing: 6,
                         runSpacing: 6,
                         children: [
-                          for (final tag in profile.traits.take(3))
+                          for (final tag in profile.traitLabels.take(3))
                             PersonalityBadge(label: tag),
                         ],
                       ),
@@ -209,144 +203,257 @@ class DogDetailSheet extends StatelessWidget {
     super.key,
     required this.profile,
     this.onMessage,
-    this.onLike,
-    this.onPass,
+    this.onReport,
   });
 
   final DiscoverProfile profile;
   final VoidCallback? onMessage;
-  final VoidCallback? onLike;
-  final VoidCallback? onPass;
+  final VoidCallback? onReport;
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return DraggableScrollableSheet(
       expand: false,
       initialChildSize: 0.92,
       minChildSize: 0.6,
       builder: (context, controller) {
         return Material(
-          color: Theme.of(context).scaffoldBackgroundColor,
+          color: theme.scaffoldBackgroundColor,
           borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-          child: SingleChildScrollView(
-            controller: controller,
-            padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.outline,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
-              ),
+          clipBehavior: Clip.antiAlias,
+          child: Column(
+            children: [
               const SizedBox(height: 12),
-              Align(
-                alignment: Alignment.centerRight,
-                child: TextButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  child: const Text(DiscoverStrings.close),
+              Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.outline,
+                  borderRadius: BorderRadius.circular(8),
                 ),
               ),
-              SizedBox(
-                height: 280,
-                child: SwipeDogCard(profile: profile),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                DiscoverStrings.details,
-                style: Theme.of(context).textTheme.titleLarge,
-              ),
-              const SizedBox(height: 12),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  SpecChip(label: DiscoverStrings.breed, value: profile.breed),
-                  SpecChip(
-                    label: DiscoverStrings.age,
-                    value: DiscoverStrings.years(profile.ageYears),
-                  ),
-                  SpecChip(label: DiscoverStrings.size, value: profile.size),
-                  SpecChip(
-                    label: DiscoverStrings.energy,
-                    value: profile.energyLabel,
-                  ),
-                  SpecChip(
-                    label: DiscoverStrings.vaccinated,
-                    value: profile.vaccinated
-                        ? DiscoverStrings.yes
-                        : DiscoverStrings.no,
-                  ),
-                  SpecChip(
-                    label: DiscoverStrings.chipped,
-                    value: profile.chipped
-                        ? DiscoverStrings.yes
-                        : DiscoverStrings.no,
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              Text(DiscoverStrings.traits),
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 8,
-                children: [
-                  for (final tag in profile.traits) PersonalityBadge(label: tag),
-                ],
-              ),
-              const SizedBox(height: 16),
-              Text(DiscoverStrings.owner),
-              Text('${profile.ownerName} • ${profile.distanceLabel}'),
-              const SizedBox(height: 8),
-              Text(DiscoverStrings.location),
-              Text(profile.location),
-              const SizedBox(height: 8),
-              Text(profile.bio),
-              const SizedBox(height: 20),
-              if (onLike != null || onPass != null) ...[
-                Row(
-                  children: [
-                    if (onPass != null)
-                      Expanded(
-                        child: OutlinedButton(
-                          onPressed: onPass,
-                          child: const Text(DiscoverStrings.pass),
-                        ),
+              Expanded(
+                child: SingleChildScrollView(
+                  controller: controller,
+                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      SizedBox(
+                        height: 280,
+                        child: SwipeDogCard(profile: profile),
                       ),
-                    if (onLike != null && onPass != null)
-                      const SizedBox(width: 8),
-                    if (onLike != null)
-                      Expanded(
-                        child: FilledButton(
-                          onPressed: onLike,
-                          child: const Text(DiscoverStrings.like),
-                        ),
+                      const SizedBox(height: 16),
+                      Text(
+                        DiscoverStrings.details,
+                        style: theme.textTheme.titleLarge,
                       ),
-                  ],
+                      const SizedBox(height: 12),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: [
+                          SpecChip(
+                            label: DiscoverStrings.breed,
+                            value: profile.breed,
+                          ),
+                          SpecChip(
+                            label: DiscoverStrings.age,
+                            value: profile.ageLabel,
+                          ),
+                          SpecChip(
+                            label: DiscoverStrings.gender,
+                            value: profile.genderLabel,
+                          ),
+                          SpecChip(
+                            label: DiscoverStrings.size,
+                            value: profile.sizeLabel,
+                          ),
+                          SpecChip(
+                            label: DiscoverStrings.energy,
+                            value: profile.energyLabel,
+                          ),
+                          SpecChip(
+                            label: DiscoverStrings.vaccinated,
+                            value: profile.vaccinated
+                                ? DiscoverStrings.yes
+                                : DiscoverStrings.no,
+                          ),
+                          SpecChip(
+                            label: DiscoverStrings.sterilized,
+                            value: profile.sterilized
+                                ? DiscoverStrings.yes
+                                : DiscoverStrings.no,
+                          ),
+                          SpecChip(
+                            label: DiscoverStrings.chipped,
+                            value: profile.chipped
+                                ? DiscoverStrings.yes
+                                : DiscoverStrings.no,
+                          ),
+                        ],
+                      ),
+                      if (profile.getsAlongLabels.isNotEmpty) ...[
+                        const SizedBox(height: 16),
+                        Text(
+                          DiscoverStrings.getsAlong,
+                          style: theme.textTheme.titleMedium,
+                        ),
+                        const SizedBox(height: 8),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: [
+                            for (final item in profile.getsAlongLabels)
+                              PersonalityBadge(label: item),
+                          ],
+                        ),
+                      ],
+                      if (profile.traitLabels.isNotEmpty) ...[
+                        const SizedBox(height: 16),
+                        Text(
+                          DiscoverStrings.traits,
+                          style: theme.textTheme.titleMedium,
+                        ),
+                        const SizedBox(height: 8),
+                        Wrap(
+                          spacing: 8,
+                          children: [
+                            for (final tag in profile.traitLabels)
+                              PersonalityBadge(label: tag),
+                          ],
+                        ),
+                      ],
+                      const SizedBox(height: 16),
+                      Text(
+                        DiscoverStrings.about,
+                        style: theme.textTheme.titleMedium,
+                      ),
+                      const SizedBox(height: 4),
+                      Text(profile.bio),
+                      const SizedBox(height: 16),
+                      Text(
+                        DiscoverStrings.owner,
+                        style: theme.textTheme.titleMedium,
+                      ),
+                      Text('${profile.ownerName} • ${profile.distanceLabel}'),
+                      const SizedBox(height: 8),
+                      Text(
+                        DiscoverStrings.location,
+                        style: theme.textTheme.titleMedium,
+                      ),
+                      Text(profile.location),
+                    ],
+                  ),
                 ),
-                const SizedBox(height: 8),
-              ],
-              if (onMessage != null) ...[
-                FilledButton(
-                  onPressed: onMessage,
-                  child: const Text(DiscoverStrings.message),
-                ),
-                const SizedBox(height: 8),
-              ],
-              FilledButton(
-                onPressed: () => Navigator.of(context).pop(),
-                child: const Text(DiscoverStrings.close),
+              ),
+              _ProfileActionBar(
+                onClose: () => Navigator.of(context).pop(),
+                onMessage: onMessage,
+                onReport: onReport,
               ),
             ],
-            ),
           ),
         );
       },
+    );
+  }
+}
+
+class _ProfileActionBar extends StatelessWidget {
+  const _ProfileActionBar({
+    required this.onClose,
+    this.onMessage,
+    this.onReport,
+  });
+
+  final VoidCallback onClose;
+  final VoidCallback? onMessage;
+  final VoidCallback? onReport;
+
+  Future<void> _confirmReport(BuildContext context) async {
+    if (onReport == null) {
+      return;
+    }
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text(DiscoverStrings.reportConfirmTitle),
+          content: const Text(DiscoverStrings.reportConfirmBody),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text(DiscoverStrings.cancel),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: const Text(DiscoverStrings.reportConfirmAction),
+            ),
+          ],
+        );
+      },
+    );
+    if (confirmed == true) {
+      onReport!.call();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      top: false,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surface,
+            borderRadius: BorderRadius.circular(28),
+            boxShadow: AppColors.cardShadow,
+            border: Border.all(
+              color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2),
+            ),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(8, 8, 8, 8),
+            child: Row(
+              children: [
+                IconButton.filledTonal(
+                  tooltip: DiscoverStrings.close,
+                  onPressed: onClose,
+                  icon: const Icon(Icons.close_rounded),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: FilledButton.icon(
+                    onPressed: onMessage,
+                    icon: const Icon(Icons.chat_bubble_outline_rounded),
+                    label: const Text(DiscoverStrings.sendMessage),
+                    style: FilledButton.styleFrom(
+                      minimumSize: const Size.fromHeight(48),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(18),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                IconButton(
+                  tooltip: DiscoverStrings.reportProfile,
+                  onPressed: onReport == null
+                      ? null
+                      : () => _confirmReport(context),
+                  icon: Icon(
+                    Icons.flag_outlined,
+                    color: Colors.red.shade400,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
+import 'package:flutter_map_marker_cluster/flutter_map_marker_cluster.dart';
 import 'package:latlong2/latlong.dart';
 
 import '../../data/mock_map_data.dart';
@@ -8,53 +9,88 @@ class VauInteractiveMap extends StatelessWidget {
   const VauInteractiveMap({
     super.key,
     required this.controller,
-    required this.markers,
+    required this.placeMarkers,
+    required this.overlayMarkers,
   });
 
   final MapController controller;
-  final List<Marker> markers;
+  final List<Marker> placeMarkers;
+  final List<Marker> overlayMarkers;
 
   @override
   Widget build(BuildContext context) {
     return SizedBox.expand(
       child: FlutterMap(
-      mapController: controller,
-      options: MapOptions(
-        initialCenter: const LatLng(mapCenterLat, mapCenterLng),
-        initialZoom: defaultMapZoom,
-        minZoom: 11,
-        maxZoom: 19,
-        initialCameraFit: CameraFit.coordinates(
-          coordinates: const [
-            LatLng(noviSadLat, noviSadLng),
-            LatLng(limanLat, limanLng),
-            LatLng(45.2285, 19.8130),
-            LatLng(45.2598, 19.8504),
-          ],
-          padding: EdgeInsets.fromLTRB(28, 150, 28, 110),
-          maxZoom: defaultMapZoom,
-        ),
-        interactionOptions: const InteractionOptions(
-          flags: InteractiveFlag.all & ~InteractiveFlag.rotate,
-        ),
-      ),
-      children: [
-        TileLayer(
-          urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-          userAgentPackageName: 'com.example.vauvau',
-          tileProvider: NetworkTileProvider(),
+        mapController: controller,
+        options: MapOptions(
+          initialCenter: const LatLng(mapCenterLat, mapCenterLng),
+          initialZoom: defaultMapZoom,
+          minZoom: 10,
           maxZoom: 19,
-          maxNativeZoom: 19,
+          initialCameraFit: CameraFit.coordinates(
+            coordinates: const [
+              LatLng(noviSadLat, noviSadLng),
+              LatLng(limanLat, limanLng),
+              LatLng(45.2285, 19.8130),
+              LatLng(45.2598, 19.8504),
+            ],
+            padding: const EdgeInsets.fromLTRB(28, 150, 28, 110),
+            maxZoom: defaultMapZoom,
+          ),
+          interactionOptions: const InteractionOptions(
+            flags: InteractiveFlag.all & ~InteractiveFlag.rotate,
+          ),
         ),
-        _UnculledMarkerLayer(markers: markers),
-        const RichAttributionWidget(
-          alignment: AttributionAlignment.bottomLeft,
-          attributions: [
-            TextSourceAttribution('OpenStreetMap'),
-          ],
-        ),
-      ],
-    ),
+        children: [
+          TileLayer(
+            urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+            userAgentPackageName: 'com.example.vauvau',
+            tileProvider: NetworkTileProvider(),
+            maxZoom: 19,
+            maxNativeZoom: 19,
+          ),
+          if (placeMarkers.isNotEmpty)
+            MarkerClusterLayerWidget(
+              options: MarkerClusterLayerOptions(
+                markers: placeMarkers,
+                maxClusterRadius: 72,
+                disableClusteringAtZoom: 12,
+                size: const Size(40, 40),
+                alignment: Alignment.center,
+                padding: const EdgeInsets.all(8),
+                maxZoom: 17,
+                builder: (context, markers) {
+                  return Container(
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF2A2D3E),
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white, width: 2),
+                      boxShadow: const [
+                        BoxShadow(color: Colors.black26, blurRadius: 8),
+                      ],
+                    ),
+                    child: Center(
+                      child: Text(
+                        '${markers.length}',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          _UnculledMarkerLayer(markers: overlayMarkers),
+          const RichAttributionWidget(
+            alignment: AttributionAlignment.bottomLeft,
+            attributions: [
+              TextSourceAttribution('OpenStreetMap'),
+            ],
+          ),
+        ],
+      ),
     );
   }
 }

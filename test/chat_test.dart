@@ -3,13 +3,16 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:vauvau/features/chat/data/walk_locations.dart';
 import 'package:vauvau/features/chat/domain/chat_conversation.dart';
 import 'package:vauvau/features/chat/domain/chat_message.dart';
 import 'package:vauvau/features/chat/presentation/chat_inbox.dart';
 import 'package:vauvau/features/chat/presentation/chat_screen.dart';
 import 'package:vauvau/features/chat/presentation/chat_strings.dart';
 import 'package:vauvau/features/chat/presentation/matches_screen.dart';
+import 'package:vauvau/features/chat/presentation/widgets/location_pin_bubble.dart';
 import 'package:vauvau/features/discover/presentation/discover_image.dart';
+import 'package:vauvau/features/discover/presentation/widgets/swipe_dog_card.dart';
 import 'package:vauvau/features/home/presentation/home_tab.dart';
 
 final Uint8List _transparentPng = Uint8List.fromList(const [
@@ -214,5 +217,92 @@ void main() {
       tester.element(find.byType(ChatScreen)),
     );
     expect(container.read(scheduledWalksProvider), isNotEmpty);
+  });
+
+  testWidgets('tapping a peer message opens the sender profile sheet',
+      (tester) async {
+    await _pump(
+      tester,
+      seed: [
+        _chat(
+          id: 'lola',
+          name: 'Lola',
+          owner: 'Jelena',
+          messages: [
+            ChatMessage(
+              id: 'lola-1',
+              text: 'Ćao iz parka',
+              sentAt: _now,
+              isMine: false,
+            ),
+          ],
+        ),
+      ],
+      child: const MaterialApp(
+        home: ChatScreen(conversationId: 'lola'),
+      ),
+    );
+
+    await tester.tap(find.text('Ćao iz parka'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(DogDetailSheet), findsOneWidget);
+    expect(find.textContaining('Lola'), findsWidgets);
+  });
+
+  testWidgets('send location picker waits for a choice then posts that place',
+      (tester) async {
+    await _pump(
+      tester,
+      seed: [
+        _chat(id: 'lola', name: 'Lola', owner: 'Jelena'),
+      ],
+      child: const MaterialApp(
+        home: ChatScreen(conversationId: 'lola'),
+      ),
+    );
+
+    await tester.tap(find.byTooltip(ChatStrings.attach));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text(ChatStrings.sendLocation));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(ChoiceChip), findsNWidgets(scheduledWalkLocations.length));
+    expect(find.byType(LocationPinBubble), findsNothing);
+
+    await tester.tap(find.text(ChatStrings.send));
+    await tester.pumpAndSettle();
+    expect(find.byType(LocationPinBubble), findsNothing);
+
+    await tester.tap(find.text(scheduledWalkLocations[1]));
+    await tester.pump();
+    await tester.tap(find.text(ChatStrings.send));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(LocationPinBubble), findsOneWidget);
+    expect(find.text(scheduledWalkLocations[1]), findsOneWidget);
+    expect(find.text(scheduledWalkLocations.first), findsNothing);
+  });
+
+  testWidgets('closing location picker without a choice sends nothing',
+      (tester) async {
+    await _pump(
+      tester,
+      seed: [
+        _chat(id: 'lola', name: 'Lola', owner: 'Jelena'),
+      ],
+      child: const MaterialApp(
+        home: ChatScreen(conversationId: 'lola'),
+      ),
+    );
+
+    await tester.tap(find.byTooltip(ChatStrings.attach));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text(ChatStrings.sendLocation));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text(ChatStrings.cancel));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(LocationPinBubble), findsNothing);
   });
 }

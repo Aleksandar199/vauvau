@@ -1,18 +1,36 @@
-// Replace this file by running:
-//   dart pub global activate flutterfire_cli
-//   flutterfire configure
-//
-// Enable Email/Password and Google in Firebase Authentication.
-// Android: add debug SHA-1/SHA-256. iOS: URL scheme from REVERSED_CLIENT_ID.
 import 'package:firebase_core/firebase_core.dart' show FirebaseOptions;
+import 'package:flutter/foundation.dart'
+    show defaultTargetPlatform, kIsWeb, TargetPlatform;
 
 class DefaultFirebaseOptions {
-  DefaultFirebaseOptions._();
-
   static FirebaseOptions get currentPlatform {
-    throw UnsupportedError(
-      'Firebase is not configured. Run `dart pub global activate flutterfire_cli` '
-      'then `flutterfire configure` in this project.',
-    );
+    if (kIsWeb) {
+      return android;
+    }
+    switch (defaultTargetPlatform) {
+      case TargetPlatform.android:
+        return android;
+      case TargetPlatform.iOS:
+        return ios;
+      default:
+        return android;
+    }
   }
+
+  static const FirebaseOptions android = FirebaseOptions(
+    apiKey: 'AIzaSyD2WpCWpsaj0lM15ort_OpVd1-l-0g0vCI',
+    appId: '1:461477755452:android:e8f133d0500fcb05912139',
+    messagingSenderId: '461477755452',
+    projectId: 'vauvau-3195a',
+    storageBucket: 'vauvau-3195a.firebasestorage.app',
+  );
+
+  static const FirebaseOptions ios = FirebaseOptions(
+    apiKey: 'AIzaSyD2WpCWpsaj0lM15ort_OpVd1-l-0g0vCI',
+    appId: '1:461477755452:ios:44694b8fcf6cfa67912139',
+    messagingSenderId: '461477755452',
+    projectId: 'vauvau-3195a',
+    storageBucket: 'vauvau-3195a.firebasestorage.app',
+    iosBundleId: 'com.example.vauvau',
+  );
 }

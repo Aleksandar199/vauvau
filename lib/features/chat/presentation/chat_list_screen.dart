@@ -5,6 +5,8 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/primary_button.dart';
 import '../../../core/widgets/ui_bits.dart';
 import '../../home/presentation/home_tab.dart';
+import '../../moderation/domain/content_report.dart';
+import '../../moderation/presentation/report_sheet.dart';
 import '../domain/chat_time.dart';
 import 'chat_detail_screen.dart';
 import 'chat_inbox.dart';
@@ -87,6 +89,12 @@ class _ChatListScreenState extends ConsumerState<ChatListScreen> {
                             final chat = newMatches[index];
                             return InkWell(
                               onTap: () => _openChat(context, ref, chat.id),
+                              onLongPress: () => showContentReportSheet(
+                                context: context,
+                                ref: ref,
+                                contentType: ReportContentType.dog,
+                                targetId: chat.dogId,
+                              ),
                               borderRadius: BorderRadius.circular(18),
                               child: SizedBox(
                                 width: 80,
@@ -188,6 +196,12 @@ class _ChatListScreenState extends ConsumerState<ChatListScreen> {
                                 ],
                               ),
                               onTap: () => _openChat(context, ref, chat.id),
+                              onLongPress: () => showContentReportSheet(
+                                context: context,
+                                ref: ref,
+                                contentType: ReportContentType.dog,
+                                targetId: chat.dogId,
+                              ),
                             ),
                           ),
                         ),

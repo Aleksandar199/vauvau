@@ -1,5 +1,6 @@
 import '../domain/discover_profile.dart';
 import '../domain/discover_repository.dart';
+import '../domain/geo_query.dart';
 import 'mock_discover_profiles.dart';
 
 class LocalDiscoverRepository implements DiscoverRepository {
@@ -10,10 +11,12 @@ class LocalDiscoverRepository implements DiscoverRepository {
   final Set<String> _likes = {};
 
   @override
-  Stream<List<DiscoverProfile>> watchProfiles({required String excludeOwnerId}) {
-    return Stream.value(
-      _profiles.where((profile) => profile.ownerId != excludeOwnerId).toList(),
-    );
+  Stream<List<DiscoverProfile>> watchProfiles({
+    required String excludeOwnerId,
+    GeoQuery? geo,
+  }) {
+    final filtered = List<DiscoverProfile>.from(_profiles);
+    return Stream.value(geo == null ? filtered : geo.apply(filtered));
   }
 
   @override

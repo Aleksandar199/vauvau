@@ -1,0 +1,61 @@
+abstract final class AdoptionStrings {
+  static const String title = 'Udomi ljubimca';
+  static const String subtitle =
+      'Pronađi novog doma za psa ili udomi ljubimca';
+  static const String addCta = '+ Dodaj psa za udomljavanje';
+  static const String addTitle = 'Novi oglas';
+  static const String badge = 'Udomljava se';
+  static const String empty = 'Još nema oglasa za udomljavanje.';
+  static const String name = 'Ime psa';
+  static const String breed = 'Rasa';
+  static const String age = 'Starost';
+  static const String ageHint = 'npr. 6 meseci ili 2 god.';
+  static const String gender = 'Pol';
+  static const String male = 'Mužjak';
+  static const String female = 'Ženka';
+  static const String size = 'Veličina';
+  static const String sizeSmall = 'Mali';
+  static const String sizeMedium = 'Srednji';
+  static const String sizeLarge = 'Veliki';
+  static const String story = 'Priča o psu';
+  static const String storyHint = 'Opišite karakter, navike i zašto traži dom.';
+  static const String location = 'Lokacija';
+  static const String locationHint = 'Grad / naselje';
+  static const String phone = 'Kontakt telefon';
+  static const String vaccinated = 'Vakcinisan';
+  static const String sterilized = 'Sterilisan';
+  static const String yes = 'Da';
+  static const String addPhotos = 'Dodaj fotografije';
+  static const String publish = 'Objavi oglas';
+  static const String published = 'Oglas je objavljen.';
+  static const String publishError = 'Oglas nije sačuvan. Pokušajte ponovo.';
+  static const String nameRequired = 'Unesite ime psa.';
+  static const String locationRequired = 'Unesite lokaciju.';
+  static const String phoneRequired = 'Unesite kontakt telefon.';
+  static const String storyRequired = 'Unesite priču o psu.';
+  static const String owner = 'Vlasnik / organizacija';
+  static const String sendMessage = 'Pošalji poruku';
+  static const String call = 'Pozovi';
+  static const String callUnavailable = 'Broj telefona nije dostupan.';
+  static const String details = 'Detalji';
+
+  static String sizeLabel(String size) {
+    return switch (size) {
+      'mali' => sizeSmall,
+      'veliki' => sizeLarge,
+      _ => sizeMedium,
+    };
+  }
+
+  static String genderLabel(String gender) {
+    return gender == 'ženka' ? female : male;
+  }
+
+  static String callLabel(String phone) {
+    final compact = phone.replaceAll(' ', '');
+    if (compact.length < 6) {
+      return '$call: $phone';
+    }
+    return '$call: ${phone.trim()}';
+  }
+}
