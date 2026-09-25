@@ -19,6 +19,7 @@ class OptionChips<T> extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Wrap(
       spacing: 8,
       runSpacing: 8,
@@ -28,6 +29,14 @@ class OptionChips<T> extends StatelessWidget {
             label: Text(labelOf(value)),
             selected: isSelected(value),
             onSelected: (_) => onSelected(value),
+            selectedColor: theme.colorScheme.primary,
+            checkmarkColor: theme.colorScheme.onPrimary,
+            labelStyle: TextStyle(
+              color: isSelected(value)
+                  ? theme.colorScheme.onPrimary
+                  : theme.colorScheme.onSurface,
+              fontWeight: FontWeight.w600,
+            ),
           ),
       ],
     );

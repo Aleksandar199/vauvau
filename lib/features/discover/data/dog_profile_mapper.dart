@@ -51,13 +51,13 @@ DiscoverProfile discoverProfileFromMap(
     longitude: coord.longitude,
     goodWithDogs: data['goodWithDogs'] as bool? ??
         data['friendlyWithDogs'] as bool? ??
-        true,
+        false,
     goodWithCats: data['goodWithCats'] as bool? ??
         data['friendlyWithCats'] as bool? ??
         false,
     goodWithKids: data['goodWithKids'] as bool? ??
         data['friendlyWithKids'] as bool? ??
-        true,
+        false,
   );
 }
 

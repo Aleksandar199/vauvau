@@ -24,7 +24,6 @@ class PersonalityStep extends StatefulWidget {
     DogTemperament.calm,
     DogTemperament.shy,
     DogTemperament.protective,
-    DogTemperament.social,
   ];
 
   @override

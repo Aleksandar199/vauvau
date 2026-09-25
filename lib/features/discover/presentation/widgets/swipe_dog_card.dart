@@ -270,10 +270,7 @@ class DogDetailSheet extends StatelessWidget {
                             label: DiscoverStrings.size,
                             value: profile.sizeLabel,
                           ),
-                          SpecChip(
-                            label: DiscoverStrings.energy,
-                            value: profile.energyLabel,
-                          ),
+
                           SpecChip(
                             label: DiscoverStrings.vaccinated,
                             value: profile.vaccinated
@@ -325,19 +322,21 @@ class DogDetailSheet extends StatelessWidget {
                           ],
                         ),
                       ],
-                      const SizedBox(height: 16),
-                      Text(
-                        DiscoverStrings.about,
-                        style: theme.textTheme.titleMedium,
-                      ),
-                      const SizedBox(height: 4),
-                      Text(profile.bio),
+                      if (profile.bio.trim().isNotEmpty) ...[
+                        const SizedBox(height: 16),
+                        Text(
+                          DiscoverStrings.about,
+                          style: theme.textTheme.titleMedium,
+                        ),
+                        const SizedBox(height: 4),
+                        Text(profile.bio),
+                      ],
                       const SizedBox(height: 16),
                       Text(
                         DiscoverStrings.owner,
                         style: theme.textTheme.titleMedium,
                       ),
-                      Text('${profile.ownerName} • ${profile.distanceLabel}'),
+                      Text(profile.ownerName),
                       const SizedBox(height: 8),
                       Text(
                         DiscoverStrings.location,

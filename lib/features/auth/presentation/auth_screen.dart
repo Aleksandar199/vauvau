@@ -1,3 +1,4 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
@@ -36,8 +37,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
   final _signUpPasswordController = TextEditingController();
   final _confirmController = TextEditingController();
   String _cityId = SerbiaLocations.cities.first.id;
-  String _neighborhoodId = SerbiaLocations.cities.first.neighborhoods.first.id;
-  final _bioController = TextEditingController();
+  String? _neighborhoodId;
   String _ownerPhotoUrl = '';
   var _uploadingOwnerPhoto = false;
   bool _obscureSignInPassword = true;
@@ -68,7 +68,6 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
     _signUpEmailController.dispose();
     _signUpPasswordController.dispose();
     _confirmController.dispose();
-    _bioController.dispose();
     super.dispose();
   }
 
@@ -94,12 +93,16 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
       return;
     }
     final city = SerbiaLocations.cityById(_cityId);
-    if (city == null) {
+    final neighborhoodId = _neighborhoodId;
+    if (city == null || neighborhoodId == null || neighborhoodId.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text(AppStrings.neighborhoodRequired)),
+      );
       return;
     }
     String neighborhoodName = '';
     for (final hood in city.neighborhoods) {
-      if (hood.id == _neighborhoodId) {
+      if (hood.id == neighborhoodId) {
         neighborhoodName = hood.name;
         break;
       }
@@ -116,18 +119,18 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
           password: _signUpPasswordController.text,
           city: city.name,
           cityId: city.id,
-          neighborhoodId: _neighborhoodId,
+          neighborhoodId: neighborhoodId,
           neighborhoodName: neighborhoodName,
-          bio: _bioController.text.trim(),
+          bio: '',
         );
     if (!mounted || !success) {
       return;
     }
     if (_ownerPhotoUrl.startsWith('http')) {
-      final user = ref.read(authStateProvider).asData?.value;
-      if (user != null) {
+      final uid = FirebaseAuth.instance.currentUser?.uid;
+      if (uid != null) {
         await ref.read(authRepositoryProvider).saveOwnerCustomPhoto(
-              uid: user.uid,
+              uid: uid,
               customPhotoUrl: _ownerPhotoUrl,
             );
       }
@@ -237,7 +240,6 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
                     emailController: _signUpEmailController,
                     passwordController: _signUpPasswordController,
                     confirmController: _confirmController,
-                    bioController: _bioController,
                     cityId: _cityId,
                     neighborhoodId: _neighborhoodId,
                     ownerPhotoUrl: _ownerPhotoUrl,
@@ -247,11 +249,9 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
                     error: error,
                     isLoading: isLoading && !isGoogleLoading,
                     onCityChanged: (value) {
-                      final city = SerbiaLocations.cityById(value);
                       setState(() {
                         _cityId = value;
-                        _neighborhoodId =
-                            city?.neighborhoods.first.id ?? _neighborhoodId;
+                        _neighborhoodId = null;
                       });
                     },
                     onNeighborhoodChanged: (value) {
@@ -384,7 +384,6 @@ class _SignUpForm extends StatelessWidget {
     required this.emailController,
     required this.passwordController,
     required this.confirmController,
-    required this.bioController,
     required this.cityId,
     required this.neighborhoodId,
     required this.ownerPhotoUrl,
@@ -406,9 +405,8 @@ class _SignUpForm extends StatelessWidget {
   final TextEditingController emailController;
   final TextEditingController passwordController;
   final TextEditingController confirmController;
-  final TextEditingController bioController;
   final String cityId;
-  final String neighborhoodId;
+  final String? neighborhoodId;
   final String ownerPhotoUrl;
   final bool uploadingOwnerPhoto;
   final bool obscurePassword;
@@ -525,6 +523,7 @@ class _SignUpForm extends StatelessWidget {
               const SizedBox(height: 16),
               DropdownButtonFormField<String>(
                 initialValue: neighborhoodId,
+                hint: const Text(AppStrings.neighborhoodLabel),
                 decoration: const InputDecoration(
                   labelText: AppStrings.neighborhoodLabel,
                   border: OutlineInputBorder(),
@@ -549,12 +548,6 @@ class _SignUpForm extends StatelessWidget {
                   }
                   return null;
                 },
-              ),
-              const SizedBox(height: 16),
-              AuthTextField(
-                controller: bioController,
-                label: AppStrings.ownerBioLabel,
-                textInputAction: TextInputAction.next,
               ),
               const SizedBox(height: 16),
               AuthTextField(

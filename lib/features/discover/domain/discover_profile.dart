@@ -25,9 +25,9 @@ class DiscoverProfile {
     this.ownerId = '',
     this.latitude,
     this.longitude,
-    this.goodWithDogs = true,
+    this.goodWithDogs = false,
     this.goodWithCats = false,
-    this.goodWithKids = true,
+    this.goodWithKids = false,
   });
 
   final String id;
