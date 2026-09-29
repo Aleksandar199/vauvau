@@ -24,6 +24,10 @@ abstract class AuthRepository {
 
   Future<void> signOut();
 
+  Future<void> sendPasswordResetEmail(String email);
+
+  Future<void> deleteAccount();
+
   Future<void> saveUserProfile({
     required AppUser user,
     UserDogProfile? dog,

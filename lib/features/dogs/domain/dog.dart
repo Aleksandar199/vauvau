@@ -20,6 +20,8 @@ class Dog {
     this.vaccinated = false,
     this.chipped = false,
     this.sterilized = false,
+    this.likesTags = const [],
+    this.dislikesTags = const [],
   });
 
   final String id;
@@ -38,6 +40,8 @@ class Dog {
   final bool vaccinated;
   final bool chipped;
   final bool sterilized;
+  final List<String> likesTags;
+  final List<String> dislikesTags;
 
   String get location =>
       SerbiaLocations.formatPlace(area.cityName, area.neighborhoodName);
@@ -60,6 +64,8 @@ class Dog {
     bool? vaccinated,
     bool? chipped,
     bool? sterilized,
+    List<String>? likesTags,
+    List<String>? dislikesTags,
   }) {
     return Dog(
       id: id,
@@ -78,6 +84,8 @@ class Dog {
       vaccinated: vaccinated ?? this.vaccinated,
       chipped: chipped ?? this.chipped,
       sterilized: sterilized ?? this.sterilized,
+      likesTags: likesTags ?? this.likesTags,
+      dislikesTags: dislikesTags ?? this.dislikesTags,
     );
   }
 }

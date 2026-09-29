@@ -208,24 +208,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                             DiscoverFilterChip(
                               label: MapStrings.filterMore,
                               selected: _filter.isExtraPlaceFilter,
-                              leading: const Icon(Icons.tune, size: 16),
                               onTap: _openMoreFilters,
-                            ),
-                            Padding(
-                              padding: const EdgeInsets.only(left: 8),
-                              child: DiscoverFilterChip(
-                                label: MapStrings.addPlace,
-                                selected: false,
-                                onTap: () => showAddPoiSheet(
-                                context,
-                                ref,
-                                initialCity: switch (_cityFocus) {
-                                  MapCityFocus.belgrade => MapCity.belgrade,
-                                  MapCityFocus.myLocation => MapCity.other,
-                                  MapCityFocus.noviSad => MapCity.noviSad,
-                                },
-                              ),
-                              ),
                             ),
                           ],
                         ),
@@ -447,7 +430,8 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   }
 
   Future<void> _openMoreFilters() async {
-    final selected = await showModalBottomSheet<MapLayerFilter>(
+    const addPlaceToken = Object();
+    final selected = await showModalBottomSheet<Object>(
       context: context,
       showDragHandle: true,
       builder: (sheetContext) {
@@ -463,14 +447,15 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                   style: Theme.of(sheetContext).textTheme.titleLarge,
                 ),
                 const SizedBox(height: 12),
+                ListTile(
+                  leading: const Icon(Icons.add_location_alt_outlined),
+                  title: const Text(MapStrings.addPlace),
+                  onTap: () => Navigator.of(sheetContext).pop(addPlaceToken),
+                ),
+                const Divider(),
                 for (final filter in MapLayerFilterX.extra)
                   ListTile(
-                    leading: Icon(
-                      filter.placeType?.icon ??
-                          (filter == MapLayerFilter.walkers
-                              ? Icons.pets
-                              : Icons.emergency),
-                    ),
+                    leading: Icon(filter.placeType?.icon ?? Icons.place),
                     title: Text(filter.label),
                     selected: _filter == filter,
                     onTap: () => Navigator.of(sheetContext).pop(filter),
@@ -481,7 +466,22 @@ class _MapScreenState extends ConsumerState<MapScreen> {
         );
       },
     );
-    if (selected != null && mounted) {
+    if (!mounted) {
+      return;
+    }
+    if (identical(selected, addPlaceToken)) {
+      await showAddPoiSheet(
+        context,
+        ref,
+        initialCity: switch (_cityFocus) {
+          MapCityFocus.belgrade => MapCity.belgrade,
+          MapCityFocus.myLocation => MapCity.other,
+          MapCityFocus.noviSad => MapCity.noviSad,
+        },
+      );
+      return;
+    }
+    if (selected is MapLayerFilter) {
       setState(() => _filter = selected);
     }
   }

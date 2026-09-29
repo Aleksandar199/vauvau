@@ -38,7 +38,7 @@ class AdoptionCard extends StatelessWidget {
               child: Stack(
                 fit: StackFit.expand,
                 children: [
-                  buildDogImage(url),
+                  buildDogImage(url, seed: dog.id),
                   const Positioned(
                     top: 8,
                     left: 8,
@@ -47,6 +47,7 @@ class AdoptionCard extends StatelessWidget {
                 ],
               ),
             ),
+            FallbackIllustrationCaption(url: url),
             Padding(
               padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
               child: Column(

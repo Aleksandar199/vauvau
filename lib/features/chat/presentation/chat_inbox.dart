@@ -6,6 +6,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/firebase/firebase_status.dart';
 import '../../auth/presentation/auth_providers.dart';
 import '../../discover/domain/discover_profile.dart';
+import '../../events/presentation/events_controller.dart';
+import '../../groups/presentation/groups_controller.dart';
 import '../../notifications/presentation/push_controller.dart';
 import '../../profile/presentation/profile_controller.dart';
 import '../data/firestore_chat_repository.dart';
@@ -194,10 +196,21 @@ final scheduledWalksProvider = Provider<List<ScheduledWalk>>((ref) {
 
 
 final totalUnreadChatCountProvider = Provider<int>((ref) {
-  final inbox = ref.watch(chatInboxProvider);
-  var total = 0;
-  for (final chat in inbox) {
-    total += chat.unreadCount;
+  var threads = 0;
+  for (final chat in ref.watch(chatInboxProvider)) {
+    if (chat.unreadCount > 0) {
+      threads++;
+    }
   }
-  return total;
+  for (final group in ref.watch(joinedGroupThreadsProvider)) {
+    if (group.unreadCount > 0) {
+      threads++;
+    }
+  }
+  for (final event in ref.watch(joinedEventThreadsProvider)) {
+    if (event.unreadCount > 0) {
+      threads++;
+    }
+  }
+  return threads;
 });

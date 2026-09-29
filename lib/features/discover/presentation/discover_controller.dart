@@ -100,12 +100,17 @@ class DiscoverController extends Notifier<DiscoverState> {
   }
 
   Future<bool> swipe(DiscoverProfile target, String action) {
-    final uid = ref.read(authStateProvider).asData?.value?.uid ?? 'local-user';
+    final user = ref.read(authStateProvider).asData?.value;
+    final uid = user?.uid ?? 'local-user';
+    final name = user?.displayName?.trim().isNotEmpty == true
+        ? user!.displayName!.trim()
+        : (user?.email ?? 'Neko');
     return ref.read(discoverRepositoryProvider).swipe(
           userId: uid,
           myDogId: state.myDog.id,
           target: target,
           action: action,
+          likerName: name,
         );
   }
 

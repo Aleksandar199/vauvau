@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:vauvau/features/discover/presentation/discover_controller.dart';
 import 'package:vauvau/features/discover/presentation/discover_image.dart';
 import 'package:vauvau/features/profile/domain/matching_filters.dart';
@@ -41,6 +42,8 @@ Future<ProviderContainer> _pumpProfile(WidgetTester tester) async {
 }
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+  SharedPreferences.setMockInitialValues({});
   testWidgets('loads profile info', (tester) async {
     await _pumpProfile(tester);
 

@@ -17,6 +17,8 @@ class DogDraft {
     this.vaccinated = false,
     this.chipped = false,
     this.sterilized = false,
+    this.likesTags = const [],
+    this.dislikesTags = const [],
   });
 
   final String name;
@@ -33,6 +35,8 @@ class DogDraft {
   final bool vaccinated;
   final bool chipped;
   final bool sterilized;
+  final List<String> likesTags;
+  final List<String> dislikesTags;
 
   DogDraft copyWith({
     String? name,
@@ -51,6 +55,8 @@ class DogDraft {
     bool? vaccinated,
     bool? chipped,
     bool? sterilized,
+    List<String>? likesTags,
+    List<String>? dislikesTags,
   }) {
     return DogDraft(
       name: name ?? this.name,
@@ -68,6 +74,8 @@ class DogDraft {
       vaccinated: vaccinated ?? this.vaccinated,
       chipped: chipped ?? this.chipped,
       sterilized: sterilized ?? this.sterilized,
+      likesTags: likesTags ?? this.likesTags,
+      dislikesTags: dislikesTags ?? this.dislikesTags,
     );
   }
 }

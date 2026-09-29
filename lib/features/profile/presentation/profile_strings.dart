@@ -77,8 +77,10 @@ abstract final class ProfileStrings {
   static const String deleteAccount = 'Obriši nalog';
   static const String deleteAccountTitle = 'Brisanje naloga';
   static const String deleteAccountBody =
-      'Nalog će biti uklonjen sa ovog uređaja. Ova radnja je lokalna i ne može se opozvati.';
+      'Ovo trajno briše nalog, profile pasa, oglase za udomljavanje i prijave nestanka. Radnja se ne može opozvati.';
   static const String deleteConfirm = 'Obriši';
+  static const String deleteAccountFailed =
+      'Nalog nije obrisan. Pokušajte ponovo.';
   static const String appVersion = 'VauVau v1.0.0';
   static const String closePhoto = 'Zatvori';
   static const String setOwnerPhoto = 'Postavi sliku';

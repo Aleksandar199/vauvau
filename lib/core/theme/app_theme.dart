@@ -36,8 +36,12 @@ abstract final class AppTheme {
       brightness: brightness,
       primary: AppColors.primary,
       onPrimary: AppColors.onPrimary,
+      primaryContainer: AppColors.primarySoft,
+      onPrimaryContainer: AppColors.ink,
       secondary: AppColors.secondary,
       onSecondary: AppColors.onSecondary,
+      secondaryContainer: AppColors.primarySoft,
+      onSecondaryContainer: AppColors.ink,
       error: const Color(0xFFDC2626),
       onError: AppColors.onPrimary,
       surface: background,
@@ -92,7 +96,7 @@ abstract final class AppTheme {
         fontSize: 16,
         fontWeight: FontWeight.w600,
         letterSpacing: 0.2,
-        color: AppColors.onPrimary,
+        color: onBackground,
       ),
     );
 
@@ -113,9 +117,19 @@ abstract final class AppTheme {
         style: FilledButton.styleFrom(
           minimumSize: const Size.fromHeight(52),
           shape: shape,
+        ),
+      ),
+      elevatedButtonTheme: ElevatedButtonThemeData(
+        style: ElevatedButton.styleFrom(
+          minimumSize: const Size.fromHeight(52),
+          shape: shape,
           backgroundColor: AppColors.primary,
           foregroundColor: AppColors.onPrimary,
-          textStyle: baseText.labelLarge,
+        ),
+      ),
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(
+          foregroundColor: onBackground,
         ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
@@ -128,18 +142,38 @@ abstract final class AppTheme {
       ),
       chipTheme: ChipThemeData(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-        selectedColor: AppColors.primarySoft,
+        selectedColor: AppColors.primary,
         backgroundColor: card,
+        disabledColor: card,
         side: BorderSide(color: outline),
-        labelStyle: TextStyle(color: onBackground, fontWeight: FontWeight.w600),
+        labelStyle: const TextStyle(
+          fontWeight: FontWeight.w600,
+        ),
+        secondaryLabelStyle: const TextStyle(
+          color: AppColors.onPrimary,
+          fontWeight: FontWeight.w700,
+        ),
+        checkmarkColor: AppColors.onPrimary,
+        deleteIconColor: onBackground,
       ),
       navigationBarTheme: NavigationBarThemeData(
         backgroundColor: card,
-        indicatorColor: AppColors.primarySoft,
+        indicatorColor: AppColors.primary,
         elevation: 8,
-        labelTextStyle: WidgetStatePropertyAll(
-          baseText.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
-        ),
+        iconTheme: WidgetStateProperty.resolveWith((states) {
+          final selected = states.contains(WidgetState.selected);
+          return IconThemeData(
+            color: selected ? AppColors.onPrimary : onBackground,
+          );
+        }),
+        labelTextStyle: WidgetStateProperty.resolveWith((states) {
+          final selected = states.contains(WidgetState.selected);
+          return TextStyle(
+            fontSize: 12,
+            fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
+            color: onBackground,
+          );
+        }),
       ),
       cardTheme: CardThemeData(
         color: card,

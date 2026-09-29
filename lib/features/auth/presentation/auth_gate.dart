@@ -5,8 +5,8 @@ import '../../../features/dogs/presentation/dog_providers.dart';
 import '../../../features/dogs/presentation/onboarding/dog_onboarding_controller.dart';
 import '../../../features/dogs/presentation/onboarding/dog_onboarding_screen.dart';
 import '../../../features/home/presentation/home_shell_screen.dart';
-import '../../../features/welcome/presentation/welcome_screen.dart';
 import 'auth_providers.dart';
+import 'login_screen.dart';
 
 class AuthGate extends ConsumerWidget {
   const AuthGate({super.key});
@@ -21,7 +21,7 @@ class AuthGate extends ConsumerWidget {
       error: (_, _) => const HomeShellScreen(),
       data: (user) {
         if (user == null) {
-          return const WelcomeScreen();
+          return const LoginScreen();
         }
         final dogs = ref.watch(ownerDogsProvider);
         if (dogs.hasError && !dogs.hasValue) {

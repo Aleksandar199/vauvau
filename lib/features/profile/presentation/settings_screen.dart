@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/app_colors.dart';
+import '../../auth/domain/auth_exception.dart';
 import '../../auth/presentation/auth_controller.dart';
 import '../../notifications/presentation/notification_strings.dart';
 import '../../notifications/presentation/push_bootstrap.dart';
@@ -149,8 +150,22 @@ class SettingsScreen extends ConsumerWidget {
         );
       },
     );
-    if (confirmed == true) {
-      await ref.read(authControllerProvider.notifier).signOut();
+    if (confirmed != true || !context.mounted) {
+      return;
+    }
+    final success =
+        await ref.read(authControllerProvider.notifier).deleteAccount();
+    if (!context.mounted) {
+      return;
+    }
+    if (!success) {
+      final error = ref.read(authControllerProvider).error;
+      final message = error is AuthException
+          ? error.message
+          : ProfileStrings.deleteAccountFailed;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(message)),
+      );
     }
   }
 }

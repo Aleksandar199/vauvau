@@ -85,6 +85,18 @@ class FirebaseAuthDatasource {
     await _auth.signOut();
   }
 
+  Future<void> sendPasswordResetEmail(String email) {
+    return _auth.sendPasswordResetEmail(email: email);
+  }
+
+  Future<void> deleteCurrentUser() async {
+    final user = _auth.currentUser;
+    if (user == null) {
+      throw const AuthException(AuthErrorCode.unknown);
+    }
+    await user.delete();
+  }
+
   bool _isCancelled(String code) {
     final normalized = code.toLowerCase();
     return normalized.contains('cancel') ||

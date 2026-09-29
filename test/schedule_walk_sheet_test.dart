@@ -23,7 +23,7 @@ Future<void> _pumpSheet(
         ),
         child: Scaffold(
           resizeToAvoidBottomInset: resizeToAvoidBottomInset,
-          body: ScheduleWalkBottomSheet(onSend: (_, __) {}),
+          body: ScheduleWalkBottomSheet(onSend: (_, _) {}),
         ),
       ),
     ),
@@ -108,7 +108,7 @@ void main() {
                   onPressed: () {
                     showScheduleWalkSheet(
                       context: context,
-                      onSend: (_, __) {},
+                      onSend: (_, _) {},
                     );
                   },
                   child: const Text('open'),

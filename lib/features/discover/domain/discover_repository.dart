@@ -12,5 +12,11 @@ abstract class DiscoverRepository {
     required String myDogId,
     required DiscoverProfile target,
     required String action,
+    String likerName = '',
+  });
+
+  Future<bool> hasLiked({
+    required String userId,
+    required String dogId,
   });
 }

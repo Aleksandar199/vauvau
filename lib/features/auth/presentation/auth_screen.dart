@@ -88,6 +88,25 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
     Navigator.of(context).popUntil((route) => route.isFirst);
   }
 
+  Future<void> _forgotPassword() async {
+    final email = _signInEmailController.text.trim();
+    if (email.isEmpty || !email.contains('@')) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text(AppStrings.emailInvalid)),
+      );
+      return;
+    }
+    final success = await ref
+        .read(authControllerProvider.notifier)
+        .sendPasswordResetEmail(email);
+    if (!mounted || !success) {
+      return;
+    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text(AppStrings.resetPasswordSent)),
+    );
+  }
+
   Future<void> _submitSignUp() async {
     if (!(_signUpFormKey.currentState?.validate() ?? false)) {
       return;
@@ -233,6 +252,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
                       );
                     },
                     onSubmit: isLoading ? null : _submitSignIn,
+                    onForgotPassword: isLoading ? null : _forgotPassword,
                   ),
                   _SignUpForm(
                     formKey: _signUpFormKey,
@@ -309,6 +329,7 @@ class _SignInForm extends StatelessWidget {
     required this.isLoading,
     required this.onToggleObscure,
     required this.onSubmit,
+    required this.onForgotPassword,
   });
 
   final GlobalKey<FormState> formKey;
@@ -319,6 +340,7 @@ class _SignInForm extends StatelessWidget {
   final bool isLoading;
   final VoidCallback onToggleObscure;
   final VoidCallback? onSubmit;
+  final VoidCallback? onForgotPassword;
 
   @override
   Widget build(BuildContext context) {
@@ -343,17 +365,24 @@ class _SignInForm extends StatelessWidget {
                 validator: _emailValidator,
               ),
               const SizedBox(height: 16),
-              AuthTextField(
-                controller: passwordController,
-                label: AppStrings.passwordLabel,
-                hint: AppStrings.passwordHint,
-                obscureText: obscurePassword,
-                textInputAction: TextInputAction.done,
-                autofillHints: const [AutofillHints.password],
-                onFieldSubmitted: onSubmit == null ? null : (_) => onSubmit!(),
-                onToggleObscure: onToggleObscure,
-                validator: _passwordValidator,
-              ),
+                  AuthTextField(
+                    controller: passwordController,
+                    label: AppStrings.passwordLabel,
+                    hint: AppStrings.passwordHint,
+                    obscureText: obscurePassword,
+                    textInputAction: TextInputAction.done,
+                    autofillHints: const [AutofillHints.password],
+                    onFieldSubmitted: onSubmit == null ? null : (_) => onSubmit!(),
+                    onToggleObscure: onToggleObscure,
+                    validator: _passwordValidator,
+                  ),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: TextButton(
+                      onPressed: isLoading ? null : onForgotPassword,
+                      child: const Text(AppStrings.forgotPassword),
+                    ),
+                  ),
               if (error != null) ...[
                 const SizedBox(height: 16),
                 Text(

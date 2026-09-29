@@ -74,6 +74,19 @@ class PushController extends Notifier<bool> {
     );
   }
 
+  Future<void> notifyGroupThread({
+    required String groupTitle,
+    required int count,
+  }) {
+    return _dispatch(
+      PushPayload(
+        kind: PushKind.message,
+        title: groupTitle,
+        body: NotificationStrings.pushGroupAlert(groupTitle, count),
+      ),
+    );
+  }
+
   Future<void> notifyWalk({
     required String dogName,
     required String ownerName,

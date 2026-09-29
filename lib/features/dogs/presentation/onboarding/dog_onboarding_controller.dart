@@ -13,6 +13,7 @@ import '../../../profile/presentation/profile_controller.dart';
 import '../../domain/dog_draft.dart';
 import '../../domain/dog_enums.dart';
 import '../../domain/dogs_exception.dart';
+import '../widgets/preference_chip_group.dart';
 import '../dog_providers.dart';
 
 class DogOnboardingState {
@@ -194,6 +195,22 @@ class DogOnboardingController extends Notifier<DogOnboardingState> {
       current.add(tag);
     }
     updateDraft(state.draft.copyWith(temperament: current));
+  }
+
+  void toggleLike(String tag) {
+    updateDraft(
+      state.draft.copyWith(
+        likesTags: togglePreference(state.draft.likesTags, tag),
+      ),
+    );
+  }
+
+  void toggleDislike(String tag) {
+    updateDraft(
+      state.draft.copyWith(
+        dislikesTags: togglePreference(state.draft.dislikesTags, tag),
+      ),
+    );
   }
 
   Future<bool> submit() async {

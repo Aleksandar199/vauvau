@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../auth/presentation/auth_providers.dart';
 import '../../../chat/presentation/chat_inbox.dart';
 import '../../../chat/presentation/chat_screen.dart';
 import '../../../../core/images/dog_image.dart';
 import '../../../discover/domain/discover_profile.dart';
 import '../../domain/adoption_dog.dart';
+import '../adoption_controller.dart';
 import '../adoption_strings.dart';
 import '../phone_launcher.dart';
 
@@ -17,6 +19,8 @@ class AdoptionDetailScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
+    final uid = ref.watch(authStateProvider).asData?.value?.uid ?? '';
+    final isOwner = uid.isNotEmpty && uid == dog.uploaderUserId;
     return Scaffold(
       appBar: AppBar(title: Text(dog.name)),
       body: Column(
@@ -25,17 +29,34 @@ class AdoptionDetailScreen extends ConsumerWidget {
             child: ListView(
               padding: const EdgeInsets.only(bottom: 16),
               children: [
-                SizedBox(
-                  height: 280,
-                  child: dog.imageUrls.isEmpty
-                      ? buildDogImage(null)
-                      : PageView.builder(
-                          itemCount: dog.imageUrls.length,
-                          itemBuilder: (context, index) {
-                            return buildDogImage(dog.imageUrls[index]);
-                          },
-                        ),
-                ),
+                if (dog.imageUrls.isEmpty)
+                  Column(
+                    children: [
+                      SizedBox(
+                        height: 280,
+                        child: buildDogImage(null, seed: dog.id),
+                      ),
+                      const FallbackIllustrationCaption(url: null),
+                    ],
+                  )
+                else
+                  SizedBox(
+                    height: 280,
+                    child: PageView.builder(
+                      itemCount: dog.imageUrls.length,
+                      itemBuilder: (context, index) {
+                        final url = dog.imageUrls[index];
+                        return Column(
+                          children: [
+                            Expanded(
+                              child: buildDogImage(url, seed: dog.id),
+                            ),
+                            FallbackIllustrationCaption(url: url),
+                          ],
+                        );
+                      },
+                    ),
+                  ),
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
                   child: Column(
@@ -114,6 +135,19 @@ class AdoptionDetailScreen extends ConsumerWidget {
               ],
             ),
           ),
+          if (isOwner)
+            SafeArea(
+              top: false,
+              bottom: false,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
+                child: OutlinedButton.icon(
+                  onPressed: () => _markAdopted(context, ref),
+                  icon: const Icon(Icons.home_outlined),
+                  label: const Text(AdoptionStrings.markAdopted),
+                ),
+              ),
+            ),
           Material(
             elevation: 8,
             color: theme.scaffoldBackgroundColor,
@@ -157,6 +191,39 @@ class AdoptionDetailScreen extends ConsumerWidget {
         ],
       ),
     );
+  }
+
+  Future<void> _markAdopted(BuildContext context, WidgetRef ref) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text(AdoptionStrings.adoptedConfirmTitle),
+          content: const Text(AdoptionStrings.adoptedConfirmBody),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text(AdoptionStrings.cancel),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: const Text(AdoptionStrings.markAdopted),
+            ),
+          ],
+        );
+      },
+    );
+    if (ok != true) {
+      return;
+    }
+    await ref.read(adoptionControllerProvider.notifier).markAdopted(dog.id);
+    if (!context.mounted) {
+      return;
+    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text(AdoptionStrings.adoptedDone)),
+    );
+    Navigator.of(context).pop();
   }
 
   void _openChat(BuildContext context, WidgetRef ref) {

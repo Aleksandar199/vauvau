@@ -6,6 +6,7 @@ enum AuthErrorCode {
   emailInUse,
   cancelled,
   network,
+  requiresRecentLogin,
   unknown,
 }
 

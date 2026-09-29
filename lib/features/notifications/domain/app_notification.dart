@@ -1,4 +1,4 @@
-enum NotificationKind { match, walkRequest, chatMessage }
+enum NotificationKind { match, walkRequest, chatMessage, like }
 
 class AppNotification {
   const AppNotification({
@@ -9,6 +9,7 @@ class AppNotification {
     required this.createdAt,
     this.isRead = false,
     this.dogId,
+    this.fromUserId,
   });
 
   final String id;
@@ -18,6 +19,7 @@ class AppNotification {
   final DateTime createdAt;
   final bool isRead;
   final String? dogId;
+  final String? fromUserId;
 
   AppNotification copyWith({bool? isRead}) {
     return AppNotification(
@@ -28,6 +30,7 @@ class AppNotification {
       createdAt: createdAt,
       isRead: isRead ?? this.isRead,
       dogId: dogId,
+      fromUserId: fromUserId,
     );
   }
 }

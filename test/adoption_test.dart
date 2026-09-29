@@ -75,5 +75,7 @@ void main() {
     expect(find.text(AdoptionStrings.name), findsWidgets);
     expect(find.text(AdoptionStrings.sizeSmall), findsOneWidget);
     expect(find.text(AdoptionStrings.story), findsWidgets);
+    expect(find.text(AdoptionStrings.city), findsWidgets);
+    expect(find.text(AdoptionStrings.neighborhood), findsWidgets);
   });
 }

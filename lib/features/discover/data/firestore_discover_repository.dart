@@ -119,51 +119,172 @@ class FirestoreDiscoverRepository implements DiscoverRepository {
     required String myDogId,
     required DiscoverProfile target,
     required String action,
+    String likerName = '',
   }) async {
-    final swipeRef = _swipes.doc();
-    await swipeRef.set({
-      'id': swipeRef.id,
-      'userId': userId,
-      'targetDogId': target.id,
-      'action': action,
+    if (action == 'like' || action == 'superLike') {
+      await _recordLike(
+        userId: userId,
+        myDogId: myDogId,
+        likerName: likerName,
+        target: target,
+        type: action,
+      );
+      return _tryCreateMatch(userId: userId, myDogId: myDogId, target: target);
+    }
+    await _swipes.doc('${userId}_${target.id}').set({
+      'fromUserId': userId,
+      'fromDogId': myDogId,
+      'toDogId': target.id,
+      'type': action,
       'timestamp': FieldValue.serverTimestamp(),
-    });
-    if (action != 'like') {
-      return false;
-    }
-    final reciprocal = await _swipes
-        .where('userId', isEqualTo: target.ownerId)
-        .where('targetDogId', isEqualTo: myDogId)
-        .where('action', isEqualTo: 'like')
-        .limit(1)
-        .get();
-    if (reciprocal.docs.isEmpty) {
-      return false;
-    }
-    final ids = [userId, target.ownerId]..sort();
-    final matchId = ids.join('_');
-    await _matches.doc(matchId).set({
-      'id': matchId,
-      'dogIds': [myDogId, target.id],
-      'userIds': [userId, target.ownerId],
       'createdAt': FieldValue.serverTimestamp(),
     }, SetOptions(merge: true));
-    await _chats.doc(matchId).set({
-      'id': matchId,
-      'participantIds': [userId, target.ownerId],
-      'dogIds': [myDogId, target.id],
-      'dogId': target.id,
-      'dogName': target.name,
-      'ownerName': target.ownerName,
-      'breed': target.breed,
-      'location': target.location,
-      'photoUrl': resolvedDogPhotoUrl(target.photoUrls),
-      'peerUserId': target.ownerId,
-      'lastMessage': '',
-      'lastMessageTimestamp': FieldValue.serverTimestamp(),
-      'isNewMatch': true,
-      'unreadCount': 0,
+    return false;
+  }
+
+  Future<bool> _tryCreateMatch({
+    required String userId,
+    required String myDogId,
+    required DiscoverProfile target,
+  }) async {
+    try {
+      final reciprocal = await _swipes
+          .where('fromUserId', isEqualTo: target.ownerId)
+          .where('toDogId', isEqualTo: myDogId)
+          .limit(5)
+          .get();
+      final likedBack = reciprocal.docs.any((doc) {
+        final type = doc.data()['type'] as String?;
+        return type == null || type == 'like' || type == 'superLike';
+      });
+      if (!likedBack) {
+        return false;
+      }
+      final ids = [userId, target.ownerId]..sort();
+      final matchId = ids.join('_');
+      await _matches.doc(matchId).set({
+        'id': matchId,
+        'dogIds': [myDogId, target.id],
+        'userIds': [userId, target.ownerId],
+        'createdAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+      await _chats.doc(matchId).set({
+        'id': matchId,
+        'participantIds': [userId, target.ownerId],
+        'dogIds': [myDogId, target.id],
+        'dogId': target.id,
+        'dogName': target.name,
+        'ownerName': target.ownerName,
+        'breed': target.breed,
+        'location': target.location,
+        'photoUrl': resolvedDogPhotoUrl(target.photoUrls),
+        'peerUserId': target.ownerId,
+        'lastMessage': '',
+        'lastMessageTimestamp': FieldValue.serverTimestamp(),
+        'isNewMatch': true,
+        'unreadCount': 0,
+      }, SetOptions(merge: true));
+      return true;
+    } catch (error) {
+      debugPrint('Match after like failed: $error');
+      return false;
+    }
+  }
+
+  @override
+  Future<bool> hasLiked({
+    required String userId,
+    required String dogId,
+  }) async {
+    try {
+      final snapshot =
+          await _swipes.doc('${userId}_$dogId').get();
+      final type = snapshot.data()?['type'] as String?;
+      return snapshot.exists &&
+          (type == null || type == 'like' || type == 'superLike');
+    } catch (error) {
+      debugPrint('hasLiked failed: $error');
+      return false;
+    }
+  }
+
+  Future<void> _recordLike({
+    required String userId,
+    required String myDogId,
+    required String likerName,
+    required DiscoverProfile target,
+    required String type,
+  }) async {
+    final dogId = target.id;
+    final swipeRef = _swipes.doc('${userId}_$dogId');
+    final existing = await swipeRef.get();
+    await swipeRef.set({
+      'fromUserId': userId,
+      'fromDogId': myDogId,
+      'toDogId': dogId,
+      'type': type,
+      'timestamp': FieldValue.serverTimestamp(),
+      'createdAt': FieldValue.serverTimestamp(),
     }, SetOptions(merge: true));
-    return true;
+    // ignore: avoid_print
+    print('DOG LIKE SUCCESS for: $dogId');
+    if (!existing.exists) {
+      try {
+        await _notifyLike(
+          userId: userId,
+          myDogId: myDogId,
+          likerName: likerName,
+          target: target,
+        );
+      } catch (error) {
+        debugPrint('Obaveštenje o lajku nije upisano: $error');
+      }
+    }
+  }
+
+  Future<void> _notifyLike({
+    required String userId,
+    required String myDogId,
+    required String likerName,
+    required DiscoverProfile target,
+  }) async {
+    if (target.ownerId.isEmpty || target.ownerId == userId) {
+      return;
+    }
+    var senderName = likerName.trim();
+    if (senderName.isEmpty) {
+      final userDoc = await _firestore.collection('users').doc(userId).get();
+      final data = userDoc.data();
+      senderName = (data?['name'] as String?)?.trim() ?? '';
+      if (senderName.isEmpty) {
+        senderName = (data?['email'] as String?)?.trim() ?? 'Neko';
+      }
+    }
+    final payload = <String, dynamic>{
+      'fromUserId': userId,
+      'senderUserId': userId,
+      'toUserId': target.ownerId,
+      'title': 'Novi lajk! 🐾',
+      'body': '$senderName je lajkovao/la tvog psa ${target.name}!',
+      'type': 'like',
+      'isRead': false,
+      'createdAt': FieldValue.serverTimestamp(),
+      'dogId': myDogId,
+      'senderDogId': myDogId,
+    };
+    try {
+      await _firestore.collection('notifications').add(payload);
+    } catch (error) {
+      debugPrint('Obaveštenje sa dogId nije upisano, retry: $error');
+      await _firestore.collection('notifications').add({
+        'fromUserId': userId,
+        'toUserId': target.ownerId,
+        'title': payload['title'],
+        'body': payload['body'],
+        'type': 'like',
+        'isRead': false,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+    }
   }
 }

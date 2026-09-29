@@ -49,22 +49,23 @@ extension MapLayerFilterX on MapLayerFilter {
       this == MapLayerFilter.petShops ||
       this == MapLayerFilter.groomers ||
       this == MapLayerFilter.vets ||
-      this == MapLayerFilter.walkers;
+      this == MapLayerFilter.hotels ||
+      this == MapLayerFilter.sitters ||
+      this == MapLayerFilter.emergency;
 
   static const primary = [
     MapLayerFilter.all,
     MapLayerFilter.cafes,
     MapLayerFilter.parks,
-    MapLayerFilter.hotels,
-    MapLayerFilter.sitters,
-    MapLayerFilter.emergency,
+    MapLayerFilter.walkers,
   ];
 
   static const extra = [
-    MapLayerFilter.walkers,
+    MapLayerFilter.vets,
     MapLayerFilter.petShops,
     MapLayerFilter.groomers,
-    MapLayerFilter.vets,
+    MapLayerFilter.hotels,
+    MapLayerFilter.sitters,
   ];
 }
 
@@ -80,7 +81,7 @@ extension HotelAmenityFilterX on HotelAmenityFilter {
 abstract final class MapStrings {
   static const String tabLabel = 'Mapa';
   static const String title = 'Mapa';
-  static const String startWalk = 'Započni šetnju';
+  static const String startWalk = '🟢 Započni šetnju';
   static const String readyToWalk = 'Spreman za šetnju po gradu?';
   static const String endWalk = 'Završi šetnju';
   static const String walking = 'U šetnji';
@@ -137,14 +138,14 @@ abstract final class MapStrings {
   static const String filterAll = 'Sve';
   static const String filterParks = 'Parkovi';
   static const String filterCafes = 'Kafići';
-  static const String filterHotels = 'Hoteli & Pansioni';
-  static const String filterSitters = 'Kućno čuvanje';
+  static const String filterHotels = 'Hoteli za pse';
+  static const String filterSitters = 'Dog Sitter / Čuvanje';
   static const String filterEmergency = '24/7 Hitno';
   static const String filterPetShops = 'Pet Shop';
-  static const String filterGroomers = 'Grumer';
-  static const String filterVets = 'Veterinar';
+  static const String filterGroomers = 'Grooming / Frizerski saloni';
+  static const String filterVets = 'Veterinari';
   static const String filterWalkers = 'Psi u šetnji';
-  static const String filterMore = 'Više filtera';
+  static const String filterMore = '⚙️ Više filtera';
   static const String addPlace = '+ Dodaj mesto / lokal';
   static const String cityNoviSad = 'Novi Sad';
   static const String cityBelgrade = 'Beograd';

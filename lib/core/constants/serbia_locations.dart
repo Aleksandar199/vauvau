@@ -62,6 +62,54 @@ abstract final class SerbiaLocations {
     ),
   ];
 
+  static const List<String> adoptionCities = [
+    'Novi Sad',
+    'Beograd',
+    'Niš',
+    'Kragujevac',
+    'Ostalo',
+  ];
+
+  static const List<String> noviSadAdoptionNeighborhoods = [
+    'Liman 1',
+    'Liman 2',
+    'Liman 3',
+    'Liman 4',
+    'Grbavica',
+    'Centar (Stari Grad)',
+    'Detelinara (Stara i Nova)',
+    'Novo Naselje (Bistrica)',
+    'Telep',
+    'Podbara',
+    'Rotkvarija',
+    'Salajka',
+    'Banatić',
+    'Sajmište',
+    'Avijatičarsko Naselje',
+    'Adamovićevo Naselje',
+    'Petrovaradin',
+    'Sremska Kamenica',
+    'Futog',
+    'Veternik',
+    'Adice',
+    'Klisa',
+    'Vidovdansko Naselje',
+    'Slana Bara',
+  ];
+
+  static List<String> neighborhoodsForAdoptionCity(String city) {
+    if (city == 'Novi Sad') {
+      return noviSadAdoptionNeighborhoods;
+    }
+    if (city == 'Beograd') {
+      return [
+        for (final hood in cityById('beograd')?.neighborhoods ?? const [])
+          hood.name,
+      ];
+    }
+    return const ['Ostalo'];
+  }
+
   static CityLocation get noviSad => cities.first;
 
   static CityLocation? cityById(String id) {
@@ -76,16 +124,104 @@ abstract final class SerbiaLocations {
   static String formatPlace(String cityName, String neighborhoodName) {
     final city = cityName.trim();
     final neighborhood = neighborhoodName.trim();
+    if (city.isEmpty && neighborhood.isEmpty) {
+      return '';
+    }
     if (city.isEmpty) {
-      return neighborhood;
+      return sanitizeLocationLabel(neighborhood);
     }
     if (neighborhood.isEmpty) {
-      return city;
+      return sanitizeLocationLabel(city);
     }
-    return '$city · $neighborhood';
+    return sanitizeLocationLabel('$city, $neighborhood');
   }
 
   static String displayPlace(String raw) {
-    return raw.trim().replaceAll(' - ', ' · ');
+    return sanitizeLocationLabel(raw);
+  }
+
+  /// Turns "Novi Sad Telep Telep" / "Novi Sad · Telep · Telep" into "Novi Sad, Telep".
+  static String sanitizeLocationLabel(String raw) {
+    final trimmed = raw.trim();
+    if (trimmed.isEmpty) {
+      return '';
+    }
+    final normalized = trimmed
+        .replaceAll('·', ',')
+        .replaceAll('•', ',')
+        .replaceAll(RegExp(r'\s*[-–/|]\s*'), ',');
+    final chunks = <String>[];
+    for (final piece in normalized.split(',')) {
+      final cleaned = _dedupeRepeatedWords(piece.trim());
+      if (cleaned.isEmpty) {
+        continue;
+      }
+      if (chunks.any((item) => item.toLowerCase() == cleaned.toLowerCase())) {
+        continue;
+      }
+      if (chunks.isNotEmpty &&
+          chunks.last.toLowerCase().contains(cleaned.toLowerCase())) {
+        continue;
+      }
+      chunks.add(cleaned);
+    }
+    if (chunks.isEmpty) {
+      return trimmed;
+    }
+    if (chunks.length == 1) {
+      return _splitCityAndNeighborhood(chunks.first);
+    }
+    final city = chunks.first;
+    final rest = <String>[];
+    for (final part in chunks.skip(1)) {
+      var neighborhood = part;
+      if (neighborhood.toLowerCase().startsWith(city.toLowerCase())) {
+        neighborhood =
+            neighborhood.substring(city.length).replaceFirst(RegExp(r'^[,·\-\s]+'), '').trim();
+      }
+      if (neighborhood.isEmpty ||
+          neighborhood.toLowerCase() == city.toLowerCase() ||
+          city.toLowerCase().contains(neighborhood.toLowerCase())) {
+        continue;
+      }
+      rest.add(neighborhood);
+    }
+    if (rest.isEmpty) {
+      return _splitCityAndNeighborhood(city);
+    }
+    return '$city, ${rest.join(', ')}';
+  }
+
+  static String _dedupeRepeatedWords(String value) {
+    final words =
+        value.split(RegExp(r'\s+')).where((word) => word.isNotEmpty).toList();
+    final out = <String>[];
+    for (final word in words) {
+      if (out.isNotEmpty && out.last.toLowerCase() == word.toLowerCase()) {
+        continue;
+      }
+      out.add(word);
+    }
+    return out.join(' ');
+  }
+
+  static String _splitCityAndNeighborhood(String value) {
+    for (final city in cities) {
+      final name = city.name;
+      if (!value.toLowerCase().startsWith(name.toLowerCase())) {
+        continue;
+      }
+      if (value.length == name.length) {
+        return name;
+      }
+      var rest = value.substring(name.length).trim();
+      rest = rest.replaceFirst(RegExp(r'^[,·\-]+'), '').trim();
+      rest = _dedupeRepeatedWords(rest);
+      if (rest.isEmpty || rest.toLowerCase() == name.toLowerCase()) {
+        return name;
+      }
+      return '$name, $rest';
+    }
+    return value;
   }
 }

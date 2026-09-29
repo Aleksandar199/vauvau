@@ -5,16 +5,20 @@ class PhoneLauncher {
   const PhoneLauncher();
 
   Future<bool> call(String phone) async {
-    final compact = phone.replaceAll(RegExp(r'\s+'), '');
-    if (compact.isEmpty) {
+    try {
+      final compact = phone.replaceAll(RegExp(r'\s+'), '');
+      if (compact.isEmpty) {
+        return false;
+      }
+      final first = compact.split(RegExp(r'[,/]')).first.trim();
+      final uri = Uri.parse('tel:$first');
+      if (!await canLaunchUrl(uri)) {
+        return false;
+      }
+      return launchUrl(uri, mode: LaunchMode.externalApplication);
+    } catch (_) {
       return false;
     }
-    final first = compact.split(RegExp(r'[,/]')).first.trim();
-    final uri = Uri(scheme: 'tel', path: first);
-    if (!await canLaunchUrl(uri)) {
-      return false;
-    }
-    return launchUrl(uri);
   }
 }
 

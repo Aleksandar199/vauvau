@@ -10,6 +10,7 @@ import '../../../core/widgets/ui_bits.dart';
 import '../../admin/presentation/admin_dashboard_screen.dart';
 import '../../auth/presentation/auth_providers.dart';
 import '../../discover/domain/discover_profile.dart';
+import '../../dogs/presentation/health/dog_health_tab.dart';
 import '../../dogs/presentation/onboarding/dog_onboarding_screen.dart';
 import '../domain/user_profile.dart';
 import 'edit_owner_profile_screen.dart';
@@ -70,6 +71,11 @@ class ProfileScreen extends ConsumerWidget {
                     onEdit: () => _openDogEditor(context, profile.dog.id),
                     onOpenPhoto: (index) =>
                         _openGallery(context, profile.dog.photoUrls, index),
+                  ),
+                  const SizedBox(height: 12),
+                  DogHealthTab(
+                    dogId: profile.dog.id,
+                    dogName: profile.dog.name,
                   ),
                 ],
               ],
@@ -197,7 +203,11 @@ class ProfileScreen extends ConsumerWidget {
               itemBuilder: (context, page) {
                 return InteractiveViewer(
                   child: Center(
-                    child: buildDogImage(urls[page], fit: BoxFit.contain),
+                    child: buildDogImage(
+                      urls[page],
+                      seed: urls[page],
+                      fit: BoxFit.contain,
+                    ),
                   ),
                 );
               },
@@ -236,15 +246,17 @@ class _DogCard extends StatelessWidget {
           children: [
             ClipRRect(
               borderRadius: BorderRadius.circular(16),
-              child: SizedBox(
-                height: 180,
-                width: double.infinity,
-                child: photo.isEmpty
-                    ? const ColoredBox(
-                        color: AppColors.lightOutline,
-                        child: Center(child: Icon(Icons.pets, size: 48)),
-                      )
-                    : buildDogImage(photo),
+              child: Column(
+                children: [
+                  SizedBox(
+                    height: 180,
+                    width: double.infinity,
+                    child: photo.isEmpty
+                        ? buildDogImage(null, seed: dog.id)
+                        : buildDogImage(photo, seed: dog.id),
+                  ),
+                  FallbackIllustrationCaption(url: photo.isEmpty ? null : photo),
+                ],
               ),
             ),
             const SizedBox(height: 12),
@@ -317,7 +329,10 @@ class _DogCard extends StatelessWidget {
                         child: SizedBox(
                           width: 72,
                           height: 72,
-                          child: buildDogImage(dog.photoUrls[index]),
+                          child: buildDogImage(
+                            dog.photoUrls[index],
+                            seed: dog.id,
+                          ),
                         ),
                       ),
                     );

@@ -20,7 +20,12 @@ class DogAvatar extends StatelessWidget {
       child: SizedBox(
         width: size,
         height: size,
-        child: buildDogImage(photoUrl, width: size, height: size),
+        child: buildDogImage(
+          photoUrl,
+          seed: photoUrl,
+          width: size,
+          height: size,
+        ),
       ),
     );
   }

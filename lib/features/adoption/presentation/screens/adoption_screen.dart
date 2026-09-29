@@ -12,24 +12,22 @@ class AdoptionScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final dogs = ref.watch(adoptionControllerProvider);
+    final dogs = [
+      for (final dog in ref.watch(adoptionControllerProvider))
+        if (!dog.isAdopted) dog,
+    ];
     final theme = Theme.of(context);
 
     return Scaffold(
       appBar: AppBar(title: const Text(AdoptionStrings.title)),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {
-          Navigator.of(context).push<bool>(
-            MaterialPageRoute<bool>(
-              builder: (_) => const AddAdoptionDogScreen(),
-            ),
-          ).then((saved) {
-            if (saved == true && context.mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text(AdoptionStrings.published)),
-              );
-            }
-          });
+        onPressed: () async {
+          final saved = await showAddAdoptionDogSheet(context);
+          if (saved == true && context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text(AdoptionStrings.published)),
+            );
+          }
         },
         backgroundColor: const Color(0xFF2A2D3E),
         foregroundColor: Colors.white,

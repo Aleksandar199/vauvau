@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vauvau/features/discover/presentation/discover_image.dart';
+import 'package:vauvau/features/events/presentation/events_strings.dart';
 import 'package:vauvau/features/map/presentation/map_screen.dart';
 import 'package:vauvau/features/map/presentation/map_strings.dart';
 
@@ -37,6 +38,7 @@ void main() {
     await _pumpMap(tester);
 
     expect(find.text(MapStrings.startWalk), findsOneWidget);
+    expect(find.text(EventsStrings.organize), findsNothing);
 
     await tester.tap(find.text(MapStrings.startWalk));
     await tester.pump();
@@ -131,6 +133,10 @@ void main() {
   testWidgets('adds a user-submitted place to the map', (tester) async {
     await _pumpMap(tester);
 
+    await tester.ensureVisible(find.text(MapStrings.filterMore));
+    await tester.tap(find.text(MapStrings.filterMore));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
     await tester.ensureVisible(find.text(MapStrings.addPlace));
     await tester.tap(find.text(MapStrings.addPlace));
     await tester.pump();

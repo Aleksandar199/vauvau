@@ -17,7 +17,19 @@ service cloud.firestore {
       allow update: if isSignedIn() && request.auth.uid == userId
         && request.resource.data.role == resource.data.role;
       allow update: if isAdmin();
+      allow delete: if isSignedIn() && request.auth.uid == userId;
       allow delete: if isAdmin();
+
+      match /fcmInbox/{msgId} {
+        allow read, update, delete: if isSignedIn() && request.auth.uid == userId;
+        allow create: if isSignedIn();
+      }
+    }
+
+    match /notifications/{notificationId} {
+      allow read, update, delete: if isSignedIn() &&
+        resource.data.toUserId == request.auth.uid;
+      allow create: if isSignedIn();
     }
 
     match /pois/{poiId} {
@@ -34,7 +46,15 @@ service cloud.firestore {
     match /dogs/{dogId} {
       allow read: if true;
       allow create, update: if isSignedIn();
+      allow delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
       allow delete: if isAdmin();
+
+      match /health_records/{recordId} {
+        allow read, write: if isSignedIn() &&
+          get(/databases/$(database)/documents/dogs/$(dogId)).data.ownerId ==
+            request.auth.uid;
+        allow read, write: if isAdmin();
+      }
     }
 
     match /chats/{chatId} {
@@ -60,6 +80,96 @@ service cloud.firestore {
     match /swipes/{swipeId} {
       allow read, create: if isSignedIn();
       allow update, delete: if isAdmin();
+    }
+
+    match /adoption_dogs/{dogId} {
+      allow read: if true;
+      allow create: if isSignedIn() &&
+        request.resource.data.uploaderUserId == request.auth.uid;
+      allow update, delete: if isSignedIn() &&
+        request.auth.uid == resource.data.uploaderUserId;
+      allow update, delete: if isAdmin();
+    }
+
+    match /lost_dogs/{dogId} {
+      allow read: if true;
+      allow create: if isSignedIn() &&
+        request.resource.data.uploaderUserId == request.auth.uid;
+      allow update, delete: if isSignedIn() &&
+        request.auth.uid == resource.data.uploaderUserId;
+      allow update, delete: if isAdmin();
+    }
+
+    match /breed_groups/{groupId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update: if isSignedIn();
+      allow delete: if isAdmin();
+
+      match /messages/{messageId} {
+        allow read: if isSignedIn() &&
+          request.auth.uid in get(/databases/$(database)/documents/breed_groups/$(groupId)).data.memberIds;
+        allow create: if isSignedIn() &&
+          request.auth.uid in get(/databases/$(database)/documents/breed_groups/$(groupId)).data.memberIds &&
+          request.resource.data.senderId == request.auth.uid;
+        allow update, delete: if isAdmin();
+      }
+
+      match /members/{userId} {
+        allow read: if isSignedIn() && request.auth.uid == userId;
+        allow create, update: if isSignedIn() && request.auth.uid == userId;
+        allow delete: if isAdmin();
+      }
+    }
+
+    match /events/{eventId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update: if isSignedIn();
+      allow delete: if isSignedIn() &&
+        resource.data.organizerUserId == request.auth.uid;
+      allow delete: if isAdmin();
+
+      match /messages/{messageId} {
+        allow read: if isSignedIn() &&
+          request.auth.uid in get(/databases/$(database)/documents/events/$(eventId)).data.participantUserIds;
+        allow create: if isSignedIn() &&
+          request.auth.uid in get(/databases/$(database)/documents/events/$(eventId)).data.participantUserIds;
+        allow update, delete: if isAdmin();
+      }
+
+      match /members/{userId} {
+        allow read: if isSignedIn() && request.auth.uid == userId;
+        allow create, update: if isSignedIn() && request.auth.uid == userId;
+        allow delete: if isAdmin();
+      }
+    }
+
+    match /admin_feedback/{feedbackId} {
+      allow create: if isSignedIn() &&
+        request.resource.data.userId == request.auth.uid &&
+        request.resource.data.status == 'new';
+      allow read, update, delete: if isAdmin();
+    }
+
+    match /moments/{momentId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() &&
+        request.resource.data.authorUserId == request.auth.uid;
+      allow update: if isSignedIn() &&
+        request.resource.data.authorUserId == resource.data.authorUserId;
+      allow delete: if isSignedIn() &&
+        resource.data.authorUserId == request.auth.uid;
+      allow delete: if isAdmin();
+
+      match /comments/{commentId} {
+        allow read: if isSignedIn();
+        allow create: if isSignedIn() &&
+          request.resource.data.authorUserId == request.auth.uid;
+        allow update, delete: if isSignedIn() &&
+          resource.data.authorUserId == request.auth.uid;
+        allow delete: if isAdmin();
+      }
     }
   }
 }

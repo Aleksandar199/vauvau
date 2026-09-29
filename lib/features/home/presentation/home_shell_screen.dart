@@ -8,7 +8,9 @@ import '../../chat/presentation/widgets/scheduled_walks_banner.dart';
 import '../../discover/presentation/discover_screen.dart';
 import '../../discover/presentation/discover_strings.dart';
 import '../../discover/presentation/widgets/discover_app_bar.dart';
+import '../../groups/presentation/group_unread_alerts.dart';
 import '../../location/presentation/location_controller.dart';
+import '../../lost_dogs/presentation/lost_dog_emergency_host.dart';
 import '../../map/presentation/map_screen.dart';
 import '../../map/presentation/map_strings.dart';
 import '../../notifications/presentation/notification_controller.dart';
@@ -31,6 +33,7 @@ class HomeShellScreen extends ConsumerWidget {
         final unread = ref.watch(notificationUnreadCountProvider);
     final unreadChats = ref.watch(totalUnreadChatCountProvider);
     ref.watch(userLocationProvider);
+    ref.watch(groupUnreadAlertsProvider);
 
     final titles = [
       '',
@@ -40,7 +43,8 @@ class HomeShellScreen extends ConsumerWidget {
     ];
 
     return PushBootstrap(
-      child: Scaffold(
+      child: LostDogEmergencyHost(
+        child: Scaffold(
         drawer: const HomeDrawer(),
         appBar: tabIndex == 0
             ? const DiscoverAppBar()
@@ -58,15 +62,10 @@ class HomeShellScreen extends ConsumerWidget {
                 actions: [
                   IconButton(
                     tooltip: NotificationStrings.tooltip,
-                    onPressed: () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute<void>(
-                          builder: (_) => const NotificationScreen(),
-                        ),
-                      );
-                    },
+                    onPressed: () => showNotificationsSheet(context),
                     icon: Badge(
                       isLabelVisible: unread > 0,
+                      backgroundColor: const Color(0xFFE11D48),
                       label: Text('$unread'),
                       child: const Icon(Icons.notifications_outlined),
                     ),
@@ -125,6 +124,7 @@ class HomeShellScreen extends ConsumerWidget {
             ),
           ],
         ),
+      ),
       ),
     );
   }

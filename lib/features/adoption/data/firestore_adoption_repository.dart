@@ -1,4 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../../core/images/dog_photo_urls.dart';
@@ -33,20 +35,48 @@ class FirestoreAdoptionRepository implements AdoptionRepository {
   Future<void> addAdoptionDog(
     AdoptionDog dog, {
     List<XFile> photos = const [],
+    String city = '',
+    String neighborhood = '',
   }) async {
-    final doc = dog.id.isEmpty ? _col.doc() : _col.doc(dog.id);
-    final urls = List<String>.from(dog.imageUrls);
-    for (var i = 0; i < photos.length; i++) {
-      try {
-        urls.add(await _upload(photos[i]));
-      } catch (_) {}
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      throw StateError('Morate biti prijavljeni.');
     }
-    final saved = dog.copyWith(
-      id: doc.id,
-      imageUrls: uniquePhotoUrls(urls),
-      createdAt: dog.createdAt,
-    );
-    await doc.set(_toMap(saved));
+    final urls = List<String>.from(dog.imageUrls);
+    for (final photo in photos) {
+      urls.add(await _upload(photo));
+    }
+    final imageUrls = uniquePhotoUrls(urls);
+    final photoUrl = imageUrls.isEmpty ? '' : imageUrls.first;
+    final place = neighborhood.isEmpty ? city : '$city, $neighborhood';
+    final displayName = user.displayName?.trim() ?? '';
+    await _col.add({
+      'name': dog.name,
+      'breed': dog.breed,
+      'age': dog.age,
+      'gender': dog.gender,
+      'size': dog.size,
+      'location': place,
+      'city': city,
+      'neighborhood': neighborhood,
+      'description': dog.description,
+      'imageUrls': imageUrls,
+      'photos': imageUrls,
+      'photoUrl': photoUrl,
+      'contactPhone': dog.contactPhone,
+      'uploaderUserId': user.uid,
+      'uploaderName': displayName.isEmpty ? 'Korisnik' : displayName,
+      'isVaccinated': dog.isVaccinated,
+      'isSterilized': dog.isSterilized,
+      'status': 'available',
+      'createdAt': FieldValue.serverTimestamp(),
+    });
+    debugPrint('Adoption listing created by ${user.uid}');
+  }
+
+  @override
+  Future<void> markAdopted(String id) async {
+    await _col.doc(id).update({'status': 'adopted'});
   }
 
   Future<String> _upload(XFile file) async {
@@ -70,8 +100,12 @@ class FirestoreAdoptionRepository implements AdoptionRepository {
       location: data['location'] as String? ?? '',
       description: data['description'] as String? ?? '',
       imageUrls: uniquePhotoUrls(
-        (data['imageUrls'] as List<dynamic>? ?? [])
-            .map((item) => item.toString()),
+        [
+          ...(data['imageUrls'] as List<dynamic>? ?? [])
+              .map((item) => item.toString()),
+          ...(data['photos'] as List<dynamic>? ?? [])
+              .map((item) => item.toString()),
+        ],
       ),
       contactPhone: data['contactPhone'] as String? ?? '',
       uploaderUserId: data['uploaderUserId'] as String? ?? '',
@@ -79,25 +113,7 @@ class FirestoreAdoptionRepository implements AdoptionRepository {
       isVaccinated: data['isVaccinated'] as bool? ?? false,
       isSterilized: data['isSterilized'] as bool? ?? false,
       createdAt: created is Timestamp ? created.toDate() : DateTime.now(),
+      status: data['status'] as String? ?? 'available',
     );
-  }
-
-  Map<String, dynamic> _toMap(AdoptionDog dog) {
-    return {
-      'name': dog.name,
-      'breed': dog.breed,
-      'age': dog.age,
-      'gender': dog.gender,
-      'size': dog.size,
-      'location': dog.location,
-      'description': dog.description,
-      'imageUrls': dog.imageUrls,
-      'contactPhone': dog.contactPhone,
-      'uploaderUserId': dog.uploaderUserId,
-      'uploaderName': dog.uploaderName,
-      'isVaccinated': dog.isVaccinated,
-      'isSterilized': dog.isSterilized,
-      'createdAt': Timestamp.fromDate(dog.createdAt),
-    };
   }
 }

@@ -2,15 +2,14 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../../../../core/theme/app_colors.dart';
 import '../../../auth/presentation/auth_gate.dart';
-import '../widgets/splash_clouds.dart';
-import '../widgets/splash_mascot.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
 
-  static const Color skyStart = Color(0xFF38BDF8);
-  static const Color skyEnd = Color(0xFF0284C7);
+  static const Color skyStart = Color(0xFF0B1220);
+  static const Color skyEnd = Color(0xFF0F172A);
   static const String tagline = 'Spajamo pse i vlasnike za šetnju i druženje';
   static const Duration hold = Duration(seconds: 2);
 
@@ -19,45 +18,54 @@ class SplashScreen extends StatefulWidget {
 }
 
 class SplashScreenState extends State<SplashScreen>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _motion;
+    with TickerProviderStateMixin {
+  late final AnimationController _intro;
+  late final AnimationController _pulse;
+  late final AnimationController _load;
   late final Animation<double> _fade;
   late final Animation<double> _scale;
+  late final Animation<Offset> _copySlide;
+  late final Animation<double> _progress;
   Timer? _timer;
   var _opened = false;
 
   @override
   void initState() {
     super.initState();
-    _motion = AnimationController(
+    _intro = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1600),
+      duration: const Duration(milliseconds: 900),
+    );
+    _pulse = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1400),
+    )..repeat(reverse: true);
+    _load = AnimationController(
+      vsync: this,
+      duration: SplashScreen.hold,
     );
     _fade = CurvedAnimation(
-      parent: _motion,
-      curve: const Interval(0, 0.45, curve: Curves.easeOut),
+      parent: _intro,
+      curve: const Interval(0, 0.7, curve: Curves.easeOutCubic),
     );
-    _scale = TweenSequence<double>([
-      TweenSequenceItem(
-        tween: Tween<double>(begin: 0.78, end: 1.08).chain(
-          CurveTween(curve: Curves.easeOutBack),
-        ),
-        weight: 55,
+    _scale = Tween<double>(begin: 0.86, end: 1).animate(
+      CurvedAnimation(
+        parent: _intro,
+        curve: const Interval(0, 0.65, curve: Curves.easeOutBack),
       ),
-      TweenSequenceItem(
-        tween: Tween<double>(begin: 1.08, end: 0.96).chain(
-          CurveTween(curve: Curves.easeInOut),
-        ),
-        weight: 22,
+    );
+    _copySlide = Tween<Offset>(
+      begin: const Offset(0, 0.12),
+      end: Offset.zero,
+    ).animate(
+      CurvedAnimation(
+        parent: _intro,
+        curve: const Interval(0.18, 0.85, curve: Curves.easeOutCubic),
       ),
-      TweenSequenceItem(
-        tween: Tween<double>(begin: 0.96, end: 1.0).chain(
-          CurveTween(curve: Curves.easeOut),
-        ),
-        weight: 23,
-      ),
-    ]).animate(_motion);
-    _motion.forward();
+    );
+    _progress = CurvedAnimation(parent: _load, curve: Curves.easeInOutCubic);
+    _intro.forward();
+    _load.forward();
     _timer = Timer(SplashScreen.hold, _openApp);
   }
 
@@ -82,109 +90,131 @@ class SplashScreenState extends State<SplashScreen>
   @override
   void dispose() {
     _timer?.cancel();
-    _motion.dispose();
+    _intro.dispose();
+    _pulse.dispose();
+    _load.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    final pulse = Tween<double>(begin: 1, end: 1.045).animate(
+      CurvedAnimation(parent: _pulse, curve: Curves.easeInOut),
+    );
+
     return Scaffold(
+      backgroundColor: SplashScreen.skyEnd,
       body: DecoratedBox(
         decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [SplashScreen.skyStart, SplashScreen.skyEnd],
+          gradient: RadialGradient(
+            center: Alignment(-0.55, -0.8),
+            radius: 1.2,
+            colors: [
+              Color(0x40EA580C),
+              SplashScreen.skyStart,
+              SplashScreen.skyEnd,
+            ],
+            stops: [0, 0.42, 1],
           ),
         ),
-        child: Stack(
-          children: [
-            const SplashClouds(),
-            SafeArea(
-              child: Column(
-                children: [
-                  const Spacer(flex: 3),
-                  FadeTransition(
-                    opacity: _fade,
+        child: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 28),
+            child: Column(
+              children: [
+                const Spacer(flex: 3),
+                FadeTransition(
+                  opacity: _fade,
+                  child: ScaleTransition(
+                    scale: _scale,
                     child: ScaleTransition(
-                      scale: _scale,
-                      child: const SplashMascot(),
+                      scale: pulse,
+                      child: const _SplashMark(),
                     ),
                   ),
-                  const SizedBox(height: 20),
-                  FadeTransition(
-                    opacity: _fade,
-                    child: const _OutlinedTitle(),
-                  ),
-                  const Spacer(flex: 2),
-                  const Padding(
-                    padding: EdgeInsets.fromLTRB(32, 0, 32, 36),
-                    child: Text(
+                ),
+                const SizedBox(height: 28),
+                FadeTransition(
+                  opacity: _fade,
+                  child: SlideTransition(
+                    position: _copySlide,
+                    child: const Text(
                       SplashScreen.tagline,
                       textAlign: TextAlign.center,
                       style: TextStyle(
-                        color: Color(0xE6FFFFFF),
-                        fontSize: 16,
-                        height: 1.35,
+                        color: Color(0xFFCBD5E1),
+                        fontSize: 15,
+                        height: 1.45,
                         fontWeight: FontWeight.w500,
-                        shadows: [
-                          Shadow(
-                            color: Color(0x66082F49),
-                            blurRadius: 8,
-                            offset: Offset(0, 2),
-                          ),
-                        ],
                       ),
                     ),
                   ),
-                ],
-              ),
+                ),
+                const Spacer(flex: 4),
+                FadeTransition(
+                  opacity: _fade,
+                  child: AnimatedBuilder(
+                    animation: _progress,
+                    builder: (context, child) {
+                      return Column(
+                        children: [
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(99),
+                            child: SizedBox(
+                              width: 148,
+                              child: LinearProgressIndicator(
+                                minHeight: 3,
+                                value: _progress.value,
+                                backgroundColor: Colors.white.withValues(
+                                  alpha: 0.12,
+                                ),
+                                color: AppColors.primary,
+                              ),
+                            ),
+                          ),
+                          child!,
+                        ],
+                      );
+                    },
+                    child: const SizedBox(height: 8),
+                  ),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );
   }
 }
 
-class _OutlinedTitle extends StatelessWidget {
-  const _OutlinedTitle();
+class _SplashMark extends StatelessWidget {
+  const _SplashMark();
+
+  static const String assetPath = 'assets/images/vauvau_logo.jpg';
 
   @override
   Widget build(BuildContext context) {
-    const title = 'VauVau';
-    const style = TextStyle(
-      fontSize: 48,
-      fontWeight: FontWeight.w800,
-      letterSpacing: 0.6,
-      height: 1,
-    );
-    return Stack(
-      alignment: Alignment.center,
-      children: [
-        Text(
-          title,
-          style: style.copyWith(
-            foreground: Paint()
-              ..style = PaintingStyle.stroke
-              ..strokeWidth = 7
-              ..color = const Color(0xFF0F172A),
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(28),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.primary.withValues(alpha: 0.28),
+            blurRadius: 36,
+            offset: const Offset(0, 16),
           ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(28),
+        child: Image.asset(
+          assetPath,
+          width: 240,
+          fit: BoxFit.contain,
         ),
-        Text(
-          title,
-          style: style.copyWith(
-            color: Colors.white,
-            shadows: const [
-              Shadow(
-                color: Color(0x99082F49),
-                blurRadius: 12,
-                offset: Offset(0, 4),
-              ),
-            ],
-          ),
-        ),
-      ],
+      ),
     );
   }
 }

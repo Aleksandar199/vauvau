@@ -20,14 +20,21 @@ abstract final class AdoptionStrings {
   static const String story = 'Priča o psu';
   static const String storyHint = 'Opišite karakter, navike i zašto traži dom.';
   static const String location = 'Lokacija';
-  static const String locationHint = 'Grad / naselje';
+  static const String city = 'Grad';
+  static const String neighborhood = 'Kvart / Naselje';
+  static const String cityRequired = 'Izaberite grad.';
+  static const String neighborhoodRequired = 'Izaberite naselje.';
   static const String phone = 'Kontakt telefon';
   static const String vaccinated = 'Vakcinisan';
   static const String sterilized = 'Sterilisan';
   static const String yes = 'Da';
   static const String addPhotos = 'Dodaj fotografije';
   static const String publish = 'Objavi oglas';
-  static const String published = 'Oglas je objavljen.';
+  static const String published =
+      'Oglas za udomljavanje je uspešno objavljen! 🐾';
+  static const String publishing = 'Objavljivanje...';
+  static const String breedRequired = 'Unesite rasu.';
+  static const String ageRequired = 'Unesite starost.';
   static const String publishError = 'Oglas nije sačuvan. Pokušajte ponovo.';
   static const String nameRequired = 'Unesite ime psa.';
   static const String locationRequired = 'Unesite lokaciju.';
@@ -37,7 +44,14 @@ abstract final class AdoptionStrings {
   static const String sendMessage = 'Pošalji poruku';
   static const String call = 'Pozovi';
   static const String callUnavailable = 'Broj telefona nije dostupan.';
+  static const String cancel = 'Otkaži';
   static const String details = 'Detalji';
+  static const String markAdopted = 'Označi kao udomljen';
+  static const String adoptedBadge = 'Udomljen';
+  static const String adoptedConfirmTitle = 'Označiti kao udomljenog?';
+  static const String adoptedConfirmBody =
+      'Oglas će nestati iz liste pasa koji traže dom.';
+  static const String adoptedDone = 'Oglas je označen kao udomljen.';
 
   static String sizeLabel(String size) {
     return switch (size) {

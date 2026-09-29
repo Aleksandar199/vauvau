@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../../core/images/dog_image.dart';
 import '../../domain/discover_profile.dart';
 import '../discover_strings.dart';
 import 'discover_dog_photo.dart';
@@ -51,6 +52,7 @@ class DiscoverGridCard extends StatelessWidget {
                   DiscoverDogPhoto(
                     urls: profile.photoUrls,
                     dogName: profile.name,
+                    seed: profile.id,
                   ),
                   if (profile.statusBadge.isNotEmpty)
                     Positioned(
@@ -70,6 +72,7 @@ class DiscoverGridCard extends StatelessWidget {
                 ],
               ),
             ),
+            FallbackIllustrationCaption(url: profile.photoUrl),
             Padding(
               padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
               child: Column(

@@ -114,6 +114,7 @@ void main() {
     expect(find.text(DiscoverStrings.details), findsOneWidget);
     expect(find.text(DiscoverStrings.owner), findsOneWidget);
     expect(find.text(DiscoverStrings.sendMessage), findsOneWidget);
+    expect(find.byTooltip(DiscoverStrings.like), findsOneWidget);
     expect(find.byTooltip(DiscoverStrings.close), findsOneWidget);
   });
 

@@ -28,6 +28,8 @@ class DiscoverProfile {
     this.goodWithDogs = false,
     this.goodWithCats = false,
     this.goodWithKids = false,
+    this.likesTags = const [],
+    this.dislikesTags = const [],
   });
 
   final String id;
@@ -56,6 +58,8 @@ class DiscoverProfile {
   final bool goodWithDogs;
   final bool goodWithCats;
   final bool goodWithKids;
+  final List<String> likesTags;
+  final List<String> dislikesTags;
 
   String get imageUrl => photoUrls.isEmpty ? '' : photoUrls.first;
 
@@ -239,6 +243,8 @@ class DiscoverProfile {
     bool? goodWithDogs,
     bool? goodWithCats,
     bool? goodWithKids,
+    List<String>? likesTags,
+    List<String>? dislikesTags,
   }) {
     return DiscoverProfile(
       id: id ?? this.id,
@@ -267,6 +273,8 @@ class DiscoverProfile {
       goodWithDogs: goodWithDogs ?? this.goodWithDogs,
       goodWithCats: goodWithCats ?? this.goodWithCats,
       goodWithKids: goodWithKids ?? this.goodWithKids,
+      likesTags: likesTags ?? this.likesTags,
+      dislikesTags: dislikesTags ?? this.dislikesTags,
     );
   }
 }

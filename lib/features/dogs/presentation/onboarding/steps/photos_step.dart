@@ -76,7 +76,7 @@ class PhotosStep extends StatelessWidget {
               children: [
                 ClipRRect(
                   borderRadius: BorderRadius.circular(12),
-                  child: buildDogImage(url),
+                  child: buildDogImage(url, seed: url),
                 ),
                 Align(
                   alignment: Alignment.topRight,

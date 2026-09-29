@@ -29,6 +29,8 @@ Dog localDemoDog({String ownerId = 'local-user'}) {
     photoUrls: const [
       'https://images.unsplash.com/photo-1552053831-71594a27632d?auto=format&fit=crop&w=800&q=80',
     ],
+    likesTags: const ['Šetnje', 'Igru', 'Velike pse'],
+    dislikesTags: const ['Gužvu'],
   );
 }
 
@@ -68,6 +70,8 @@ class LocalDogsRepository implements DogsRepository {
       vaccinated: draft.vaccinated,
       chipped: draft.chipped,
       sterilized: draft.sterilized,
+      likesTags: draft.likesTags,
+      dislikesTags: draft.dislikesTags,
     );
     _dogs.add(dog);
     _controller.add(List<Dog>.from(_dogs));

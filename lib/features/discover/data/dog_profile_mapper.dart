@@ -58,6 +58,8 @@ DiscoverProfile discoverProfileFromMap(
     goodWithKids: data['goodWithKids'] as bool? ??
         data['friendlyWithKids'] as bool? ??
         false,
+    likesTags: _stringList(data['likesTags']),
+    dislikesTags: _stringList(data['dislikesTags']),
   );
 }
 
@@ -132,6 +134,8 @@ DiscoverProfile discoverProfileFromDog(Dog dog, {String ownerName = ''}) {
     sterilized: dog.sterilized,
     traits: dog.temperament.map((tag) => tag.firestoreValue).toList(),
     weightKg: dog.weightKg ?? 0,
+    likesTags: dog.likesTags,
+    dislikesTags: dog.dislikesTags,
   );
 }
 
@@ -150,6 +154,8 @@ DiscoverProfile discoverProfileFromUserDog(AppUser user) {
     bio: dog.bio,
     photoUrls: uniquePhotoUrls(dog.photoUrls),
     traits: dog.temperament,
+    likesTags: dog.likesTags,
+    dislikesTags: dog.dislikesTags,
   );
 }
 
@@ -175,6 +181,8 @@ Dog dogFromDiscover(
     vaccinated: profile.vaccinated,
     chipped: profile.chipped,
     sterilized: profile.sterilized,
+    likesTags: profile.likesTags,
+    dislikesTags: profile.dislikesTags,
   );
 }
 
@@ -263,5 +271,7 @@ UserDogProfile userDogFromDiscover(DiscoverProfile profile) {
     temperament: temperamentFromStored(profile.traits)
         .map((tag) => tag.firestoreValue)
         .toList(),
+    likesTags: profile.likesTags,
+    dislikesTags: profile.dislikesTags,
   );
 }

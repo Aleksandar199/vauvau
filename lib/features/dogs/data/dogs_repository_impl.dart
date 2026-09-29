@@ -75,6 +75,8 @@ class DogsRepositoryImpl implements DogsRepository {
         'energyLevel': energy.firestoreValue,
         'temperament':
             draft.temperament.map((tag) => tag.firestoreValue).toList(),
+        'likesTags': draft.likesTags,
+        'dislikesTags': draft.dislikesTags,
         if (area != null) 'area': area.toMap(),
         'ownerName': owner.displayName ?? '',
         'createdAt': now,
@@ -111,6 +113,8 @@ class DogsRepositoryImpl implements DogsRepository {
               'size': draft.size!.firestoreValue,
               'temperament':
                   draft.temperament.map((tag) => tag.firestoreValue).toList(),
+              'likesTags': draft.likesTags,
+              'dislikesTags': draft.dislikesTags,
               ...photos,
             },
           },
@@ -140,6 +144,8 @@ class DogsRepositoryImpl implements DogsRepository {
         vaccinated: draft.vaccinated,
         chipped: draft.chipped,
         sterilized: draft.sterilized,
+        likesTags: draft.likesTags,
+        dislikesTags: draft.dislikesTags,
       );
     } on DogsException {
       rethrow;
@@ -167,6 +173,8 @@ class DogsRepositoryImpl implements DogsRepository {
         'energyLevel': dog.energyLevel.firestoreValue,
         'temperament':
             dog.temperament.map((tag) => tag.firestoreValue).toList(),
+        'likesTags': dog.likesTags,
+        'dislikesTags': dog.dislikesTags,
         'isVaccinated': dog.vaccinated,
         'isMicrochipped': dog.chipped,
         'isSterilized': dog.sterilized,
@@ -231,6 +239,14 @@ class DogsRepositoryImpl implements DogsRepository {
           data['chipped'] as bool? ??
           false,
       sterilized: data['isSterilized'] as bool? ?? false,
+      likesTags: [
+        for (final value in data['likesTags'] as List? ?? const [])
+          if (value is String) value,
+      ],
+      dislikesTags: [
+        for (final value in data['dislikesTags'] as List? ?? const [])
+          if (value is String) value,
+      ],
     );
   }
 

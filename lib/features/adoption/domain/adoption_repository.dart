@@ -10,5 +10,9 @@ abstract class AdoptionRepository {
   Future<void> addAdoptionDog(
     AdoptionDog dog, {
     List<XFile> photos = const [],
+    String city = '',
+    String neighborhood = '',
   });
+
+  Future<void> markAdopted(String id);
 }

@@ -62,6 +62,20 @@ class AuthController extends Notifier<AsyncValue<void>> {
     await _run(AuthBusy.email, () => ref.read(authRepositoryProvider).signOut());
   }
 
+  Future<bool> sendPasswordResetEmail(String email) {
+    return _run(
+      AuthBusy.email,
+      () => ref.read(authRepositoryProvider).sendPasswordResetEmail(email),
+    );
+  }
+
+  Future<bool> deleteAccount() {
+    return _run(
+      AuthBusy.email,
+      () => ref.read(authRepositoryProvider).deleteAccount(),
+    );
+  }
+
   Future<bool> _run(AuthBusy busy, Future<void> Function() action) async {
     _busy = busy;
     state = const AsyncLoading();

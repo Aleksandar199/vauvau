@@ -15,6 +15,7 @@ class AdoptionDog {
     required this.isVaccinated,
     required this.isSterilized,
     required this.createdAt,
+    this.status = 'available',
   });
 
   final String id;
@@ -32,6 +33,9 @@ class AdoptionDog {
   final bool isVaccinated;
   final bool isSterilized;
   final DateTime createdAt;
+  final String status;
+
+  bool get isAdopted => status == 'adopted';
 
   String get photoUrl => imageUrls.isEmpty ? '' : imageUrls.first;
 
@@ -51,6 +55,7 @@ class AdoptionDog {
     bool? isVaccinated,
     bool? isSterilized,
     DateTime? createdAt,
+    String? status,
   }) {
     return AdoptionDog(
       id: id ?? this.id,
@@ -68,6 +73,7 @@ class AdoptionDog {
       isVaccinated: isVaccinated ?? this.isVaccinated,
       isSterilized: isSterilized ?? this.isSterilized,
       createdAt: createdAt ?? this.createdAt,
+      status: status ?? this.status,
     );
   }
 }

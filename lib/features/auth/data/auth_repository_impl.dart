@@ -117,6 +117,69 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
+  Future<void> sendPasswordResetEmail(String email) async {
+    try {
+      await _datasource.sendPasswordResetEmail(email);
+    } on FirebaseAuthException catch (error) {
+      throw _mapFirebase(error);
+    }
+  }
+
+  @override
+  Future<void> deleteAccount() async {
+    final uid = _datasource.currentUser?.uid;
+    if (uid == null || uid.isEmpty) {
+      throw const AuthException(AuthErrorCode.unknown);
+    }
+    try {
+      await _deleteOwnedData(uid);
+      await _datasource.deleteCurrentUser();
+    } on FirebaseAuthException catch (error) {
+      throw _mapFirebase(error);
+    }
+  }
+
+  Future<void> _deleteOwnedData(String uid) async {
+    final firestore = _firestore;
+    if (firestore == null) {
+      return;
+    }
+    await _deleteQuery(firestore.collection('dogs').where('ownerId', isEqualTo: uid));
+    await _deleteQuery(
+      firestore.collection('adoption_dogs').where('uploaderUserId', isEqualTo: uid),
+    );
+    await _deleteQuery(
+      firestore.collection('lost_dogs').where('uploaderUserId', isEqualTo: uid),
+    );
+    await _deleteQuery(
+      firestore.collection('users').doc(uid).collection('fcmInbox'),
+    );
+    await firestore.collection(userCollection).doc(uid).delete();
+  }
+
+  Future<void> _deleteQuery(Query<Map<String, dynamic>> query) async {
+    final snapshot = await query.get();
+    if (snapshot.docs.isEmpty) {
+      return;
+    }
+    final store = query.firestore;
+    var batch = store.batch();
+    var count = 0;
+    for (final doc in snapshot.docs) {
+      batch.delete(doc.reference);
+      count++;
+      if (count == 400) {
+        await batch.commit();
+        batch = store.batch();
+        count = 0;
+      }
+    }
+    if (count > 0) {
+      await batch.commit();
+    }
+  }
+
+  @override
   Future<void> saveUserProfile({
     required AppUser user,
     UserDogProfile? dog,
@@ -248,6 +311,11 @@ class AuthRepositoryImpl implements AuthRepository {
         return const AuthException(
           AuthErrorCode.network,
           AppStrings.authNetwork,
+        );
+      case 'requires-recent-login':
+        return const AuthException(
+          AuthErrorCode.requiresRecentLogin,
+          AppStrings.authRequiresRecentLogin,
         );
       default:
         return const AuthException(

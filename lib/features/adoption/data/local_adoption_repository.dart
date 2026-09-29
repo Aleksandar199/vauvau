@@ -30,6 +30,8 @@ class LocalAdoptionRepository implements AdoptionRepository {
   Future<void> addAdoptionDog(
     AdoptionDog dog, {
     List<XFile> photos = const [],
+    String city = '',
+    String neighborhood = '',
   }) async {
     final urls = List<String>.from(dog.imageUrls);
     if (urls.isEmpty) {
@@ -44,6 +46,16 @@ class LocalAdoptionRepository implements AdoptionRepository {
       0,
       dog.copyWith(id: id, imageUrls: urls, createdAt: DateTime.now()),
     );
+    _controller.add(List<AdoptionDog>.from(_dogs));
+  }
+
+  @override
+  Future<void> markAdopted(String id) async {
+    for (var i = 0; i < _dogs.length; i++) {
+      if (_dogs[i].id == id) {
+        _dogs[i] = _dogs[i].copyWith(status: 'adopted');
+      }
+    }
     _controller.add(List<AdoptionDog>.from(_dogs));
   }
 }

@@ -1,10 +1,8 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../core/firebase/firebase_status.dart';
 import '../../../core/theme/app_colors.dart';
-import '../../discover/data/dog_profile_mapper.dart';
+import '../../discover/data/load_discover_profile.dart';
 import '../../discover/domain/discover_profile.dart';
 import '../../discover/presentation/widgets/swipe_dog_card.dart';
 // import '../../../core/utils/content_validation_service.dart';
@@ -295,30 +293,11 @@ class _ChatDetailScreenState extends ConsumerState<ChatDetailScreen> {
     );
   }
 
-  Future<DiscoverProfile?> _loadPeerProfile(ChatConversation chat) async {
-    if (!isFirebaseReady) {
-      return _profileFromChat(chat);
-    }
-    final dogs = FirebaseFirestore.instance.collection('dogs');
-    if (chat.dogId.isNotEmpty) {
-      final snapshot = await dogs.doc(chat.dogId).get();
-      final data = snapshot.data();
-      if (data != null) {
-        return discoverProfileFromMap(chat.dogId, data);
-      }
-    }
-    if (chat.peerUserId.isEmpty) {
-      return null;
-    }
-    final query = await dogs
-        .where('ownerId', isEqualTo: chat.peerUserId)
-        .limit(1)
-        .get();
-    if (query.docs.isEmpty) {
-      return null;
-    }
-    final doc = query.docs.first;
-    return discoverProfileFromMap(doc.id, doc.data());
+  Future<DiscoverProfile?> _loadPeerProfile(ChatConversation chat) {
+    return loadDiscoverProfile(
+      dogId: chat.dogId,
+      ownerId: chat.peerUserId,
+    );
   }
 
   Future<void> _openLocationPicker(BuildContext context) async {

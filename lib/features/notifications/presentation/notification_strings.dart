@@ -20,6 +20,12 @@ abstract final class NotificationStrings {
           ? 'Nova poruka od $senderName.'
           : '$senderName: $preview';
 
+  static String pushGroupAlert(String groupTitle, int count) {
+    final n = count < 1 ? 1 : count;
+    final suffix = n == 1 ? '1 nova poruka' : '$n novih poruka';
+    return '$groupTitle: $suffix';
+  }
+
   static String pushWalkBody(String dogName, String ownerName) =>
       '$ownerName vas poziva u šetnju sa $dogName.';
 

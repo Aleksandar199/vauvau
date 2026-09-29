@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 
 abstract final class DiscoverFilterStyle {
-  static const Color selectedFill = Color(0xFF2A2D3E);
+  static const Color selectedFill = Color(0xFF1A1A1A);
   static const Color selectedLabel = Color(0xFFFFFFFF);
-  static const Color idleFill = Color(0x1A2A2D3E);
-  static const Color idleLabel = Color(0xFF6B7280);
-  static const Color idleBorder = Color(0xFF9CA3AF);
-  static const Color walkDot = Color(0xFF4CAF50);
+  static const Color idleFill = Color(0xFFFFFFFF);
+  static const Color idleLabel = Color(0xFF1A1A1A);
+  static const Color idleBorder = Color(0xFF94A3B8);
+  static const Color walkDot = Color(0xFF2E7D32);
 
   static ButtonStyle chipStyle({required bool selected}) {
     return ButtonStyle(

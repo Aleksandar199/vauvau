@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:vauvau/app/app.dart';
 import 'package:vauvau/core/constants/app_strings.dart';
 import 'package:vauvau/features/auth/domain/app_user.dart';
@@ -35,15 +36,15 @@ Future<void> _pumpPastSplash(WidgetTester tester) async {
 }
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+  SharedPreferences.setMockInitialValues({});
   const signedInUser = AppUser(
     uid: '1',
     email: 'alex@example.com',
     displayName: 'Alex',
   );
 
-  testWidgets('logged out shows welcome and Get Started opens login', (
-    tester,
-  ) async {
+  testWidgets('logged out shows login after splash', (tester) async {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
@@ -58,15 +59,9 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 120));
 
-    expect(find.text(AppStrings.appName), findsWidgets);
-    expect(find.text(AppStrings.getStarted), findsOneWidget);
-
-    await tester.tap(find.text(AppStrings.getStarted));
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 400));
-
     expect(find.text(AppStrings.logInTitle), findsWidgets);
     expect(find.text(AppStrings.continueWithGoogle), findsOneWidget);
+    expect(find.text(AppStrings.getStarted), findsNothing);
   });
 
   testWidgets('logged in without a dog shows onboarding', (tester) async {
@@ -137,8 +132,25 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
     expect(find.text(AppStrings.appName), findsWidgets);
+    expect(find.text(AppDrawerCatalog.lostDogs), findsOneWidget);
     expect(find.text(AppDrawerCatalog.adopt), findsOneWidget);
-    expect(find.text(AppDrawerCatalog.rules), findsOneWidget);
-    expect(find.text(AppDrawerCatalog.support), findsOneWidget);
+    expect(find.text(AppDrawerCatalog.groups), findsOneWidget);
+    expect(find.text(AppDrawerCatalog.events), findsOneWidget);
+    expect(
+      find.text(AppDrawerCatalog.moments, skipOffstage: false),
+      findsOneWidget,
+    );
+    expect(
+      find.text(AppDrawerCatalog.rules, skipOffstage: false),
+      findsOneWidget,
+    );
+    expect(find.text(AppDrawerCatalog.profile), findsNothing);
+    expect(find.text(AppDrawerCatalog.settings), findsOneWidget);
+    expect(
+      find.text(AppDrawerCatalog.about, skipOffstage: false),
+      findsOneWidget,
+    );
+    expect(find.text('Odjava'), findsOneWidget);
+    expect(find.text(AppDrawerCatalog.home), findsNothing);
   });
 }

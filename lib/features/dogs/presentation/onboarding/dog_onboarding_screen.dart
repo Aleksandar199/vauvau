@@ -111,6 +111,8 @@ class DogOnboardingScreen extends ConsumerWidget {
           draft: state.draft,
           onChanged: controller.updateDraft,
           onToggleTemperament: controller.toggleTemperament,
+          onToggleLike: controller.toggleLike,
+          onToggleDislike: controller.toggleDislike,
         );
       default:
         return PhotosStep(

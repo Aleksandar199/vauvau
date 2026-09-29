@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 
@@ -25,7 +26,8 @@ class AdoptionController extends Notifier<List<AdoptionDog>> {
     required String age,
     required String gender,
     required String size,
-    required String location,
+    required String city,
+    required String neighborhood,
     required String description,
     required String contactPhone,
     required bool isVaccinated,
@@ -33,7 +35,9 @@ class AdoptionController extends Notifier<List<AdoptionDog>> {
     required List<XFile> photos,
   }) async {
     final profile = ref.read(profileControllerProvider);
-    final uid = ref.read(authStateProvider).asData?.value?.uid ?? 'local-user';
+    final uid = ref.read(authStateProvider).asData?.value?.uid ?? '';
+    final location =
+        neighborhood.isEmpty ? city : '$city, $neighborhood';
     try {
       await ref.read(adoptionRepositoryProvider).addAdoptionDog(
             AdoptionDog(
@@ -54,11 +58,20 @@ class AdoptionController extends Notifier<List<AdoptionDog>> {
               createdAt: DateTime.now(),
             ),
             photos: photos,
+            city: city,
+            neighborhood: neighborhood,
           );
       return true;
-    } catch (_) {
+    } catch (e, stack) {
+      // ignore: avoid_print
+      print(e.toString());
+      debugPrint('$stack');
       return false;
     }
+  }
+
+  Future<void> markAdopted(String id) {
+    return ref.read(adoptionRepositoryProvider).markAdopted(id);
   }
 }
 

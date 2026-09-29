@@ -27,6 +27,9 @@ abstract final class AppStrings {
   static const String createAccountPrompt = 'Napravi nalog';
   static const String createAccount = 'Napravi nalog';
   static const String alreadyHaveAccount = 'Već imaš nalog? Prijavi se';
+  static const String forgotPassword = 'Zaboravljena lozinka?';
+  static const String resetPasswordSent =
+      'Link za resetovanje lozinke je poslat na vaš email.';
   static const String signOut = 'Odjavi se';
   static const String emailInvalid = 'Unesite ispravnu email adresu.';
   static const String passwordTooShort = 'Lozinka mora imati najmanje 6 karaktera.';
@@ -40,6 +43,8 @@ abstract final class AppStrings {
   static const String authInvalidEmail = 'Unesite ispravnu email adresu.';
   static const String authNetwork = 'Proverite internet konekciju i pokušajte ponovo.';
   static const String authCancelled = 'Prijava je otkazana.';
+  static const String authRequiresRecentLogin =
+      'Ponovo se prijavite, zatim obrišite nalog.';
   static const String onboardingTitle = 'Vaš pas';
   static const String next = 'Dalje';
   static const String back = 'Nazad';

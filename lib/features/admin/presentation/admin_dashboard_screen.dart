@@ -11,6 +11,9 @@ import '../../moderation/domain/content_report.dart';
 import '../../moderation/presentation/report_controller.dart';
 import '../../profile/presentation/profile_controller.dart';
 import 'admin_strings.dart';
+import 'tabs/admin_feedback_tab.dart';
+import 'tabs/admin_moments_tab.dart';
+import 'tabs/admin_users_tab.dart';
 
 class AdminDashboardScreen extends ConsumerWidget {
   const AdminDashboardScreen({super.key});
@@ -25,13 +28,16 @@ class AdminDashboardScreen extends ConsumerWidget {
     }
 
     return DefaultTabController(
-      length: 3,
+      length: 6,
       child: Scaffold(
         appBar: AppBar(
           title: const Text(AdminStrings.title),
           bottom: const TabBar(
             isScrollable: true,
             tabs: [
+              Tab(text: AdminStrings.feedbackTab),
+              Tab(text: AdminStrings.momentsTab),
+              Tab(text: AdminStrings.usersTab),
               Tab(text: AdminStrings.pendingTab),
               Tab(text: AdminStrings.reportsTab),
               Tab(text: AdminStrings.searchTab),
@@ -40,6 +46,9 @@ class AdminDashboardScreen extends ConsumerWidget {
         ),
         body: const TabBarView(
           children: [
+            AdminFeedbackTab(),
+            AdminMomentsTab(),
+            AdminUsersTab(),
             _PendingPoisTab(),
             _ReportsTab(),
             _SearchTab(),

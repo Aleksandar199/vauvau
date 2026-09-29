@@ -41,7 +41,15 @@ List<String> uniquePhotoUrls(Iterable<String> raw) {
 
 String resolvedDogPhotoUrl(Iterable<String> urls) {
   final unique = uniquePhotoUrls(urls);
-  return unique.isEmpty ? kFallbackDogPhotoUrl : unique.first;
+  return unique.isEmpty ? '' : unique.first;
+}
+
+bool isUnusableDogPhotoUrl(String? url) {
+  final value = url?.trim() ?? '';
+  return value.isEmpty ||
+      value == 'null' ||
+      value.startsWith('blob:') ||
+      value.startsWith('placeholder:');
 }
 
 Map<String, dynamic> firestorePhotoFields(List<String> urls) {

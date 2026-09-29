@@ -29,6 +29,11 @@
 		<key>LSApplicationQueriesSchemes</key>
 		<array>
 			<string>tel</string>
+			<string>mailto</string>
+			<string>https</string>
+			<string>http</string>
+			<string>instagram</string>
+			<string>fb</string>
 			<string>maps</string>
 			<string>comgooglemaps</string>
 		</array>

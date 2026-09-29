@@ -2,7 +2,8 @@ abstract final class DiscoverStrings {
   static const String title = 'Otkrij';
   static const String signOut = 'Odjavi se';
   static const String pass = 'Preskoči';
-  static const String like = 'Lajk';
+  static const String like = 'Lajkuj';
+  static const String liked = 'Lajkovano';
   static const String superLike = 'Super lajk';
   static const String newMatch = 'Novi meč!';
   static const String sendMessage = 'Pošalji poruku';
@@ -48,6 +49,8 @@ abstract final class DiscoverStrings {
   static const String chatTitle = 'Poruke';
   static const String chatBack = 'Nazad';
   static const String likedToast = 'Lajk poslat';
+  static const String likeFailed =
+      'Lajk nije sačuvan. Proverite konekciju i pokušajte ponovo.';
   static const String passedToast = 'Preskočeno';
   static const String superLikedToast = 'Super lajk poslat!';
   static const String gender = 'Pol';

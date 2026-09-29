@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../../../../core/constants/serbia_locations.dart';
 import '../../../../core/utils/content_validation_service.dart';
 import '../../../discover/presentation/widgets/discover_filter_chip.dart';
 import '../../../profile/presentation/profile_controller.dart';
@@ -16,16 +17,33 @@ class AddAdoptionDogScreen extends ConsumerStatefulWidget {
       _AddAdoptionDogScreenState();
 }
 
+Future<bool?> showAddAdoptionDogSheet(BuildContext context) {
+  return showModalBottomSheet<bool>(
+    context: context,
+    isScrollControlled: true,
+    useSafeArea: true,
+    showDragHandle: true,
+    builder: (sheetContext) {
+      final height = MediaQuery.sizeOf(sheetContext).height * 0.92;
+      return SizedBox(
+        height: height,
+        child: const AddAdoptionDogScreen(),
+      );
+    },
+  );
+}
+
 class _AddAdoptionDogScreenState extends ConsumerState<AddAdoptionDogScreen> {
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _name;
   late final TextEditingController _breed;
   late final TextEditingController _age;
   late final TextEditingController _story;
-  late final TextEditingController _location;
   late final TextEditingController _phone;
   String _gender = 'mužjak';
   String _size = 'srednji';
+  String _city = 'Novi Sad';
+  String _neighborhood = 'Liman 1';
   bool _vaccinated = true;
   bool _sterilized = false;
   bool _saving = false;
@@ -39,8 +57,10 @@ class _AddAdoptionDogScreenState extends ConsumerState<AddAdoptionDogScreen> {
     _breed = TextEditingController();
     _age = TextEditingController();
     _story = TextEditingController();
-    _location = TextEditingController(text: profile.ownerLocation);
     _phone = TextEditingController();
+    _city = _initialCity(profile.ownerLocation);
+    final hoods = SerbiaLocations.neighborhoodsForAdoptionCity(_city);
+    _neighborhood = _matchingNeighborhood(profile.ownerLocation, hoods);
   }
 
   @override
@@ -49,7 +69,6 @@ class _AddAdoptionDogScreenState extends ConsumerState<AddAdoptionDogScreen> {
     _breed.dispose();
     _age.dispose();
     _story.dispose();
-    _location.dispose();
     _phone.dispose();
     super.dispose();
   }
@@ -80,10 +99,17 @@ class _AddAdoptionDogScreenState extends ConsumerState<AddAdoptionDogScreen> {
             const SizedBox(height: 12),
             TextFormField(
               controller: _breed,
+              textCapitalization: TextCapitalization.sentences,
               decoration: const InputDecoration(
                 labelText: AdoptionStrings.breed,
                 border: OutlineInputBorder(),
               ),
+              validator: (value) {
+                if (value == null || value.trim().isEmpty) {
+                  return AdoptionStrings.breedRequired;
+                }
+                return ContentValidationService.validateText(value);
+              },
             ),
             const SizedBox(height: 12),
             TextFormField(
@@ -93,6 +119,12 @@ class _AddAdoptionDogScreenState extends ConsumerState<AddAdoptionDogScreen> {
                 hintText: AdoptionStrings.ageHint,
                 border: OutlineInputBorder(),
               ),
+              validator: (value) {
+                if (value == null || value.trim().isEmpty) {
+                  return AdoptionStrings.ageRequired;
+                }
+                return null;
+              },
             ),
             const SizedBox(height: 16),
             const Text(AdoptionStrings.gender),
@@ -153,16 +185,62 @@ class _AddAdoptionDogScreenState extends ConsumerState<AddAdoptionDogScreen> {
               },
             ),
             const SizedBox(height: 12),
-            TextFormField(
-              controller: _location,
+            DropdownButtonFormField<String>(
+              key: const ValueKey('adoption-city'),
+              initialValue: _city,
+              isExpanded: true,
               decoration: const InputDecoration(
-                labelText: AdoptionStrings.location,
-                hintText: AdoptionStrings.locationHint,
+                labelText: AdoptionStrings.city,
                 border: OutlineInputBorder(),
               ),
+              items: [
+                for (final city in SerbiaLocations.adoptionCities)
+                  DropdownMenuItem(value: city, child: Text(city)),
+              ],
+              onChanged: (value) {
+                if (value == null) {
+                  return;
+                }
+                setState(() {
+                  _city = value;
+                  final hoods =
+                      SerbiaLocations.neighborhoodsForAdoptionCity(value);
+                  _neighborhood = hoods.contains(_neighborhood)
+                      ? _neighborhood
+                      : hoods.first;
+                });
+              },
               validator: (value) =>
-                  value == null || value.trim().isEmpty
-                      ? AdoptionStrings.locationRequired
+                  value == null || value.isEmpty
+                      ? AdoptionStrings.cityRequired
+                      : null,
+            ),
+            const SizedBox(height: 12),
+            DropdownButtonFormField<String>(
+              key: ValueKey('adoption-hood-$_city-$_neighborhood'),
+              initialValue: SerbiaLocations.neighborhoodsForAdoptionCity(_city)
+                      .contains(_neighborhood)
+                  ? _neighborhood
+                  : SerbiaLocations.neighborhoodsForAdoptionCity(_city).first,
+              isExpanded: true,
+              decoration: const InputDecoration(
+                labelText: AdoptionStrings.neighborhood,
+                border: OutlineInputBorder(),
+              ),
+              items: [
+                for (final hood
+                    in SerbiaLocations.neighborhoodsForAdoptionCity(_city))
+                  DropdownMenuItem(value: hood, child: Text(hood)),
+              ],
+              onChanged: (value) {
+                if (value == null) {
+                  return;
+                }
+                setState(() => _neighborhood = value);
+              },
+              validator: (value) =>
+                  value == null || value.isEmpty
+                      ? AdoptionStrings.neighborhoodRequired
                       : null,
             ),
             const SizedBox(height: 12),
@@ -191,10 +269,21 @@ class _AddAdoptionDogScreenState extends ConsumerState<AddAdoptionDogScreen> {
               onChanged: (value) => setState(() => _sterilized = value),
             ),
             const SizedBox(height: 8),
-            OutlinedButton.icon(
-              onPressed: _pickPhotos,
-              icon: const Icon(Icons.add_a_photo_outlined),
-              label: Text('${AdoptionStrings.addPhotos} (${_photos.length})'),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: _saving ? null : () => _pickPhotos(ImageSource.gallery),
+                    icon: const Icon(Icons.photo_library_outlined),
+                    label: Text('${AdoptionStrings.addPhotos} (${_photos.length})'),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                IconButton.outlined(
+                  onPressed: _saving ? null : () => _pickPhotos(ImageSource.camera),
+                  icon: const Icon(Icons.photo_camera_outlined),
+                ),
+              ],
             ),
             if (_photos.isNotEmpty) ...[
               const SizedBox(height: 12),
@@ -238,9 +327,20 @@ class _AddAdoptionDogScreenState extends ConsumerState<AddAdoptionDogScreen> {
             FilledButton(
               style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(48)),
               onPressed: _saving ? null : _publish,
-              child: Text(
-                _saving ? '...' : AdoptionStrings.publish,
-              ),
+              child: _saving
+                  ? const Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                        SizedBox(width: 10),
+                        Text(AdoptionStrings.publishing),
+                      ],
+                    )
+                  : const Text(AdoptionStrings.publish),
             ),
           ],
         ),
@@ -248,8 +348,18 @@ class _AddAdoptionDogScreenState extends ConsumerState<AddAdoptionDogScreen> {
     );
   }
 
-  Future<void> _pickPhotos() async {
-    final picked = await ImagePicker().pickMultiImage();
+  Future<void> _pickPhotos(ImageSource source) async {
+    final picker = ImagePicker();
+    final List<XFile> picked;
+    if (source == ImageSource.camera) {
+      final file = await picker.pickImage(
+        source: ImageSource.camera,
+        imageQuality: 85,
+      );
+      picked = file == null ? const [] : [file];
+    } else {
+      picked = await picker.pickMultiImage(imageQuality: 85);
+    }
     if (picked.isEmpty) {
       return;
     }
@@ -272,29 +382,79 @@ class _AddAdoptionDogScreenState extends ConsumerState<AddAdoptionDogScreen> {
       return;
     }
     setState(() => _saving = true);
-    final ok = await ref.read(adoptionControllerProvider.notifier).publish(
-          name: _name.text.trim(),
-          breed: _breed.text.trim().isEmpty ? 'Mešanac' : _breed.text.trim(),
-          age: _age.text.trim().isEmpty ? '—' : _age.text.trim(),
-          gender: _gender,
-          size: _size,
-          location: _location.text.trim(),
-          description: _story.text.trim(),
-          contactPhone: _phone.text.trim(),
-          isVaccinated: _vaccinated,
-          isSterilized: _sterilized,
-          photos: List<XFile>.from(_photos),
+    try {
+      final ok = await ref.read(adoptionControllerProvider.notifier).publish(
+            name: _name.text.trim(),
+            breed: _breed.text.trim(),
+            age: _age.text.trim(),
+            gender: _gender,
+            size: _size,
+            city: _city,
+            neighborhood: _neighborhood,
+            description: _story.text.trim(),
+            contactPhone: _phone.text.trim(),
+            isVaccinated: _vaccinated,
+            isSterilized: _sterilized,
+            photos: List<XFile>.from(_photos),
+          );
+      if (!mounted) {
+        return;
+      }
+      if (ok) {
+        Navigator.of(context).pop(true);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text(AdoptionStrings.publishError)),
         );
-    if (!mounted) {
-      return;
+      }
+    } catch (e) {
+      // ignore: avoid_print
+      print(e.toString());
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.toString())),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _saving = false);
+      }
     }
-    setState(() => _saving = false);
-    if (ok) {
-      Navigator.of(context).pop(true);
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text(AdoptionStrings.publishError)),
-      );
+  }
+
+  String _initialCity(String rawLocation) {
+    final sanitized = SerbiaLocations.sanitizeLocationLabel(rawLocation);
+    for (final city in SerbiaLocations.adoptionCities) {
+      if (sanitized.toLowerCase().startsWith(city.toLowerCase())) {
+        return city;
+      }
     }
+    return 'Novi Sad';
+  }
+
+  String _matchingNeighborhood(String rawLocation, List<String> hoods) {
+    if (hoods.isEmpty) {
+      return '';
+    }
+    final sanitized = SerbiaLocations.sanitizeLocationLabel(rawLocation);
+    var rest = sanitized.contains(',')
+        ? sanitized.substring(sanitized.indexOf(',') + 1).trim()
+        : '';
+    if (rest.isEmpty) {
+      return hoods.first;
+    }
+    final needle = rest.toLowerCase();
+    for (final hood in hoods) {
+      if (hood.toLowerCase() == needle) {
+        return hood;
+      }
+    }
+    for (final hood in hoods) {
+      final lower = hood.toLowerCase();
+      if (lower.startsWith(needle)) {
+        return hood;
+      }
+    }
+    return hoods.first;
   }
 }

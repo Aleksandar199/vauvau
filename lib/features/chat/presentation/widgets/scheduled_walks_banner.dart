@@ -29,6 +29,10 @@ class ScheduledWalksBanner extends StatelessWidget {
                 '${ChatStrings.scheduledWalks}: ${walk.dogName} · ${walk.locationName} · ${formatWalkStamp(walk.walkTime)}',
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: AppColors.ink,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
           ],

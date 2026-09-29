@@ -2,7 +2,10 @@ abstract final class ChatStrings {
   static const String tabLabel = 'Poruke';
   static const String title = 'Poruke';
   static const String newMatches = 'Novi mečevi';
+  static const String newLikes = 'Novi lajkovi 🐾';
   static const String conversations = 'Aktivna ćaskanja';
+  static const String groupBadge = '👥 Grupa';
+  static const String eventBadge = '📅 Šetnja';
   static const String composeHint = 'Napiši poruku...';
   static const String send = 'Pošalji';
   static const String emptyTitle = 'Nemate aktivnih poruka.';

@@ -11,6 +11,7 @@ import '../../discover/domain/discover_profile.dart';
 import '../../dogs/domain/dog.dart';
 import '../../dogs/domain/dog_area.dart';
 import '../../dogs/presentation/dog_providers.dart';
+import '../data/app_settings_store.dart';
 import '../domain/app_settings.dart';
 import '../domain/matching_filters.dart';
 import '../domain/user_profile.dart';
@@ -198,7 +199,7 @@ class ProfileController extends Notifier<UserProfile> {
 
   String _cityName(String cityId, String fallback) {
     return SerbiaLocations.cityById(cityId)?.name ??
-        fallback.split(' · ').first;
+        SerbiaLocations.sanitizeLocationLabel(fallback).split(',').first.trim();
   }
 
   String _neighborhoodName(String cityId, String neighborhoodId) {
@@ -226,10 +227,27 @@ class MatchingFiltersController extends Notifier<MatchingFilters> {
 
 class AppSettingsController extends Notifier<AppSettings> {
   @override
-  AppSettings build() => const AppSettings();
+  AppSettings build() {
+    unawaited(_hydrate());
+    return const AppSettings();
+  }
+
+  Future<void> _hydrate() async {
+    final loaded = await AppSettingsStore.read();
+    if (!ref.mounted) {
+      return;
+    }
+    state = loaded;
+    _syncRadius(loaded);
+  }
 
   void update(AppSettings settings) {
     state = settings;
+    _syncRadius(settings);
+    unawaited(AppSettingsStore.write(settings));
+  }
+
+  void _syncRadius(AppSettings settings) {
     final filters = ref.read(matchingFiltersProvider);
     if (filters.radiusKm != settings.radiusKm) {
       ref.read(matchingFiltersProvider.notifier).apply(

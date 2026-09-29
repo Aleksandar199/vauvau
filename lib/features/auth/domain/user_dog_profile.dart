@@ -11,6 +11,8 @@ class UserDogProfile {
     this.photoUrls = const [],
     this.size = '',
     this.temperament = const [],
+    this.likesTags = const [],
+    this.dislikesTags = const [],
   });
 
   final String id;
@@ -22,6 +24,8 @@ class UserDogProfile {
   final List<String> photoUrls;
   final String size;
   final List<String> temperament;
+  final List<String> likesTags;
+  final List<String> dislikesTags;
 
   bool get hasProfile => id.isNotEmpty && name.isNotEmpty;
 
@@ -35,6 +39,8 @@ class UserDogProfile {
       'bio': bio,
       'size': size,
       'temperament': temperament,
+      'likesTags': likesTags,
+      'dislikesTags': dislikesTags,
       ...firestorePhotoFields(photoUrls),
     };
   }
@@ -54,6 +60,8 @@ class UserDogProfile {
       photoUrls: collectPhotoUrls(data),
       size: data['size'] as String? ?? '',
       temperament: _strings(data['temperament']),
+      likesTags: _strings(data['likesTags']),
+      dislikesTags: _strings(data['dislikesTags']),
     );
   }
 

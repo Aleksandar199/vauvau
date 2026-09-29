@@ -11,7 +11,9 @@ import '../../../core/utils/content_validation_service.dart';
 import '../../discover/data/dog_profile_mapper.dart';
 import '../../discover/domain/discover_profile.dart';
 import '../../dogs/domain/dog_enums.dart';
+import '../../dogs/domain/dog_preference_tags.dart';
 import '../../dogs/presentation/onboarding/option_chips.dart';
+import '../../dogs/presentation/widgets/preference_chip_group.dart';
 import 'profile_controller.dart';
 import 'profile_strings.dart';
 
@@ -33,6 +35,8 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   late final TextEditingController _weight;
   late final TextEditingController _dogBio;
   late List<DogTemperament> _tags;
+  late List<String> _likes;
+  late List<String> _dislikes;
   late List<String> _photos;
   late String _gender;
   late String _size;
@@ -62,6 +66,8 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
       _weight = TextEditingController();
       _dogBio = TextEditingController();
       _tags = [];
+      _likes = [];
+      _dislikes = [];
       _photos = [];
       _gender = 'mužjak';
       _size = 'srednji';
@@ -81,6 +87,8 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     );
     _dogBio = TextEditingController(text: dog.bio);
     _tags = temperamentFromStored(dog.traits);
+    _likes = List<String>.from(dog.likesTags);
+    _dislikes = List<String>.from(dog.dislikesTags);
     _photos = List<String>.from(dog.photoUrls);
     _gender = dog.gender;
     _size = dog.size;
@@ -144,6 +152,8 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
       bio: _dogBio.text.trim(),
       photoUrls: uniquePhotoUrls(_photos),
       traits: [for (final tag in _tags) tag.firestoreValue],
+      likesTags: _likes,
+      dislikesTags: _dislikes,
     );
     ref.read(profileControllerProvider.notifier).saveDog(dog);
     Navigator.of(context).pop(true);
@@ -341,6 +351,27 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                 ],
               ),
               const SizedBox(height: 16),
+              PreferenceChipGroup(
+                title: '🐕 Voli',
+                options: DogPreferenceTags.likes,
+                selected: _likes,
+                onToggle: (tag) =>
+                    setState(() => _likes = togglePreference(_likes, tag)),
+                selectedColor: const Color(0xFF2E7D32),
+                selectedForeground: Colors.white,
+              ),
+              const SizedBox(height: 16),
+              PreferenceChipGroup(
+                title: '❌ Ne voli',
+                options: DogPreferenceTags.dislikes,
+                selected: _dislikes,
+                onToggle: (tag) => setState(
+                  () => _dislikes = togglePreference(_dislikes, tag),
+                ),
+                selectedColor: const Color(0xFFC62828),
+                selectedForeground: Colors.white,
+              ),
+              const SizedBox(height: 16),
               TextFormField(
                 controller: _dogBio,
                 maxLines: 3,
@@ -429,7 +460,12 @@ class _PhotoTile extends StatelessWidget {
                     color: AppColors.lightOutline,
                     child: Center(child: Icon(Icons.pets)),
                   )
-                : buildDogImage(url, width: 88, height: 88),
+                : buildDogImage(
+                    url,
+                    seed: url,
+                    width: 88,
+                    height: 88,
+                  ),
           ),
         ),
         Positioned(

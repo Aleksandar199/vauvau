@@ -4,14 +4,9 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 
 import 'dog_photo_urls.dart';
+import 'fallback_image_helper.dart';
 
-bool isUnusableDogPhotoUrl(String? url) {
-  final value = url?.trim() ?? '';
-  return value.isEmpty ||
-      value == 'null' ||
-      value.startsWith('blob:') ||
-      value.startsWith('placeholder:');
-}
+export 'fallback_image_helper.dart';
 
 Uint8List? decodeDataImageBytes(String url) {
   if (!url.startsWith('data:image')) {
@@ -30,23 +25,32 @@ Uint8List? decodeDataImageBytes(String url) {
 
 Widget buildDogImage(
   String? url, {
+  String seed = '',
   double? width,
   double? height,
   BoxFit fit = BoxFit.cover,
 }) {
-  return DogImage(url: url, width: width, height: height, fit: fit);
+  return DogImage(
+    url: url,
+    seed: seed,
+    width: width,
+    height: height,
+    fit: fit,
+  );
 }
 
 class DogImage extends StatelessWidget {
   const DogImage({
     super.key,
     required this.url,
+    this.seed = '',
     this.width,
     this.height,
     this.fit = BoxFit.cover,
   });
 
   final String? url;
+  final String seed;
   final double? width;
   final double? height;
   final BoxFit fit;
@@ -55,12 +59,12 @@ class DogImage extends StatelessWidget {
   Widget build(BuildContext context) {
     final value = url?.trim() ?? '';
     if (isUnusableDogPhotoUrl(value)) {
-      return _network(kFallbackDogPhotoUrl, isFallback: true);
+      return _fallback();
     }
     if (value.startsWith('data:image')) {
       final bytes = decodeDataImageBytes(value);
       if (bytes == null || bytes.isEmpty) {
-        return _network(kFallbackDogPhotoUrl, isFallback: true);
+        return _fallback();
       }
       return Image.memory(
         bytes,
@@ -68,15 +72,18 @@ class DogImage extends StatelessWidget {
         height: height,
         fit: fit,
         gaplessPlayback: true,
-        errorBuilder: (context, error, stackTrace) {
-          return _network(kFallbackDogPhotoUrl, isFallback: true);
-        },
+        errorBuilder: (context, error, stackTrace) => _fallback(),
       );
     }
     if (value.startsWith('http://') || value.startsWith('https://')) {
       return _network(value, isFallback: false);
     }
-    return _network(kFallbackDogPhotoUrl, isFallback: true);
+    return _fallback();
+  }
+
+  Widget _fallback() {
+    final src = FallbackImageHelper.getRandomFallbackImage(seed);
+    return _network(src, isFallback: true);
   }
 
   Widget _network(String src, {required bool isFallback}) {
@@ -87,32 +94,36 @@ class DogImage extends StatelessWidget {
       fit: fit,
       gaplessPlayback: true,
       errorBuilder: (context, error, stackTrace) {
-        if (isFallback || src == kFallbackDogPhotoUrl) {
-          return SizedBox(
+        if (!isFallback) {
+          return _fallback();
+        }
+        if (src != kFallbackDogPhotoUrl) {
+          return Image.network(
+            kFallbackDogPhotoUrl,
             width: width,
             height: height,
-            child: ColoredBox(
-              color: Colors.grey.shade200,
-              child: const Center(child: Icon(Icons.pets, color: Colors.grey)),
-            ),
+            fit: fit,
+            errorBuilder: (context, error, stackTrace) {
+              return SizedBox(
+                width: width,
+                height: height,
+                child: ColoredBox(
+                  color: Colors.grey.shade200,
+                  child: const Center(
+                    child: Icon(Icons.pets, color: Colors.grey),
+                  ),
+                ),
+              );
+            },
           );
         }
-        return Image.network(
-          kFallbackDogPhotoUrl,
+        return SizedBox(
           width: width,
           height: height,
-          fit: fit,
-          gaplessPlayback: true,
-          errorBuilder: (context, error, stackTrace) {
-            return SizedBox(
-              width: width,
-              height: height,
-              child: ColoredBox(
-                color: Colors.grey.shade200,
-                child: const Center(child: Icon(Icons.pets, color: Colors.grey)),
-              ),
-            );
-          },
+          child: ColoredBox(
+            color: Colors.grey.shade200,
+            child: const Center(child: Icon(Icons.pets, color: Colors.grey)),
+          ),
         );
       },
     );

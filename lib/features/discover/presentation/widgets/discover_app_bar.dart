@@ -61,15 +61,10 @@ class DiscoverAppBar extends ConsumerWidget implements PreferredSizeWidget {
         if (showNotifications)
           IconButton(
             tooltip: NotificationStrings.tooltip,
-            onPressed: () {
-              Navigator.of(context).push(
-                MaterialPageRoute<void>(
-                  builder: (_) => const NotificationScreen(),
-                ),
-              );
-            },
+            onPressed: () => showNotificationsSheet(context),
             icon: Badge(
               isLabelVisible: unread > 0,
+              backgroundColor: const Color(0xFFE11D48),
               label: Text('$unread'),
               child: const Icon(Icons.notifications_outlined),
             ),
