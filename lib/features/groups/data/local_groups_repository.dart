@@ -35,8 +35,14 @@ class LocalGroupsRepository implements GroupsRepository {
 
   @override
   Stream<List<BreedGroup>> watchGroups() async* {
-    yield _sorted();
-    yield* _groupsController.stream;
+    yield _approvedSorted();
+    yield* _groupsController.stream.map((_) => _approvedSorted());
+  }
+
+  @override
+  Stream<List<BreedGroup>> watchPendingGroups() async* {
+    yield _pendingSorted();
+    yield* _groupsController.stream.map((_) => _pendingSorted());
   }
 
   @override
@@ -68,13 +74,63 @@ class LocalGroupsRepository implements GroupsRepository {
     }
     _lastRead[groupId] = DateTime.now();
     _readControllerFor(groupId).add(_lastRead[groupId]);
-    _groupsController.add(_sorted());
+    _emitGroups();
   }
 
   @override
   Future<void> markRead(String groupId) async {
     _lastRead[groupId] = DateTime.now();
     _readControllerFor(groupId).add(_lastRead[groupId]);
+  }
+
+  @override
+  Future<BreedGroup> createGroup({
+    required String title,
+    required String description,
+    bool approveImmediately = false,
+  }) async {
+    final trimmedTitle = title.trim();
+    if (trimmedTitle.isEmpty) {
+      throw StateError('Naziv grupe je obavezan.');
+    }
+    final id = 'user-${DateTime.now().millisecondsSinceEpoch}';
+    final group = BreedGroup(
+      id: id,
+      title: trimmedTitle,
+      description: description.trim().isEmpty
+          ? SeedBreedGroups.defaultDescription
+          : description.trim(),
+      imageUrl:
+          'https://images.unsplash.com/photo-1558788353-f76d92427f16?auto=format&fit=crop&w=400&q=80',
+      memberIds: currentUserId.isEmpty ? const [] : [currentUserId],
+      memberCount: currentUserId.isEmpty ? 1 : 1,
+      sortOrder: 999,
+      isApproved: approveImmediately,
+      createdBy: currentUserId,
+      createdAt: DateTime.now(),
+    );
+    _groups.add(group);
+    _emitGroups();
+    return group;
+  }
+
+  @override
+  Future<void> approveGroup(String groupId) async {
+    for (var i = 0; i < _groups.length; i++) {
+      if (_groups[i].id != groupId) {
+        continue;
+      }
+      _groups[i] = _groups[i].copyWith(isApproved: true);
+    }
+    _emitGroups();
+  }
+
+  @override
+  Future<void> deleteGroup(String groupId) async {
+    _groups.removeWhere((group) => group.id == groupId);
+    _messages.remove(groupId);
+    _lastRead.remove(groupId);
+    _emitGroups();
   }
 
   @override
@@ -128,7 +184,7 @@ class LocalGroupsRepository implements GroupsRepository {
       );
     }
     _messageControllerFor(groupId).add(List<GroupMessage>.from(next));
-    _groupsController.add(_sorted());
+    _emitGroups();
   }
 
   StreamController<List<GroupMessage>> _messageControllerFor(String groupId) {
@@ -145,9 +201,21 @@ class LocalGroupsRepository implements GroupsRepository {
     );
   }
 
-  List<BreedGroup> _sorted() {
-    final copy = List<BreedGroup>.from(_groups)
-      ..sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
-    return copy;
+  void _emitGroups() {
+    if (!_groupsController.isClosed) {
+      _groupsController.add(_groups);
+    }
+  }
+
+  List<BreedGroup> _approvedSorted() {
+    return SeedBreedGroups.sortByPopularity(
+      _groups.where((group) => group.isApproved),
+    );
+  }
+
+  List<BreedGroup> _pendingSorted() {
+    final pending = _groups.where((group) => !group.isApproved).toList()
+      ..sort((a, b) => b.id.compareTo(a.id));
+    return pending;
   }
 }

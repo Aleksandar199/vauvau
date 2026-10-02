@@ -1,24 +1,28 @@
-enum ReportContentType { dog, poi, chat }
+enum ReportContentType { user, moment, message, dog, poi, chat }
 
-enum ReportStatus { pending, resolved, dismissed }
+enum ReportStatus { pending, reviewed, actionTaken, dismissed }
 
 class ContentReport {
   const ContentReport({
     required this.id,
-    required this.reportedByUserId,
-    required this.contentType,
+    required this.reporterId,
+    required this.targetType,
     required this.targetId,
     required this.reason,
-    required this.createdAt,
+    required this.timestamp,
+    this.reportedUserId = '',
+    this.details,
     this.status = ReportStatus.pending,
   });
 
   final String id;
-  final String reportedByUserId;
-  final ReportContentType contentType;
+  final String reporterId;
+  final String reportedUserId;
+  final ReportContentType targetType;
   final String targetId;
   final String reason;
-  final DateTime createdAt;
+  final String? details;
+  final DateTime timestamp;
   final ReportStatus status;
 
   bool get isActive => status == ReportStatus.pending;
@@ -26,30 +30,47 @@ class ContentReport {
   ContentReport copyWith({ReportStatus? status}) {
     return ContentReport(
       id: id,
-      reportedByUserId: reportedByUserId,
-      contentType: contentType,
+      reporterId: reporterId,
+      reportedUserId: reportedUserId,
+      targetType: targetType,
       targetId: targetId,
       reason: reason,
-      createdAt: createdAt,
+      details: details,
+      timestamp: timestamp,
       status: status ?? this.status,
     );
   }
 
-  String get contentTypeKey => contentType.name;
+  String get targetTypeKey => targetType.name;
 
-  String get statusKey => status.name;
+  String get statusKey => statusKeyOf(status);
+
+  static String statusKeyOf(ReportStatus status) {
+    return switch (status) {
+      ReportStatus.actionTaken => 'action_taken',
+      ReportStatus.pending => 'pending',
+      ReportStatus.reviewed => 'reviewed',
+      ReportStatus.dismissed => 'dismissed',
+    };
+  }
 
   static ReportContentType typeFromKey(String? value) {
     return switch (value) {
+      'user' => ReportContentType.user,
+      'moment' => ReportContentType.moment,
+      'message' => ReportContentType.message,
       'poi' => ReportContentType.poi,
       'chat' => ReportContentType.chat,
+      'dog' || 'dog_profile' => ReportContentType.dog,
       _ => ReportContentType.dog,
     };
   }
 
+  /// Older documents stored `resolved` before the review states existed.
   static ReportStatus statusFromKey(String? value) {
     return switch (value) {
-      'resolved' => ReportStatus.resolved,
+      'reviewed' || 'resolved' => ReportStatus.reviewed,
+      'action_taken' => ReportStatus.actionTaken,
       'dismissed' => ReportStatus.dismissed,
       _ => ReportStatus.pending,
     };

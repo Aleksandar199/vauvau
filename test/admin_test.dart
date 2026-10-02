@@ -40,12 +40,13 @@ void main() {
     await pumpDashboard(tester, isAdmin: false);
 
     expect(find.text(AdminStrings.denied), findsOneWidget);
-    expect(find.text(AdminStrings.feedbackTab), findsNothing);
+    expect(find.text(AdminStrings.statsTab), findsNothing);
   });
 
   testWidgets('resolves and deletes feedback', (tester) async {
     await pumpDashboard(tester, isAdmin: true);
 
+    expect(find.text(AdminStrings.statsTab), findsOneWidget);
     expect(find.text('Mapa se sporo učitava'), findsOneWidget);
     expect(find.text(AdminStrings.isNew), findsOneWidget);
 
@@ -65,9 +66,9 @@ void main() {
   testWidgets('deletes a moment and lists users', (tester) async {
     await pumpDashboard(tester, isAdmin: true);
 
-    await tester.ensureVisible(find.text(AdminStrings.momentsTab));
+    await tester.ensureVisible(find.text(AdminStrings.contentTab));
     await tester.pumpAndSettle();
-    await tester.tap(find.text(AdminStrings.momentsTab));
+    await tester.tap(find.text(AdminStrings.contentTab));
     await tester.pumpAndSettle();
     final caption = SeedMoments.all.first.caption;
     expect(find.text(caption), findsOneWidget);

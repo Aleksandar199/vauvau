@@ -38,7 +38,7 @@ class _CreateEventScreenState extends ConsumerState<CreateEventScreen> {
   String _preset = EventVenues.names.first;
   DateTime _when = DateTime.now().add(const Duration(days: 1));
   XFile? _photo;
-  var _saving = false;
+  var _isLoading = false;
 
   bool get _isCustom => EventVenues.isCustom(_preset);
 
@@ -69,13 +69,13 @@ class _CreateEventScreenState extends ConsumerState<CreateEventScreen> {
             const SizedBox(height: 16),
             TextFormField(
               controller: _title,
+              enabled: !_isLoading,
               decoration: const InputDecoration(
                 labelText: EventsStrings.fieldTitle,
               ),
-              validator: (value) =>
-                  (value == null || value.trim().isEmpty)
-                      ? EventsStrings.titleRequired
-                      : null,
+              validator: (value) => (value == null || value.trim().isEmpty)
+                  ? EventsStrings.titleRequired
+                  : null,
             ),
             const SizedBox(height: 12),
             DropdownButtonFormField<String>(
@@ -87,16 +87,19 @@ class _CreateEventScreenState extends ConsumerState<CreateEventScreen> {
                 for (final name in EventVenues.names)
                   DropdownMenuItem(value: name, child: Text(name)),
               ],
-              onChanged: (value) {
-                if (value != null) {
-                  setState(() => _preset = value);
-                }
-              },
+              onChanged: _isLoading
+                  ? null
+                  : (value) {
+                      if (value != null) {
+                        setState(() => _preset = value);
+                      }
+                    },
             ),
             if (_isCustom) ...[
               const SizedBox(height: 12),
               TextFormField(
                 controller: _customLocation,
+                enabled: !_isLoading,
                 decoration: const InputDecoration(
                   hintText: EventsStrings.customLocationHint,
                   labelText: EventsStrings.customLocationHint,
@@ -114,25 +117,26 @@ class _CreateEventScreenState extends ConsumerState<CreateEventScreen> {
             const SizedBox(height: 12),
             ListTile(
               contentPadding: EdgeInsets.zero,
+              enabled: !_isLoading,
               title: const Text(EventsStrings.fieldWhen),
               subtitle: Text(EventsStrings.when(_when)),
               trailing: const Icon(Icons.event),
-              onTap: _pickWhen,
+              onTap: _isLoading ? null : _pickWhen,
             ),
             TextFormField(
               controller: _description,
+              enabled: !_isLoading,
               maxLines: 4,
               decoration: const InputDecoration(
                 labelText: EventsStrings.fieldDescription,
               ),
-              validator: (value) =>
-                  (value == null || value.trim().isEmpty)
-                      ? EventsStrings.descriptionRequired
-                      : null,
+              validator: (value) => (value == null || value.trim().isEmpty)
+                  ? EventsStrings.descriptionRequired
+                  : null,
             ),
             const SizedBox(height: 12),
             OutlinedButton.icon(
-              onPressed: _saving ? null : _pickPhoto,
+              onPressed: _isLoading ? null : _pickPhoto,
               icon: const Icon(Icons.photo_outlined),
               label: Text(
                 _photo == null
@@ -142,10 +146,17 @@ class _CreateEventScreenState extends ConsumerState<CreateEventScreen> {
             ),
             const SizedBox(height: 20),
             FilledButton(
-              onPressed: _saving ? null : _save,
-              child: Text(
-                _saving ? '...' : EventsStrings.save,
-              ),
+              onPressed: _isLoading ? null : _save,
+              child: _isLoading
+                  ? const SizedBox(
+                      width: 22,
+                      height: 22,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : const Text(EventsStrings.save),
             ),
           ],
         ),
@@ -196,14 +207,15 @@ class _CreateEventScreenState extends ConsumerState<CreateEventScreen> {
   }
 
   Future<void> _save() async {
-    if (!_formKey.currentState!.validate()) {
+    if (!(_formKey.currentState?.validate() ?? false)) {
       return;
     }
     final locationName = _resolvedLocation();
     if (locationName.isEmpty) {
       return;
     }
-    setState(() => _saving = true);
+
+    setState(() => _isLoading = true);
     try {
       await ref.read(eventsControllerProvider.notifier).create(
             title: _title.text.trim(),
@@ -212,21 +224,71 @@ class _CreateEventScreenState extends ConsumerState<CreateEventScreen> {
             description: _description.text.trim(),
             photo: _photo,
           );
-      if (mounted) {
-        Navigator.of(context).pop();
+
+      if (!mounted) {
+        return;
       }
-    } catch (error, stack) {
-      debugPrint('Event publish UI error: $error');
-      debugPrint('$stack');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text(EventsStrings.publishError)),
-        );
+      setState(() => _isLoading = false);
+
+      await showDialog<void>(
+        context: context,
+        barrierDismissible: false,
+        builder: (ctx) => AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: const Row(
+            children: [
+              Icon(Icons.check_circle_outline, color: Colors.green),
+              SizedBox(width: 8),
+              Expanded(child: Text(EventsStrings.successTitle)),
+            ],
+          ),
+          content: const Text(EventsStrings.successBody),
+          actions: [
+            ElevatedButton(
+              onPressed: () {
+                Navigator.of(ctx).pop();
+                Navigator.of(context).pop();
+              },
+              child: const Text(EventsStrings.ok),
+            ),
+          ],
+        ),
+      );
+    } catch (e) {
+      if (!mounted) {
+        return;
       }
-    } finally {
-      if (mounted) {
-        setState(() => _saving = false);
-      }
+      setState(() => _isLoading = false);
+
+      final details = e.toString().replaceFirst('Exception: ', '').trim();
+      await showDialog<void>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: const Row(
+            children: [
+              Icon(Icons.error_outline, color: Colors.red),
+              SizedBox(width: 8),
+              Expanded(child: Text(EventsStrings.errorTitle)),
+            ],
+          ),
+          content: Text(
+            EventsStrings.createErrorBody(
+              details.isEmpty ? EventsStrings.publishError : details,
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: const Text(EventsStrings.close),
+            ),
+          ],
+        ),
+      );
     }
   }
 }

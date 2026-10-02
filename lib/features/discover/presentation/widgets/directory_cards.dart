@@ -46,7 +46,7 @@ class DiscoverGridCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Expanded(
-                child: Stack(
+              child: Stack(
                 fit: StackFit.expand,
                 children: [
                   DiscoverDogPhoto(
@@ -64,11 +64,7 @@ class DiscoverGridCard extends StatelessWidget {
                       ),
                     ),
                   if (isMine)
-                    const Positioned(
-                      top: 8,
-                      right: 8,
-                      child: _OwnerBadge(),
-                    ),
+                    const Positioned(top: 8, right: 8, child: _OwnerBadge()),
                 ],
               ),
             ),
@@ -90,8 +86,9 @@ class DiscoverGridCard extends StatelessWidget {
                         TextSpan(
                           text: ' ${profile.ageLabel}',
                           style: theme.textTheme.bodyMedium?.copyWith(
-                            color: theme.colorScheme.onSurface
-                                .withValues(alpha: 0.68),
+                            color: theme.colorScheme.onSurface.withValues(
+                              alpha: 0.68,
+                            ),
                           ),
                         ),
                       ],
@@ -111,7 +108,9 @@ class DiscoverGridCard extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurface.withValues(alpha: 0.68),
+                      color: theme.colorScheme.onSurface.withValues(
+                        alpha: 0.68,
+                      ),
                     ),
                   ),
                 ],
@@ -133,24 +132,25 @@ class _StatusBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration: BoxDecoration(
-        color: const Color(0xCC1F1F2A),
-        borderRadius: BorderRadius.circular(999),
+        color: Colors.black.withValues(alpha: 0.5),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           if (highlight) ...[
-            const WalkStatusDot(),
-            const SizedBox(width: 6),
+            const WalkStatusDot(size: 6),
+            const SizedBox(width: 4),
           ],
           Text(
             label,
             style: const TextStyle(
               color: Colors.white,
               fontSize: 10,
-              fontWeight: FontWeight.w700,
+              fontWeight: FontWeight.w600,
+              height: 1.2,
             ),
           ),
         ],
@@ -165,17 +165,18 @@ class _OwnerBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.88),
-        borderRadius: BorderRadius.circular(999),
+        color: Colors.white.withValues(alpha: 0.85),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: const Text(
         DiscoverStrings.yourPet,
         style: TextStyle(
           color: Color(0xFF1F1F2A),
           fontSize: 10,
-          fontWeight: FontWeight.w700,
+          fontWeight: FontWeight.w600,
+          height: 1.2,
         ),
       ),
     );

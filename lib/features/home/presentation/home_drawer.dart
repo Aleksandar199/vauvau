@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../core/constants/app_strings.dart';
-import '../../../core/constants/serbia_locations.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../admin/presentation/admin_controller.dart';
 import '../../admin/presentation/admin_dashboard_screen.dart';
@@ -14,7 +12,6 @@ import '../../moments/presentation/moments_screen.dart';
 import '../../lost_dogs/presentation/lost_dogs_screen.dart';
 import '../../profile/presentation/profile_controller.dart';
 import '../../profile/presentation/settings_screen.dart';
-import '../../profile/presentation/sign_out_action.dart';
 import '../../support/presentation/about_app_dialog.dart';
 import '../../support/presentation/rules_and_support_screen.dart';
 import '../../support/presentation/widgets/official_contact_links.dart';
@@ -31,77 +28,76 @@ class HomeDrawer extends ConsumerWidget {
     final tabIndex = ref.watch(homeTabIndexProvider);
     final photoUrl = user?.ownerAvatarUrl ?? '';
     final firstName = _firstName(profile.ownerName);
-    final location = SerbiaLocations.sanitizeLocationLabel(
-      profile.ownerLocation.isNotEmpty
-          ? profile.ownerLocation
-          : user?.locationLabel ?? '',
-    );
+    final isAdmin = ref.watch(isAdminProvider);
 
     return Drawer(
       backgroundColor: const Color(0xFF111827),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          _DrawerHeader(
-            photoUrl: photoUrl,
-            firstName: firstName,
-            location: location,
-          ),
-          Expanded(
-            child: ListView(
-              padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
-              children: [
-                for (final item in AppDrawerCatalog.primaryItems)
-                  _DrawerTile(
-                    item: item,
-                    selected: item.tabIndex != null && item.tabIndex == tabIndex,
-                    onTap: () => _onItemTap(context, ref, item),
-                  ),
-                if (ref.watch(isAdminProvider))
-                  _DrawerTile(
-                    item: AppDrawerCatalog.adminItem,
-                    selected: false,
-                    badgeCount: ref.watch(newFeedbackCountProvider),
-                    onTap: () => _onItemTap(
-                      context,
-                      ref,
-                      AppDrawerCatalog.adminItem,
-                    ),
-                  ),
-                const SizedBox(height: 8),
-                const OfficialContactLinks(compact: true, dark: true),
-                TextButton(
-                  style: TextButton.styleFrom(
-                    visualDensity: VisualDensity.compact,
-                    foregroundColor: Colors.white70,
-                  ),
-                  onPressed: () => showAboutAppDialog(context),
-                  child: const Text(AppDrawerCatalog.about),
-                ),
-              ],
+      child: SafeArea(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _DrawerHeader(
+              photoUrl: photoUrl,
+              firstName: firstName,
             ),
-          ),
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 20),
-            child: Divider(color: Color(0x33FFFFFF), height: 1),
-          ),
-          SafeArea(
-            top: false,
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
-              child: Column(
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
                 children: [
-                  for (final item in AppDrawerCatalog.footerItems)
+                  const _SectionHeader(AppDrawerCatalog.communitySection),
+                  for (final item in AppDrawerCatalog.communityItems)
+                    _DrawerTile(
+                      item: item,
+                      selected:
+                          item.tabIndex != null && item.tabIndex == tabIndex,
+                      onTap: () => _onItemTap(context, ref, item),
+                    ),
+                  const SizedBox(height: 10),
+                  const _SectionHeader(AppDrawerCatalog.helpDogsSection),
+                  for (final item in AppDrawerCatalog.helpDogsItems)
+                    _DrawerTile(
+                      item: item,
+                      selected:
+                          item.tabIndex != null && item.tabIndex == tabIndex,
+                      onTap: () => _onItemTap(context, ref, item),
+                    ),
+                  const SizedBox(height: 8),
+                  const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 8),
+                    child: Divider(color: Color(0x33FFFFFF), height: 20),
+                  ),
+                  for (final item in AppDrawerCatalog.systemItems)
                     _DrawerTile(
                       item: item,
                       selected: false,
                       onTap: () => _onItemTap(context, ref, item),
                     ),
+                  if (isAdmin)
+                    _DrawerTile(
+                      item: AppDrawerCatalog.adminItem,
+                      selected: false,
+                      badgeCount: ref.watch(newFeedbackCountProvider),
+                      onTap: () => _onItemTap(
+                        context,
+                        ref,
+                        AppDrawerCatalog.adminItem,
+                      ),
+                    ),
+                  const SizedBox(height: 8),
+                  const OfficialContactLinks(compact: true, dark: true),
+                  TextButton(
+                    style: TextButton.styleFrom(
+                      visualDensity: VisualDensity.compact,
+                      foregroundColor: Colors.white70,
+                    ),
+                    onPressed: () => showAboutAppDialog(context),
+                    child: const Text(AppDrawerCatalog.about),
+                  ),
                 ],
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -111,59 +107,39 @@ class HomeDrawer extends ConsumerWidget {
     WidgetRef ref,
     AppDrawerDestination item,
   ) async {
-    Navigator.of(context).pop();
-    switch (item.kind) {
-      case DrawerItemKind.tab:
-        if (item.tabIndex != null) {
-          ref.read(homeTabIndexProvider.notifier).setIndex(item.tabIndex!);
-        }
-      case DrawerItemKind.lostDogs:
-        await Navigator.of(context).push(
-          MaterialPageRoute<void>(builder: (_) => const LostDogsScreen()),
-        );
-      case DrawerItemKind.adopt:
-        await Navigator.of(context).push(
-          MaterialPageRoute<void>(builder: (_) => const AdoptionScreen()),
-        );
-      case DrawerItemKind.groups:
-        await Navigator.of(context).push(
-          MaterialPageRoute<void>(builder: (_) => const GroupsListScreen()),
-        );
-      case DrawerItemKind.events:
-        await Navigator.of(context).push(
-          MaterialPageRoute<void>(builder: (_) => const EventsScreen()),
-        );
-      case DrawerItemKind.moments:
-        await Navigator.of(context).push(
-          MaterialPageRoute<void>(builder: (_) => const MomentsScreen()),
-        );
-      case DrawerItemKind.rules:
-        await Navigator.of(context).push(
-          MaterialPageRoute<void>(
-            builder: (_) => const RulesAndSupportScreen(),
-          ),
-        );
-      case DrawerItemKind.admin:
-        await Navigator.of(context).push(
-          MaterialPageRoute<void>(
-            builder: (_) => const AdminDashboardScreen(),
-          ),
-        );
-      case DrawerItemKind.settings:
-        await Navigator.of(context).push(
-          MaterialPageRoute<void>(builder: (_) => const SettingsScreen()),
-        );
-      case DrawerItemKind.signOut:
-        if (context.mounted) {
-          await confirmAndSignOut(context, ref);
-        }
-      case DrawerItemKind.page:
-        await Navigator.of(context).push(
-          MaterialPageRoute<void>(
-            builder: (_) => DrawerSectionScreen(destination: item),
-          ),
-        );
+    Navigator.of(context).pop(); // close drawer
+    if (item.kind == DrawerItemKind.tab) {
+      if (item.tabIndex != null) {
+        ref.read(homeTabIndexProvider.notifier).setIndex(item.tabIndex!);
+      }
+      return;
     }
+    if (!context.mounted) {
+      return;
+    }
+    // Drop any prior feature route (Events/Adoption/…) so its FAB cannot sit
+    // under Moments/Stories and blow up Flutter web hit-testing.
+    final nav = Navigator.of(context);
+    nav.popUntil((route) => route.isFirst);
+    if (!context.mounted) {
+      return;
+    }
+    final page = switch (item.kind) {
+      DrawerItemKind.lostDogs => const LostDogsScreen(),
+      DrawerItemKind.adopt => const AdoptionScreen(),
+      DrawerItemKind.groups => const GroupsListScreen(),
+      DrawerItemKind.events => const EventsScreen(),
+      DrawerItemKind.moments => const MomentsScreen(),
+      DrawerItemKind.rules => const RulesAndSupportScreen(),
+      DrawerItemKind.admin => const AdminDashboardScreen(),
+      DrawerItemKind.settings => const SettingsScreen(),
+      DrawerItemKind.page => DrawerSectionScreen(destination: item),
+      DrawerItemKind.tab => null,
+    };
+    if (page == null) {
+      return;
+    }
+    await nav.push(MaterialPageRoute<void>(builder: (_) => page));
   }
 
   String _firstName(String raw) {
@@ -182,12 +158,10 @@ class _DrawerHeader extends StatelessWidget {
   const _DrawerHeader({
     required this.photoUrl,
     required this.firstName,
-    required this.location,
   });
 
   final String photoUrl;
   final String firstName;
-  final String location;
 
   @override
   Widget build(BuildContext context) {
@@ -203,80 +177,75 @@ class _DrawerHeader extends StatelessWidget {
           ],
         ),
       ),
-      child: SafeArea(
-        bottom: false,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Container(
-                    width: 40,
-                    height: 40,
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.16),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(Icons.pets, color: Colors.white),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 18),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              AppDrawerCatalog.brandHeader,
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w800,
                   ),
-                  const SizedBox(width: 10),
-                  Text(
-                    AppStrings.appName,
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w800,
-                        ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 18),
-              CircleAvatar(
-                radius: 34,
-                backgroundColor: Colors.white24,
-                backgroundImage:
-                    photoUrl.isEmpty ? null : NetworkImage(photoUrl),
-                child: photoUrl.isEmpty
-                    ? Text(
-                        firstName.isEmpty ? 'V' : firstName[0].toUpperCase(),
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 24,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      )
-                    : null,
-              ),
-              const SizedBox(height: 12),
-              Text(
-                firstName,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 22,
-                  fontWeight: FontWeight.w800,
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                CircleAvatar(
+                  radius: 22,
+                  backgroundColor: Colors.white24,
+                  backgroundImage:
+                      photoUrl.isEmpty ? null : NetworkImage(photoUrl),
+                  child: photoUrl.isEmpty
+                      ? Text(
+                          firstName.isEmpty ? 'V' : firstName[0].toUpperCase(),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 18,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        )
+                      : null,
                 ),
-              ),
-              if (location.isNotEmpty) ...[
-                const SizedBox(height: 8),
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.28),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
+                const SizedBox(width: 12),
+                Expanded(
                   child: Text(
-                    '${AppDrawerCatalog.locationPin} $location',
+                    firstName,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
                       color: Colors.white,
-                      fontWeight: FontWeight.w600,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w800,
                     ),
                   ),
                 ),
               ],
-            ],
-          ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SectionHeader extends StatelessWidget {
+  const _SectionHeader(this.title);
+
+  final String title;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 6, 12, 6),
+      child: Text(
+        title,
+        style: TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.bold,
+          color: Colors.grey.shade500,
+          letterSpacing: 0.4,
         ),
       ),
     );
@@ -298,65 +267,64 @@ class _DrawerTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final destructive = item.destructive;
     final accent = item.accent;
-    final color = accent
-        ? const Color(0xFFFBBF24)
-        : selected
-            ? AppColors.primary
-            : Colors.white;
+    final color = destructive
+        ? const Color(0xFFFCA5A5)
+        : accent
+            ? const Color(0xFFFBBF24)
+            : selected
+                ? AppColors.primary
+                : Colors.white;
     return Padding(
-      padding: const EdgeInsets.only(bottom: 4),
+      padding: const EdgeInsets.only(bottom: 2),
       child: Material(
         color: accent
             ? const Color(0x33DC2626)
             : selected
                 ? AppColors.primary.withValues(alpha: 0.22)
                 : Colors.transparent,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(14),
         child: InkWell(
           onTap: onTap,
-          borderRadius: BorderRadius.circular(18),
+          borderRadius: BorderRadius.circular(14),
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-            child: Row(
-              children: [
-                Icon(item.icon, color: color, size: 22),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          item.label,
-                          style: TextStyle(
-                            color: color,
-                            fontWeight:
-                                selected || accent ? FontWeight.w700 : FontWeight.w500,
-                            fontSize: 16,
-                          ),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+            child: ListTile(
+              dense: true,
+              contentPadding: EdgeInsets.zero,
+              minVerticalPadding: 6,
+              title: Text(
+                item.label,
+                style: TextStyle(
+                  color: color,
+                  fontWeight: selected || accent || destructive
+                      ? FontWeight.w700
+                      : FontWeight.w500,
+                  fontSize: 15,
+                ),
+              ),
+              trailing: accent
+                  ? Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 3,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF59E0B).withValues(alpha: 0.25),
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: const Text(
+                        AppDrawerCatalog.hitnoBadge,
+                        style: TextStyle(
+                          color: Color(0xFFFBBF24),
+                          fontSize: 10,
+                          fontWeight: FontWeight.w800,
                         ),
                       ),
-                      if (accent)
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 3,
-                          ),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFF59E0B).withValues(alpha: 0.25),
-                            borderRadius: BorderRadius.circular(999),
-                          ),
-                          child: const Text(
-                            'HITNO',
-                            style: TextStyle(
-                              color: Color(0xFFFBBF24),
-                              fontSize: 10,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
-                        ),
-                      if (badgeCount > 0)
-                        Container(
+                    )
+                  : badgeCount > 0
+                      ? Container(
                           constraints: const BoxConstraints(minWidth: 22),
                           padding: const EdgeInsets.symmetric(
                             horizontal: 7,
@@ -375,11 +343,8 @@ class _DrawerTile extends StatelessWidget {
                               fontWeight: FontWeight.w800,
                             ),
                           ),
-                        ),
-                    ],
-                  ),
-                ),
-              ],
+                        )
+                      : null,
             ),
           ),
         ),

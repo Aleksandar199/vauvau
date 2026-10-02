@@ -29,37 +29,70 @@ class WalkController extends Notifier<WalkSession> {
   WalkSession build() {
     ref.onDispose(() {
       _timer?.cancel();
+      _timer = null;
       _positionSub?.cancel();
+      _positionSub = null;
     });
+    ref.listen<bool>(
+      appSettingsProvider.select((settings) => settings.showLocationOnMap),
+      (previous, share) {
+        if (previous == share || !state.isActive) {
+          return;
+        }
+        unawaited(
+          ref.read(walkPresenceRepositoryProvider).setWalking(
+                userId: _userId,
+                dogId: _dogId,
+                isWalking: share,
+                location: ref.read(userLocationProvider).coord,
+                statusMessage: state.statusMessage,
+              ),
+        );
+      },
+    );
     return WalkSession(isActive: false, now: DateTime.now());
   }
+
+  bool get _shareLocation => ref.read(appSettingsProvider).showLocationOnMap;
 
   void start({String? statusMessage}) {
     _timer?.cancel();
     _positionSub?.cancel();
     final now = DateTime.now();
+    final startCoord = ref.read(userLocationProvider).coord;
     state = WalkSession(
       isActive: true,
       now: now,
       startedAt: now,
       statusMessage: statusMessage,
+      path: [startCoord],
+      distanceKm: 0,
     );
     _timer = Timer.periodic(const Duration(seconds: 1), (_) {
-      state = state.copyWith(now: DateTime.now());
+      if (!state.isPaused) {
+        state = state.copyWith(now: DateTime.now());
+      } else {
+        state = state.copyWith(now: DateTime.now());
+      }
     });
-    final location = ref.read(userLocationProvider).coord;
-    unawaited(
-      ref.read(walkPresenceRepositoryProvider).setWalking(
-            userId: _userId,
-            dogId: _dogId,
-            isWalking: true,
-            location: location,
-            statusMessage: statusMessage,
-          ),
-    );
+    if (_shareLocation) {
+      unawaited(
+        ref.read(walkPresenceRepositoryProvider).setWalking(
+              userId: _userId,
+              dogId: _dogId,
+              isWalking: true,
+              location: startCoord,
+              statusMessage: statusMessage,
+            ),
+      );
+    }
     _positionSub =
-        ref.read(locationClientProvider).watchPosition().listen((coord) {
+        ref.read(locationClientProvider).watchWalkPosition().listen((coord) {
       ref.read(userLocationProvider.notifier).setCoord(coord);
+      _appendPoint(coord);
+      if (!_shareLocation) {
+        return;
+      }
       unawaited(
         ref.read(walkPresenceRepositoryProvider).updateLocation(
               userId: _userId,
@@ -70,9 +103,38 @@ class WalkController extends Notifier<WalkSession> {
     }, onError: (_) {});
   }
 
+  void pause() {
+    if (!state.isActive || state.isPaused) {
+      return;
+    }
+    state = state.copyWith(
+      isPaused: true,
+      pausedAt: DateTime.now(),
+      now: DateTime.now(),
+    );
+  }
+
+  void resume() {
+    if (!state.isActive || !state.isPaused) {
+      return;
+    }
+    final pausedAt = state.pausedAt;
+    var total = state.pausedTotal;
+    if (pausedAt != null) {
+      total += DateTime.now().difference(pausedAt);
+    }
+    state = state.copyWith(
+      isPaused: false,
+      pausedTotal: total,
+      clearPausedAt: true,
+      now: DateTime.now(),
+    );
+  }
+
   void end() {
     _timer?.cancel();
     _timer = null;
+    // Cancelling the stream stops Android's location foreground service.
     _positionSub?.cancel();
     _positionSub = null;
     state = WalkSession(isActive: false, now: DateTime.now());
@@ -83,6 +145,29 @@ class WalkController extends Notifier<WalkSession> {
             isWalking: false,
             location: ref.read(userLocationProvider).coord,
           ),
+    );
+  }
+
+  void _appendPoint(GeoCoord coord) {
+    if (!state.isActive || state.isPaused) {
+      return;
+    }
+    final path = [...state.path];
+    var distance = state.distanceKm;
+    if (path.isNotEmpty) {
+      final last = path.last;
+      final step = haversineKm(last, coord);
+      // Ignore GPS jitter under ~4 meters.
+      if (step < 0.004) {
+        return;
+      }
+      distance += step;
+    }
+    path.add(coord);
+    state = state.copyWith(
+      path: path,
+      distanceKm: distance,
+      now: DateTime.now(),
     );
   }
 

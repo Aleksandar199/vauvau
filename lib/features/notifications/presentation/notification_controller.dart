@@ -53,7 +53,7 @@ class NotificationController extends Notifier<List<AppNotification>> {
         data['type'] as String? ?? data['kind'] as String?,
       ),
       title: data['title'] as String? ?? '',
-      body: data['body'] as String? ?? '',
+      body: data['body'] as String? ?? data['message'] as String? ?? '',
       createdAt: created is Timestamp ? created.toDate() : DateTime.now(),
       isRead: data['isRead'] as bool? ?? false,
       dogId: data['senderDogId'] as String? ??
@@ -73,6 +73,10 @@ class NotificationController extends Notifier<List<AppNotification>> {
         return NotificationKind.walkRequest;
       case 'message':
         return NotificationKind.chatMessage;
+      case 'SUPER_LIKE':
+      case 'superLike':
+      case 'super_like':
+        return NotificationKind.superLike;
       case 'like':
         return NotificationKind.like;
       default:

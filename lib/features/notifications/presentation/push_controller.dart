@@ -2,12 +2,14 @@ import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/services/notification_service.dart';
 import '../../profile/presentation/profile_controller.dart';
 import '../data/push_notification_gateway.dart';
 import '../domain/app_notification.dart';
 import '../domain/push_payload.dart';
 import 'notification_controller.dart';
 import 'notification_strings.dart';
+import 'push_navigation.dart';
 
 class PushController extends Notifier<bool> {
   @override
@@ -18,10 +20,22 @@ class PushController extends Notifier<bool> {
     if (uid.isNotEmpty) {
       unawaited(gateway.syncToken(uid));
     }
-    final foreground = gateway.foreground.listen(_ingest);
-    final opened = gateway.opened.listen(_ingest);
+
+    final notifications = ref.read(notificationServiceProvider);
+    notifications.onNotificationTap = (raw) {
+      final payload = pushPayloadFromNotificationJson(raw);
+      if (payload != null) {
+        unawaited(_handleOpened(payload));
+      }
+    };
+
+    final foreground = gateway.foreground.listen(_handleForeground);
+    final opened = gateway.opened.listen((payload) {
+      unawaited(_handleOpened(payload));
+    });
     ref.onDispose(foreground.cancel);
     ref.onDispose(opened.cancel);
+    ref.onDispose(() => notifications.onNotificationTap = null);
     unawaited(_ingestInitial(gateway));
     return false;
   }
@@ -61,6 +75,7 @@ class PushController extends Notifier<bool> {
     required String preview,
     String? dogId,
     String? peerUserId,
+    String? conversationId,
   }) {
     return _dispatch(
       PushPayload(
@@ -69,6 +84,7 @@ class PushController extends Notifier<bool> {
         body: NotificationStrings.pushMessageBody(senderName, preview),
         dogId: dogId,
         peerUserId: peerUserId,
+        conversationId: conversationId,
       ),
       local: false,
     );
@@ -104,20 +120,22 @@ class PushController extends Notifier<bool> {
     );
   }
 
-  Future<void> _dispatch(PushPayload payload, {bool local = true}) async {
+  bool _isEnabled(PushKind kind) {
     final settings = ref.read(appSettingsProvider);
-    final enabled = switch (payload.kind) {
+    return switch (kind) {
       PushKind.match => settings.notifyNewMatches,
       PushKind.message => settings.notifyMessages,
       PushKind.walk => settings.notifyWalkRequests,
     };
-    if (!enabled) {
-      return;
+  }
+
+  Future<void> _dispatch(PushPayload payload, {bool local = true}) async {
+    if (_isEnabled(payload.kind)) {
+      if (local) {
+        _ingest(payload);
+      }
+      await _gateway.present(payload);
     }
-    if (local) {
-      _ingest(payload);
-    }
-    await _gateway.present(payload);
     final peer = payload.peerUserId;
     if (peer != null && peer.isNotEmpty) {
       await _gateway.queueForUser(peer, payload);
@@ -127,8 +145,21 @@ class PushController extends Notifier<bool> {
   Future<void> _ingestInitial(PushNotificationGateway gateway) async {
     final payload = await gateway.consumeInitial();
     if (payload != null) {
-      _ingest(payload);
+      await _handleOpened(payload);
     }
+  }
+
+  Future<void> _handleForeground(PushPayload payload) async {
+    if (!_isEnabled(payload.kind)) {
+      return;
+    }
+    _ingest(payload);
+    await _gateway.present(payload);
+  }
+
+  Future<void> _handleOpened(PushPayload payload) async {
+    _ingest(payload);
+    await openPushDestination(ref, payload);
   }
 
   void _ingest(PushPayload payload) {
@@ -147,6 +178,7 @@ class PushController extends Notifier<bool> {
             body: payload.body,
             createdAt: DateTime.now(),
             dogId: payload.dogId,
+            fromUserId: payload.peerUserId,
           ),
         );
   }

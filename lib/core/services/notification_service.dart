@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -5,7 +7,9 @@ import 'package:flutter_timezone/flutter_timezone.dart';
 import 'package:timezone/data/latest_all.dart' as tz_data;
 import 'package:timezone/timezone.dart' as tz;
 
-/// Schedules the local reminders used by the dog health record.
+typedef NotificationTapHandler = void Function(String? payload);
+
+/// Schedules health reminders and presents FCM alerts while the app is open.
 ///
 /// Every method is a no-op on platforms without a local notification
 /// implementation (web, desktop, widget tests), so callers never have to guard.
@@ -21,8 +25,14 @@ class NotificationService {
   static const String channelDescription =
       'Podsetnici za vakcine i zaštitu od parazita.';
 
+  static const String alertsChannelId = 'vauvau_alerts';
+  static const String alertsChannelName = 'VauVau obaveštenja';
+  static const String alertsChannelDescription =
+      'Mečevi, poruke i zahtevi za šetnju.';
+
   final FlutterLocalNotificationsPlugin _plugin;
   var _initialized = false;
+  NotificationTapHandler? onNotificationTap;
 
   bool get isSupported {
     if (kIsWeb) {
@@ -53,12 +63,32 @@ class NotificationService {
             requestSoundPermission: false,
           ),
         ),
+        onDidReceiveNotificationResponse: (response) {
+          onNotificationTap?.call(response.payload);
+        },
       );
+      await _ensureAlertsChannel();
       _initialized = true;
     } catch (error, stack) {
       debugPrint('Notification init failed: $error');
       debugPrint('$stack');
     }
+  }
+
+  Future<void> _ensureAlertsChannel() async {
+    if (defaultTargetPlatform != TargetPlatform.android) {
+      return;
+    }
+    final android = _plugin.resolvePlatformSpecificImplementation<
+        AndroidFlutterLocalNotificationsPlugin>();
+    await android?.createNotificationChannel(
+      const AndroidNotificationChannel(
+        alertsChannelId,
+        alertsChannelName,
+        description: alertsChannelDescription,
+        importance: Importance.high,
+      ),
+    );
   }
 
   /// Asks for the Android 13+ notification permission and the iOS alert
@@ -86,6 +116,48 @@ class NotificationService {
     } catch (error) {
       debugPrint('Notification permission failed: $error');
       return false;
+    }
+  }
+
+  /// Shows an immediate heads-up notification for a foreground FCM message.
+  Future<void> showPushAlert({
+    required String title,
+    required String body,
+    Map<String, String>? data,
+  }) async {
+    if (!isSupported || (title.isEmpty && body.isEmpty)) {
+      return;
+    }
+    await initialize();
+    if (!_initialized) {
+      return;
+    }
+    final payload = data == null || data.isEmpty ? null : jsonEncode(data);
+    try {
+      await _plugin.show(
+        id: DateTime.now().millisecondsSinceEpoch.remainder(100000),
+        title: title.isEmpty ? 'VauVau' : title,
+        body: body,
+        notificationDetails: const NotificationDetails(
+          android: AndroidNotificationDetails(
+            alertsChannelId,
+            alertsChannelName,
+            channelDescription: alertsChannelDescription,
+            importance: Importance.high,
+            priority: Priority.high,
+            icon: '@mipmap/ic_launcher',
+          ),
+          iOS: DarwinNotificationDetails(
+            presentAlert: true,
+            presentBadge: true,
+            presentSound: true,
+          ),
+        ),
+        payload: payload,
+      );
+    } catch (error, stack) {
+      debugPrint('Push alert failed: $error');
+      debugPrint('$stack');
     }
   }
 

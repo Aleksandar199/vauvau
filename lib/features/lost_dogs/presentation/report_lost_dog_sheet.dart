@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../../core/constants/serbia_locations.dart';
+import '../../../core/network/network_failure.dart';
 import '../../../core/utils/content_validation_service.dart';
 import '../../adoption/presentation/adoption_strings.dart';
 import '../domain/lost_dog.dart';
@@ -411,8 +412,10 @@ class _ReportLostDogSheetState extends ConsumerState<ReportLostDogSheet> {
       // ignore: avoid_print
       print(e.toString());
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.toString())),
+        showNetworkErrorSnackBar(
+          context,
+          e,
+          fallback: LostDogStrings.publishError,
         );
       }
     } finally {

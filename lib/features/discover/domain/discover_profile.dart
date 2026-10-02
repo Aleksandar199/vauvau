@@ -155,14 +155,14 @@ class DiscoverProfile {
   }
 
   List<String> get traitLabels => [
-        for (final tag in traits) localizeTrait(tag),
-      ];
+    for (final tag in traits) localizeTrait(tag),
+  ];
 
   List<String> get getsAlongLabels => [
-        if (goodWithDogs) 'Psi 🐕',
-        if (goodWithCats) 'Mačke 🐈',
-        if (goodWithKids) 'Deca 👶',
-      ];
+    if (goodWithDogs) 'Psi 🐕',
+    if (goodWithCats) 'Mačke 🐈',
+    if (goodWithKids) 'Deca 👶',
+  ];
 
   static String localizeTrait(String raw) {
     switch (raw.trim().toLowerCase()) {

@@ -23,6 +23,7 @@ import 'chat_detail_screen.dart';
 import 'chat_inbox.dart';
 import 'chat_strings.dart';
 import 'incoming_likes.dart';
+import 'widgets/chat_ui.dart';
 import 'widgets/dog_avatar.dart';
 
 class ChatListScreen extends ConsumerStatefulWidget {
@@ -37,7 +38,7 @@ class _ChatListScreenState extends ConsumerState<ChatListScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final conversations = ref.watch(chatInboxProvider);
+    final conversations = ref.watch(visibleConversationsProvider);
     final groupThreads = ref.watch(joinedGroupThreadsProvider);
     final eventThreads = ref.watch(joinedEventThreadsProvider);
     final incomingLikes = ref.watch(incomingLikesProvider);
@@ -140,8 +141,9 @@ class _ChatListScreenState extends ConsumerState<ChatListScreen> {
                               onLongPress: () => showContentReportSheet(
                                 context: context,
                                 ref: ref,
-                                contentType: ReportContentType.dog,
+                                targetType: ReportContentType.dog,
                                 targetId: chat.dogId,
+                                reportedUserId: chat.peerUserId,
                               ),
                               borderRadius: BorderRadius.circular(18),
                               child: SizedBox(
@@ -206,7 +208,10 @@ class _ChatListScreenState extends ConsumerState<ChatListScreen> {
                                 horizontal: 12,
                                 vertical: 6,
                               ),
-                              leading: DogAvatar(photoUrl: entry.photoUrl),
+                              leading: DogAvatar(
+                                photoUrl: entry.photoUrl,
+                                size: ChatUiTokens.avatarSize,
+                              ),
                               title: Row(
                                 children: [
                                   Expanded(
@@ -214,6 +219,10 @@ class _ChatListScreenState extends ConsumerState<ChatListScreen> {
                                       entry.title,
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w600,
+                                      ),
                                     ),
                                   ),
                                   if (entry.badge.isNotEmpty) ...[
@@ -243,6 +252,10 @@ class _ChatListScreenState extends ConsumerState<ChatListScreen> {
                                 entry.subtitle,
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: Colors.grey.shade600,
+                                ),
                               ),
                               trailing: Column(
                                 mainAxisAlignment: MainAxisAlignment.center,
@@ -253,23 +266,15 @@ class _ChatListScreenState extends ConsumerState<ChatListScreen> {
                                       entry.lastActivityAt,
                                       now,
                                     ),
-                                    style:
-                                        Theme.of(context).textTheme.bodyMedium,
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      color: Colors.grey.shade500,
+                                    ),
                                   ),
                                   if (entry.unreadCount > 0) ...[
                                     const SizedBox(height: 6),
-                                    PulseBadge(
-                                      child: CircleAvatar(
-                                        radius: 10,
-                                        backgroundColor: AppColors.primary,
-                                        child: Text(
-                                          '${entry.unreadCount}',
-                                          style: const TextStyle(
-                                            fontSize: 11,
-                                            color: Colors.white,
-                                          ),
-                                        ),
-                                      ),
+                                    UnreadCountBadge(
+                                      count: entry.unreadCount,
                                     ),
                                   ],
                                 ],
@@ -287,8 +292,9 @@ class _ChatListScreenState extends ConsumerState<ChatListScreen> {
                                   : () => showContentReportSheet(
                                         context: context,
                                         ref: ref,
-                                        contentType: ReportContentType.dog,
+                                        targetType: ReportContentType.dog,
                                         targetId: entry.reportTargetId,
+                                        reportedUserId: entry.reportUserId,
                                       ),
                             ),
                           ),
@@ -339,16 +345,6 @@ class _ChatListScreenState extends ConsumerState<ChatListScreen> {
       backgroundColor: Colors.transparent,
       builder: (sheetContext) => DogDetailSheet(
         profile: profile,
-        onMessage: () {
-          Navigator.of(sheetContext).pop();
-          final chatId =
-              ref.read(chatInboxProvider.notifier).openFromMatch(profile);
-          Navigator.of(context).push(
-            MaterialPageRoute<void>(
-              builder: (_) => ChatDetailScreen(conversationId: chatId),
-            ),
-          );
-        },
       ),
     );
   }
@@ -445,18 +441,29 @@ class _EmptyMatches extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-            Icon(Icons.chat_bubble_outline, size: 88, color: AppColors.primary),
+          Icon(
+            Icons.chat_bubble_outline,
+            size: 64,
+            color: AppColors.primary.withValues(alpha: 0.9),
+          ),
           const SizedBox(height: 16),
           Text(
             ChatStrings.emptyTitle,
             textAlign: TextAlign.center,
-            style: Theme.of(context).textTheme.titleLarge,
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.w800,
+                ),
           ),
           const SizedBox(height: 8),
           Text(
             ChatStrings.emptySubtitle,
             textAlign: TextAlign.center,
-            style: Theme.of(context).textTheme.bodyLarge,
+            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                  color: Theme.of(context)
+                      .colorScheme
+                      .onSurface
+                      .withValues(alpha: 0.68),
+                ),
           ),
           const SizedBox(height: 24),
           PrimaryButton(
@@ -481,6 +488,7 @@ class _InboxEntry {
     required this.unreadCount,
     required this.kind,
     required this.reportTargetId,
+    this.reportUserId = '',
   });
 
   factory _InboxEntry.direct(ChatConversation chat) {
@@ -493,6 +501,7 @@ class _InboxEntry {
       unreadCount: chat.unreadCount,
       kind: _InboxKind.direct,
       reportTargetId: chat.dogId,
+      reportUserId: chat.peerUserId,
     );
   }
 
@@ -534,6 +543,7 @@ class _InboxEntry {
   final int unreadCount;
   final _InboxKind kind;
   final String reportTargetId;
+  final String reportUserId;
 
   String get badge => switch (kind) {
         _InboxKind.group => ChatStrings.groupBadge,

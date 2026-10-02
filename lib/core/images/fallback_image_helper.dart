@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 
+import '../theme/app_cards.dart';
 import 'dog_photo_urls.dart';
 
 abstract final class FallbackImageHelper {
-  static const String badgeLabel =
-      '🎨 Ilustrovana slika (Nije stvarna slika psa)';
+  static const String badgeLabel = 'Ilustrovana slika';
 
   static const Color captionBackground = Color(0xFFFFF3E0);
   static const Color captionForeground = Color(0xFF666666);
@@ -40,27 +40,14 @@ class FallbackIllustrationCaption extends StatelessWidget {
     if (!FallbackImageHelper.shouldUseFallback(url)) {
       return const SizedBox.shrink();
     }
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(8, 6, 8, 8),
-      child: Center(
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            color: FallbackImageHelper.captionBackground,
-            borderRadius: BorderRadius.circular(999),
-          ),
-          child: const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            child: Text(
-              FallbackImageHelper.badgeLabel,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: FallbackImageHelper.captionForeground,
-                fontSize: 11,
-                fontWeight: FontWeight.w700,
-                height: 1.25,
-              ),
-            ),
-          ),
+    return const Padding(
+      padding: EdgeInsets.fromLTRB(8, 6, 8, 8),
+      child: Align(
+        alignment: Alignment.centerLeft,
+        child: ImageOverlayBadge(
+          label: FallbackImageHelper.badgeLabel,
+          dark: false,
+          fontSize: 10,
         ),
       ),
     );

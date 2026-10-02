@@ -78,7 +78,9 @@ class _DiscoverSearchSheetState extends ConsumerState<_DiscoverSearchSheet> {
                       tooltip: DiscoverStrings.reset,
                       onPressed: () {
                         _controller.clear();
-                        ref.read(discoverControllerProvider.notifier).setQuery('');
+                        ref
+                            .read(discoverControllerProvider.notifier)
+                            .setQuery('');
                         setState(() {});
                       },
                       icon: const Icon(Icons.close),

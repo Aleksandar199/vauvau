@@ -1,9 +1,13 @@
+import 'dart:async';
+import 'dart:convert';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/firebase/firebase_status.dart';
+import '../../../core/services/notification_service.dart';
 import '../../auth/presentation/auth_providers.dart';
 import '../domain/push_payload.dart';
 import 'push_platform.dart';
@@ -53,10 +57,15 @@ class NoopPushNotificationGateway implements PushNotificationGateway {
 }
 
 class FcmPushNotificationGateway implements PushNotificationGateway {
-  FcmPushNotificationGateway(this._firestore);
+  FcmPushNotificationGateway(
+    this._firestore, {
+    NotificationService? notifications,
+  }) : _notifications = notifications ?? NotificationService();
 
   final FirebaseFirestore _firestore;
+  final NotificationService _notifications;
   var _initialized = false;
+  StreamSubscription<String>? _tokenRefreshSub;
 
   @override
   Future<void> initialize() async {
@@ -64,6 +73,7 @@ class FcmPushNotificationGateway implements PushNotificationGateway {
       return;
     }
     try {
+      await _notifications.initialize();
       await FirebaseMessaging.instance
           .setForegroundNotificationPresentationOptions(
         alert: true,
@@ -80,13 +90,16 @@ class FcmPushNotificationGateway implements PushNotificationGateway {
       return false;
     }
     try {
+      final localGranted = await _notifications.requestPermissions();
       final settings = await FirebaseMessaging.instance.requestPermission(
         alert: true,
         badge: true,
         sound: true,
       );
-      return settings.authorizationStatus == AuthorizationStatus.authorized ||
-          settings.authorizationStatus == AuthorizationStatus.provisional;
+      final fcmGranted =
+          settings.authorizationStatus == AuthorizationStatus.authorized ||
+              settings.authorizationStatus == AuthorizationStatus.provisional;
+      return localGranted || fcmGranted;
     } catch (_) {
       return false;
     }
@@ -99,31 +112,35 @@ class FcmPushNotificationGateway implements PushNotificationGateway {
     }
     try {
       final token = await FirebaseMessaging.instance.getToken();
-      if (token == null || token.isEmpty) {
-        return;
+      if (token != null && token.isNotEmpty) {
+        await _writeToken(uid, token);
       }
-      await _firestore.collection('users').doc(uid).set(
-        {
-          'fcmToken': token,
-          'fcmTokenUpdatedAt': FieldValue.serverTimestamp(),
-        },
-        SetOptions(merge: true),
-      );
-      FirebaseMessaging.instance.onTokenRefresh.listen((value) {
-        _firestore.collection('users').doc(uid).set(
-          {
-            'fcmToken': value,
-            'fcmTokenUpdatedAt': FieldValue.serverTimestamp(),
-          },
-          SetOptions(merge: true),
-        );
+      await _tokenRefreshSub?.cancel();
+      _tokenRefreshSub =
+          FirebaseMessaging.instance.onTokenRefresh.listen((value) {
+        unawaited(_writeToken(uid, value));
       });
     } catch (_) {}
+  }
+
+  Future<void> _writeToken(String uid, String token) {
+    return _firestore.collection('users').doc(uid).set(
+      {
+        'fcmToken': token,
+        'fcmTokenUpdatedAt': FieldValue.serverTimestamp(),
+      },
+      SetOptions(merge: true),
+    );
   }
 
   @override
   Future<void> present(PushPayload payload) async {
     debugPrint('VauVau push: ${payload.title} — ${payload.body}');
+    await _notifications.showPushAlert(
+      title: payload.title,
+      body: payload.body,
+      data: payload.data,
+    );
   }
 
   @override
@@ -141,6 +158,7 @@ class FcmPushNotificationGateway implements PushNotificationGateway {
         'title': payload.title,
         'body': payload.body,
         'dogId': payload.dogId,
+        'conversationId': payload.conversationId,
         'createdAt': FieldValue.serverTimestamp(),
         'data': payload.data,
       });
@@ -189,13 +207,31 @@ class FcmPushNotificationGateway implements PushNotificationGateway {
 
   PushPayload _fromMessage(RemoteMessage message) {
     final notification = message.notification;
-    final data = message.data;
-    return PushPayload(
-      kind: PushPayload.kindFrom(data['type']?.toString()),
-      title: notification?.title ?? data['title']?.toString() ?? '',
-      body: notification?.body ?? data['body']?.toString() ?? '',
-      dogId: data['dogId']?.toString(),
+    final data = Map<String, dynamic>.from(message.data);
+    if (notification?.title != null) {
+      data.putIfAbsent('title', () => notification!.title);
+    }
+    if (notification?.body != null) {
+      data.putIfAbsent('body', () => notification!.body);
+    }
+    return PushPayload.fromData(data);
+  }
+}
+
+PushPayload? pushPayloadFromNotificationJson(String? raw) {
+  if (raw == null || raw.trim().isEmpty) {
+    return null;
+  }
+  try {
+    final decoded = jsonDecode(raw);
+    if (decoded is! Map) {
+      return null;
+    }
+    return PushPayload.fromData(
+      decoded.map((key, value) => MapEntry('$key', value)),
     );
+  } catch (_) {
+    return null;
   }
 }
 
@@ -203,7 +239,10 @@ final pushNotificationGatewayProvider = Provider<PushNotificationGateway>((ref) 
   if (!isFirebaseReady || !isPushPlatform) {
     return NoopPushNotificationGateway();
   }
-  return FcmPushNotificationGateway(FirebaseFirestore.instance);
+  return FcmPushNotificationGateway(
+    FirebaseFirestore.instance,
+    notifications: ref.watch(notificationServiceProvider),
+  );
 });
 
 final fcmUidProvider = Provider<String>((ref) {

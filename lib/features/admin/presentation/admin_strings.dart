@@ -2,8 +2,19 @@ abstract final class AdminStrings {
   static const String panel = 'Administracija';
   static const String title = 'Administracija';
   static const String denied = 'Samo administratori mogu da otvore ovaj panel.';
+  static const String statsTab = 'Statistika';
+  static const String usersTab = 'Korisnici';
+  static const String reportsTab = 'Prijave';
+  static const String contentTab = 'Sadržaj';
   static const String pendingTab = 'Na čekanju (POIs)';
-  static const String reportsTab = 'Prijave (Reports)';
+  static const String reportDeleteContent = 'Obriši';
+  static const String reportMarkReviewed = 'Rešeno';
+  static const String reportDismiss = 'Odbaci';
+  static const String reportStatusPending = 'Na čekanju';
+  static const String reportReason = 'Razlog';
+  static const String reportReviewed = 'Prijava je označena kao rešena.';
+  static const String confirmDeleteReported =
+      'Prijavljeni sadržaj će biti uklonjen iz aplikacije.';
   static const String searchTab = 'Pretraga Korisnika & Pasa';
   static const String approve = '✓ Odobri';
   static const String edit = '✏️ Izmeni';
@@ -28,7 +39,6 @@ abstract final class AdminStrings {
   static const String drawerItem = 'Admin Panel';
   static const String feedbackTab = '📩 Poruke & Feedback';
   static const String momentsTab = '📸 Moderacija Momenata';
-  static const String usersTab = '👤 Korisnici';
   static const String emptyFeedback = 'Nema poruka od korisnika.';
   static const String emptyMoments = 'Nema objavljenih momenata.';
   static const String emptyUsers = 'Nema registrovanih korisnika.';
@@ -51,8 +61,42 @@ abstract final class AdminStrings {
   static const String loadError = 'Podaci nisu dostupni.';
   static const String noEmail = 'Bez email adrese';
   static const String adminBadge = 'ADMIN';
+  static const String statUsers = 'Korisnici';
+  static const String statDogs = 'Aktivni psi';
+  static const String statReports = 'Prijave';
+  static const String statPending = 'POI na čekanju';
+  static const String contentMoments = 'Momenti';
+  static const String contentPending = 'Predlozi mesta';
+  static const String groupsTab = 'Grupe na čekanju';
+  static const String emptyPendingGroups =
+      'Nema grupa koje čekaju na odobrenje';
+  static const String groupApproved = 'Grupa je odobrena.';
+  static const String groupDeleted = 'Grupa je obrisana.';
+  static const String approveGroup = '✓ Odobri';
+  static const String rejectGroup = '✗ Odbij';
+
+  static String groupCreatedBy(String userId) {
+    return 'Predložio: ${userId.isEmpty ? unknownUser : userId}';
+  }
+
+  static String groupCreatedAt(DateTime? value) {
+    if (value == null) {
+      return 'Datum kreiranja nepoznat';
+    }
+    return 'Kreirano: ${_date(value)}';
+  }
 
   static String totalUsers(int count) => 'Ukupno registrovanih: $count';
+
+  static String reportedBy(String userId) {
+    return 'Prijavio: ${userId.isEmpty ? unknownUser : userId}';
+  }
+
+  static String reportedUser(String userId) {
+    return 'Prijavljen: ${userId.isEmpty ? unknownUser : userId}';
+  }
+
+  static const String unknownUser = 'nepoznat korisnik';
 
   static String joinedOn(DateTime? value) {
     if (value == null) {

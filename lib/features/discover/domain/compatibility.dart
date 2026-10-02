@@ -23,23 +23,13 @@ CompatibilityInsight describeCompatibility({
   ];
   final similarEnergy = mine.energyLabel == other.energyLabel;
   return CompatibilityInsight(
-    headline: _headline(
-      mine.name,
-      other.name,
-      shared,
-      similarEnergy,
-    ),
+    headline: _headline(mine.name, other.name, shared, similarEnergy),
     sharedLikes: shared,
     similarEnergy: similarEnergy,
   );
 }
 
-String _headline(
-  String a,
-  String b,
-  List<String> shared,
-  bool similarEnergy,
-) {
+String _headline(String a, String b, List<String> shared, bool similarEnergy) {
   final likes = _joinLikes(shared);
   if (similarEnergy && likes.isNotEmpty) {
     return '✨ $a i $b imaju sličan nivo energije i oboje vole $likes!';

@@ -11,7 +11,6 @@ import 'package:vauvau/features/auth/presentation/auth_providers.dart';
 import 'package:vauvau/features/discover/presentation/discover_image.dart';
 import 'package:vauvau/features/discover/presentation/discover_strings.dart';
 import 'package:vauvau/features/home/domain/app_drawer_catalog.dart';
-import 'package:vauvau/features/profile/presentation/profile_screen.dart';
 import 'package:vauvau/features/profile/presentation/profile_strings.dart';
 import 'package:vauvau/features/dogs/presentation/dog_providers.dart';
 import 'package:vauvau/features/splash/presentation/screens/splash_screen.dart';
@@ -118,13 +117,17 @@ void main() {
 
     await tester.tap(find.text(ProfileStrings.tabLabel));
     await tester.pump();
+    expect(find.byIcon(Icons.settings_outlined), findsOneWidget);
+    await tester.tap(find.byIcon(Icons.settings_outlined));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
     expect(
-      find.descendant(
-        of: find.byType(ProfileScreen),
-        matching: find.text(ProfileStrings.signOut),
-      ),
-      findsOneWidget,
+      find.text(ProfileStrings.signOut),
+      findsWidgets,
     );
+    Navigator.of(tester.element(find.text(ProfileStrings.signOut).last)).pop();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
 
     await tester.tap(find.text(DiscoverStrings.title));
     await tester.pump();
@@ -145,12 +148,15 @@ void main() {
       findsOneWidget,
     );
     expect(find.text(AppDrawerCatalog.profile), findsNothing);
-    expect(find.text(AppDrawerCatalog.settings), findsOneWidget);
+    expect(
+      find.text(AppDrawerCatalog.settings, skipOffstage: false),
+      findsOneWidget,
+    );
     expect(
       find.text(AppDrawerCatalog.about, skipOffstage: false),
       findsOneWidget,
     );
-    expect(find.text('Odjava'), findsOneWidget);
+    expect(find.text('🚪 Odjava', skipOffstage: false), findsNothing);
     expect(find.text(AppDrawerCatalog.home), findsNothing);
   });
 }

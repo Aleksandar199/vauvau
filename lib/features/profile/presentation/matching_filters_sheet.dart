@@ -52,119 +52,119 @@ class _MatchingFiltersSheetState extends ConsumerState<MatchingFiltersSheet> {
       ),
       child: SingleChildScrollView(
         child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            ProfileStrings.filtersTitle,
-            style: Theme.of(context).textTheme.titleLarge,
-          ),
-          const SizedBox(height: 16),
-          Text(ProfileStrings.sizeFilter),
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 8,
-            children: [
-              FilterChip(
-                label: const Text(ProfileStrings.sizeSmall),
-                selected: _draft.sizes.contains('mali'),
-                onSelected: (_) => _toggleSize('mali'),
-              ),
-              FilterChip(
-                label: const Text(ProfileStrings.sizeMedium),
-                selected: _draft.sizes.contains('srednji'),
-                onSelected: (_) => _toggleSize('srednji'),
-              ),
-              FilterChip(
-                label: const Text(ProfileStrings.sizeLarge),
-                selected: _draft.sizes.contains('veliki'),
-                onSelected: (_) => _toggleSize('veliki'),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Text(ProfileStrings.genderFilter),
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 8,
-            children: [
-              ChoiceChip(
-                label: const Text(ProfileStrings.genderMale),
-                selected: _draft.gender == FilterGender.male,
-                onSelected: (_) => setState(
-                  () => _draft = _draft.copyWith(gender: FilterGender.male),
-                ),
-              ),
-              ChoiceChip(
-                label: const Text(ProfileStrings.genderFemale),
-                selected: _draft.gender == FilterGender.female,
-                onSelected: (_) => setState(
-                  () => _draft = _draft.copyWith(gender: FilterGender.female),
-                ),
-              ),
-              ChoiceChip(
-                label: const Text(ProfileStrings.genderAny),
-                selected: _draft.gender == FilterGender.any,
-                onSelected: (_) => setState(
-                  () => _draft = _draft.copyWith(gender: FilterGender.any),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Text(ProfileStrings.cityFilter),
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 8,
-            children: [
-              ChoiceChip(
-                label: const Text(ProfileStrings.cityNoviSad),
-                selected: _draft.city == FilterCity.noviSad,
-                onSelected: (_) => setState(
-                  () => _draft = _draft.copyWith(city: FilterCity.noviSad),
-                ),
-              ),
-              ChoiceChip(
-                label: const Text(ProfileStrings.cityBeograd),
-                selected: _draft.city == FilterCity.beograd,
-                onSelected: (_) => setState(
-                  () => _draft = _draft.copyWith(city: FilterCity.beograd),
-                ),
-              ),
-              ChoiceChip(
-                label: const Text(ProfileStrings.cityAll),
-                selected: _draft.city == FilterCity.any,
-                onSelected: (_) => setState(
-                  () => _draft = _draft.copyWith(city: FilterCity.any),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Text(ProfileStrings.radiusFilter),
-          Slider(
-            min: 1,
-            max: 30,
-            divisions: 29,
-            value: _draft.radiusKm.clamp(1, 30).toDouble(),
-            label: ProfileStrings.radiusValue(_draft.radiusKm),
-            onChanged: (value) {
-              setState(() => _draft = _draft.copyWith(radiusKm: value));
-            },
-          ),
-          Text(ProfileStrings.radiusValue(_draft.radiusKm)),
-          const SizedBox(height: 24),
-          SizedBox(
-            width: double.infinity,
-            child: FilledButton(
-              onPressed: () {
-                ref.read(matchingFiltersProvider.notifier).apply(_draft);
-                Navigator.of(context).pop();
-              },
-              child: const Text(ProfileStrings.applyFilters),
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              ProfileStrings.filtersTitle,
+              style: Theme.of(context).textTheme.titleLarge,
             ),
-          ),
-        ],
+            const SizedBox(height: 16),
+            Text(ProfileStrings.sizeFilter),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              children: [
+                FilterChip(
+                  label: const Text(ProfileStrings.sizeSmall),
+                  selected: _draft.sizes.contains('mali'),
+                  onSelected: (_) => _toggleSize('mali'),
+                ),
+                FilterChip(
+                  label: const Text(ProfileStrings.sizeMedium),
+                  selected: _draft.sizes.contains('srednji'),
+                  onSelected: (_) => _toggleSize('srednji'),
+                ),
+                FilterChip(
+                  label: const Text(ProfileStrings.sizeLarge),
+                  selected: _draft.sizes.contains('veliki'),
+                  onSelected: (_) => _toggleSize('veliki'),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Text(ProfileStrings.genderFilter),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              children: [
+                ChoiceChip(
+                  label: const Text(ProfileStrings.genderMale),
+                  selected: _draft.gender == FilterGender.male,
+                  onSelected: (_) => setState(
+                    () => _draft = _draft.copyWith(gender: FilterGender.male),
+                  ),
+                ),
+                ChoiceChip(
+                  label: const Text(ProfileStrings.genderFemale),
+                  selected: _draft.gender == FilterGender.female,
+                  onSelected: (_) => setState(
+                    () => _draft = _draft.copyWith(gender: FilterGender.female),
+                  ),
+                ),
+                ChoiceChip(
+                  label: const Text(ProfileStrings.genderAny),
+                  selected: _draft.gender == FilterGender.any,
+                  onSelected: (_) => setState(
+                    () => _draft = _draft.copyWith(gender: FilterGender.any),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Text(ProfileStrings.cityFilter),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              children: [
+                ChoiceChip(
+                  label: const Text(ProfileStrings.cityNoviSad),
+                  selected: _draft.city == FilterCity.noviSad,
+                  onSelected: (_) => setState(
+                    () => _draft = _draft.copyWith(city: FilterCity.noviSad),
+                  ),
+                ),
+                ChoiceChip(
+                  label: const Text(ProfileStrings.cityBeograd),
+                  selected: _draft.city == FilterCity.beograd,
+                  onSelected: (_) => setState(
+                    () => _draft = _draft.copyWith(city: FilterCity.beograd),
+                  ),
+                ),
+                ChoiceChip(
+                  label: const Text(ProfileStrings.cityAll),
+                  selected: _draft.city == FilterCity.any,
+                  onSelected: (_) => setState(
+                    () => _draft = _draft.copyWith(city: FilterCity.any),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Text(ProfileStrings.radiusFilter),
+            Slider(
+              min: 1,
+              max: 30,
+              divisions: 29,
+              value: _draft.radiusKm.clamp(1, 30).toDouble(),
+              label: ProfileStrings.radiusValue(_draft.radiusKm),
+              onChanged: (value) {
+                setState(() => _draft = _draft.copyWith(radiusKm: value));
+              },
+            ),
+            Text(ProfileStrings.radiusValue(_draft.radiusKm)),
+            const SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton(
+                onPressed: () {
+                  ref.read(matchingFiltersProvider.notifier).apply(_draft);
+                  Navigator.of(context).pop();
+                },
+                child: const Text(ProfileStrings.applyFilters),
+              ),
+            ),
+          ],
         ),
       ),
     );

@@ -6,7 +6,8 @@ import 'package:vauvau/features/support/data/local_support_repository.dart';
 import 'package:vauvau/features/support/domain/admin_feedback.dart';
 import 'package:vauvau/features/support/domain/official_contacts.dart';
 import 'package:vauvau/features/support/presentation/rules_and_support_screen.dart';
-import 'package:vauvau/features/support/presentation/support_content.dart';
+import 'package:vauvau/features/support/presentation/rules_content.dart';
+import 'package:vauvau/features/support/presentation/rules_tab.dart';
 import 'package:vauvau/features/support/presentation/support_controller.dart';
 import 'package:vauvau/features/support/presentation/support_strings.dart';
 
@@ -61,17 +62,75 @@ void main() {
     await pumpScreen(tester);
 
     expect(find.text(SupportStrings.title), findsOneWidget);
-    expect(find.text(SupportContent.rules.first.title), findsOneWidget);
+    expect(find.text('SOS'), findsOneWidget);
+    expect(find.text('NS VET (00–24h)'), findsOneWidget);
+
+    final tabLabels = tester
+        .widgetList<Tab>(find.byType(Tab))
+        .map((tab) => tab.text)
+        .toList();
+    expect(tabLabels, [
+      'SOS',
+      SupportStrings.tipsTab,
+      SupportStrings.rulesTab,
+      SupportStrings.contactTab,
+    ]);
 
     await tester.tap(find.text(SupportStrings.tipsTab));
     await tester.pumpAndSettle();
-    expect(find.text(SupportContent.tips.first.title), findsOneWidget);
+    expect(find.text(SupportStrings.tipsTitle), findsOneWidget);
+    expect(find.textContaining('Kada odmah kod veterinara'), findsOneWidget);
+
+    await tester.tap(find.text(SupportStrings.rulesTab));
+    await tester.pumpAndSettle();
+    expect(find.text(SupportStrings.rulesTitle), findsOneWidget);
+    final firstRule = RulesContent.daily.first;
+    expect(find.text(firstRule.title), findsOneWidget);
+    final firstBullet = firstRule.sections.first.bullets.first;
+    expect(find.text(firstBullet), findsNothing);
+
+    await tester.tap(find.text(firstRule.title));
+    await tester.pumpAndSettle();
+    expect(find.text(firstBullet), findsOneWidget);
+  });
+
+  testWidgets('rules report card opens admin form', (tester) async {
+    await pumpScreen(tester);
+
+    await tester.tap(find.text(SupportStrings.rulesTab));
+    await tester.pumpAndSettle();
+
+    final reportRule = RulesContent.important.last;
+    await tester.scrollUntilVisible(
+      find.text(reportRule.title),
+      300,
+      scrollable: find
+          .descendant(
+            of: find.byType(RulesTab),
+            matching: find.byType(Scrollable),
+          )
+          .first,
+    );
+    await tester.ensureVisible(find.text(reportRule.title));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text(reportRule.title));
+    await tester.pumpAndSettle();
+
+    final ctaButton = find.widgetWithText(FilledButton, reportRule.ctaLabel!);
+    await tester.ensureVisible(ctaButton);
+    await tester.pumpAndSettle();
+    await tester.tap(ctaButton);
+    await tester.pumpAndSettle();
+
+    expect(find.text(SupportStrings.followUs), findsOneWidget);
   });
 
   testWidgets('shows official contact links and opens them', (tester) async {
     final launcher = _FakeLinkLauncher();
     await pumpScreen(tester, launcher: launcher);
 
+    await tester.ensureVisible(find.text(SupportStrings.contactTab));
+    await tester.pumpAndSettle();
     await tester.tap(find.text(SupportStrings.contactTab));
     await tester.pumpAndSettle();
 
@@ -96,6 +155,8 @@ void main() {
   testWidgets('validates and sends admin feedback', (tester) async {
     final repo = await pumpScreen(tester);
 
+    await tester.ensureVisible(find.text(SupportStrings.contactTab));
+    await tester.pumpAndSettle();
     await tester.tap(find.text(SupportStrings.contactTab));
     await tester.pumpAndSettle();
 

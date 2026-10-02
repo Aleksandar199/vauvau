@@ -88,6 +88,8 @@ abstract final class AppStrings {
   static const String dogPhotosRequired = 'Dodajte između 1 i 5 fotografija.';
   static const String photoUploadFailed =
       'Greška prilikom dodavanja slike. Pokušajte ponovo.';
+  static const String networkProblem =
+      'Problem sa mrežom. Proverite internet konekciju i pokušajte ponovo.';
   static const String dogSaveFailed = 'Profil psa nije sačuvan.';
   static const String mustBeSignedIn = 'Morate biti prijavljeni.';
 }

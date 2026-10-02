@@ -19,10 +19,13 @@ class AuthController extends Notifier<AsyncValue<void>> {
   }) {
     return _run(
       AuthBusy.email,
-      () => ref.read(authRepositoryProvider).signInWithEmailAndPassword(
-            email: email,
-            password: password,
-          ),
+      () async {
+        await ref.read(authRepositoryProvider).signInWithEmailAndPassword(
+              email: email,
+              password: password,
+            );
+        ref.read(sessionSignedOutProvider.notifier).setSignedOut(false);
+      },
     );
   }
 
@@ -38,28 +41,44 @@ class AuthController extends Notifier<AsyncValue<void>> {
   }) {
     return _run(
       AuthBusy.email,
-      () => ref.read(authRepositoryProvider).signUpWithEmailAndPassword(
-            email: email,
-            password: password,
-            name: name,
-            city: city,
-            cityId: cityId,
-            neighborhoodId: neighborhoodId,
-            neighborhoodName: neighborhoodName,
-            bio: bio,
-          ),
+      () async {
+        await ref.read(authRepositoryProvider).signUpWithEmailAndPassword(
+              email: email,
+              password: password,
+              name: name,
+              city: city,
+              cityId: cityId,
+              neighborhoodId: neighborhoodId,
+              neighborhoodName: neighborhoodName,
+              bio: bio,
+            );
+        ref.read(sessionSignedOutProvider.notifier).setSignedOut(false);
+      },
     );
   }
 
   Future<bool> signInWithGoogle() {
     return _run(
       AuthBusy.google,
-      () => ref.read(authRepositoryProvider).signInWithGoogle(),
+      () async {
+        await ref.read(authRepositoryProvider).signInWithGoogle();
+        ref.read(sessionSignedOutProvider.notifier).setSignedOut(false);
+      },
     );
   }
 
-  Future<void> signOut() async {
-    await _run(AuthBusy.email, () => ref.read(authRepositoryProvider).signOut());
+  Future<bool> signOut() async {
+    ref.read(sessionSignedOutProvider.notifier).setSignedOut(true);
+    final ok = await _run(
+      AuthBusy.email,
+      () => ref.read(authRepositoryProvider).signOut(),
+    );
+    if (!ok) {
+      ref.read(sessionSignedOutProvider.notifier).setSignedOut(false);
+    } else {
+      ref.invalidate(authStateProvider);
+    }
+    return ok;
   }
 
   Future<bool> sendPasswordResetEmail(String email) {
@@ -72,7 +91,10 @@ class AuthController extends Notifier<AsyncValue<void>> {
   Future<bool> deleteAccount() {
     return _run(
       AuthBusy.email,
-      () => ref.read(authRepositoryProvider).deleteAccount(),
+      () async {
+        await ref.read(authRepositoryProvider).deleteAccount();
+        ref.read(sessionSignedOutProvider.notifier).setSignedOut(true);
+      },
     );
   }
 

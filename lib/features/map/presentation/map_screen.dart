@@ -20,7 +20,6 @@ import '../data/mock_map_data.dart';
 import '../domain/map_city.dart';
 import '../domain/map_place.dart';
 import '../domain/map_place_type.dart';
-import '../domain/walk_session.dart';
 import '../domain/walking_dog_pin.dart';
 import 'map_strings.dart';
 import 'maps_launcher.dart';
@@ -29,6 +28,7 @@ import 'walk_controller.dart';
 import 'widgets/add_poi_sheet.dart';
 import 'widgets/mock_map_canvas.dart';
 import 'widgets/place_sheet.dart';
+import 'widgets/walk_stats_panel.dart';
 import 'widgets/walker_sheet.dart';
 
 class MapScreen extends ConsumerStatefulWidget {
@@ -61,11 +61,18 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     final places = _visiblePlaces(ref.watch(mapPlacesProvider));
     final walkers = _visibleWalkers(ref.watch(walkingDogsProvider));
 
+    final walkRoute = [
+      for (final point in walk.path) LatLng(point.latitude, point.longitude),
+    ];
+    final walkStart = walk.path.isNotEmpty ? walk.path.first : null;
+
     return Stack(
       children: [
         Positioned.fill(
           child: VauInteractiveMap(
             controller: _mapController,
+            routePoints: walk.isActive ? walkRoute : const [],
+            routeColor: Theme.of(context).colorScheme.primary,
             placeMarkers: [
               for (final place in places)
                 Marker(
@@ -81,11 +88,22 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                 ),
             ],
             overlayMarkers: [
+              if (walk.isActive && walkStart != null)
+                Marker(
+                  point: LatLng(walkStart.latitude, walkStart.longitude),
+                  width: 36,
+                  height: 36,
+                  alignment: Alignment.center,
+                  child: const _WalkStartMarker(),
+                ),
               Marker(
                 point: LatLng(location.latitude, location.longitude),
-                width: 28,
-                height: 28,
-                child: const _UserDot(),
+                width: walk.isActive ? 36 : 28,
+                height: walk.isActive ? 36 : 28,
+                alignment: Alignment.center,
+                child: walk.isActive
+                    ? const _WalkCurrentMarker()
+                    : const _UserDot(),
               ),
               for (final walker in walkers)
                 Marker(
@@ -249,7 +267,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
               ),
               if (walk.isActive) ...[
                 const SizedBox(height: 8),
-                _WalkBanner(walk: walk),
+                WalkGpsBanner(isPaused: walk.isPaused),
               ],
               if (scheduledWalks.isNotEmpty) ...[
                 const SizedBox(height: 8),
@@ -260,7 +278,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
         ),
         Positioned(
           right: 12,
-          bottom: 88,
+          bottom: walk.isActive ? 220 : 88,
           child: Column(
             children: [
               _MapFab(
@@ -283,36 +301,39 @@ class _MapScreenState extends ConsumerState<MapScreen> {
             ],
           ),
         ),
-        Positioned(
-          left: 16,
-          right: 72,
-          bottom: 16,
-          child: Material(
-            elevation: 8,
-            shadowColor: Colors.black38,
-            borderRadius: BorderRadius.circular(28),
-            child: walk.isActive
-                ? FilledButton.icon(
-                    style: FilledButton.styleFrom(
-                      minimumSize: const Size(0, 52),
-                      backgroundColor: AppColors.secondary,
-                      foregroundColor: AppColors.onSecondary,
-                    ),
-                    onPressed: () =>
-                        ref.read(walkControllerProvider.notifier).end(),
-                    icon: const Icon(Icons.stop),
-                    label: const Text(MapStrings.endWalk),
-                  )
-                : FilledButton.icon(
-                    style: FilledButton.styleFrom(
-                      minimumSize: const Size(0, 52),
-                    ),
-                    onPressed: () => _startWalkFlow(context),
-                    icon: const Icon(Icons.directions_walk),
-                    label: const Text(MapStrings.startWalk),
+        if (walk.isActive)
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: WalkStatsPanel(walk: walk),
+          )
+        else
+          Positioned(
+            left: 16,
+            right: 72,
+            bottom: 16,
+            child: Material(
+              elevation: 8,
+              shadowColor: Colors.black38,
+              borderRadius: BorderRadius.circular(28),
+              child: FilledButton.icon(
+                style: FilledButton.styleFrom(
+                  minimumSize: const Size(0, 54),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
                   ),
+                  textStyle: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                onPressed: () => _startWalkFlow(context),
+                icon: const Icon(Icons.directions_walk),
+                label: const Text(MapStrings.startWalk),
+              ),
+            ),
           ),
-        ),
       ],
     );
   }
@@ -606,7 +627,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
         showContentReportSheet(
           context: context,
           ref: ref,
-          contentType: ReportContentType.poi,
+          targetType: ReportContentType.poi,
           targetId: place.id,
         );
       },
@@ -804,98 +825,47 @@ class _MapFab extends StatelessWidget {
   }
 }
 
-class _WalkBanner extends StatelessWidget {
-  const _WalkBanner({required this.walk});
-
-  final WalkSession walk;
+class _WalkStartMarker extends StatelessWidget {
+  const _WalkStartMarker();
 
   @override
   Widget build(BuildContext context) {
-    final message = walk.statusMessage;
-    return Material(
-      elevation: 2,
-      borderRadius: BorderRadius.circular(16),
-      color: const Color(0xFF052E16),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        child: Row(
-          children: [
-            const _PulseDot(),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    MapStrings.walking,
-                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                          color: Colors.white,
-                        ),
-                  ),
-                  Text(
-                    MapStrings.remaining(walk.remainingMinutes),
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: const Color(0xFFBBF7D0),
-                        ),
-                  ),
-                  if (message != null && message.isNotEmpty)
-                    Text(
-                      message,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: Colors.white70,
-                          ),
-                    ),
-                ],
-              ),
-            ),
-          ],
-        ),
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        shape: BoxShape.circle,
+        border: Border.all(color: AppColors.primaryDeep, width: 2.5),
+        boxShadow: const [
+          BoxShadow(color: Colors.black26, blurRadius: 6, offset: Offset(0, 2)),
+        ],
+      ),
+      child: const Icon(
+        Icons.flag,
+        size: 16,
+        color: AppColors.primaryDeep,
       ),
     );
   }
 }
 
-class _PulseDot extends StatefulWidget {
-  const _PulseDot();
-
-  @override
-  State<_PulseDot> createState() => _PulseDotState();
-}
-
-class _PulseDotState extends State<_PulseDot>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _controller;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 900),
-    )..repeat(reverse: true);
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
+class _WalkCurrentMarker extends StatelessWidget {
+  const _WalkCurrentMarker();
 
   @override
   Widget build(BuildContext context) {
-    return ScaleTransition(
-      scale: Tween<double>(begin: 0.85, end: 1.15).animate(
-        CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
+    return Container(
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.primary,
+        shape: BoxShape.circle,
+        border: Border.all(color: Colors.white, width: 3),
+        boxShadow: const [
+          BoxShadow(color: Colors.black38, blurRadius: 8, offset: Offset(0, 2)),
+        ],
       ),
-      child: Container(
-        width: 14,
-        height: 14,
-        decoration: const BoxDecoration(
-          color: Color(0xFF22C55E),
-          shape: BoxShape.circle,
-        ),
+      child: const Icon(
+        Icons.directions_walk,
+        size: 16,
+        color: Colors.white,
       ),
     );
   }

@@ -46,12 +46,7 @@ class WalkStatusDot extends StatelessWidget {
       decoration: const BoxDecoration(
         color: DiscoverFilterStyle.walkDot,
         shape: BoxShape.circle,
-        boxShadow: [
-          BoxShadow(
-            color: Color(0xB34CAF50),
-            blurRadius: 6,
-          ),
-        ],
+        boxShadow: [BoxShadow(color: Color(0xB34CAF50), blurRadius: 6)],
       ),
     );
   }
@@ -82,10 +77,7 @@ class DiscoverFilterChip extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          if (leading != null) ...[
-            leading!,
-            const SizedBox(width: 6),
-          ],
+          if (leading != null) ...[leading!, const SizedBox(width: 6)],
           Text(
             label,
             style: TextStyle(

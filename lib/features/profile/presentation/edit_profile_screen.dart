@@ -6,6 +6,7 @@ import '../../../core/constants/app_strings.dart';
 import '../../../core/images/dog_image.dart';
 import '../../../core/images/dog_photo_urls.dart';
 import '../../../core/images/image_upload_service.dart';
+import '../../../core/network/network_failure.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/content_validation_service.dart';
 import '../../discover/data/dog_profile_mapper.dart';
@@ -112,18 +113,19 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     final name = _dogName.text.trim();
     final breed = _breed.text.trim();
     if (name.isEmpty || breed.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text(ProfileStrings.validation)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text(ProfileStrings.validation)));
       return;
     }
-    final invalid = ContentValidationService.validateText(name) ??
+    final invalid =
+        ContentValidationService.validateText(name) ??
         ContentValidationService.validateText(breed) ??
         ContentValidationService.validateText(_dogBio.text, allowEmpty: true);
     if (invalid != null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(invalid)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(invalid)));
       return;
     }
     final current = ref.read(profileControllerProvider);
@@ -172,9 +174,9 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
       if (!mounted) {
         return;
       }
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(invalid)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(invalid)));
       return;
     }
     setState(() => _uploadingPhoto = true);
@@ -182,8 +184,18 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     try {
       final bytes = await picked.readAsBytes();
       url = await ImageUploadService.upload(bytes);
-    } catch (_) {
-      url = '';
+    } catch (error) {
+      if (mounted) {
+        showNetworkErrorSnackBar(
+          context,
+          error,
+          fallback: AppStrings.photoUploadFailed,
+        );
+      }
+      if (mounted) {
+        setState(() => _uploadingPhoto = false);
+      }
+      return;
     }
     if (!mounted) {
       return;
@@ -342,8 +354,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                           if (selected) {
                             _tags = [..._tags, tag];
                           } else {
-                            _tags =
-                                _tags.where((item) => item != tag).toList();
+                            _tags = _tags.where((item) => item != tag).toList();
                           }
                         });
                       },
@@ -460,12 +471,7 @@ class _PhotoTile extends StatelessWidget {
                     color: AppColors.lightOutline,
                     child: Center(child: Icon(Icons.pets)),
                   )
-                : buildDogImage(
-                    url,
-                    seed: url,
-                    width: 88,
-                    height: 88,
-                  ),
+                : buildDogImage(url, seed: url, width: 88, height: 88),
           ),
         ),
         Positioned(

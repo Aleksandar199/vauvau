@@ -18,7 +18,7 @@ class AuthGate extends ConsumerWidget {
 
     return authState.when(
       loading: () => const _LoadingScaffold(),
-      error: (_, _) => const HomeShellScreen(),
+      error: (_, _) => const LoginScreen(),
       data: (user) {
         if (user == null) {
           return const LoginScreen();

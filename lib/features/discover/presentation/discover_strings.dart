@@ -9,8 +9,7 @@ abstract final class DiscoverStrings {
   static const String sendMessage = 'Pošalji poruku';
   static const String keepSearching = 'Nastavi sa pretragom';
   static const String emptyTitle = 'Nema više pasa u vašoj okolini.';
-  static const String emptySubtitle =
-      'Pokušajte sa širenjem filtera.';
+  static const String emptySubtitle = 'Pokušajte sa širenjem filtera.';
   static const String resetFilters = 'Resetuj filtere';
   static const String genderAll = 'Svi';
   static const String sizeSmall = 'Mali';
@@ -53,6 +52,19 @@ abstract final class DiscoverStrings {
       'Lajk nije sačuvan. Proverite konekciju i pokušajte ponovo.';
   static const String passedToast = 'Preskočeno';
   static const String superLikedToast = 'Super lajk poslat!';
+  static const String superLikeDailyLimitTitle = 'Dnevni Super Like';
+  static const String superLikeDailyLimitBody =
+      'Iskoristili ste vaš dnevni Super Like! ⭐ Možete poslati sledeći sutra.';
+  static const String superLikeSuccessTitle = '⭐ Super Like poslat!';
+  static const String superLikeSuccessHint =
+      'Imate 1 Super Like na 24h. Sledeći možete poslati sutra.';
+  static const String superLikeFailed =
+      'Super Like nije sačuvan. Proverite konekciju i pokušajte ponovo.';
+  static const String messageUnavailable =
+      'Poruka nije dostupna — vlasnik profila nije poznat.';
+  static const String ownProfileMessage =
+      'Ne možete slati poruku sopstvenom profilu.';
+  static const String unlikedToast = 'Lajk uklonjen';
   static const String gender = 'Pol';
   static const String about = 'O psu';
   static const String getsAlong = 'Slaganje sa';
@@ -76,6 +88,16 @@ abstract final class DiscoverStrings {
   static const String yes = 'Da';
   static const String no = 'Ne';
   static const String weight = 'Težina';
+  static const String health = 'Zdravlje';
+  static const String energyShort = 'Energija';
+  static const String stories = 'Priče';
+  static String weightValue(double kg) =>
+      '${kg == kg.roundToDouble() ? kg.toStringAsFixed(0) : kg.toStringAsFixed(1)} kg';
+  static const String likes = 'Voli';
+  static const String dislikes = 'Ne voli';
+
+  static String superLikedDog(String dogName) =>
+      '⭐ Dali ste Super Like za $dogName!';
 
   static String years(int value) {
     final n = value.abs();

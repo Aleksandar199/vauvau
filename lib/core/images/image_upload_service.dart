@@ -4,6 +4,8 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
 
+import '../network/network_failure.dart';
+
 class ImageUploadService {
   const ImageUploadService();
 
@@ -22,10 +24,15 @@ class ImageUploadService {
     }
     try {
       return await _uploadImgbb(bytes);
+    } on NetworkFailure {
+      rethrow;
     } catch (error) {
       debugPrint('[IMAGE UPLOAD] ImgBB FAILED');
       debugPrint('[IMAGE UPLOAD] Error type: ${error.runtimeType}');
       debugPrint('[IMAGE UPLOAD] Error message: ${_redact('$error')}');
+      if (isNetworkFailure(error)) {
+        throw const NetworkFailure();
+      }
       throw StateError('Upload nije uspeo: ${_redact('$error')}');
     }
   }
@@ -51,12 +58,20 @@ class ImageUploadService {
     debugPrint(
       '[IMAGE UPLOAD] ImgBB body: application/x-www-form-urlencoded image=<base64>',
     );
-    final response = await http
-        .post(
-          uri,
-          body: {'image': base64Encode(bytes)},
-        )
-        .timeout(const Duration(seconds: 45));
+    late final http.Response response;
+    try {
+      response = await http
+          .post(
+            uri,
+            body: {'image': base64Encode(bytes)},
+          )
+          .timeout(const Duration(seconds: 45));
+    } catch (error) {
+      if (isNetworkFailure(error)) {
+        throw const NetworkFailure();
+      }
+      rethrow;
+    }
     debugPrint('[IMAGE UPLOAD] ImgBB HTTP status: ${response.statusCode}');
     debugPrint('[IMAGE UPLOAD] ImgBB response: ${_summarizeBody(response.body)}');
     if (response.statusCode < 200 || response.statusCode >= 300) {

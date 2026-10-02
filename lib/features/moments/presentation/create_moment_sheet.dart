@@ -37,7 +37,7 @@ class _CreateMomentSheetState extends ConsumerState<CreateMomentSheet> {
   String _location = EventVenues.names.first;
   String? _dogId;
   XFile? _photo;
-  var _saving = false;
+  var _isLoading = false;
 
   @override
   void dispose() {
@@ -64,9 +64,9 @@ class _CreateMomentSheetState extends ConsumerState<CreateMomentSheet> {
         children: [
           Text(
             MomentsStrings.share,
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.w800,
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
           ),
           const SizedBox(height: 16),
           if (dogs.isEmpty)
@@ -79,26 +79,32 @@ class _CreateMomentSheetState extends ConsumerState<CreateMomentSheet> {
                 for (final dog in dogs)
                   DropdownMenuItem(value: dog.id, child: Text(dog.name)),
               ],
-              onChanged: (value) => setState(() => _dogId = value),
+              onChanged: _isLoading
+                  ? null
+                  : (value) => setState(() => _dogId = value),
             ),
           const SizedBox(height: 12),
           DropdownButtonFormField<String>(
             initialValue: parks.contains(_location) ? _location : parks.first,
-            decoration:
-                const InputDecoration(labelText: MomentsStrings.location),
+            decoration: const InputDecoration(
+              labelText: MomentsStrings.location,
+            ),
             items: [
               for (final name in parks)
                 DropdownMenuItem(value: name, child: Text(name)),
             ],
-            onChanged: (value) {
-              if (value != null) {
-                setState(() => _location = value);
-              }
-            },
+            onChanged: _isLoading
+                ? null
+                : (value) {
+                    if (value != null) {
+                      setState(() => _location = value);
+                    }
+                  },
           ),
           const SizedBox(height: 12),
           TextField(
             controller: _caption,
+            enabled: !_isLoading,
             maxLines: 3,
             decoration: const InputDecoration(
               labelText: MomentsStrings.caption,
@@ -106,16 +112,39 @@ class _CreateMomentSheetState extends ConsumerState<CreateMomentSheet> {
           ),
           const SizedBox(height: 12),
           OutlinedButton.icon(
-            onPressed: _saving ? null : _pickPhoto,
+            onPressed: _isLoading ? null : _pickPhoto,
             icon: const Icon(Icons.photo_outlined),
             label: Text(
               _photo == null ? MomentsStrings.addPhoto : MomentsStrings.photo,
             ),
           ),
+          if (_isLoading) ...[
+            const SizedBox(height: 16),
+            const Row(
+              children: [
+                SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+                SizedBox(width: 10),
+                Text(MomentsStrings.uploading),
+              ],
+            ),
+          ],
           const SizedBox(height: 20),
           FilledButton(
-            onPressed: _saving || dogs.isEmpty ? null : _save,
-            child: Text(_saving ? '...' : MomentsStrings.publish),
+            onPressed: _isLoading || dogs.isEmpty ? null : _save,
+            child: _isLoading
+                ? const SizedBox(
+                    width: 22,
+                    height: 22,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
+                  )
+                : const Text(MomentsStrings.publish),
           ),
         ],
       ),
@@ -132,27 +161,30 @@ class _CreateMomentSheetState extends ConsumerState<CreateMomentSheet> {
   Future<void> _save() async {
     final profile = ref.read(profileControllerProvider);
     final caption = _caption.text.trim();
-    if (caption.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text(MomentsStrings.captionRequired)),
-      );
-      return;
-    }
     final dogId = _dogId;
     if (dogId == null) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text(MomentsStrings.dogRequired)));
+      return;
+    }
+    if (_photo == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text(MomentsStrings.dogRequired)),
+        const SnackBar(content: Text(MomentsStrings.photoRequired)),
       );
       return;
     }
-    var dog = profile.dogs.where((item) => item.id == dogId).toList();
+    final dog = profile.dogs.where((item) => item.id == dogId).toList();
     if (dog.isEmpty) {
       return;
     }
     final selected = dog.first;
-    setState(() => _saving = true);
+
+    setState(() => _isLoading = true);
     try {
-      await ref.read(momentsControllerProvider.notifier).create(
+      await ref
+          .read(momentsControllerProvider.notifier)
+          .create(
             draft: MomentModel(
               id: '',
               authorUserId: '',
@@ -170,19 +202,71 @@ class _CreateMomentSheetState extends ConsumerState<CreateMomentSheet> {
             ),
             photo: _photo,
           );
-      if (mounted) {
-        Navigator.of(context).pop();
+
+      if (!mounted) {
+        return;
       }
-    } catch (_) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text(MomentsStrings.publishError)),
-        );
+      setState(() => _isLoading = false);
+
+      await showDialog<void>(
+        context: context,
+        barrierDismissible: false,
+        builder: (ctx) => AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: const Row(
+            children: [
+              Icon(Icons.check_circle_outline, color: Colors.green),
+              SizedBox(width: 8),
+              Expanded(child: Text(MomentsStrings.successTitle)),
+            ],
+          ),
+          content: const Text(MomentsStrings.successBody),
+          actions: [
+            ElevatedButton(
+              onPressed: () {
+                Navigator.of(ctx).pop();
+                Navigator.of(context).pop();
+              },
+              child: const Text(MomentsStrings.ok),
+            ),
+          ],
+        ),
+      );
+    } catch (e) {
+      if (!mounted) {
+        return;
       }
-    } finally {
-      if (mounted) {
-        setState(() => _saving = false);
-      }
+      setState(() => _isLoading = false);
+
+      final details = e.toString().replaceFirst('Exception: ', '').trim();
+      await showDialog<void>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: const Row(
+            children: [
+              Icon(Icons.error_outline, color: Colors.red),
+              SizedBox(width: 8),
+              Expanded(child: Text(MomentsStrings.errorTitle)),
+            ],
+          ),
+          content: Text(
+            MomentsStrings.createErrorBody(
+              details.isEmpty ? MomentsStrings.publishError : details,
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: const Text(MomentsStrings.close),
+            ),
+          ],
+        ),
+      );
     }
   }
 }

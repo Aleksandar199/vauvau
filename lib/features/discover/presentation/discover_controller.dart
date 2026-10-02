@@ -6,6 +6,7 @@ import '../../../core/firebase/firebase_status.dart';
 import '../../auth/presentation/auth_providers.dart';
 import '../../dogs/presentation/dog_providers.dart';
 import '../../location/presentation/location_controller.dart';
+import '../../moderation/presentation/block_controller.dart';
 import '../../moderation/presentation/report_controller.dart';
 import '../../profile/domain/matching_filters.dart';
 import '../../profile/presentation/profile_controller.dart';
@@ -84,9 +85,9 @@ class DiscoverController extends Notifier<DiscoverState> {
   @override
   DiscoverState build() {
     return DiscoverState(
-      catalog: ref.watch(matchingFiltersProvider).apply(
-            ref.watch(discoverFeedProvider),
-          ),
+      catalog: ref
+          .watch(matchingFiltersProvider)
+          .apply(ref.watch(discoverFeedProvider)),
       myDog: ref.watch(currentDiscoverDogProvider),
     );
   }
@@ -105,11 +106,29 @@ class DiscoverController extends Notifier<DiscoverState> {
     final name = user?.displayName?.trim().isNotEmpty == true
         ? user!.displayName!.trim()
         : (user?.email ?? 'Neko');
-    return ref.read(discoverRepositoryProvider).swipe(
+    return ref
+        .read(discoverRepositoryProvider)
+        .swipe(
           userId: uid,
           myDogId: state.myDog.id,
           target: target,
           action: action,
+          likerName: name,
+        );
+  }
+
+  Future<bool> sendSuperLike(DiscoverProfile target) {
+    final user = ref.read(authStateProvider).asData?.value;
+    final uid = user?.uid ?? 'local-user';
+    final name = user?.displayName?.trim().isNotEmpty == true
+        ? user!.displayName!.trim()
+        : (user?.email ?? 'Neko');
+    return ref
+        .read(discoverRepositoryProvider)
+        .sendSuperLike(
+          userId: uid,
+          myDogId: state.myDog.id,
+          target: target,
           likerName: name,
         );
   }
@@ -128,16 +147,17 @@ final discoverRepositoryProvider = Provider<DiscoverRepository>((ref) {
   if (isFirebaseReady) {
     return FirestoreDiscoverRepository(FirebaseFirestore.instance);
   }
-  return LocalDiscoverRepository(
-    seed: ref.watch(discoverProfilesProvider),
-  );
+  return LocalDiscoverRepository(seed: ref.watch(discoverProfilesProvider));
 });
 
-final liveDiscoverProfilesProvider =
-    StreamProvider<List<DiscoverProfile>>((ref) {
+final liveDiscoverProfilesProvider = StreamProvider<List<DiscoverProfile>>((
+  ref,
+) {
   final location = ref.watch(userLocationProvider);
   final radius = ref.watch(matchingFiltersProvider).radiusKm;
-  return ref.watch(discoverRepositoryProvider).watchProfiles(
+  return ref
+      .watch(discoverRepositoryProvider)
+      .watchProfiles(
         excludeOwnerId: ref.watch(authStateProvider).asData?.value?.uid ?? '',
         geo: GeoQuery(origin: location.coord, radiusKm: radius),
       );
@@ -145,14 +165,17 @@ final liveDiscoverProfilesProvider =
 
 final discoverFeedProvider = Provider<List<DiscoverProfile>>((ref) {
   final hidden = ref.watch(hiddenContentProvider);
+  final blocked = ref.watch(blockedUserIdsProvider);
   final List<DiscoverProfile> source;
   if (isFirebaseReady) {
     source = ref.watch(liveDiscoverProfilesProvider).asData?.value ?? const [];
   } else {
     final location = ref.watch(userLocationProvider);
     final radius = ref.watch(matchingFiltersProvider).radiusKm;
-    source = GeoQuery(origin: location.coord, radiusKm: radius)
-        .apply(ref.watch(discoverProfilesProvider));
+    source = GeoQuery(
+      origin: location.coord,
+      radiusKm: radius,
+    ).apply(ref.watch(discoverProfilesProvider));
   }
   final ownerName =
       ref.watch(authStateProvider).asData?.value?.displayName ?? '';
@@ -168,7 +191,8 @@ final discoverFeedProvider = Provider<List<DiscoverProfile>>((ref) {
   }
   return [
     for (final profile in byId.values)
-      if (!hidden.contains(profile.id)) profile,
+      if (!hidden.contains(profile.id) && !blocked.contains(profile.ownerId))
+        profile,
   ]..forEach(_debugDogPhotos);
 });
 

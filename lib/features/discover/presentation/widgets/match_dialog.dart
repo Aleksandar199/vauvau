@@ -29,8 +29,9 @@ Future<void> showMatchDialogIfNeeded({
         matched: matched,
         onSendMessage: () {
           Navigator.of(dialogContext).pop();
-          final chatId =
-              ref.read(chatInboxProvider.notifier).openFromMatch(matched);
+          final chatId = ref
+              .read(chatInboxProvider.notifier)
+              .openFromMatch(matched);
           Navigator.of(context).push(
             MaterialPageRoute<void>(
               builder: (_) => ChatScreen(conversationId: chatId),
@@ -71,9 +72,9 @@ class MatchDialog extends StatelessWidget {
               const SizedBox(height: 12),
               Text(
                 DiscoverStrings.newMatch,
-                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                      color: Colors.white,
-                    ),
+                style: Theme.of(
+                  context,
+                ).textTheme.headlineMedium?.copyWith(color: Colors.white),
               ),
               const SizedBox(height: 8),
               Text(

@@ -182,8 +182,9 @@ class FirestoreMomentsRepository implements MomentsRepository {
       dogName: dogName.isEmpty ? 'Pas' : dogName,
       dogBreed: data['dogBreed'] as String? ?? '',
       dogPhotoUrl: data['dogPhotoUrl'] as String? ?? '',
-      momentPhotoUrl:
-          momentPhotoUrl.isEmpty ? kFallbackDogPhotoUrl : momentPhotoUrl,
+      momentPhotoUrl: momentPhotoUrl.isEmpty
+          ? kFallbackDogPhotoUrl
+          : momentPhotoUrl,
       caption: data['caption'] as String? ?? '',
       locationName: locationName.isEmpty ? 'Novi Sad' : locationName,
       likes: [

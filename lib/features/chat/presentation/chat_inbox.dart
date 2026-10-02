@@ -8,6 +8,7 @@ import '../../auth/presentation/auth_providers.dart';
 import '../../discover/domain/discover_profile.dart';
 import '../../events/presentation/events_controller.dart';
 import '../../groups/presentation/groups_controller.dart';
+import '../../moderation/presentation/block_controller.dart';
 import '../../notifications/presentation/push_controller.dart';
 import '../../profile/presentation/profile_controller.dart';
 import '../data/firestore_chat_repository.dart';
@@ -76,6 +77,7 @@ class ChatInboxController extends Notifier<List<ChatConversation>> {
             preview: preview,
             dogId: chat.dogId,
             peerUserId: chat.peerUserId,
+            conversationId: conversationId,
           ),
     );
   }
@@ -160,6 +162,19 @@ final chatInboxProvider =
     NotifierProvider<ChatInboxController, List<ChatConversation>>(
   ChatInboxController.new,
 );
+
+/// Inbox without threads from blocked users.
+final visibleConversationsProvider = Provider<List<ChatConversation>>((ref) {
+  final blocked = ref.watch(blockedUserIdsProvider);
+  final inbox = ref.watch(chatInboxProvider);
+  if (blocked.isEmpty) {
+    return inbox;
+  }
+  return [
+    for (final chat in inbox)
+      if (!blocked.contains(chat.peerUserId)) chat,
+  ];
+});
 
 final chatNowProvider = Provider<DateTime>((ref) => DateTime.now());
 

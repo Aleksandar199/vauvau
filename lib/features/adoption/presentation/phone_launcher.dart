@@ -6,12 +6,12 @@ class PhoneLauncher {
 
   Future<bool> call(String phone) async {
     try {
-      final compact = phone.replaceAll(RegExp(r'\s+'), '');
+      final firstLine = phone.split(RegExp(r'[\n,/]')).first.trim();
+      final compact = firstLine.replaceAll(RegExp(r'\s+'), '');
       if (compact.isEmpty) {
         return false;
       }
-      final first = compact.split(RegExp(r'[,/]')).first.trim();
-      final uri = Uri.parse('tel:$first');
+      final uri = Uri.parse('tel:$compact');
       if (!await canLaunchUrl(uri)) {
         return false;
       }

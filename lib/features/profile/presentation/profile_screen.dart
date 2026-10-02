@@ -5,20 +5,22 @@ import 'package:image_picker/image_picker.dart';
 import '../../../core/constants/serbia_locations.dart';
 import '../../../core/images/dog_image.dart';
 import '../../../core/images/image_upload_service.dart';
+import '../../../core/network/network_failure.dart';
+import '../../../core/theme/app_cards.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/ui_bits.dart';
-import '../../admin/presentation/admin_dashboard_screen.dart';
 import '../../auth/presentation/auth_providers.dart';
 import '../../discover/domain/discover_profile.dart';
 import '../../dogs/presentation/health/dog_health_tab.dart';
 import '../../dogs/presentation/onboarding/dog_onboarding_screen.dart';
+import '../../moments/presentation/moments_controller.dart';
+import '../../moments/presentation/widgets/story_widgets.dart';
 import '../domain/user_profile.dart';
 import 'edit_owner_profile_screen.dart';
 import 'edit_profile_screen.dart';
 import 'profile_controller.dart';
 import 'profile_strings.dart';
-import 'settings_screen.dart';
-import 'sign_out_action.dart';
+import 'widgets/profile_ui.dart';
 
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
@@ -72,6 +74,8 @@ class ProfileScreen extends ConsumerWidget {
                     onOpenPhoto: (index) =>
                         _openGallery(context, profile.dog.photoUrls, index),
                   ),
+                  const SizedBox(height: 16),
+                  StoryHighlightsRow(dogId: profile.dog.id, editable: true),
                   const SizedBox(height: 12),
                   DogHealthTab(
                     dogId: profile.dog.id,
@@ -86,76 +90,76 @@ class ProfileScreen extends ConsumerWidget {
           top: false,
           child: Padding(
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-            child: Column(
+            child: Row(
               children: [
-                SizedBox(
-                  width: double.infinity,
-                  child: OutlinedButton(
-                    onPressed: () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute<void>(
-                          builder: (_) => const DogOnboardingScreen(),
+                Expanded(
+                  child: SizedBox(
+                    height: 44,
+                    child: FilledButton.icon(
+                      style: FilledButton.styleFrom(
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
                         ),
-                      );
-                    },
-                    child: const Text(ProfileStrings.addDog),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                SizedBox(
-                  width: double.infinity,
-                  child: FilledButton(
-                    onPressed: () async {
-                      final saved = await Navigator.of(context).push<bool>(
-                        MaterialPageRoute<bool>(
-                          builder: (_) => const EditOwnerProfileScreen(),
+                        textStyle: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
                         ),
-                      );
-                      if (saved == true && context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text(ProfileStrings.saved)),
-                        );
-                      }
-                    },
-                    child: const Text(ProfileStrings.editProfile),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                SizedBox(
-                  width: double.infinity,
-                  child: OutlinedButton(
-                    onPressed: () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute<void>(
-                          builder: (_) => const SettingsScreen(),
-                        ),
-                      );
-                    },
-                    child: const Text(ProfileStrings.settings),
-                  ),
-                ),
-                if (ref.watch(isAdminProvider)) ...[
-                  const SizedBox(height: 8),
-                  SizedBox(
-                    width: double.infinity,
-                    child: FilledButton.tonal(
+                      ),
                       onPressed: () {
                         Navigator.of(context).push(
                           MaterialPageRoute<void>(
-                            builder: (_) => const AdminDashboardScreen(),
+                            builder: (_) => const DogOnboardingScreen(),
                           ),
                         );
                       },
-                      child: const Text(ProfileStrings.adminPanel),
+                      icon: const Icon(Icons.add, size: 20),
+                      label: const Text(ProfileStrings.addDog),
                     ),
                   ),
-                ],
-                const SizedBox(height: 8),
-                SizedBox(
-                  width: double.infinity,
-                  child: TextButton(
-                    onPressed: () => confirmAndSignOut(context, ref),
-                    child: const Text(ProfileStrings.signOut),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: SizedBox(
+                    height: 44,
+                    child: OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(
+                        backgroundColor:
+                            Theme.of(context).brightness == Brightness.dark
+                            ? Theme.of(
+                                context,
+                              ).colorScheme.surfaceContainerHighest
+                            : Colors.grey.shade100,
+                        foregroundColor: Theme.of(
+                          context,
+                        ).colorScheme.onSurface,
+                        side: BorderSide(
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.outline.withValues(alpha: 0.35),
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        textStyle: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      onPressed: () async {
+                        final saved = await Navigator.of(context).push<bool>(
+                          MaterialPageRoute<bool>(
+                            builder: (_) => const EditOwnerProfileScreen(),
+                          ),
+                        );
+                        if (saved == true && context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text(ProfileStrings.saved)),
+                          );
+                        }
+                      },
+                      icon: const Icon(Icons.edit_outlined, size: 18),
+                      label: const Text(ProfileStrings.editProfile),
+                    ),
                   ),
                 ),
               ],
@@ -168,14 +172,12 @@ class ProfileScreen extends ConsumerWidget {
 
   Future<void> _openDogEditor(BuildContext context, String dogId) async {
     final saved = await Navigator.of(context).push<bool>(
-      MaterialPageRoute<bool>(
-        builder: (_) => EditProfileScreen(dogId: dogId),
-      ),
+      MaterialPageRoute<bool>(builder: (_) => EditProfileScreen(dogId: dogId)),
     );
     if (saved == true && context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text(ProfileStrings.saved)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text(ProfileStrings.saved)));
     }
   }
 
@@ -238,118 +240,145 @@ class _DogCard extends StatelessWidget {
     final traits = [
       for (final tag in dog.traits) DiscoverProfile.localizeTrait(tag),
     ];
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(16),
-              child: Column(
-                children: [
-                  SizedBox(
-                    height: 180,
-                    width: double.infinity,
-                    child: photo.isEmpty
-                        ? buildDogImage(null, seed: dog.id)
-                        : buildDogImage(photo, seed: dog.id),
-                  ),
-                  FallbackIllustrationCaption(url: photo.isEmpty ? null : photo),
-                ],
-              ),
+    return AppCard(
+      margin: EdgeInsets.zero,
+      padding: AppCardTokens.innerPadding,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Center(
+            child: ProfileAvatar(
+              url: photo,
+              seed: dog.id,
+              size: 100,
+              fallbackIcon: Icons.pets,
             ),
-            const SizedBox(height: 12),
-            Text(dog.name, style: Theme.of(context).textTheme.titleLarge),
-            Text(
+          ),
+          const SizedBox(height: 12),
+          Center(
+            child: Text(
+              dog.name,
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            ),
+          ),
+          const SizedBox(height: 4),
+          Center(
+            child: Text(
               '${dog.breed} · ${ProfileStrings.ageLabel(dog.ageYears, dog.ageMonths)}',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
             ),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              MetricStatChip(
+                value: ProfileStrings.ageLabel(dog.ageYears, dog.ageMonths),
+                label: ProfileStrings.metricAge,
+              ),
+              const SizedBox(width: 8),
+              MetricStatChip(
+                value: ProfileStrings.sizeBadge(dog.size),
+                label: ProfileStrings.sizeLabel,
+              ),
+              const SizedBox(width: 8),
+              MetricStatChip(
+                value: ProfileStrings.genderValue(dog.gender),
+                label: ProfileStrings.gender,
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              DetailPillChip(label: dog.breed),
+              DetailPillChip(label: ProfileStrings.genderValue(dog.gender)),
+              if (dog.chipped)
+                const DetailPillChip(label: ProfileStrings.badgeChipped),
+              if (dog.vaccinated)
+                const DetailPillChip(label: ProfileStrings.badgeVaccinated),
+              if (dog.sterilized)
+                const DetailPillChip(label: ProfileStrings.badgeSterilized),
+            ],
+          ),
+          if (location.isNotEmpty) ...[
+            const SizedBox(height: 10),
             Text(
-              '${ProfileStrings.genderValue(dog.gender)} · ${ProfileStrings.sizeBadge(dog.size)}',
+              location,
+              style: TextStyle(fontSize: 13, color: Colors.grey.shade700),
+            ),
+          ],
+          if (dog.weightKg > 0) ...[
+            const SizedBox(height: 4),
+            Text(ProfileStrings.kg(dog.weightKg)),
+          ],
+          if (dog.bio.trim().isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Text(
+              ProfileStrings.bio,
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            const SizedBox(height: 4),
+            Text(
+              dog.bio,
+              style: TextStyle(fontSize: 14, color: Colors.grey.shade700),
+            ),
+          ],
+          if (traits.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Text(
+              ProfileStrings.personality,
+              style: Theme.of(context).textTheme.titleMedium,
             ),
             const SizedBox(height: 8),
             Wrap(
               spacing: 8,
               runSpacing: 8,
               children: [
-                if (dog.chipped)
-                  const Chip(label: Text(ProfileStrings.badgeChipped)),
-                if (dog.vaccinated)
-                  const Chip(label: Text(ProfileStrings.badgeVaccinated)),
-                if (dog.sterilized)
-                  const Chip(label: Text(ProfileStrings.badgeSterilized)),
+                for (final tag in traits) PersonalityBadge(label: tag),
               ],
             ),
-            if (location.isNotEmpty) ...[
-              const SizedBox(height: 8),
-              Text(location),
-            ],
-            if (dog.weightKg > 0) ...[
-              const SizedBox(height: 4),
-              Text(ProfileStrings.kg(dog.weightKg)),
-            ],
-            if (dog.bio.trim().isNotEmpty) ...[
-              const SizedBox(height: 12),
-              Text(
-                ProfileStrings.bio,
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
-              const SizedBox(height: 4),
-              Text(dog.bio),
-            ],
-            if (traits.isNotEmpty) ...[
-              const SizedBox(height: 12),
-              Text(
-                ProfileStrings.personality,
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  for (final tag in traits) PersonalityBadge(label: tag),
-                ],
-              ),
-            ],
-            if (dog.photoUrls.length > 1) ...[
-              const SizedBox(height: 12),
-              SizedBox(
-                height: 72,
-                child: ListView.separated(
-                  scrollDirection: Axis.horizontal,
-                  itemCount: dog.photoUrls.length,
-                  separatorBuilder: (context, index) =>
-                      const SizedBox(width: 8),
-                  itemBuilder: (context, index) {
-                    return InkWell(
-                      onTap: () => onOpenPhoto(index),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(10),
-                        child: SizedBox(
-                          width: 72,
-                          height: 72,
-                          child: buildDogImage(
-                            dog.photoUrls[index],
-                            seed: dog.id,
-                          ),
+          ],
+          if (dog.photoUrls.length > 1) ...[
+            const SizedBox(height: 12),
+            SizedBox(
+              height: 72,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: dog.photoUrls.length,
+                separatorBuilder: (context, index) => const SizedBox(width: 8),
+                itemBuilder: (context, index) {
+                  return InkWell(
+                    onTap: () => onOpenPhoto(index),
+                    borderRadius: BorderRadius.circular(8),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: SizedBox(
+                        width: 72,
+                        height: 72,
+                        child: buildDogImage(
+                          dog.photoUrls[index],
+                          seed: dog.id,
                         ),
                       ),
-                    );
-                  },
-                ),
-              ),
-            ],
-            const SizedBox(height: 12),
-            Align(
-              alignment: Alignment.centerRight,
-              child: TextButton(
-                onPressed: onEdit,
-                child: const Text(ProfileStrings.editDog),
+                    ),
+                  );
+                },
               ),
             ),
           ],
-        ),
+          const SizedBox(height: 8),
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton(
+              onPressed: onEdit,
+              child: const Text(ProfileStrings.editDog),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -431,11 +460,15 @@ class _OwnerHeaderState extends ConsumerState<_OwnerHeader> {
       if (!url.startsWith('https://') && !url.startsWith('http://')) {
         throw StateError(ProfileStrings.ownerPhotoUploadFailed);
       }
-      await ref.read(profileControllerProvider.notifier).saveOwnerCustomPhoto(url);
-    } catch (_) {
+      await ref
+          .read(profileControllerProvider.notifier)
+          .saveOwnerCustomPhoto(url);
+    } catch (error) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text(ProfileStrings.ownerPhotoUploadFailed)),
+        showNetworkErrorSnackBar(
+          context,
+          error,
+          fallback: ProfileStrings.ownerPhotoUploadFailed,
         );
       }
     } finally {
@@ -450,119 +483,101 @@ class _OwnerHeaderState extends ConsumerState<_OwnerHeader> {
     final profile = widget.profile;
     final avatarUrl =
         ref.watch(authStateProvider).asData?.value?.ownerAvatarUrl ?? '';
+    final dogCount = profile.dogs.length;
+    final moments =
+        ref.watch(momentsControllerProvider).asData?.value ?? const [];
+    final uid = ref.watch(authStateProvider).asData?.value?.uid ?? '';
+    final momentCount = [
+      for (final moment in moments)
+        if (uid.isNotEmpty && moment.authorUserId == uid) moment,
+    ].length;
+    final breedLabel = profile.dogs.isEmpty
+        ? '—'
+        : (profile.dog.breed.trim().isEmpty ? '—' : profile.dog.breed);
 
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          children: [
-            Material(
-              color: Colors.transparent,
-              child: InkWell(
-                customBorder: const CircleBorder(),
-                onTap: _uploading ? null : _openPhotoActions,
-                child: Stack(
-                  clipBehavior: Clip.none,
-                  children: [
-                    _OwnerAvatar(
-                      url: avatarUrl,
-                      uploading: _uploading,
-                    ),
-                    Positioned(
-                      right: -2,
-                      bottom: -2,
-                      child: DecoratedBox(
-                        decoration: const BoxDecoration(
-                          color: AppColors.primaryDeep,
-                          shape: BoxShape.circle,
-                        ),
-                        child: Padding(
-                          padding: const EdgeInsets.all(4),
-                          child: Icon(
-                            (avatarUrl.startsWith('http://') ||
-                                    avatarUrl.startsWith('https://'))
-                                ? Icons.photo_camera
-                                : Icons.add_a_photo,
-                            size: 12,
-                            color: Colors.white,
-                          ),
+    return AppCard(
+      margin: EdgeInsets.zero,
+      padding: AppCardTokens.innerPadding,
+      child: Column(
+        children: [
+          Material(
+            color: Colors.transparent,
+            child: InkWell(
+              customBorder: const CircleBorder(),
+              onTap: _uploading ? null : _openPhotoActions,
+              child: Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  ProfileAvatar(
+                    url: avatarUrl,
+                    size: 96,
+                    uploading: _uploading,
+                  ),
+                  Positioned(
+                    right: 2,
+                    bottom: 2,
+                    child: DecoratedBox(
+                      decoration: const BoxDecoration(
+                        color: AppColors.primaryDeep,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.all(6),
+                        child: Icon(
+                          (avatarUrl.startsWith('http://') ||
+                                  avatarUrl.startsWith('https://'))
+                              ? Icons.photo_camera
+                              : Icons.add_a_photo,
+                          size: 14,
+                          color: Colors.white,
                         ),
                       ),
                     ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    profile.ownerName,
-                    style: Theme.of(context).textTheme.titleLarge,
                   ),
-                  if (profile.ownerLocation.isNotEmpty)
-                    Text(profile.ownerLocation),
-                  if (profile.ownerBio.trim().isNotEmpty) ...[
-                    const SizedBox(height: 6),
-                    Text(profile.ownerBio),
-                  ],
                 ],
               ),
             ),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            profile.ownerName,
+            textAlign: TextAlign.center,
+            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+          ),
+          if (profile.ownerLocation.isNotEmpty) ...[
+            const SizedBox(height: 4),
+            Text(
+              profile.ownerLocation,
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
+            ),
           ],
-        ),
+          if (profile.ownerBio.trim().isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Text(
+              profile.ownerBio,
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
+            ),
+          ],
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              MetricStatChip(
+                value: '$dogCount',
+                label: ProfileStrings.metricDogs,
+              ),
+              const SizedBox(width: 8),
+              MetricStatChip(
+                value: '$momentCount',
+                label: ProfileStrings.metricMoments,
+              ),
+              const SizedBox(width: 8),
+              MetricStatChip(value: breedLabel, label: ProfileStrings.breed),
+            ],
+          ),
+        ],
       ),
-    );
-  }
-}
-
-class _OwnerAvatar extends StatelessWidget {
-  const _OwnerAvatar({
-    required this.url,
-    required this.uploading,
-  });
-
-  final String url;
-  final bool uploading;
-
-  @override
-  Widget build(BuildContext context) {
-    return CircleAvatar(
-      radius: 28,
-      backgroundColor: AppColors.primarySoft,
-      child: ClipOval(
-        child: SizedBox(
-          width: 56,
-          height: 56,
-          child: uploading
-              ? const Center(
-                  child: SizedBox(
-                    width: 22,
-                    height: 22,
-                    child: CircularProgressIndicator(strokeWidth: 2.4),
-                  ),
-                )
-              : _photoOrIcon(),
-        ),
-      ),
-    );
-  }
-
-  Widget _photoOrIcon() {
-    final usable = url.startsWith('http://') || url.startsWith('https://');
-    if (!usable) {
-      return const Icon(Icons.person, color: AppColors.primaryDeep, size: 28);
-    }
-    return Image.network(
-      url,
-      fit: BoxFit.cover,
-      width: 56,
-      height: 56,
-      errorBuilder: (context, error, stackTrace) {
-        return const Icon(Icons.person, color: AppColors.primaryDeep, size: 28);
-      },
     );
   }
 }

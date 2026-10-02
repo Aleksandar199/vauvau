@@ -6,7 +6,9 @@ import 'package:image_picker/image_picker.dart';
 import '../../../core/constants/app_strings.dart';
 import '../../../core/constants/serbia_locations.dart';
 import '../../../core/images/image_upload_service.dart';
+import '../../../core/network/network_failure.dart';
 import '../../../core/widgets/brand_mark.dart';
+import '../../../core/widgets/feed_state.dart';
 import '../../../core/widgets/primary_button.dart';
 import '../domain/auth_exception.dart';
 import 'auth_controller.dart';
@@ -178,10 +180,12 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
       if (mounted) {
         setState(() => _ownerPhotoUrl = url);
       }
-    } catch (_) {
+    } catch (error) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text(AppStrings.photoUploadFailed)),
+        showNetworkErrorSnackBar(
+          context,
+          error,
+          fallback: AppStrings.photoUploadFailed,
         );
       }
     } finally {
@@ -484,6 +488,17 @@ class _SignUpForm extends StatelessWidget {
                                       width: 72,
                                       height: 72,
                                       fit: BoxFit.cover,
+                                      loadingBuilder:
+                                          (context, child, progress) {
+                                        if (progress == null) {
+                                          return child;
+                                        }
+                                        return const SoftPlaceholder(
+                                          width: 72,
+                                          height: 72,
+                                          borderRadius: 36,
+                                        );
+                                      },
                                       errorBuilder: (context, error, stack) {
                                         return const Icon(
                                           Icons.person,

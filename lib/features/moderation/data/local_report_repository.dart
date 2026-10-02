@@ -3,23 +3,26 @@ import 'dart:async';
 import '../domain/content_report.dart';
 
 class LocalReportRepository implements ReportRepository {
-  LocalReportRepository({List<ContentReport>? seed})
-      : _items = [...?seed];
+  LocalReportRepository({List<ContentReport>? seed}) : _items = [...?seed];
 
   final List<ContentReport> _items;
   final StreamController<List<ContentReport>> _controller =
       StreamController<List<ContentReport>>.broadcast();
 
+  void dispose() {
+    _controller.close();
+  }
+
   @override
   Stream<List<ContentReport>> watchAll() async* {
-    yield List<ContentReport>.from(_items);
+    yield _sorted();
     yield* _controller.stream;
   }
 
   @override
   Future<void> submit(ContentReport report) async {
     _items.insert(0, report);
-    _controller.add(List<ContentReport>.from(_items));
+    _controller.add(_sorted());
   }
 
   @override
@@ -33,6 +36,11 @@ class LocalReportRepository implements ReportRepository {
         break;
       }
     }
-    _controller.add(List<ContentReport>.from(_items));
+    _controller.add(_sorted());
+  }
+
+  List<ContentReport> _sorted() {
+    return List<ContentReport>.from(_items)
+      ..sort((a, b) => b.timestamp.compareTo(a.timestamp));
   }
 }

@@ -6,6 +6,16 @@ import '../domain/location_access.dart';
 import '../domain/location_client.dart';
 
 class GeolocatorLocationClient implements LocationClient {
+  static const _walkNotification = ForegroundNotificationConfig(
+    notificationTitle: 'VauVau Šetnja u toku',
+    notificationText:
+        'Vaša lokacija se prati u pozadini radi preciznog merenja rute.',
+    notificationIcon: AndroidResource(name: 'launch_background'),
+    enableWakeLock: true,
+    setOngoing: true,
+    notificationChannelName: 'VauVau šetnja',
+  );
+
   @override
   Future<bool> isServiceEnabled() async {
     try {
@@ -60,16 +70,85 @@ class GeolocatorLocationClient implements LocationClient {
 
   @override
   Stream<GeoCoord> watchPosition() {
+    return _watch(_foregroundSettings());
+  }
+
+  @override
+  Stream<GeoCoord> watchWalkPosition() {
+    return _watch(_walkSettings());
+  }
+
+  Stream<GeoCoord> _watch(LocationSettings settings) {
     try {
-      return Geolocator.getPositionStream(
-        locationSettings: const LocationSettings(
-          accuracy: LocationAccuracy.high,
-          distanceFilter: 12,
-        ),
-      ).map((position) => GeoCoord(position.latitude, position.longitude));
+      return Geolocator.getPositionStream(locationSettings: settings).map(
+        (position) => GeoCoord(position.latitude, position.longitude),
+      );
     } catch (_) {
       return const Stream.empty();
     }
+  }
+
+  LocationSettings _foregroundSettings() {
+    if (kIsWeb) {
+      return const LocationSettings(
+        accuracy: LocationAccuracy.high,
+        distanceFilter: 12,
+      );
+    }
+    if (defaultTargetPlatform == TargetPlatform.android) {
+      return AndroidSettings(
+        accuracy: LocationAccuracy.high,
+        distanceFilter: 12,
+        intervalDuration: const Duration(seconds: 5),
+      );
+    }
+    if (defaultTargetPlatform == TargetPlatform.iOS ||
+        defaultTargetPlatform == TargetPlatform.macOS) {
+      return AppleSettings(
+        accuracy: LocationAccuracy.high,
+        distanceFilter: 12,
+        activityType: ActivityType.otherNavigation,
+        pauseLocationUpdatesAutomatically: true,
+        allowBackgroundLocationUpdates: false,
+      );
+    }
+    return const LocationSettings(
+      accuracy: LocationAccuracy.high,
+      distanceFilter: 12,
+    );
+  }
+
+  LocationSettings _walkSettings() {
+    if (kIsWeb) {
+      return const LocationSettings(
+        accuracy: LocationAccuracy.high,
+        distanceFilter: 5,
+      );
+    }
+    if (defaultTargetPlatform == TargetPlatform.android) {
+      return AndroidSettings(
+        accuracy: LocationAccuracy.high,
+        distanceFilter: 5,
+        forceLocationManager: true,
+        intervalDuration: const Duration(seconds: 3),
+        foregroundNotificationConfig: _walkNotification,
+      );
+    }
+    if (defaultTargetPlatform == TargetPlatform.iOS ||
+        defaultTargetPlatform == TargetPlatform.macOS) {
+      return AppleSettings(
+        accuracy: LocationAccuracy.high,
+        distanceFilter: 5,
+        activityType: ActivityType.fitness,
+        pauseLocationUpdatesAutomatically: false,
+        showBackgroundLocationIndicator: true,
+        allowBackgroundLocationUpdates: true,
+      );
+    }
+    return const LocationSettings(
+      accuracy: LocationAccuracy.high,
+      distanceFilter: 5,
+    );
   }
 
   @override
@@ -112,6 +191,9 @@ class FallbackLocationClient implements LocationClient {
 
   @override
   Stream<GeoCoord> watchPosition() => const Stream.empty();
+
+  @override
+  Stream<GeoCoord> watchWalkPosition() => const Stream.empty();
 
   @override
   Future<void> openAppSettings() async {}

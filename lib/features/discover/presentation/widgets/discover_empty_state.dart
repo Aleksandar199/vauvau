@@ -16,7 +16,11 @@ class DiscoverEmptyState extends ConsumerWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.pets_outlined, size: 88, color: theme.colorScheme.primary),
+            Icon(
+              Icons.pets_outlined,
+              size: 88,
+              color: theme.colorScheme.primary,
+            ),
             const SizedBox(height: 16),
             Text(
               DiscoverStrings.emptyTitle,

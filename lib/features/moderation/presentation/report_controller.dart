@@ -23,7 +23,9 @@ final reportRepositoryProvider = Provider<ReportRepository>((ref) {
   if (isFirebaseReady) {
     return FirestoreReportRepository(FirebaseFirestore.instance);
   }
-  return LocalReportRepository();
+  final repo = LocalReportRepository();
+  ref.onDispose(repo.dispose);
+  return repo;
 });
 
 final contentReportsProvider = StreamProvider<List<ContentReport>>((ref) {
@@ -41,28 +43,40 @@ class ReportController {
   final Ref _ref;
 
   Future<void> submit({
-    required ReportContentType contentType,
+    required ReportContentType targetType,
     required String targetId,
     required String reason,
+    String reportedUserId = '',
+    String? details,
   }) {
     final uid =
         _ref.read(authStateProvider).asData?.value?.uid ?? 'local-user';
+    final trimmed = (details ?? '').trim();
     return _ref.read(reportRepositoryProvider).submit(
           ContentReport(
             id: 'report-${DateTime.now().millisecondsSinceEpoch}',
-            reportedByUserId: uid,
-            contentType: contentType,
+            reporterId: uid,
+            reportedUserId: reportedUserId,
+            targetType: targetType,
             targetId: targetId,
             reason: reason,
-            createdAt: DateTime.now(),
+            details: trimmed.isEmpty ? null : trimmed,
+            timestamp: DateTime.now(),
           ),
         );
   }
 
-  Future<void> resolve(String id) {
+  Future<void> markReviewed(String id) {
     return _ref.read(reportRepositoryProvider).updateStatus(
           id: id,
-          status: ReportStatus.resolved,
+          status: ReportStatus.reviewed,
+        );
+  }
+
+  Future<void> markActionTaken(String id) {
+    return _ref.read(reportRepositoryProvider).updateStatus(
+          id: id,
+          status: ReportStatus.actionTaken,
         );
   }
 

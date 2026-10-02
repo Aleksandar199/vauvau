@@ -33,9 +33,7 @@ class FirestoreDiscoverRepository implements DiscoverRepository {
     GeoQuery? geo,
   }) {
     if (geo == null) {
-      return _dogs.snapshots().map(
-            (snapshot) => _fromDocs(snapshot.docs, geo),
-          );
+      return _dogs.snapshots().map((snapshot) => _fromDocs(snapshot.docs, geo));
     }
     final prefixes = GeoHash.coveragePrefixes(
       latitude: geo.origin.latitude,
@@ -50,10 +48,11 @@ class FirestoreDiscoverRepository implements DiscoverRepository {
     GeoQuery geo,
   ) {
     final controller = StreamController<List<DiscoverProfile>>.broadcast();
-    final latest = List<List<QueryDocumentSnapshot<Map<String, dynamic>>>?>.filled(
-      prefixes.length,
-      null,
-    );
+    final latest =
+        List<List<QueryDocumentSnapshot<Map<String, dynamic>>>?>.filled(
+          prefixes.length,
+          null,
+        );
     final subs = <StreamSubscription<QuerySnapshot<Map<String, dynamic>>>>[];
 
     void emit() {
@@ -80,9 +79,9 @@ class FirestoreDiscoverRepository implements DiscoverRepository {
             .endAt(['$prefix\uf8ff'])
             .snapshots()
             .listen((snapshot) {
-          latest[i] = snapshot.docs;
-          emit();
-        }),
+              latest[i] = snapshot.docs;
+              emit();
+            }),
       );
     }
 
@@ -121,7 +120,15 @@ class FirestoreDiscoverRepository implements DiscoverRepository {
     required String action,
     String likerName = '',
   }) async {
-    if (action == 'like' || action == 'superLike') {
+    if (action == 'superLike') {
+      return sendSuperLike(
+        userId: userId,
+        myDogId: myDogId,
+        target: target,
+        likerName: likerName,
+      );
+    }
+    if (action == 'like') {
       await _recordLike(
         userId: userId,
         myDogId: myDogId,
@@ -140,6 +147,116 @@ class FirestoreDiscoverRepository implements DiscoverRepository {
       'createdAt': FieldValue.serverTimestamp(),
     }, SetOptions(merge: true));
     return false;
+  }
+
+  @override
+  Future<bool> hasUsedSuperLikeToday({required String userId}) async {
+    if (userId.isEmpty) {
+      return false;
+    }
+    try {
+      final cutoff = DateTime.now().subtract(const Duration(hours: 24));
+      final snapshot = await _firestore
+          .collection('super_likes')
+          .where('fromUserId', isEqualTo: userId)
+          .limit(25)
+          .get();
+      for (final doc in snapshot.docs) {
+        final created = doc.data()['createdAt'];
+        final at = created is Timestamp ? created.toDate() : null;
+        if (at != null && at.isAfter(cutoff)) {
+          return true;
+        }
+      }
+      return false;
+    } catch (error) {
+      debugPrint('hasUsedSuperLikeToday failed: $error');
+      return false;
+    }
+  }
+
+  @override
+  Future<bool> sendSuperLike({
+    required String userId,
+    required String myDogId,
+    required DiscoverProfile target,
+    String likerName = '',
+  }) async {
+    if (userId.isEmpty) {
+      throw StateError('Morate biti prijavljeni.');
+    }
+    if (await hasUsedSuperLikeToday(userId: userId)) {
+      throw const SuperLikeDailyLimitException();
+    }
+
+    await _firestore.collection('super_likes').add({
+      'fromUserId': userId,
+      'targetDogId': target.id,
+      'targetOwnerId': target.ownerId,
+      'createdAt': FieldValue.serverTimestamp(),
+    });
+
+    await _firestore.collection('dogs').doc(target.id).set({
+      'superLikesCount': FieldValue.increment(1),
+    }, SetOptions(merge: true));
+
+    await _recordLike(
+      userId: userId,
+      myDogId: myDogId,
+      likerName: likerName,
+      target: target,
+      type: 'superLike',
+    );
+
+    await _notifySuperLike(
+      userId: userId,
+      myDogId: myDogId,
+      likerName: likerName,
+      target: target,
+    );
+
+    return _tryCreateMatch(userId: userId, myDogId: myDogId, target: target);
+  }
+
+  Future<void> _notifySuperLike({
+    required String userId,
+    required String myDogId,
+    required String likerName,
+    required DiscoverProfile target,
+  }) async {
+    if (target.ownerId.isEmpty || target.ownerId == userId) {
+      return;
+    }
+    var senderName = likerName.trim();
+    if (senderName.isEmpty) {
+      final userDoc = await _firestore.collection('users').doc(userId).get();
+      final data = userDoc.data();
+      senderName = (data?['name'] as String?)?.trim() ?? '';
+      if (senderName.isEmpty) {
+        senderName = (data?['email'] as String?)?.trim() ?? 'Neko';
+      }
+    }
+    final title = '⭐ Super Like!';
+    final body = '$senderName je dao Super Like vašem psu ${target.name}!';
+    try {
+      await _firestore.collection('notifications').add({
+        'recipientId': target.ownerId,
+        'toUserId': target.ownerId,
+        'senderId': userId,
+        'fromUserId': userId,
+        'senderUserId': userId,
+        'type': 'SUPER_LIKE',
+        'title': title,
+        'message': body,
+        'body': body,
+        'dogId': target.id,
+        'senderDogId': myDogId,
+        'createdAt': FieldValue.serverTimestamp(),
+        'isRead': false,
+      });
+    } catch (error) {
+      debugPrint('Super Like obaveštenje nije upisano: $error');
+    }
   }
 
   Future<bool> _tryCreateMatch({
@@ -192,19 +309,48 @@ class FirestoreDiscoverRepository implements DiscoverRepository {
   }
 
   @override
-  Future<bool> hasLiked({
-    required String userId,
-    required String dogId,
-  }) async {
+  Future<bool> hasLiked({required String userId, required String dogId}) async {
     try {
-      final snapshot =
-          await _swipes.doc('${userId}_$dogId').get();
+      final likeSnap = await _firestore
+          .collection('dogs')
+          .doc(dogId)
+          .collection('likes')
+          .doc(userId)
+          .get();
+      if (likeSnap.exists) {
+        return true;
+      }
+      final snapshot = await _swipes.doc('${userId}_$dogId').get();
       final type = snapshot.data()?['type'] as String?;
       return snapshot.exists &&
           (type == null || type == 'like' || type == 'superLike');
     } catch (error) {
       debugPrint('hasLiked failed: $error');
       return false;
+    }
+  }
+
+  @override
+  Future<void> unlike({required String userId, required String dogId}) async {
+    if (userId.isEmpty || dogId.isEmpty) {
+      return;
+    }
+    final likeRef = _firestore
+        .collection('dogs')
+        .doc(dogId)
+        .collection('likes')
+        .doc(userId);
+    final likeSnap = await likeRef.get();
+    try {
+      await likeRef.delete();
+    } catch (_) {}
+    try {
+      await _swipes.doc('${userId}_$dogId').delete();
+    } catch (_) {}
+    if (likeSnap.exists) {
+      await _firestore.collection('dogs').doc(dogId).set({
+        'likesCount': FieldValue.increment(-1),
+      }, SetOptions(merge: true));
     }
   }
 
@@ -226,9 +372,27 @@ class FirestoreDiscoverRepository implements DiscoverRepository {
       'timestamp': FieldValue.serverTimestamp(),
       'createdAt': FieldValue.serverTimestamp(),
     }, SetOptions(merge: true));
+
+    final likeRef = _firestore
+        .collection('dogs')
+        .doc(dogId)
+        .collection('likes')
+        .doc(userId);
+    final likeExisting = await likeRef.get();
+    await likeRef.set({
+      'userId': userId,
+      'type': type,
+      'createdAt': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
+    if (!likeExisting.exists) {
+      await _firestore.collection('dogs').doc(dogId).set({
+        'likesCount': FieldValue.increment(1),
+      }, SetOptions(merge: true));
+    }
+
     // ignore: avoid_print
     print('DOG LIKE SUCCESS for: $dogId');
-    if (!existing.exists) {
+    if (!existing.exists && type != 'superLike') {
       try {
         await _notifyLike(
           userId: userId,

@@ -19,9 +19,27 @@ class FirestoreLostDogRepository implements LostDogRepository {
 
   @override
   Stream<List<LostDog>> watchLostDogs() {
-    return _col.orderBy('createdAt', descending: true).snapshots().map(
-          (snapshot) => snapshot.docs.map(_fromDoc).toList(),
-        );
+    // Sort client-side so missing createdAt / index issues don't blank the feed.
+    return _col.snapshots().map((snapshot) {
+      final dogs = <LostDog>[];
+      for (final doc in snapshot.docs) {
+        try {
+          dogs.add(_fromDoc(doc));
+        } catch (error) {
+          debugPrint('Lost dog parse skipped (${doc.id}): $error');
+        }
+      }
+      dogs.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      return dogs;
+    });
+  }
+
+  @override
+  Stream<List<LostDogComment>> watchComments(String dogId) {
+    return _col.doc(dogId).snapshots().map((snapshot) {
+      final data = snapshot.data() ?? const <String, dynamic>{};
+      return _commentsFromData(data);
+    });
   }
 
   @override
@@ -57,9 +75,54 @@ class FirestoreLostDogRepository implements LostDogRepository {
       'contactPhone': dog.contactPhone,
       'uploaderUserId': user.uid,
       'status': LostDogStatus.active,
+      'comments': <Map<String, dynamic>>[],
+      'commentsCount': 0,
       'createdAt': FieldValue.serverTimestamp(),
     });
     debugPrint('Lost/found listing created by ${user.uid} (${dog.type})');
+  }
+
+  @override
+  Future<void> addComment(
+    String dogId,
+    String text, {
+    String authorName = '',
+  }) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      throw StateError('Morate biti prijavljeni.');
+    }
+    final trimmed = text.trim();
+    if (trimmed.isEmpty) {
+      return;
+    }
+    var name = authorName.trim();
+    if (name.isEmpty) {
+      name = user.displayName?.trim() ?? '';
+      if (name.isEmpty) {
+        name = user.email?.trim() ?? 'Korisnik';
+      }
+    }
+    final now = DateTime.now();
+    final payload = <String, dynamic>{
+      'id': 'c-${now.microsecondsSinceEpoch}',
+      'authorUserId': user.uid,
+      'authorName': name,
+      'text': trimmed,
+      'createdAt': Timestamp.fromDate(now),
+    };
+    try {
+      // Stored on the listing doc so it works under owner update rules.
+      // Community comments also need the comments/commentsCount rule deployed.
+      await _col.doc(dogId).update({
+        'comments': FieldValue.arrayUnion([payload]),
+        'commentsCount': FieldValue.increment(1),
+      });
+    } catch (error, stack) {
+      debugPrint('Lost dog comment update failed: $error');
+      debugPrint('$stack');
+      rethrow;
+    }
   }
 
   @override
@@ -103,6 +166,38 @@ class FirestoreLostDogRepository implements LostDogRepository {
     );
   }
 
+  LostDogComment _commentFromMap(Map<String, dynamic> data, String fallbackId) {
+    return LostDogComment(
+      id: (data['id'] as String?)?.trim().isNotEmpty == true
+          ? data['id'] as String
+          : fallbackId,
+      authorUserId: data['authorUserId'] as String? ?? '',
+      authorName: data['authorName'] as String? ?? 'Korisnik',
+      text: data['text'] as String? ?? '',
+      createdAt: _date(data['createdAt']),
+    );
+  }
+
+  List<LostDogComment> _commentsFromData(Map<String, dynamic> data) {
+    final raw = data['comments'];
+    if (raw is! List) {
+      return const [];
+    }
+    final comments = <LostDogComment>[];
+    for (var i = 0; i < raw.length; i++) {
+      final item = raw[i];
+      if (item is Map<String, dynamic>) {
+        comments.add(_commentFromMap(item, 'c-$i'));
+      } else if (item is Map) {
+        comments.add(
+          _commentFromMap(Map<String, dynamic>.from(item), 'c-$i'),
+        );
+      }
+    }
+    comments.sort((a, b) => a.createdAt.compareTo(b.createdAt));
+    return comments;
+  }
+
   String _typeOf(Object? raw) {
     return raw?.toString() == LostDogType.found
         ? LostDogType.found
@@ -123,6 +218,9 @@ class FirestoreLostDogRepository implements LostDogRepository {
   DateTime _date(Object? raw) {
     if (raw is Timestamp) {
       return raw.toDate();
+    }
+    if (raw is DateTime) {
+      return raw;
     }
     return DateTime.now();
   }

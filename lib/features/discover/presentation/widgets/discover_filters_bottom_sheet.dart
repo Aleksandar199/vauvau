@@ -185,17 +185,13 @@ class _DiscoverFiltersBottomSheetState
                 );
               },
             ),
-            Text(
-              '${_draft.minAge.round()} – ${_draft.maxAge.round()} god.',
-            ),
+            Text('${_draft.minAge.round()} – ${_draft.maxAge.round()} god.'),
             SwitchListTile(
               contentPadding: EdgeInsets.zero,
               title: const Text(DiscoverStrings.vaccinatedOnly),
               value: _draft.vaccinatedOnly,
               onChanged: (value) {
-                setState(
-                  () => _draft = _draft.copyWith(vaccinatedOnly: value),
-                );
+                setState(() => _draft = _draft.copyWith(vaccinatedOnly: value));
               },
             ),
             SwitchListTile(
@@ -203,9 +199,7 @@ class _DiscoverFiltersBottomSheetState
               title: const Text(DiscoverStrings.sterilizedOnly),
               value: _draft.sterilizedOnly,
               onChanged: (value) {
-                setState(
-                  () => _draft = _draft.copyWith(sterilizedOnly: value),
-                );
+                setState(() => _draft = _draft.copyWith(sterilizedOnly: value));
               },
             ),
             const SizedBox(height: 8),
@@ -239,10 +233,6 @@ class _DiscoverFiltersBottomSheetState
   }
 
   Widget _filterChip(String label, bool selected, VoidCallback onTap) {
-    return DiscoverFilterChip(
-      label: label,
-      selected: selected,
-      onTap: onTap,
-    );
+    return DiscoverFilterChip(label: label, selected: selected, onTap: onTap);
   }
 }

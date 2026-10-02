@@ -6,6 +6,11 @@ abstract final class AdoptionStrings {
   static const String addTitle = 'Novi oglas';
   static const String badge = 'Udomljava se';
   static const String empty = 'Još nema oglasa za udomljavanje.';
+  static const String emptySubtitle =
+      'Dodajte psa ili proverite kasnije — novi oglasi stižu svakog dana.';
+  static const String loadError =
+      'Došlo je do greške. Pokušajte ponovo.';
+  static const String retry = 'Pokušaj ponovo';
   static const String name = 'Ime psa';
   static const String breed = 'Rasa';
   static const String age = 'Starost';
@@ -43,6 +48,7 @@ abstract final class AdoptionStrings {
   static const String owner = 'Vlasnik / organizacija';
   static const String sendMessage = 'Pošalji poruku';
   static const String call = 'Pozovi';
+  static const String callOwner = 'Pozovi vlasnika';
   static const String callUnavailable = 'Broj telefona nije dostupan.';
   static const String cancel = 'Otkaži';
   static const String details = 'Detalji';
@@ -68,8 +74,25 @@ abstract final class AdoptionStrings {
   static String callLabel(String phone) {
     final compact = phone.replaceAll(' ', '');
     if (compact.length < 6) {
-      return '$call: $phone';
+      return '$callOwner: $phone';
     }
-    return '$call: ${phone.trim()}';
+    return '$callOwner: ${phone.trim()}';
+  }
+
+  static String timeAgo(DateTime value, [DateTime? now]) {
+    final diff = (now ?? DateTime.now()).difference(value);
+    if (diff.inMinutes < 1) {
+      return 'sada';
+    }
+    if (diff.inMinutes < 60) {
+      return 'pre ${diff.inMinutes} min';
+    }
+    if (diff.inHours < 24) {
+      return 'pre ${diff.inHours} č';
+    }
+    if (diff.inDays < 7) {
+      return 'pre ${diff.inDays} d';
+    }
+    return '${value.day}.${value.month}.';
   }
 }

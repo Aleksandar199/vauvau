@@ -84,6 +84,20 @@ abstract final class MapStrings {
   static const String startWalk = '🟢 Započni šetnju';
   static const String readyToWalk = 'Spreman za šetnju po gradu?';
   static const String endWalk = 'Završi šetnju';
+  static const String pauseWalk = 'Pauza';
+  static const String resumeWalk = 'Nastavi';
+  static const String endWalkTitle = 'Završiti šetnju?';
+  static const String endWalkBody =
+      'Da li ste sigurni da želite da završite šetnju?';
+  static const String walkTime = 'Vreme';
+  static const String walkDistance = 'Km';
+  static const String walkSpeed = 'Brzina';
+  static const String walkPace = 'Tempo';
+  static const String walkCalories = 'Kalorije';
+  static const String gpsActiveBanner =
+      'GPS Praćenje aktivno • Aplikacija prati šetnju u pozadini';
+  static const String gpsPausedBanner =
+      'Šetnja je pauzirana • GPS praćenje na čekanju';
   static const String walking = 'U šetnji';
   static const String statusHint =
       'Npr. U šetnji, Odmaram, Tražim društvo za igru';

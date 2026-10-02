@@ -1,17 +1,21 @@
 abstract final class ProfileStrings {
   static const String tabLabel = 'Profil';
   static const String title = 'Profil';
-  static const String editProfile = 'Izmeni moj profil';
+  static const String editProfile = 'Izmeni profil';
   static const String editDog = 'Izmeni psa';
-  static const String addDog = '+ Dodaj psa';
+  static const String addDog = 'Dodaj psa';
   static const String addDogHint = 'Još nemate sačuvanog psa.';
   static const String settings = 'Podešavanja';
   static const String adminPanel = 'Administracija';
+  static const String adminBadge = 'ADMIN';
+  static const String moreActions = 'Više opcija';
   static const String searchFilters = 'Filteri za pretragu';
   static const String signOut = 'Odjavi se';
-  static const String signOutTitle = 'Odjava';
+  static const String signOutTitle = 'Odjava iz naloga';
   static const String signOutBody =
-      'Da li ste sigurni da želite da se odjavite?';
+      'Bićete odjavljeni sa ovog uređaja. Možete se ponovo prijaviti u bilo kom trenutku.';
+  static const String signingOut = 'Odjavljivanje...';
+  static const String signOutFailed = 'Odjava nije uspela. Pokušajte ponovo.';
   static const String cancel = 'Otkaži';
   static const String ownerSection = 'Vlasnik';
   static const String dogName = 'Ime psa';
@@ -67,12 +71,33 @@ abstract final class ProfileStrings {
   static const String badgeSterilized = 'Sterilisan ✓';
   static const String contact = 'Kontakt';
   static const String myDogs = 'Moji psi';
+  static const String momentsGallery = 'Momenti';
+  static const String momentsEmpty = 'Još nema momenata za ovog psa.';
+  static const String metricDogs = 'Psi';
+  static const String metricMoments = 'Momenti';
+  static const String metricAge = 'Starost';
   static const String notifications = 'Notifikacije';
   static const String enableNotifications = 'Omogući obaveštenja';
   static const String notifyWalks = 'Zahtevi za šetnju';
   static const String notifyMessages = 'Poruke';
   static const String notifyMatches = 'Novi mečevi';
   static const String showLocation = 'Prikaži moju lokaciju na mapi';
+  static const String showLocationHint =
+      'Drugi vlasnici vide tvog psa na mapi dok šetaš.';
+  static const String enableNotificationsHint =
+      'Dozvoli VauVau-u da ti šalje obaveštenja na telefon.';
+  static const String notifyWalksHint = 'Kada te neko pozove u šetnju';
+  static const String notifyMessagesHint = 'Nove poruke u četu';
+  static const String notifyMatchesHint = 'Kada se tvoj pas spoji sa drugim';
+  static const String notificationsGranted = 'Obaveštenja su uključena.';
+  static const String notificationsDenied =
+      'Dozvola nije data. Uključi obaveštenja u podešavanjima telefona.';
+  static const String notificationsUnsupported =
+      'Push obaveštenja nisu dostupna na ovom uređaju.';
+  static const String searchAndMap = 'Pretraga i mapa';
+  static const String radiusHint =
+      'Koliko daleko tražimo pse za šetnju i druženje.';
+  static const String searchFiltersHint = 'Veličina, pol i grad';
   static const String account = 'Nalog';
   static const String deleteAccount = 'Obriši nalog';
   static const String deleteAccountTitle = 'Brisanje naloga';

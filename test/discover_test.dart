@@ -9,15 +9,79 @@ import 'package:vauvau/features/discover/presentation/discover_image.dart';
 import 'package:vauvau/features/discover/presentation/discover_screen.dart';
 import 'package:vauvau/features/discover/presentation/discover_strings.dart';
 import 'package:vauvau/features/discover/presentation/widgets/discover_app_bar.dart';
+import 'package:vauvau/features/discover/presentation/widgets/dog_photo_gallery.dart';
+import 'package:vauvau/features/discover/presentation/widgets/swipe_dog_card.dart';
 import 'package:vauvau/features/discover/presentation/widgets/discover_filter_chip.dart';
+import 'package:vauvau/features/moments/presentation/moments_strings.dart';
 
 final Uint8List _transparentPng = Uint8List.fromList(const [
-  0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00, 0x00, 0x0D,
-  0x49, 0x48, 0x44, 0x52, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01,
-  0x08, 0x06, 0x00, 0x00, 0x00, 0x1F, 0x15, 0xC4, 0x89, 0x00, 0x00, 0x00,
-  0x0A, 0x49, 0x44, 0x41, 0x54, 0x78, 0x9C, 0x63, 0x00, 0x01, 0x00, 0x00,
-  0x05, 0x00, 0x01, 0x0D, 0x0A, 0x2D, 0xB4, 0x00, 0x00, 0x00, 0x00, 0x49,
-  0x45, 0x4E, 0x44, 0xAE, 0x42, 0x60, 0x82,
+  0x89,
+  0x50,
+  0x4E,
+  0x47,
+  0x0D,
+  0x0A,
+  0x1A,
+  0x0A,
+  0x00,
+  0x00,
+  0x00,
+  0x0D,
+  0x49,
+  0x48,
+  0x44,
+  0x52,
+  0x00,
+  0x00,
+  0x00,
+  0x01,
+  0x00,
+  0x00,
+  0x00,
+  0x01,
+  0x08,
+  0x06,
+  0x00,
+  0x00,
+  0x00,
+  0x1F,
+  0x15,
+  0xC4,
+  0x89,
+  0x00,
+  0x00,
+  0x00,
+  0x0A,
+  0x49,
+  0x44,
+  0x41,
+  0x54,
+  0x78,
+  0x9C,
+  0x63,
+  0x00,
+  0x01,
+  0x00,
+  0x00,
+  0x05,
+  0x00,
+  0x01,
+  0x0D,
+  0x0A,
+  0x2D,
+  0xB4,
+  0x00,
+  0x00,
+  0x00,
+  0x00,
+  0x49,
+  0x45,
+  0x4E,
+  0x44,
+  0xAE,
+  0x42,
+  0x60,
+  0x82,
 ]);
 
 DiscoverProfile _dog(
@@ -111,11 +175,70 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
 
-    expect(find.text(DiscoverStrings.details), findsOneWidget);
+    expect(find.byType(DogPhotoGallery), findsOneWidget);
+    expect(find.text(DiscoverStrings.health), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.text(DiscoverStrings.owner),
+      300,
+      scrollable: find
+          .descendant(
+            of: find.byType(DogDetailSheet),
+            matching: find.byType(Scrollable),
+          )
+          .first,
+    );
     expect(find.text(DiscoverStrings.owner), findsOneWidget);
     expect(find.text(DiscoverStrings.sendMessage), findsOneWidget);
     expect(find.byTooltip(DiscoverStrings.like), findsOneWidget);
     expect(find.byTooltip(DiscoverStrings.close), findsOneWidget);
+  });
+
+  testWidgets('detail sheet shows energy, weight, status and moments', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(412, 892));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    const profile = DiscoverProfile(
+      id: 'dog-luna',
+      name: 'Luna',
+      ownerName: 'Ana',
+      breed: 'Zlatni retriver',
+      ageYears: 5,
+      gender: 'ženka',
+      size: 'veliki',
+      location: 'Novi Sad - Sajmište',
+      bio: 'Voli vodu.',
+      photoUrls: [],
+      energyLevel: 'visoka',
+      weightKg: 28,
+      walking: true,
+    );
+    await tester.pumpWidget(
+      const ProviderScope(
+        child: MaterialApp(
+          home: Scaffold(body: DogDetailSheet(profile: profile)),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.text('🟢 U šetnji'), findsOneWidget);
+    expect(find.text('Visoka'), findsOneWidget);
+    expect(find.text(DiscoverStrings.energyShort), findsOneWidget);
+    expect(find.text('28 kg'), findsOneWidget);
+
+    await tester.scrollUntilVisible(
+      find.text(DiscoverStrings.stories),
+      300,
+      scrollable: find
+          .descendant(
+            of: find.byType(DogDetailSheet),
+            matching: find.byType(Scrollable),
+          )
+          .first,
+    );
+    expect(find.text(DiscoverStrings.stories), findsOneWidget);
+    expect(find.text(MomentsStrings.highlightsEmpty), findsOneWidget);
   });
 
   testWidgets('filter button opens matching filters', (tester) async {

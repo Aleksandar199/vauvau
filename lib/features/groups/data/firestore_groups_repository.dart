@@ -25,23 +25,72 @@ class FirestoreGroupsRepository implements GroupsRepository {
       return;
     }
     _seedStarted = true;
-    final existing = await _col.limit(1).get();
-    if (existing.docs.isNotEmpty) {
-      return;
-    }
-    final batch = firestore.batch();
+
     for (final group in SeedBreedGroups.all) {
-      batch.set(_col.doc(group.id), SeedBreedGroups.firestoreData(group));
+      final ref = _col.doc(group.id);
+      final snap = await ref.get();
+      if (!snap.exists) {
+        await ref.set(SeedBreedGroups.firestoreData(group));
+        continue;
+      }
+      final data = snap.data() ?? {};
+      final ids = [
+        for (final value in data['memberIds'] as List? ?? const [])
+          if (value is String && value.isNotEmpty) value,
+      ];
+      final patch = <String, dynamic>{
+        'title': group.title,
+        'description': group.description,
+        'imageUrl': group.imageUrl,
+        'isApproved': true,
+        'sortOrder': group.sortOrder,
+        'createdBy': data['createdBy'] as String? ?? '',
+      };
+      // Keep live member tallies; refresh mock counts only when nobody joined.
+      if (ids.isEmpty) {
+        patch['memberCount'] = group.memberCount;
+        patch['memberIds'] = const <String>[];
+      }
+      await ref.set(patch, SetOptions(merge: true));
     }
-    await batch.commit();
+
+    final removed = await _col.doc(SeedBreedGroups.removedSmallDogsId).get();
+    if (removed.exists) {
+      await _col.doc(SeedBreedGroups.removedSmallDogsId).delete();
+    }
   }
 
   @override
   Stream<List<BreedGroup>> watchGroups() async* {
     await ensureSeeded();
-    yield* _col.orderBy('sortOrder').snapshots().map(
-          (snapshot) => snapshot.docs.map(_groupFromDoc).toList(),
+    yield* _col.snapshots().map((snapshot) {
+      final List<BreedGroup> approved = snapshot.docs
+          .map((doc) => BreedGroup.tryFromMap(doc.id, doc.data()))
+          .whereType<BreedGroup>()
+          .where((group) => group.isApproved)
+          .toList();
+      return SeedBreedGroups.sortByPopularity(approved);
+    });
+  }
+
+  @override
+  Stream<List<BreedGroup>> watchPendingGroups() async* {
+    await ensureSeeded();
+    yield* _col.snapshots().map((snapshot) {
+      final List<BreedGroup> pending = snapshot.docs
+          .map((doc) => BreedGroup.tryFromMap(doc.id, doc.data()))
+          .whereType<BreedGroup>()
+          .where((group) => !group.isApproved)
+          .toList()
+        ..sort(
+          (BreedGroup a, BreedGroup b) {
+            final aAt = a.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+            final bAt = b.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+            return bAt.compareTo(aAt);
+          },
         );
+      return pending;
+    });
   }
 
   @override
@@ -79,7 +128,8 @@ class FirestoreGroupsRepository implements GroupsRepository {
         'memberCount': stored + 1,
       });
     });
-    final memberRef = _col.doc(groupId).collection('members').doc(currentUserId);
+    final memberRef =
+        _col.doc(groupId).collection('members').doc(currentUserId);
     final memberSnap = await memberRef.get();
     if (!memberSnap.exists) {
       await memberRef.set({
@@ -115,6 +165,73 @@ class FirestoreGroupsRepository implements GroupsRepository {
       },
       SetOptions(merge: true),
     );
+  }
+
+  @override
+  Future<BreedGroup> createGroup({
+    required String title,
+    required String description,
+    bool approveImmediately = false,
+  }) async {
+    if (currentUserId.isEmpty) {
+      throw StateError('Morate biti prijavljeni.');
+    }
+    final trimmedTitle = title.trim();
+    if (trimmedTitle.isEmpty) {
+      throw StateError('Naziv grupe je obavezan.');
+    }
+    final desc = description.trim().isEmpty
+        ? SeedBreedGroups.defaultDescription
+        : description.trim();
+    // Non-admin clients must write pending groups only.
+    final approved = approveImmediately;
+    final ref = _col.doc();
+    final data = <String, dynamic>{
+      'title': trimmedTitle,
+      'description': desc,
+      'imageUrl':
+          'https://images.unsplash.com/photo-1558788353-f76d92427f16?auto=format&fit=crop&w=400&q=80',
+      'memberIds': <String>[currentUserId],
+      'memberCount': 1,
+      'sortOrder': 999,
+      'lastMessage': '',
+      'isApproved': approved,
+      'createdBy': currentUserId,
+      'createdAt': FieldValue.serverTimestamp(),
+    };
+    await ref.set(data);
+    try {
+      await ref.collection('members').doc(currentUserId).set({
+        'lastReadTimestamp': FieldValue.serverTimestamp(),
+      });
+    } catch (_) {
+      // Group document is already created; member read cursor is best-effort.
+    }
+    return BreedGroup(
+      id: ref.id,
+      title: trimmedTitle,
+      description: desc,
+      imageUrl: data['imageUrl'] as String,
+      memberIds: [currentUserId],
+      memberCount: 1,
+      sortOrder: 999,
+      isApproved: approved,
+      createdBy: currentUserId,
+      createdAt: DateTime.now(),
+    );
+  }
+
+  @override
+  Future<void> approveGroup(String groupId) async {
+    await _col.doc(groupId).set(
+      {'isApproved': true},
+      SetOptions(merge: true),
+    );
+  }
+
+  @override
+  Future<void> deleteGroup(String groupId) async {
+    await _col.doc(groupId).delete();
   }
 
   @override
@@ -156,26 +273,6 @@ class FirestoreGroupsRepository implements GroupsRepository {
     required String imageUrl,
   }) {
     return sendMessage(groupId: groupId, text: '', imageUrl: imageUrl);
-  }
-
-  BreedGroup _groupFromDoc(QueryDocumentSnapshot<Map<String, dynamic>> doc) {
-    final data = doc.data();
-    final ids = [
-      for (final value in data['memberIds'] as List? ?? const [])
-        if (value is String && value.isNotEmpty) value,
-    ];
-    final lastAt = data['lastMessageAt'];
-    return BreedGroup(
-      id: doc.id,
-      title: data['title'] as String? ?? '',
-      description: data['description'] as String? ?? '',
-      imageUrl: data['imageUrl'] as String? ?? '',
-      memberIds: ids,
-      memberCount: (data['memberCount'] as num?)?.toInt() ?? ids.length,
-      sortOrder: (data['sortOrder'] as num?)?.toInt() ?? 0,
-      lastMessage: data['lastMessage'] as String? ?? '',
-      lastMessageAt: lastAt is Timestamp ? lastAt.toDate() : null,
-    );
   }
 
   GroupMessage _messageFromDoc(

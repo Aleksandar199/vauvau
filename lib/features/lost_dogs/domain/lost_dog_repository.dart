@@ -5,7 +5,11 @@ import 'lost_dog.dart';
 abstract class LostDogRepository {
   Stream<List<LostDog>> watchLostDogs();
 
+  Stream<List<LostDogComment>> watchComments(String dogId);
+
   Future<void> reportLostDog(LostDog dog, {XFile? photo});
+
+  Future<void> addComment(String dogId, String text, {String authorName = ''});
 
   Future<void> markFound(String id);
 

@@ -19,6 +19,7 @@ import '../../notifications/presentation/notification_strings.dart';
 import '../../notifications/presentation/push_bootstrap.dart';
 import '../../profile/presentation/profile_screen.dart';
 import '../../profile/presentation/profile_strings.dart';
+import '../../profile/presentation/profile_system_sheet.dart';
 import '../domain/app_drawer_catalog.dart';
 import 'home_drawer.dart';
 import 'home_tab.dart';
@@ -60,6 +61,12 @@ class HomeShellScreen extends ConsumerWidget {
                   },
                 ),
                 actions: [
+                  if (tabIndex == 3)
+                    IconButton(
+                      tooltip: ProfileStrings.moreActions,
+                      onPressed: () => showProfileSystemSheet(context, ref),
+                      icon: const Icon(Icons.settings_outlined),
+                    ),
                   IconButton(
                     tooltip: NotificationStrings.tooltip,
                     onPressed: () => showNotificationsSheet(context),

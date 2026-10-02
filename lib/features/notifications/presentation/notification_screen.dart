@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/app_colors.dart';
+import '../../../core/widgets/feed_state.dart';
 import '../../chat/presentation/chat_detail_screen.dart';
 import '../../chat/presentation/chat_inbox.dart';
 import '../../discover/data/load_discover_profile.dart';
@@ -13,8 +14,6 @@ import '../../home/presentation/home_tab.dart';
 import '../domain/app_notification.dart';
 import 'notification_controller.dart';
 import 'notification_strings.dart';
-
-const Color _notificationCard = Color(0xFF1E2230);
 
 class NotificationScreen extends ConsumerWidget {
   const NotificationScreen({super.key});
@@ -116,70 +115,81 @@ class _NotificationCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final unread = !item.isRead;
+    final theme = Theme.of(context);
+    final surface = theme.cardTheme.color ?? theme.colorScheme.surface;
     return Material(
-      color: _notificationCard,
+      color: unread
+          ? AppColors.primary.withValues(alpha: 0.05)
+          : surface,
       borderRadius: BorderRadius.circular(16),
       child: InkWell(
         borderRadius: BorderRadius.circular(16),
         onTap: () => _openNotification(context, ref, item),
-        child: Ink(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: unread ? AppColors.primary : const Color(0x33FFFFFF),
-              width: unread ? 1.5 : 1,
-            ),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                CircleAvatar(
-                  backgroundColor: AppColors.primary.withValues(alpha: 0.22),
-                  child: Icon(_iconFor(item.kind), color: AppColors.primary),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        item.title,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w700,
-                          fontSize: 16,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        item.body,
-                        style: const TextStyle(
-                          color: Colors.white70,
-                          height: 1.3,
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        NotificationStrings.timeAgo(item.createdAt),
-                        style: const TextStyle(
-                          color: Colors.white54,
-                          fontSize: 12,
-                        ),
-                      ),
-                    ],
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(24),
+                child: Container(
+                  width: 48,
+                  height: 48,
+                  color: AppColors.primary.withValues(alpha: 0.14),
+                  alignment: Alignment.center,
+                  child: Icon(
+                    _iconFor(item.kind),
+                    color: AppColors.primaryDeep,
+                    size: 22,
                   ),
                 ),
-                if (unread) ...[
-                  const SizedBox(width: 8),
-                  const Padding(
-                    padding: EdgeInsets.only(top: 6),
-                    child: _UnreadAccentDot(),
-                  ),
-                ],
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      item.title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight:
+                            unread ? FontWeight.bold : FontWeight.w600,
+                        color: theme.colorScheme.onSurface,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      item.body,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: Colors.grey.shade600,
+                        height: 1.3,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      NotificationStrings.timeAgo(item.createdAt),
+                      style: TextStyle(
+                        color: Colors.grey.shade500,
+                        fontSize: 11,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (unread) ...[
+                const SizedBox(width: 8),
+                const Padding(
+                  padding: EdgeInsets.only(top: 6),
+                  child: _UnreadAccentDot(),
+                ),
               ],
-            ),
+            ],
           ),
         ),
       ),
@@ -208,7 +218,8 @@ IconData _iconFor(NotificationKind kind) {
     NotificationKind.match => Icons.favorite,
     NotificationKind.walkRequest => Icons.directions_walk,
     NotificationKind.chatMessage => Icons.chat_bubble,
-        NotificationKind.like => Icons.favorite,
+    NotificationKind.like => Icons.favorite_border,
+    NotificationKind.superLike => Icons.star,
   };
 }
 
@@ -225,7 +236,8 @@ Future<void> _openNotification(
     }
     return;
   }
-  if (item.kind == NotificationKind.like) {
+  if (item.kind == NotificationKind.like ||
+      item.kind == NotificationKind.superLike) {
     final host = Navigator.of(context).context;
     if (Navigator.of(context).canPop()) {
       Navigator.of(context).pop();
@@ -240,10 +252,6 @@ Future<void> _openNotification(
       backgroundColor: Colors.transparent,
       builder: (sheetContext) => DogDetailSheet(
         profile: profile,
-        onMessage: () {
-          Navigator.of(sheetContext).pop();
-          _openChat(host, ref, profile);
-        },
       ),
     );
     return;
@@ -331,26 +339,11 @@ class _EmptyNotifications extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.notifications_none,
-              size: 72,
-              color: Theme.of(context).colorScheme.primary,
-            ),
-            const SizedBox(height: 16),
-            Text(
-              NotificationStrings.empty,
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
-          ],
-        ),
-      ),
+    return const FeedStateView(
+      icon: Icons.notifications_none,
+      title: NotificationStrings.empty,
+      subtitle: NotificationStrings.emptySubtitle,
+      padding: EdgeInsets.all(24),
     );
   }
 }

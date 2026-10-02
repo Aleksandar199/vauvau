@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import 'app_colors.dart';
@@ -105,6 +106,21 @@ abstract final class AppTheme {
       colorScheme: colorScheme,
       scaffoldBackgroundColor: background,
       textTheme: baseText,
+      // Flutter web's snapshot-based page transitions can paint or hit-test
+      // a route before its RenderBox has completed layout. This is especially
+      // visible when opening Stories/Highlights from an overlay.
+      pageTransitionsTheme: kIsWeb
+          ? const PageTransitionsTheme(
+              builders: {
+                TargetPlatform.android: _NoPageTransitionsBuilder(),
+                TargetPlatform.iOS: _NoPageTransitionsBuilder(),
+                TargetPlatform.macOS: _NoPageTransitionsBuilder(),
+                TargetPlatform.windows: _NoPageTransitionsBuilder(),
+                TargetPlatform.linux: _NoPageTransitionsBuilder(),
+                TargetPlatform.fuchsia: _NoPageTransitionsBuilder(),
+              },
+            )
+          : const PageTransitionsTheme(),
       appBarTheme: AppBarTheme(
         backgroundColor: background,
         foregroundColor: onBackground,
@@ -115,22 +131,22 @@ abstract final class AppTheme {
       ),
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
-          minimumSize: const Size.fromHeight(52),
+          // Avoid Size.fromHeight (infinite width) — it crushes Expanded
+          // siblings in Rows down to one-glyph-wide text on web.
+          minimumSize: const Size(64, 52),
           shape: shape,
         ),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
-          minimumSize: const Size.fromHeight(52),
+          minimumSize: const Size(64, 52),
           shape: shape,
           backgroundColor: AppColors.primary,
           foregroundColor: AppColors.onPrimary,
         ),
       ),
       textButtonTheme: TextButtonThemeData(
-        style: TextButton.styleFrom(
-          foregroundColor: onBackground,
-        ),
+        style: TextButton.styleFrom(foregroundColor: onBackground),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
@@ -146,9 +162,7 @@ abstract final class AppTheme {
         backgroundColor: card,
         disabledColor: card,
         side: BorderSide(color: outline),
-        labelStyle: const TextStyle(
-          fontWeight: FontWeight.w600,
-        ),
+        labelStyle: const TextStyle(fontWeight: FontWeight.w600),
         secondaryLabelStyle: const TextStyle(
           color: AppColors.onPrimary,
           fontWeight: FontWeight.w700,
@@ -186,5 +200,20 @@ abstract final class AppTheme {
         thumbColor: AppColors.primary,
       ),
     );
+  }
+}
+
+class _NoPageTransitionsBuilder extends PageTransitionsBuilder {
+  const _NoPageTransitionsBuilder();
+
+  @override
+  Widget buildTransitions<T>(
+    PageRoute<T> route,
+    BuildContext context,
+    Animation<double> animation,
+    Animation<double> secondaryAnimation,
+    Widget child,
+  ) {
+    return child;
   }
 }

@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../chat/presentation/chat_inbox.dart';
-import '../../chat/presentation/chat_screen.dart';
 import '../../moderation/domain/content_report.dart';
 import '../../moderation/presentation/report_sheet.dart';
 import '../../profile/presentation/profile_controller.dart';
@@ -110,15 +108,17 @@ class DiscoverScreen extends ConsumerWidget {
                     final dog = dogs[index];
                     return DiscoverGridCard(
                       profile: dog,
-                      isMine: dog.id == state.myDog.id ||
+                      isMine:
+                          dog.id == state.myDog.id ||
                           (dog.ownerId.isNotEmpty &&
                               dog.ownerId == state.myDog.ownerId),
                       onTap: () => _openDetails(context, ref, dog),
                       onLongPress: () => showContentReportSheet(
                         context: context,
                         ref: ref,
-                        contentType: ReportContentType.dog,
+                        targetType: ReportContentType.dog,
                         targetId: dog.id,
+                        reportedUserId: dog.ownerId,
                       ),
                     );
                   },
@@ -137,35 +137,7 @@ class DiscoverScreen extends ConsumerWidget {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (sheetContext) => DogDetailSheet(
-        profile: profile,
-        onMessage: () {
-          Navigator.of(sheetContext).pop();
-          _openChat(context, ref, profile);
-        },
-        onReport: () {
-          Navigator.of(sheetContext).pop();
-          showContentReportSheet(
-            context: context,
-            ref: ref,
-            contentType: ReportContentType.dog,
-            targetId: profile.id,
-          );
-        },
-      ),
-    );
-  }
-
-  void _openChat(
-    BuildContext context,
-    WidgetRef ref,
-    DiscoverProfile profile,
-  ) {
-    final chatId = ref.read(chatInboxProvider.notifier).openFromMatch(profile);
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) => ChatScreen(conversationId: chatId),
-      ),
+      builder: (sheetContext) => DogDetailSheet(profile: profile),
     );
   }
 }

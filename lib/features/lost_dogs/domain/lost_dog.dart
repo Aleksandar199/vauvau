@@ -99,3 +99,19 @@ abstract final class LostDogStatus {
   static const String legacyMissing = 'missing';
   static const String legacyFound = 'found';
 }
+
+class LostDogComment {
+  const LostDogComment({
+    required this.id,
+    required this.authorUserId,
+    required this.authorName,
+    required this.text,
+    required this.createdAt,
+  });
+
+  final String id;
+  final String authorUserId;
+  final String authorName;
+  final String text;
+  final DateTime createdAt;
+}

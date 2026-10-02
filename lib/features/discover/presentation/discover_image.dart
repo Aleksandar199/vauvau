@@ -10,6 +10,8 @@ final discoverImageFactoryProvider = Provider<DiscoverImageFactory>((ref) {
 });
 
 ImageProvider discoverImageOf(BuildContext context, String url) {
-  return ProviderScope.containerOf(context, listen: false)
-      .read(discoverImageFactoryProvider)(url);
+  return ProviderScope.containerOf(
+    context,
+    listen: false,
+  ).read(discoverImageFactoryProvider)(url);
 }

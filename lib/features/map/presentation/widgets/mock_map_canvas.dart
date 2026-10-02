@@ -11,11 +11,15 @@ class VauInteractiveMap extends StatelessWidget {
     required this.controller,
     required this.placeMarkers,
     required this.overlayMarkers,
+    this.routePoints = const [],
+    this.routeColor = const Color(0xFFEA580C),
   });
 
   final MapController controller;
   final List<Marker> placeMarkers;
   final List<Marker> overlayMarkers;
+  final List<LatLng> routePoints;
+  final Color routeColor;
 
   @override
   Widget build(BuildContext context) {
@@ -49,6 +53,19 @@ class VauInteractiveMap extends StatelessWidget {
             maxZoom: 19,
             maxNativeZoom: 19,
           ),
+          if (routePoints.length >= 2)
+            PolylineLayer(
+              polylines: [
+                Polyline(
+                  points: routePoints,
+                  color: routeColor,
+                  strokeWidth: 5,
+                  strokeCap: StrokeCap.round,
+                  strokeJoin: StrokeJoin.round,
+                  borderStrokeWidth: 0,
+                ),
+              ],
+            ),
           if (placeMarkers.isNotEmpty)
             MarkerClusterLayerWidget(
               options: MarkerClusterLayerOptions(

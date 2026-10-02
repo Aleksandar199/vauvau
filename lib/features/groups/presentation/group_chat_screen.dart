@@ -3,8 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../../core/images/dog_image.dart';
+import '../../../core/network/network_failure.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../chat/domain/chat_time.dart';
+import '../../chat/presentation/widgets/chat_ui.dart';
 import '../../events/presentation/events_controller.dart';
 import '../domain/groups_models.dart';
 import 'groups_controller.dart';
@@ -139,10 +141,12 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen> {
             );
       }
       _scrollToEnd();
-    } catch (_) {
+    } catch (error) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text(GroupsStrings.photoFailed)),
+        showNetworkErrorSnackBar(
+          context,
+          error,
+          fallback: GroupsStrings.photoFailed,
         );
       }
     } finally {
@@ -231,45 +235,15 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen> {
                   ),
           ),
           if (_sendingPhoto) const LinearProgressIndicator(minHeight: 2),
-          SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(8, 8, 8, 8),
-              child: Row(
-                children: [
-                  IconButton(
-                    tooltip: GroupsStrings.addPhoto,
-                    onPressed: _sendingPhoto ? null : _pickPhoto,
-                    icon: const Icon(Icons.photo_camera_outlined),
-                  ),
-                  Expanded(
-                    child: TextField(
-                      controller: _input,
-                      textInputAction: TextInputAction.send,
-                      onSubmitted: (_) => _sendText(),
-                      decoration: InputDecoration(
-                        hintText: GroupsStrings.composeHint,
-                        filled: true,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(20),
-                          borderSide: BorderSide.none,
-                        ),
-                        isDense: true,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  IconButton.filled(
-                    tooltip: GroupsStrings.send,
-                    onPressed: _sendText,
-                    style: IconButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      foregroundColor: AppColors.onPrimary,
-                    ),
-                    icon: const Icon(Icons.send),
-                  ),
-                ],
-              ),
-            ),
+          ChatInputBar(
+            controller: _input,
+            onSend: _sendText,
+            onAttach: _pickPhoto,
+            attachIcon: Icons.photo_camera_outlined,
+            attachTooltip: GroupsStrings.addPhoto,
+            hintText: GroupsStrings.composeHint,
+            sendTooltip: GroupsStrings.send,
+            enabled: !_sendingPhoto,
           ),
         ],
       ),
@@ -289,17 +263,20 @@ class _GroupMessageBubble extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final mine = message.isMine;
-    final background = mine ? AppColors.primary : const Color(0xFFE5E7EB);
+    final background = mine ? AppColors.primary : Colors.grey.shade200;
     final foreground = mine ? AppColors.onPrimary : AppColors.ink;
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
+      padding: ChatUiTokens.bubbleOuterPadding,
       child: Row(
         mainAxisAlignment:
             mine ? MainAxisAlignment.end : MainAxisAlignment.start,
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           if (!mine) ...[
-            _SenderAvatar(url: message.senderAvatarUrl, name: message.senderName),
+            _SenderAvatar(
+              url: message.senderAvatarUrl,
+              name: message.senderName,
+            ),
             const SizedBox(width: 8),
           ],
           ConstrainedBox(
@@ -309,12 +286,7 @@ class _GroupMessageBubble extends StatelessWidget {
             child: DecoratedBox(
               decoration: BoxDecoration(
                 color: background,
-                borderRadius: BorderRadius.only(
-                  topLeft: const Radius.circular(18),
-                  topRight: const Radius.circular(18),
-                  bottomLeft: Radius.circular(mine ? 18 : 6),
-                  bottomRight: Radius.circular(mine ? 6 : 18),
-                ),
+                borderRadius: ChatUiTokens.bubbleRadius(isMine: mine),
               ),
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
@@ -349,15 +321,19 @@ class _GroupMessageBubble extends StatelessWidget {
                       const SizedBox(height: 4),
                       Text(
                         message.text,
-                        style: TextStyle(color: foreground, height: 1.3),
+                        style: TextStyle(
+                          color: foreground,
+                          fontSize: 14,
+                          height: 1.3,
+                        ),
                       ),
                     ],
                     const SizedBox(height: 4),
                     Text(
                       formatChatTimestamp(message.createdAt, now),
                       style: TextStyle(
-                        color: foreground.withValues(alpha: 0.75),
-                        fontSize: 11,
+                        color: foreground.withValues(alpha: 0.65),
+                        fontSize: 10,
                       ),
                     ),
                   ],
@@ -367,7 +343,10 @@ class _GroupMessageBubble extends StatelessWidget {
           ),
           if (mine) ...[
             const SizedBox(width: 8),
-            _SenderAvatar(url: message.senderAvatarUrl, name: message.senderName),
+            _SenderAvatar(
+              url: message.senderAvatarUrl,
+              name: message.senderName,
+            ),
           ],
         ],
       ),

@@ -8,13 +8,11 @@ import '../../dogs/domain/dog_area.dart';
 import '../../dogs/domain/dog_enums.dart';
 import '../domain/discover_profile.dart';
 
-DiscoverProfile discoverProfileFromMap(
-  String id,
-  Map<String, dynamic> data,
-) {
+DiscoverProfile discoverProfileFromMap(String id, Map<String, dynamic> data) {
   final unique = collectPhotoUrls(data);
   final area = data['area'] as Map<String, dynamic>?;
-  final location = data['location'] as String? ??
+  final location =
+      data['location'] as String? ??
       '${area?['cityName'] ?? ''} - ${area?['neighborhoodName'] ?? ''}'.trim();
 
   final coord = geoCoordFromMap(data) ?? GeoCoord.forCityName(location);
@@ -25,7 +23,8 @@ DiscoverProfile discoverProfileFromMap(
     name: data['name'] as String? ?? '',
     ownerName: data['ownerName'] as String? ?? 'Vlasnik',
     breed: data['breed'] as String? ?? '',
-    ageYears: (data['ageYears'] as num?)?.toInt() ??
+    ageYears:
+        (data['ageYears'] as num?)?.toInt() ??
         (data['age'] as num?)?.toInt() ??
         0,
     ageMonths: (data['ageMonths'] as num?)?.toInt() ?? 0,
@@ -35,27 +34,27 @@ DiscoverProfile discoverProfileFromMap(
     bio: data['bio'] as String? ?? '',
     photoUrls: unique,
     energyLevel: _energy(data['energyLevel'] as String?),
-    vaccinated: data['isVaccinated'] as bool? ??
-        data['vaccinated'] as bool? ??
-        false,
-    chipped: data['isMicrochipped'] as bool? ??
-        data['chipped'] as bool? ??
-        false,
-    sterilized: data['isSterilized'] as bool? ??
-        data['sterilized'] as bool? ??
-        false,
+    vaccinated:
+        data['isVaccinated'] as bool? ?? data['vaccinated'] as bool? ?? false,
+    chipped:
+        data['isMicrochipped'] as bool? ?? data['chipped'] as bool? ?? false,
+    sterilized:
+        data['isSterilized'] as bool? ?? data['sterilized'] as bool? ?? false,
     traits: _stringList(data['temperament'] ?? data['traits']),
     weightKg: (data['weightKg'] as num?)?.toDouble() ?? 0,
     walking: data['isWalking'] as bool? ?? false,
     latitude: coord.latitude,
     longitude: coord.longitude,
-    goodWithDogs: data['goodWithDogs'] as bool? ??
+    goodWithDogs:
+        data['goodWithDogs'] as bool? ??
         data['friendlyWithDogs'] as bool? ??
         false,
-    goodWithCats: data['goodWithCats'] as bool? ??
+    goodWithCats:
+        data['goodWithCats'] as bool? ??
         data['friendlyWithCats'] as bool? ??
         false,
-    goodWithKids: data['goodWithKids'] as bool? ??
+    goodWithKids:
+        data['goodWithKids'] as bool? ??
         data['friendlyWithKids'] as bool? ??
         false,
     likesTags: _stringList(data['likesTags']),
@@ -268,9 +267,9 @@ UserDogProfile userDogFromDiscover(DiscoverProfile profile) {
     bio: profile.bio,
     photoUrls: profile.photoUrls,
     size: profile.size,
-    temperament: temperamentFromStored(profile.traits)
-        .map((tag) => tag.firestoreValue)
-        .toList(),
+    temperament: temperamentFromStored(
+      profile.traits,
+    ).map((tag) => tag.firestoreValue).toList(),
     likesTags: profile.likesTags,
     dislikesTags: profile.dislikesTags,
   );

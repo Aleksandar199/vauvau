@@ -4,6 +4,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../domain/chat_message.dart';
 import '../../domain/chat_time.dart';
 import '../chat_strings.dart';
+import 'chat_ui.dart';
 
 class LocationPinBubble extends StatelessWidget {
   const LocationPinBubble({
@@ -18,67 +19,68 @@ class LocationPinBubble extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isMine = message.isMine;
-    final theme = Theme.of(context);
     final background =
-        isMine ? AppColors.primary : theme.colorScheme.surface;
+        isMine ? AppColors.primary : Colors.grey.shade200;
     final foreground =
-        isMine ? AppColors.onPrimary : theme.colorScheme.onSurface;
+        isMine ? AppColors.onPrimary : AppColors.ink;
     final locationName = (message.walkLocationName != null &&
             message.walkLocationName!.trim().isNotEmpty)
         ? message.walkLocationName!.trim()
         : message.text;
 
-    return Align(
-      alignment: isMine ? Alignment.centerRight : Alignment.centerLeft,
-      child: ConstrainedBox(
-        constraints: BoxConstraints(
-          maxWidth: MediaQuery.sizeOf(context).width * 0.78,
-        ),
-        child: Container(
-          margin: const EdgeInsets.symmetric(vertical: 4),
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-          decoration: BoxDecoration(
-            color: background,
-            borderRadius: BorderRadius.circular(18),
-            boxShadow: AppColors.cardShadow,
-            border: isMine
-                ? null
-                : Border.all(
-                    color: AppColors.primary.withValues(alpha: 0.4),
-                  ),
+    return Padding(
+      padding: ChatUiTokens.bubbleOuterPadding,
+      child: Align(
+        alignment: isMine ? Alignment.centerRight : Alignment.centerLeft,
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            maxWidth: MediaQuery.sizeOf(context).width * 0.78,
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                ChatStrings.locationPinTitle,
-                style: theme.textTheme.labelMedium?.copyWith(
-                  color: foreground.withValues(alpha: 0.85),
+          child: Container(
+            padding:
+                const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            decoration: BoxDecoration(
+              color: background,
+              borderRadius: ChatUiTokens.bubbleRadius(isMine: isMine),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  ChatStrings.locationPinTitle,
+                  style: TextStyle(
+                    color: foreground.withValues(alpha: 0.85),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 4),
-              Row(
-                children: [
-                  Icon(Icons.location_on, color: foreground, size: 20),
-                  const SizedBox(width: 6),
-                  Expanded(
-                    child: Text(
-                      locationName,
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        color: foreground,
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    Icon(Icons.location_on, color: foreground, size: 20),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        locationName,
+                        style: TextStyle(
+                          color: foreground,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 4),
-              Text(
-                formatChatTimestamp(message.sentAt, now),
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: foreground.withValues(alpha: 0.8),
+                  ],
                 ),
-              ),
-            ],
+                const SizedBox(height: 4),
+                Text(
+                  formatChatTimestamp(message.sentAt, now),
+                  style: TextStyle(
+                    color: foreground.withValues(alpha: 0.65),
+                    fontSize: 10,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),

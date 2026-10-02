@@ -1,4 +1,4 @@
-enum NotificationKind { match, walkRequest, chatMessage, like }
+enum NotificationKind { match, walkRequest, chatMessage, like, superLike }
 
 class AppNotification {
   const AppNotification({

@@ -29,14 +29,15 @@ class MomentModel {
   final int commentsCount;
   final DateTime createdAt;
 
+  static const Duration storyLifetime = Duration(hours: 24);
+
   int get likeCount => likes.length;
+
+  bool isActiveStory(DateTime now) => now.difference(createdAt) < storyLifetime;
 
   bool isLikedBy(String uid) => uid.isNotEmpty && likes.contains(uid);
 
-  MomentModel copyWith({
-    List<String>? likes,
-    int? commentsCount,
-  }) {
+  MomentModel copyWith({List<String>? likes, int? commentsCount}) {
     return MomentModel(
       id: id,
       authorUserId: authorUserId,

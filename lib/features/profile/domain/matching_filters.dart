@@ -67,7 +67,8 @@ class MatchingFilters {
     if (gender == FilterGender.female && profile.gender != 'ženka') {
       return false;
     }
-    if (city == FilterCity.noviSad && !profile.location.startsWith('Novi Sad')) {
+    if (city == FilterCity.noviSad &&
+        !profile.location.startsWith('Novi Sad')) {
       return false;
     }
     if (city == FilterCity.beograd && !profile.location.startsWith('Beograd')) {

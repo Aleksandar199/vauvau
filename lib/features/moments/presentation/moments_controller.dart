@@ -9,6 +9,7 @@ import '../../../core/images/dog_photo_urls.dart';
 import '../../../core/images/image_upload_service.dart';
 import '../../../core/utils/content_validation_service.dart';
 import '../../auth/presentation/auth_providers.dart';
+import '../../moderation/presentation/block_controller.dart';
 import '../data/firestore_moments_repository.dart';
 import '../data/local_moments_repository.dart';
 import '../domain/moment_model.dart';
@@ -43,10 +44,7 @@ class MomentsController extends Notifier<AsyncValue<List<MomentModel>>> {
     return ref.read(momentsRepositoryProvider).deleteMoment(momentId);
   }
 
-  Future<String> create({
-    required MomentModel draft,
-    XFile? photo,
-  }) async {
+  Future<String> create({required MomentModel draft, XFile? photo}) async {
     var imageUrl = draft.momentPhotoUrl.trim();
     if (photo != null) {
       try {
@@ -62,7 +60,9 @@ class MomentsController extends Notifier<AsyncValue<List<MomentModel>>> {
     if (imageUrl.isEmpty) {
       imageUrl = kFallbackDogPhotoUrl;
     }
-    return ref.read(momentsRepositoryProvider).createMoment(
+    return ref
+        .read(momentsRepositoryProvider)
+        .createMoment(
           MomentModel(
             id: '',
             authorUserId: _currentUserId(ref, draft.authorUserId),
@@ -118,13 +118,28 @@ final momentsRepositoryProvider = Provider<MomentsRepository>((ref) {
 
 final momentsControllerProvider =
     NotifierProvider<MomentsController, AsyncValue<List<MomentModel>>>(
-  MomentsController.new,
-);
+      MomentsController.new,
+    );
+
+/// Feed without the moments of blocked authors. Admin moderation keeps reading
+/// [momentsControllerProvider] so nothing is hidden from moderators.
+final visibleMomentsProvider = Provider<AsyncValue<List<MomentModel>>>((ref) {
+  final blocked = ref.watch(blockedUserIdsProvider);
+  return ref.watch(momentsControllerProvider).whenData((moments) {
+    if (blocked.isEmpty) {
+      return moments;
+    }
+    return [
+      for (final moment in moments)
+        if (!blocked.contains(moment.authorUserId)) moment,
+    ];
+  });
+});
 
 final momentCommentsProvider =
     StreamProvider.family<List<MomentComment>, String>((ref, momentId) {
-  return ref.watch(momentsRepositoryProvider).watchComments(momentId);
-});
+      return ref.watch(momentsRepositoryProvider).watchComments(momentId);
+    });
 
 final momentsMemberIdProvider = Provider<String>((ref) {
   final signedIn = ref.watch(authStateProvider).asData?.value?.uid ?? '';

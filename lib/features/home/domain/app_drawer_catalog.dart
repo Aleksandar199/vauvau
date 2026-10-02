@@ -9,6 +9,7 @@ class AppDrawerDestination {
     this.tabIndex,
     this.kind = DrawerItemKind.page,
     this.accent = false,
+    this.destructive = false,
   });
 
   final String id;
@@ -18,6 +19,7 @@ class AppDrawerDestination {
   final int? tabIndex;
   final DrawerItemKind kind;
   final bool accent;
+  final bool destructive;
 }
 
 enum DrawerItemKind {
@@ -30,40 +32,30 @@ enum DrawerItemKind {
   rules,
   admin,
   settings,
-  signOut,
   page,
 }
 
 abstract final class AppDrawerCatalog {
   static const String menuTooltip = 'Meni';
   static const String home = 'Početna';
+  static const String brandHeader = '🐾 VauVau';
+  static const String communitySection = '🐕 ZAJEDNICA';
+  static const String helpDogsSection = '❤️ POMOĆ PSIMA';
   static const String lostDogs = '🚨 Izgubljeni psi';
   static const String adopt = '🏠 Udomi';
   static const String groups = '👥 Grupe';
   static const String events = '📅 Događaji i šetnje';
   static const String moments = '📸 VauVau Moments';
-  static const String rules = 'Pravila & Podrška';
+  static const String rules = '❓ Pravila & Podrška';
   static const String admin = 'Admin Panel';
   static const String profile = '👤 Moj Profil';
   static const String settings = '⚙️ Podešavanja';
   static const String support = 'Podrška';
   static const String about = 'O aplikaciji';
   static const String locationPin = '📍';
+  static const String hitnoBadge = 'HITNO';
 
-  static const List<AppDrawerDestination> primaryItems = [
-    AppDrawerDestination(
-      id: 'lostDogs',
-      label: lostDogs,
-      icon: Icons.emergency_share_outlined,
-      kind: DrawerItemKind.lostDogs,
-      accent: true,
-    ),
-    AppDrawerDestination(
-      id: 'adopt',
-      label: adopt,
-      icon: Icons.home_outlined,
-      kind: DrawerItemKind.adopt,
-    ),
+  static const List<AppDrawerDestination> communityItems = [
     AppDrawerDestination(
       id: 'groups',
       label: groups,
@@ -82,11 +74,36 @@ abstract final class AppDrawerCatalog {
       icon: Icons.camera_alt_outlined,
       kind: DrawerItemKind.moments,
     ),
+  ];
+
+  static const List<AppDrawerDestination> helpDogsItems = [
+    AppDrawerDestination(
+      id: 'lostDogs',
+      label: lostDogs,
+      icon: Icons.emergency_share_outlined,
+      kind: DrawerItemKind.lostDogs,
+      accent: true,
+    ),
+    AppDrawerDestination(
+      id: 'adopt',
+      label: adopt,
+      icon: Icons.home_outlined,
+      kind: DrawerItemKind.adopt,
+    ),
+  ];
+
+  static const List<AppDrawerDestination> systemItems = [
     AppDrawerDestination(
       id: 'rules',
       label: rules,
       icon: Icons.help_outline,
       kind: DrawerItemKind.rules,
+    ),
+    AppDrawerDestination(
+      id: 'settings',
+      label: settings,
+      icon: Icons.settings_outlined,
+      kind: DrawerItemKind.settings,
     ),
   ];
 
@@ -98,6 +115,18 @@ abstract final class AppDrawerCatalog {
     kind: DrawerItemKind.admin,
   );
 
+  /// Legacy flat lists kept for callers that still iterate all destinations.
+  static const List<AppDrawerDestination> primaryItems = [
+    ...communityItems,
+    ...helpDogsItems,
+    AppDrawerDestination(
+      id: 'rules',
+      label: rules,
+      icon: Icons.help_outline,
+      kind: DrawerItemKind.rules,
+    ),
+  ];
+
   static const List<AppDrawerDestination> footerItems = [
     AppDrawerDestination(
       id: 'settings',
@@ -105,16 +134,11 @@ abstract final class AppDrawerCatalog {
       icon: Icons.settings_outlined,
       kind: DrawerItemKind.settings,
     ),
-    AppDrawerDestination(
-      id: 'signOut',
-      label: 'Odjava',
-      icon: Icons.logout,
-      kind: DrawerItemKind.signOut,
-    ),
   ];
 
   static const List<AppDrawerDestination> items = [
-    ...primaryItems,
-    ...footerItems,
+    ...communityItems,
+    ...helpDogsItems,
+    ...systemItems,
   ];
 }

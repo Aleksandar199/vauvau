@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/network/network_failure.dart';
 import '../../domain/admin_feedback.dart';
 import '../support_controller.dart';
 import '../support_strings.dart';
@@ -128,11 +129,13 @@ class _AdminFeedbackFormState extends ConsumerState<AdminFeedbackForm>
             subject: _subject.text,
             message: _message.text,
           );
-    } catch (_) {
+    } catch (error) {
       if (mounted) {
         setState(() => _sending = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text(SupportStrings.sendError)),
+        showNetworkErrorSnackBar(
+          context,
+          error,
+          fallback: SupportStrings.sendError,
         );
       }
       return;

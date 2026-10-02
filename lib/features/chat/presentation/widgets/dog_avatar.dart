@@ -2,12 +2,13 @@ import 'package:flutter/material.dart';
 
 import '../../../../core/images/dog_image.dart';
 import '../../domain/chat_conversation.dart';
+import 'chat_ui.dart';
 
 class DogAvatar extends StatelessWidget {
   const DogAvatar({
     super.key,
     required this.photoUrl,
-    this.size = 56,
+    this.size = ChatUiTokens.avatarSize,
   });
 
   final String photoUrl;
@@ -16,7 +17,7 @@ class DogAvatar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ClipRRect(
-      borderRadius: BorderRadius.circular(14),
+      borderRadius: BorderRadius.circular(size / 2),
       child: SizedBox(
         width: size,
         height: size,

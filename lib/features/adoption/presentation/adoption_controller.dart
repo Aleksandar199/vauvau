@@ -11,14 +11,22 @@ import '../data/local_adoption_repository.dart';
 import '../domain/adoption_dog.dart';
 import '../domain/adoption_repository.dart';
 
-class AdoptionController extends Notifier<List<AdoptionDog>> {
+class AdoptionController extends Notifier<AsyncValue<List<AdoptionDog>>> {
   @override
-  List<AdoptionDog> build() {
+  AsyncValue<List<AdoptionDog>> build() {
     final repo = ref.watch(adoptionRepositoryProvider);
-    final sub = repo.watchAdoptionDogs().listen((dogs) => state = dogs);
+    final sub = repo.watchAdoptionDogs().listen(
+      (dogs) => state = AsyncValue.data(dogs),
+      onError: (Object error, StackTrace stack) {
+        debugPrint('Adoption stream: $error');
+        state = AsyncValue.error(error, stack);
+      },
+    );
     ref.onDispose(sub.cancel);
-    return const [];
+    return const AsyncValue.loading();
   }
+
+  void reload() => ref.invalidateSelf();
 
   Future<bool> publish({
     required String name,
@@ -87,6 +95,6 @@ final adoptionRepositoryProvider = Provider<AdoptionRepository>((ref) {
 });
 
 final adoptionControllerProvider =
-    NotifierProvider<AdoptionController, List<AdoptionDog>>(
+    NotifierProvider<AdoptionController, AsyncValue<List<AdoptionDog>>>(
   AdoptionController.new,
 );

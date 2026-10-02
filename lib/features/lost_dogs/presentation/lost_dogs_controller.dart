@@ -10,17 +10,25 @@ import '../data/local_lost_dog_repository.dart';
 import '../domain/lost_dog.dart';
 import '../domain/lost_dog_repository.dart';
 
-class LostDogsController extends Notifier<List<LostDog>> {
+class LostDogsController extends Notifier<AsyncValue<List<LostDog>>> {
   @override
-  List<LostDog> build() {
+  AsyncValue<List<LostDog>> build() {
     final repo = ref.watch(lostDogRepositoryProvider);
     final sub = repo.watchLostDogs().listen(
-      (dogs) => state = dogs,
-      onError: (Object error) => debugPrint('Lost dogs stream: $error'),
+      (dogs) => state = AsyncValue.data(dogs),
+      onError: (Object error, StackTrace stack) {
+        debugPrint('Lost dogs stream: $error');
+        // Keep previous listings visible on transient stream errors.
+        if (!state.hasValue) {
+          state = AsyncValue.error(error, stack);
+        }
+      },
     );
     ref.onDispose(sub.cancel);
-    return const [];
+    return const AsyncValue.loading();
   }
+
+  void reload() => ref.invalidateSelf();
 
   Future<bool> report({
     required String dogName,
@@ -62,6 +70,15 @@ class LostDogsController extends Notifier<List<LostDog>> {
     }
   }
 
+  Future<void> addComment(String dogId, String text) {
+    final name = ref.read(authStateProvider).asData?.value?.displayName ?? '';
+    return ref.read(lostDogRepositoryProvider).addComment(
+          dogId,
+          text,
+          authorName: name,
+        );
+  }
+
   Future<void> markFound(String id) {
     return ref.read(lostDogRepositoryProvider).markFound(id);
   }
@@ -81,11 +98,17 @@ final lostDogRepositoryProvider = Provider<LostDogRepository>((ref) {
 });
 
 final lostDogsControllerProvider =
-    NotifierProvider<LostDogsController, List<LostDog>>(LostDogsController.new);
+    NotifierProvider<LostDogsController, AsyncValue<List<LostDog>>>(
+  LostDogsController.new,
+);
+
+List<LostDog> _dogsOf(AsyncValue<List<LostDog>> value) {
+  return value.asData?.value ?? const [];
+}
 
 final activeLostDogsProvider = Provider<List<LostDog>>((ref) {
   return [
-    for (final dog in ref.watch(lostDogsControllerProvider))
+    for (final dog in _dogsOf(ref.watch(lostDogsControllerProvider)))
       if (dog.isMissing) dog,
   ];
 });
@@ -94,7 +117,7 @@ final missingLostDogsProvider = activeLostDogsProvider;
 
 final activeFoundDogsProvider = Provider<List<LostDog>>((ref) {
   return [
-    for (final dog in ref.watch(lostDogsControllerProvider))
+    for (final dog in _dogsOf(ref.watch(lostDogsControllerProvider)))
       if (dog.isFoundListing && dog.isActive) dog,
   ];
 });
@@ -109,4 +132,9 @@ final recentMissingLostDogsProvider = Provider<List<LostDog>>((ref) {
 
 final lostDogReporterIdProvider = Provider<String>((ref) {
   return ref.watch(authStateProvider).asData?.value?.uid ?? '';
+});
+
+final lostDogCommentsProvider =
+    StreamProvider.family<List<LostDogComment>, String>((ref, dogId) {
+  return ref.watch(lostDogRepositoryProvider).watchComments(dogId);
 });

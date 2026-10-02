@@ -3,6 +3,7 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 
+import '../widgets/feed_state.dart';
 import 'dog_photo_urls.dart';
 import 'fallback_image_helper.dart';
 
@@ -93,6 +94,18 @@ class DogImage extends StatelessWidget {
       height: height,
       fit: fit,
       gaplessPlayback: true,
+      frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
+        if (wasSynchronouslyLoaded || frame != null) {
+          return child;
+        }
+        return SoftPlaceholder(width: width, height: height);
+      },
+      loadingBuilder: (context, child, progress) {
+        if (progress == null) {
+          return child;
+        }
+        return SoftPlaceholder(width: width, height: height);
+      },
       errorBuilder: (context, error, stackTrace) {
         if (!isFallback) {
           return _fallback();
@@ -103,29 +116,24 @@ class DogImage extends StatelessWidget {
             width: width,
             height: height,
             fit: fit,
-            errorBuilder: (context, error, stackTrace) {
-              return SizedBox(
-                width: width,
-                height: height,
-                child: ColoredBox(
-                  color: Colors.grey.shade200,
-                  child: const Center(
-                    child: Icon(Icons.pets, color: Colors.grey),
-                  ),
-                ),
-              );
-            },
+            errorBuilder: (context, error, stackTrace) => _broken(),
           );
         }
-        return SizedBox(
-          width: width,
-          height: height,
-          child: ColoredBox(
-            color: Colors.grey.shade200,
-            child: const Center(child: Icon(Icons.pets, color: Colors.grey)),
-          ),
-        );
+        return _broken();
       },
+    );
+  }
+
+  Widget _broken() {
+    return SizedBox(
+      width: width,
+      height: height,
+      child: ColoredBox(
+        color: Colors.grey.shade200,
+        child: const Center(
+          child: Icon(Icons.pets, color: Colors.grey, size: 28),
+        ),
+      ),
     );
   }
 }

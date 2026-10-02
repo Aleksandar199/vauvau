@@ -72,17 +72,100 @@ class PersonalityBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
         color: AppColors.primarySoft,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(20),
       ),
       child: Text(
         label,
         style: const TextStyle(
           color: AppColors.primaryDeep,
-          fontWeight: FontWeight.w600,
+          fontWeight: FontWeight.w500,
           fontSize: 12,
+        ),
+      ),
+    );
+  }
+}
+
+/// Compact breed / age / vaccine style pill used on profiles.
+class DetailPillChip extends StatelessWidget {
+  const DetailPillChip({
+    super.key,
+    required this.label,
+    this.value,
+  });
+
+  final String label;
+  final String? value;
+
+  @override
+  Widget build(BuildContext context) {
+    final text = value == null || value!.isEmpty ? label : '$label · $value';
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: AppColors.primarySoft,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Text(
+        text,
+        style: const TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w500,
+          color: AppColors.primaryDeep,
+        ),
+      ),
+    );
+  }
+}
+
+/// Compact metric tile (walks / moments / age).
+class MetricStatChip extends StatelessWidget {
+  const MetricStatChip({
+    super.key,
+    required this.value,
+    required this.label,
+  });
+
+  final String value;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final bg = theme.brightness == Brightness.dark
+        ? theme.colorScheme.surfaceContainerHighest
+        : Colors.grey.shade100;
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+        decoration: BoxDecoration(
+          color: bg,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Column(
+          children: [
+            Text(
+              value,
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                height: 1.2,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              label,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.grey.shade600,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -97,19 +180,24 @@ class DistancePill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration: BoxDecoration(
-        color: const Color(0xCC0F172A),
-        borderRadius: BorderRadius.circular(999),
+        color: Colors.black.withValues(alpha: 0.5),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.place, size: 14, color: Colors.white),
-          const SizedBox(width: 4),
+          const Icon(Icons.place, size: 11, color: Colors.white),
+          const SizedBox(width: 3),
           Text(
             label,
-            style: const TextStyle(color: Colors.white, fontSize: 12),
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 10,
+              fontWeight: FontWeight.w600,
+              height: 1.2,
+            ),
           ),
         ],
       ),

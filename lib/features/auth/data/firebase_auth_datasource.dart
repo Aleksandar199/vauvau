@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/services.dart';
 import 'package:google_sign_in/google_sign_in.dart';
@@ -77,12 +79,18 @@ class FirebaseAuthDatasource {
   }
 
   Future<void> signOut() async {
-    try {
-      await _googleSignIn.signOut();
-    } on PlatformException {
-      // Already signed out of Google or plugin unavailable.
-    }
+    // Clear Firebase session first so AuthGate flips to login immediately.
     await _auth.signOut();
+    // Google cleanup can hang on web — never block logout on it.
+    unawaited(_clearGoogleSession());
+  }
+
+  Future<void> _clearGoogleSession() async {
+    try {
+      await _googleSignIn.signOut().timeout(const Duration(seconds: 2));
+    } catch (_) {
+      // Already signed out, unavailable, or hung on web.
+    }
   }
 
   Future<void> sendPasswordResetEmail(String email) {

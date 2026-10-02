@@ -61,8 +61,7 @@ class ProfileController extends Notifier<UserProfile> {
         ? user!.displayName!
         : (user?.email ?? '');
     final discoverDogs = [
-      for (final dog in dogs)
-        discoverProfileFromDog(dog, ownerName: ownerName),
+      for (final dog in dogs) discoverProfileFromDog(dog, ownerName: ownerName),
     ];
     final preferredId = user?.dog.id ?? '';
     final selectedId =
@@ -112,7 +111,9 @@ class ProfileController extends Notifier<UserProfile> {
       return;
     }
     unawaited(
-      ref.read(authRepositoryProvider).saveUserProfile(
+      ref
+          .read(authRepositoryProvider)
+          .saveUserProfile(
             user: user,
             city: profile.ownerLocation,
             name: profile.ownerName,
@@ -137,12 +138,10 @@ class ProfileController extends Notifier<UserProfile> {
     );
     for (final dog in profile.dogs) {
       unawaited(
-        ref.read(dogsRepositoryProvider).updateDog(
-              dogFromDiscover(
-                dog,
-                ownerId: user.uid,
-                area: area,
-              ),
+        ref
+            .read(dogsRepositoryProvider)
+            .updateDog(
+              dogFromDiscover(dog, ownerId: user.uid, area: area),
               ageMonths: dog.ageMonths,
             ),
       );
@@ -169,14 +168,18 @@ class ProfileController extends Notifier<UserProfile> {
       ),
     );
     unawaited(
-      ref.read(dogsRepositoryProvider).updateDog(
+      ref
+          .read(dogsRepositoryProvider)
+          .updateDog(
             dogFromDiscover(dog, ownerId: user.uid, area: area),
             ageMonths: dog.ageMonths,
           ),
     );
     if (user.dog.id == dog.id || user.dog.id.isEmpty) {
       unawaited(
-        ref.read(authRepositoryProvider).saveUserProfile(
+        ref
+            .read(authRepositoryProvider)
+            .saveUserProfile(
               user: user,
               dog: userDogFromDiscover(dog),
               writeDog: true,
@@ -191,10 +194,9 @@ class ProfileController extends Notifier<UserProfile> {
     if (user == null || trimmed.isEmpty) {
       return;
     }
-    await ref.read(authRepositoryProvider).saveOwnerCustomPhoto(
-          uid: user.uid,
-          customPhotoUrl: trimmed,
-        );
+    await ref
+        .read(authRepositoryProvider)
+        .saveOwnerCustomPhoto(uid: user.uid, customPhotoUrl: trimmed);
   }
 
   String _cityName(String cityId, String fallback) {
@@ -222,10 +224,15 @@ class MatchingFiltersController extends Notifier<MatchingFilters> {
 
   void apply(MatchingFilters filters) {
     state = filters;
+    ref
+        .read(appSettingsProvider.notifier)
+        .syncRadiusFromFilters(filters.radiusKm);
   }
 }
 
 class AppSettingsController extends Notifier<AppSettings> {
+  var _hydrated = false;
+
   @override
   AppSettings build() {
     unawaited(_hydrate());
@@ -237,6 +244,7 @@ class AppSettingsController extends Notifier<AppSettings> {
     if (!ref.mounted) {
       return;
     }
+    _hydrated = true;
     state = loaded;
     _syncRadius(loaded);
   }
@@ -247,12 +255,22 @@ class AppSettingsController extends Notifier<AppSettings> {
     unawaited(AppSettingsStore.write(settings));
   }
 
+  void syncRadiusFromFilters(double radiusKm) {
+    if (state.radiusKm == radiusKm) {
+      return;
+    }
+    state = state.copyWith(radiusKm: radiusKm);
+    if (_hydrated) {
+      unawaited(AppSettingsStore.write(state));
+    }
+  }
+
   void _syncRadius(AppSettings settings) {
     final filters = ref.read(matchingFiltersProvider);
     if (filters.radiusKm != settings.radiusKm) {
-      ref.read(matchingFiltersProvider.notifier).apply(
-            filters.copyWith(radiusKm: settings.radiusKm),
-          );
+      ref
+          .read(matchingFiltersProvider.notifier)
+          .apply(filters.copyWith(radiusKm: settings.radiusKm));
     }
   }
 }

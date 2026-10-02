@@ -7,13 +7,14 @@ import '../../discover/domain/discover_profile.dart';
 import '../../discover/presentation/widgets/swipe_dog_card.dart';
 // import '../../../core/utils/content_validation_service.dart';
 import '../../moderation/domain/content_report.dart';
-import '../../moderation/presentation/moderation_strings.dart';
 import '../../moderation/presentation/report_sheet.dart';
+import '../../moderation/presentation/safety_menu.dart';
 import '../domain/chat_conversation.dart';
 import '../domain/chat_message.dart';
 import 'chat_inbox.dart';
 import 'chat_strings.dart';
 import 'schedule_walk_sheet.dart';
+import 'widgets/chat_ui.dart';
 import 'widgets/dog_avatar.dart';
 import 'widgets/location_picker_sheet.dart';
 import 'widgets/location_pin_bubble.dart';
@@ -137,23 +138,11 @@ class _ChatDetailScreenState extends ConsumerState<ChatDetailScreen> {
             onPressed: () => _openSchedule(context),
             icon: const Icon(Icons.pets),
           ),
-          PopupMenuButton<String>(
-            onSelected: (value) {
-              if (value == 'report') {
-                showContentReportSheet(
-                  context: context,
-                  ref: ref,
-                  contentType: ReportContentType.dog,
-                  targetId: open.dogId,
-                );
-              }
-            },
-            itemBuilder: (context) => [
-              const PopupMenuItem(
-                value: 'report',
-                child: Text(ModerationStrings.reportAction),
-              ),
-            ],
+          SafetyMenuButton(
+            reportedUserId: open.peerUserId,
+            targetId:
+                open.peerUserId.isEmpty ? open.dogId : open.peerUserId,
+            onBlocked: () => Navigator.of(context).pop(),
           ),
         ],
       ),
@@ -162,7 +151,7 @@ class _ChatDetailScreenState extends ConsumerState<ChatDetailScreen> {
           Expanded(
             child: ListView.builder(
               controller: _scroll,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              padding: const EdgeInsets.symmetric(vertical: 12),
               itemCount: open.messages.length,
               itemBuilder: (context, index) {
                 final message = open.messages[index];
@@ -194,53 +183,22 @@ class _ChatDetailScreenState extends ConsumerState<ChatDetailScreen> {
                       : () => showContentReportSheet(
                             context: context,
                             ref: ref,
-                            contentType: ReportContentType.chat,
+                            targetType: ReportContentType.message,
                             targetId: message.id,
+                            reportedUserId: open.peerUserId,
                           ),
                 );
               },
             ),
           ),
-          SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(8, 8, 8, 8),
-              child: Row(
-                children: [
-                  IconButton(
-                    tooltip: ChatStrings.attach,
-                    onPressed: () => _openAttachMenu(context),
-                    icon: const Icon(Icons.add_circle_outline),
-                  ),
-                  Expanded(
-                    child: TextField(
-                      controller: _input,
-                      focusNode: _focusNode,
-                      textInputAction: TextInputAction.send,
-                      onSubmitted: (_) => _send(),
-                      decoration: InputDecoration(
-                        hintText: ChatStrings.composeHint,
-                        filled: true,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(20),
-                          borderSide: BorderSide.none,
-                        ),
-                        isDense: true,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  IconButton.filled(
-                    tooltip: ChatStrings.send,
-                    onPressed: _send,
-                    style: IconButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      foregroundColor: AppColors.onPrimary,
-                    ),
-                    icon: const Icon(Icons.send),
-                  ),
-                ],
-              ),
-            ),
+          ChatInputBar(
+            controller: _input,
+            focusNode: _focusNode,
+            onSend: _send,
+            onAttach: () => _openAttachMenu(context),
+            attachTooltip: ChatStrings.attach,
+            hintText: ChatStrings.composeHint,
+            sendTooltip: ChatStrings.send,
           ),
         ],
       ),

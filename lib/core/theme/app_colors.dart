@@ -22,7 +22,7 @@ abstract final class AppColors {
   static const Color onSecondary = Color(0xFFF8FAFC);
 
   static const Color success = Color(0xFF16A34A);
-  static const Color superLike = Color(0xFF2563EB);
+  static const Color superLike = Color(0xFFFFC107); // Colors.amber
   static const Color cafe = Color(0xFFF59E0B);
 
   static List<BoxShadow> get cardShadow => const [

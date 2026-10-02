@@ -13,6 +13,11 @@ abstract final class LostDogStrings {
   static const String empty = 'Trenutno nema aktivnih prijava nestanka.';
   static const String emptyFound = 'Trenutno nema prijava pronađenih pasa.';
   static const String emptyAll = 'Još nema aktivnih prijava.';
+  static const String emptySubtitle =
+      'Prijavite nestanak ili pronalazak da pomognete lokalnoj zajednici.';
+  static const String loadError =
+      'Došlo je do greške. Pokušajte ponovo.';
+  static const String retry = 'Pokušaj ponovo';
   static const String tabLost = '🚨 Izgubljeni';
   static const String tabFound = '🟢 Pronađeni';
   static const String tabAll = 'Svi';
@@ -43,10 +48,23 @@ abstract final class LostDogStrings {
   static const String publishing = 'Slanje...';
   static const String published = 'Prijava nestanka je objavljena. 🐾';
   static const String publishedFound = 'Prijava pronađenog psa je objavljena. 🐾';
+  static const String publishSuccessTitle = 'Prijava objavljena';
+  static const String publishSuccessBody =
+      'Vaša prijava je uspešno sačuvana i sada je vidljiva u zajednici.';
+  static const String ok = 'U redu';
   static const String publishError = 'Prijava nije sačuvana. Pokušajte ponovo.';
-  static const String sighting = '👁️ Prijavi da sam ga video';
-  static const String contactFinder = '📞 Kontaktiraj poštenog pronalazača';
-  static const String found = '✅ Pas je pronađen';
+  static const String sighting = 'Prijavi da sam ga video';
+  static const String contactFinder = 'Kontaktiraj poštenog pronalazača';
+  static const String leaveComment = 'Ostavi komentar';
+  static const String commentsTitle = 'Komentari';
+  static const String commentHint = 'Gde i kada si video psa...';
+  static const String commentEmpty = 'Još nema komentara. Budi prvi!';
+  static const String commentSent = 'Komentar je sačuvan.';
+  static const String commentFailed =
+      'Komentar nije sačuvan. Pokušajte ponovo.';
+  static const String commentPermissionDenied =
+      'Nemate dozvolu za komentar. Proverite da ste ulogovani.';
+  static const String found = 'Pas je pronađen';
   static const String markResolved = 'Označi kao rešeno';
   static const String deletePost = 'Obriši prijavu';
   static const String deleteConfirmTitle = 'Obrisati prijavu?';
@@ -55,8 +73,8 @@ abstract final class LostDogStrings {
   static const String foundConfirmTitle = 'Označiti kao rešeno?';
   static const String foundConfirmBody =
       'Oglas će nestati iz aktivnih potražnji.';
-  static const String callOwner = '📞 Pozovi vlasnika';
-  static const String callFinder = '📞 Pozovi pronalazača';
+  static const String callOwner = 'Pozovi vlasnika';
+  static const String callFinder = 'Pozovi pronalazača';
   static const String understand = 'Razumem / Zatvori';
   static const String emergencyTitle = '🚨 HITNO: IZGUBLJEN PAS U TVOJEM GRADU!';
   static const String callUnavailable = 'Broj telefona nije dostupan.';
@@ -68,11 +86,11 @@ abstract final class LostDogStrings {
       'Pozovi ili pošalji poruku osobi koja je prijavila pronađenog psa.';
   static const String sendSms = 'Pošalji poruku';
   static const String cancel = 'Otkaži';
-  static const String missingBadge = '🚨 IZGUBLJEN PAS';
-  static const String foundBadge = '🟢 PRONAĐEN PAS';
+  static const String urgentBadge = 'HITNO';
+  static const String missingBadge = 'IZGUBLJEN';
+  static const String foundBadge = 'PRONAĐEN';
   static const String viewMatch = '🔍 Pogledaj profil';
   static const String close = 'Zatvori';
-
   static const List<String> breedOptions = [
     breedUnknown,
     'Mešanac',
@@ -95,8 +113,15 @@ abstract final class LostDogStrings {
 
   static String foundOn(String date) => '🕐 Pronađen: $date.';
 
-  static String place(String city, String neighborhood) =>
-      '📍 $city – $neighborhood';
+  static String place(String city, String neighborhood) {
+    if (city.isEmpty) {
+      return neighborhood;
+    }
+    if (neighborhood.isEmpty) {
+      return city;
+    }
+    return '$city – $neighborhood';
+  }
 
   static String breedLine(String breed) =>
       breed.trim().isEmpty ? 'Rasa: $breedUnknown' : 'Rasa: $breed';
@@ -105,6 +130,23 @@ abstract final class LostDogStrings {
     final day = date.day.toString().padLeft(2, '0');
     final month = date.month.toString().padLeft(2, '0');
     return '$day.$month.${date.year}';
+  }
+
+  static String timeAgo(DateTime value, [DateTime? now]) {
+    final diff = (now ?? DateTime.now()).difference(value);
+    if (diff.inMinutes < 1) {
+      return 'sada';
+    }
+    if (diff.inMinutes < 60) {
+      return 'pre ${diff.inMinutes} min';
+    }
+    if (diff.inHours < 24) {
+      return 'pre ${diff.inHours} č';
+    }
+    if (diff.inDays < 7) {
+      return 'pre ${diff.inDays} d';
+    }
+    return formatDate(value);
   }
 
   static String smsBody(String dogName) =>

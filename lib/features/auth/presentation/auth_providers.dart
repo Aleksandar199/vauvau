@@ -23,7 +23,22 @@ final authRepositoryProvider = Provider<AuthRepository>((ref) {
   );
 });
 
+/// Set to `true` at the start of logout so AuthGate shows login immediately,
+/// even while Firebase / route cleanup is still finishing.
+class SessionSignedOut extends Notifier<bool> {
+  @override
+  bool build() => false;
+
+  void setSignedOut(bool value) => state = value;
+}
+
+final sessionSignedOutProvider =
+    NotifierProvider<SessionSignedOut, bool>(SessionSignedOut.new);
+
 final authStateProvider = StreamProvider<AppUser?>((ref) {
+  if (ref.watch(sessionSignedOutProvider)) {
+    return Stream<AppUser?>.value(null);
+  }
   return ref.watch(authRepositoryProvider).watchUser();
 });
 

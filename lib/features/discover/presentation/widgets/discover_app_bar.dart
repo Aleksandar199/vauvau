@@ -43,9 +43,9 @@ class DiscoverAppBar extends ConsumerWidget implements PreferredSizeWidget {
       title: Text(
         AppStrings.appName,
         style: Theme.of(context).textTheme.titleLarge?.copyWith(
-              fontWeight: FontWeight.w800,
-              letterSpacing: -0.4,
-            ),
+          fontWeight: FontWeight.w800,
+          letterSpacing: -0.4,
+        ),
       ),
       actions: [
         IconButton(

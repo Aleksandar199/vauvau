@@ -4,16 +4,34 @@ abstract final class SeedBreedGroups {
   static const String defaultDescription =
       'Šetnje, dogovori za playdate i saveti za negu';
 
+  static const String parkDescription =
+      'Lokalna park grupa — dogovorite šetnje, susrete i igru u parku.';
+
+  /// Removed preset — cleaned up during seed sync.
+  static const String removedSmallDogsId = 'vlasnici-malih-pasa-novi-sad';
+
   static const List<BreedGroup> all = [
     BreedGroup(
-      id: 'pomeranci-novi-sad',
-      title: '🐕 Pomeranci Novi Sad',
-      description: defaultDescription,
+      id: 'aktivne-setnje-playdate',
+      title: '🏃‍♂️ Aktivne šetnje & Playdate',
+      description: 'Dogovorite šetnje, trčanje i igru u parku.',
       imageUrl:
-          'https://images.unsplash.com/photo-1537151608828-ea2b11777ee8?auto=format&fit=crop&w=400&q=80',
+          'https://images.unsplash.com/photo-1558788353-f76d92427f16?auto=format&fit=crop&w=400&q=80',
       memberIds: [],
-      memberCount: 127,
+      memberCount: 45,
       sortOrder: 1,
+      isApproved: true,
+    ),
+    BreedGroup(
+      id: 'kej-zezeljev-most',
+      title: '🌊 Kej / Žeželjev most',
+      description: parkDescription,
+      imageUrl:
+          'https://images.unsplash.com/photo-1548199973-03cce0bbc87b?auto=format&fit=crop&w=400&q=80',
+      memberIds: [],
+      memberCount: 42,
+      sortOrder: 2,
+      isApproved: true,
     ),
     BreedGroup(
       id: 'labradori-novi-sad',
@@ -22,8 +40,53 @@ abstract final class SeedBreedGroups {
       imageUrl:
           'https://images.unsplash.com/photo-1543466835-00a7907e9de1?auto=format&fit=crop&w=400&q=80',
       memberIds: [],
-      memberCount: 214,
-      sortOrder: 2,
+      memberCount: 41,
+      sortOrder: 3,
+      isApproved: true,
+    ),
+    BreedGroup(
+      id: 'limanski-park',
+      title: '🌳 Limanski park',
+      description: parkDescription,
+      imageUrl:
+          'https://images.unsplash.com/photo-1601758228041-f3b2795255f1?auto=format&fit=crop&w=400&q=80',
+      memberIds: [],
+      memberCount: 38,
+      sortOrder: 4,
+      isApproved: true,
+    ),
+    BreedGroup(
+      id: 'pomeranci-novi-sad',
+      title: '🐕 Pomeranci Novi Sad',
+      description: defaultDescription,
+      imageUrl:
+          'https://images.unsplash.com/photo-1537151608828-ea2b11777ee8?auto=format&fit=crop&w=400&q=80',
+      memberIds: [],
+      memberCount: 34,
+      sortOrder: 5,
+      isApproved: true,
+    ),
+    BreedGroup(
+      id: 'petrovaradinska-tvrdjava',
+      title: '🏰 Petrovaradinska tvrđava',
+      description: parkDescription,
+      imageUrl:
+          'https://images.unsplash.com/photo-1587300003388-59208cc962cb?auto=format&fit=crop&w=400&q=80',
+      memberIds: [],
+      memberCount: 31,
+      sortOrder: 6,
+      isApproved: true,
+    ),
+    BreedGroup(
+      id: 'futoski-park',
+      title: '🍃 Futoški park',
+      description: parkDescription,
+      imageUrl:
+          'https://images.unsplash.com/photo-1477884213360-7e9d7dcc1e48?auto=format&fit=crop&w=400&q=80',
+      memberIds: [],
+      memberCount: 29,
+      sortOrder: 7,
+      isApproved: true,
     ),
     BreedGroup(
       id: 'francuski-buldozi-novi-sad',
@@ -32,28 +95,20 @@ abstract final class SeedBreedGroups {
       imageUrl:
           'https://images.unsplash.com/photo-1583511655857-d19b40a7a54e?auto=format&fit=crop&w=400&q=80',
       memberIds: [],
-      memberCount: 89,
-      sortOrder: 3,
+      memberCount: 28,
+      sortOrder: 8,
+      isApproved: true,
     ),
     BreedGroup(
-      id: 'vlasnici-malih-pasa-novi-sad',
-      title: '🐾 Vlasnici malih pasa Novi Sad',
-      description: defaultDescription,
+      id: 'kamenicki-park',
+      title: '🌲 Kamenički park',
+      description: parkDescription,
       imageUrl:
-          'https://images.unsplash.com/photo-1587300003388-59208cc962cb?auto=format&fit=crop&w=400&q=80',
+          'https://images.unsplash.com/photo-1561037404-61cd46aa615b?auto=format&fit=crop&w=400&q=80',
       memberIds: [],
-      memberCount: 156,
-      sortOrder: 4,
-    ),
-    BreedGroup(
-      id: 'aktivne-setnje-playdate',
-      title: '🏃‍♂️ Aktivne šetnje & Playdate',
-      description: 'Dogovorite šetnje, trčanje i igru u parku.',
-      imageUrl:
-          'https://images.unsplash.com/photo-1558788353-f76d92427f16?auto=format&fit=crop&w=400&q=80',
-      memberIds: [],
-      memberCount: 301,
-      sortOrder: 5,
+      memberCount: 22,
+      sortOrder: 9,
+      isApproved: true,
     ),
   ];
 
@@ -66,6 +121,22 @@ abstract final class SeedBreedGroups {
       'memberCount': group.memberCount,
       'sortOrder': group.sortOrder,
       'lastMessage': group.lastMessage,
+      'isApproved': group.isApproved,
+      'createdBy': group.createdBy,
     };
+  }
+
+  static List<BreedGroup> sortByPopularity(Iterable<BreedGroup> groups) {
+    final List<BreedGroup> sorted = List<BreedGroup>.from(
+      groups.whereType<BreedGroup>(),
+    );
+    sorted.sort((BreedGroup a, BreedGroup b) {
+      final byMembers = b.displayMemberCount.compareTo(a.displayMemberCount);
+      if (byMembers != 0) {
+        return byMembers;
+      }
+      return a.title.compareTo(b.title);
+    });
+    return sorted;
   }
 }

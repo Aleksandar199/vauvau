@@ -10,6 +10,7 @@ import '../../auth/presentation/auth_providers.dart';
 import '../../dogs/domain/dogs_exception.dart';
 import '../data/firestore_groups_repository.dart';
 import '../data/local_groups_repository.dart';
+import '../data/seed_breed_groups.dart';
 import '../domain/groups_models.dart';
 
 class GroupsController extends Notifier<List<BreedGroup>> {
@@ -17,11 +18,13 @@ class GroupsController extends Notifier<List<BreedGroup>> {
   List<BreedGroup> build() {
     final repo = ref.watch(groupsRepositoryProvider);
     final sub = repo.watchGroups().listen(
-      (groups) => state = groups,
+      (groups) {
+        state = List<BreedGroup>.from(groups.whereType<BreedGroup>());
+      },
       onError: (Object error) => debugPrint('Groups stream: $error'),
     );
     ref.onDispose(sub.cancel);
-    return const [];
+    return const <BreedGroup>[];
   }
 
   Future<void> markRead(String groupId) {
@@ -30,6 +33,27 @@ class GroupsController extends Notifier<List<BreedGroup>> {
 
   Future<void> join(String groupId) {
     return ref.read(groupsRepositoryProvider).joinGroup(groupId);
+  }
+
+  Future<BreedGroup> createGroup({
+    required String title,
+    required String description,
+  }) {
+    // User-facing create always stays pending so Firestore rules
+    // (isApproved == false + createdBy == uid) succeed consistently.
+    return ref.read(groupsRepositoryProvider).createGroup(
+          title: title,
+          description: description,
+          approveImmediately: false,
+        );
+  }
+
+  Future<void> approveGroup(String groupId) {
+    return ref.read(groupsRepositoryProvider).approveGroup(groupId);
+  }
+
+  Future<void> deleteGroup(String groupId) {
+    return ref.read(groupsRepositoryProvider).deleteGroup(groupId);
   }
 
   Future<void> sendText(String groupId, String text) {
@@ -79,9 +103,21 @@ final groupsRepositoryProvider = Provider<GroupsRepository>((ref) {
 final groupsControllerProvider =
     NotifierProvider<GroupsController, List<BreedGroup>>(GroupsController.new);
 
+final pendingGroupsProvider = StreamProvider<List<BreedGroup>>((ref) {
+  if (!ref.watch(isAdminProvider)) {
+    return Stream<List<BreedGroup>>.value(const <BreedGroup>[]);
+  }
+  return ref.watch(groupsRepositoryProvider).watchPendingGroups().map(
+        (groups) => List<BreedGroup>.from(groups.whereType<BreedGroup>()),
+      );
+});
+
 final groupMessagesProvider =
     StreamProvider.family<List<GroupMessage>, String>((ref, groupId) {
-  return ref.watch(groupsRepositoryProvider).watchMessages(groupId);
+  return ref.watch(groupsRepositoryProvider).watchMessages(groupId).map(
+        (messages) =>
+            List<GroupMessage>.from(messages.whereType<GroupMessage>()),
+      );
 });
 
 final groupsMemberIdProvider = Provider<String>((ref) {
@@ -108,15 +144,34 @@ final groupLastReadProvider =
 
 final joinedGroupThreadsProvider = Provider<List<GroupInboxThread>>((ref) {
   final memberId = ref.watch(groupsMemberIdProvider);
-  final threads = [
-    for (final group in ref.watch(groupsControllerProvider))
+  final groups = List<BreedGroup>.from(
+    ref.watch(groupsControllerProvider).whereType<BreedGroup>(),
+  );
+
+  final threads = <GroupInboxThread>[
+    for (final group in groups)
       if (group.isMember(memberId))
         GroupInboxThread.fromMessages(
           group: group,
-          messages: ref.watch(groupMessagesProvider(group.id)).asData?.value ??
-              const [],
+          messages: List<GroupMessage>.from(
+            ref.watch(groupMessagesProvider(group.id)).asData?.value ??
+                const <GroupMessage>[],
+          ),
           lastRead: ref.watch(groupLastReadProvider(group.id)).asData?.value,
         ),
-  ]..sort((a, b) => b.lastActivityAt.compareTo(a.lastActivityAt));
+  ];
+
+  threads.sort(
+    (GroupInboxThread a, GroupInboxThread b) =>
+        b.lastActivityAt.compareTo(a.lastActivityAt),
+  );
   return threads;
+});
+
+/// Public groups list sorted by popularity (member count desc).
+final sortedGroupsProvider = Provider<List<BreedGroup>>((ref) {
+  final groups = List<BreedGroup>.from(
+    ref.watch(groupsControllerProvider).whereType<BreedGroup>(),
+  );
+  return SeedBreedGroups.sortByPopularity(groups);
 });

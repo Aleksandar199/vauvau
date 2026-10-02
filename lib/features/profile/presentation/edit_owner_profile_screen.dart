@@ -5,6 +5,7 @@ import 'package:image_picker/image_picker.dart';
 import '../../../core/constants/app_strings.dart';
 import '../../../core/constants/serbia_locations.dart';
 import '../../../core/images/image_upload_service.dart';
+import '../../../core/network/network_failure.dart';
 import '../../../core/utils/content_validation_service.dart';
 import '../../auth/presentation/auth_providers.dart';
 import 'profile_controller.dart';
@@ -18,7 +19,8 @@ class EditOwnerProfileScreen extends ConsumerStatefulWidget {
       _EditOwnerProfileScreenState();
 }
 
-class _EditOwnerProfileScreenState extends ConsumerState<EditOwnerProfileScreen> {
+class _EditOwnerProfileScreenState
+    extends ConsumerState<EditOwnerProfileScreen> {
   late final TextEditingController _name;
   late final TextEditingController _bio;
   late String _cityId;
@@ -34,7 +36,8 @@ class _EditOwnerProfileScreenState extends ConsumerState<EditOwnerProfileScreen>
     _cityId = profile.ownerCityId.isEmpty
         ? SerbiaLocations.cities.first.id
         : profile.ownerCityId;
-    final city = SerbiaLocations.cityById(_cityId) ?? SerbiaLocations.cities.first;
+    final city =
+        SerbiaLocations.cityById(_cityId) ?? SerbiaLocations.cities.first;
     _neighborhoodId = profile.ownerNeighborhoodId.isEmpty
         ? city.neighborhoods.first.id
         : profile.ownerNeighborhoodId;
@@ -62,11 +65,15 @@ class _EditOwnerProfileScreenState extends ConsumerState<EditOwnerProfileScreen>
       if (!url.startsWith('http')) {
         throw StateError(AppStrings.photoUploadFailed);
       }
-      await ref.read(profileControllerProvider.notifier).saveOwnerCustomPhoto(url);
-    } catch (_) {
+      await ref
+          .read(profileControllerProvider.notifier)
+          .saveOwnerCustomPhoto(url);
+    } catch (error) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text(AppStrings.photoUploadFailed)),
+        showNetworkErrorSnackBar(
+          context,
+          error,
+          fallback: AppStrings.photoUploadFailed,
         );
       }
     } finally {
@@ -77,12 +84,13 @@ class _EditOwnerProfileScreenState extends ConsumerState<EditOwnerProfileScreen>
   }
 
   void _save() {
-    final invalid = ContentValidationService.validateText(
-          _name.text,
-        ) ??
+    final invalid =
+        ContentValidationService.validateText(_name.text) ??
         ContentValidationService.validateText(_bio.text, allowEmpty: true);
     if (invalid != null) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(invalid)));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(invalid)));
       return;
     }
     final city = SerbiaLocations.cityById(_cityId);
@@ -96,7 +104,9 @@ class _EditOwnerProfileScreenState extends ConsumerState<EditOwnerProfileScreen>
       }
     }
     final current = ref.read(profileControllerProvider);
-    ref.read(profileControllerProvider.notifier).save(
+    ref
+        .read(profileControllerProvider.notifier)
+        .save(
           current.copyWith(
             ownerName: _name.text.trim(),
             ownerBio: _bio.text.trim(),
@@ -144,17 +154,23 @@ class _EditOwnerProfileScreenState extends ConsumerState<EditOwnerProfileScreen>
                   children: [
                     CircleAvatar(
                       radius: 36,
-                      backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-                      backgroundImage: hasPhoto ? NetworkImage(avatarUrl) : null,
+                      backgroundColor: Theme.of(
+                        context,
+                      ).colorScheme.primaryContainer,
+                      backgroundImage: hasPhoto
+                          ? NetworkImage(avatarUrl)
+                          : null,
                       child: _uploading
                           ? const SizedBox(
                               width: 22,
                               height: 22,
-                              child: CircularProgressIndicator(strokeWidth: 2.4),
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2.4,
+                              ),
                             )
                           : (hasPhoto
-                              ? null
-                              : const Icon(Icons.person, size: 36)),
+                                ? null
+                                : const Icon(Icons.person, size: 36)),
                     ),
                     IconButton.filledTonal(
                       onPressed: _uploading ? null : _pickPhoto,
@@ -212,8 +228,7 @@ class _EditOwnerProfileScreenState extends ConsumerState<EditOwnerProfileScreen>
                 ChoiceChip(
                   label: Text(item.name),
                   selected: _neighborhoodId == item.id,
-                  onSelected: (_) =>
-                      setState(() => _neighborhoodId = item.id),
+                  onSelected: (_) => setState(() => _neighborhoodId = item.id),
                 ),
             ],
           ),

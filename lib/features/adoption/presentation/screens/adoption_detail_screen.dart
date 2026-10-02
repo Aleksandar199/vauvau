@@ -5,6 +5,7 @@ import '../../../auth/presentation/auth_providers.dart';
 import '../../../chat/presentation/chat_inbox.dart';
 import '../../../chat/presentation/chat_screen.dart';
 import '../../../../core/images/dog_image.dart';
+import '../../../../core/theme/app_cards.dart';
 import '../../../discover/domain/discover_profile.dart';
 import '../../domain/adoption_dog.dart';
 import '../adoption_controller.dart';
@@ -29,34 +30,37 @@ class AdoptionDetailScreen extends ConsumerWidget {
             child: ListView(
               padding: const EdgeInsets.only(bottom: 16),
               children: [
-                if (dog.imageUrls.isEmpty)
-                  Column(
-                    children: [
-                      SizedBox(
-                        height: 280,
-                        child: buildDogImage(null, seed: dog.id),
-                      ),
-                      const FallbackIllustrationCaption(url: null),
-                    ],
-                  )
-                else
-                  SizedBox(
-                    height: 280,
-                    child: PageView.builder(
-                      itemCount: dog.imageUrls.length,
-                      itemBuilder: (context, index) {
-                        final url = dog.imageUrls[index];
-                        return Column(
+                ClipRRect(
+                  borderRadius: AppCardTokens.heroBottomRadius,
+                  child: dog.imageUrls.isEmpty
+                      ? Column(
                           children: [
-                            Expanded(
-                              child: buildDogImage(url, seed: dog.id),
+                            SizedBox(
+                              height: 280,
+                              width: double.infinity,
+                              child: buildDogImage(null, seed: dog.id),
                             ),
-                            FallbackIllustrationCaption(url: url),
+                            const FallbackIllustrationCaption(url: null),
                           ],
-                        );
-                      },
-                    ),
-                  ),
+                        )
+                      : SizedBox(
+                          height: 280,
+                          child: PageView.builder(
+                            itemCount: dog.imageUrls.length,
+                            itemBuilder: (context, index) {
+                              final url = dog.imageUrls[index];
+                              return Column(
+                                children: [
+                                  Expanded(
+                                    child: buildDogImage(url, seed: dog.id),
+                                  ),
+                                  FallbackIllustrationCaption(url: url),
+                                ],
+                              );
+                            },
+                          ),
+                        ),
+                ),
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
                   child: Column(
@@ -67,6 +71,12 @@ class AdoptionDetailScreen extends ConsumerWidget {
                         style: theme.textTheme.headlineSmall?.copyWith(
                           fontWeight: FontWeight.w800,
                         ),
+                      ),
+                      const SizedBox(height: 8),
+                      CardLocationRow(label: dog.location),
+                      const SizedBox(height: 4),
+                      CardTimeLabel(
+                        label: AdoptionStrings.timeAgo(dog.createdAt),
                       ),
                       const SizedBox(height: 12),
                       Wrap(
@@ -84,10 +94,6 @@ class AdoptionDetailScreen extends ConsumerWidget {
                           _InfoChip(
                             label: AdoptionStrings.size,
                             value: AdoptionStrings.sizeLabel(dog.size),
-                          ),
-                          _InfoChip(
-                            label: AdoptionStrings.location,
-                            value: dog.location,
                           ),
                           if (dog.isVaccinated)
                             const _InfoChip(
@@ -113,11 +119,16 @@ class AdoptionDetailScreen extends ConsumerWidget {
                       const SizedBox(height: 20),
                       Card(
                         color: const Color(0xFF1E2230),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
                         child: ListTile(
-                          leading: const CircleAvatar(child: Icon(Icons.person)),
+                          leading:
+                              const CircleAvatar(child: Icon(Icons.person)),
                           title: const Text(
                             AdoptionStrings.owner,
-                            style: TextStyle(color: Colors.white70, fontSize: 12),
+                            style:
+                                TextStyle(color: Colors.white70, fontSize: 12),
                           ),
                           subtitle: Text(
                             dog.uploaderName,
@@ -142,6 +153,13 @@ class AdoptionDetailScreen extends ConsumerWidget {
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
                 child: OutlinedButton.icon(
+                  style: OutlinedButton.styleFrom(
+                    minimumSize: const Size.fromHeight(48),
+                    shape: RoundedRectangleBorder(
+                      borderRadius:
+                          BorderRadius.circular(AppCardTokens.actionRadius),
+                    ),
+                  ),
                   onPressed: () => _markAdopted(context, ref),
                   icon: const Icon(Icons.home_outlined),
                   label: const Text(AdoptionStrings.markAdopted),
@@ -158,29 +176,21 @@ class AdoptionDetailScreen extends ConsumerWidget {
                 child: Row(
                   children: [
                     Expanded(
-                      child: OutlinedButton.icon(
-                        style: OutlinedButton.styleFrom(
-                          minimumSize: const Size(0, 48),
-                        ),
+                      child: DetailPrimaryButton(
+                        label: AdoptionStrings.sendMessage,
+                        icon: Icons.chat_bubble_outline,
+                        filled: false,
                         onPressed: () => _openChat(context, ref),
-                        icon: const Icon(Icons.chat_bubble_outline),
-                        label: const Text(AdoptionStrings.sendMessage),
                       ),
                     ),
                     const SizedBox(width: 10),
                     Expanded(
-                      child: FilledButton.icon(
-                        style: FilledButton.styleFrom(
-                          minimumSize: const Size(0, 48),
-                        ),
+                      child: DetailPrimaryButton(
+                        label: AdoptionStrings.callOwner,
+                        icon: Icons.phone,
                         onPressed: dog.contactPhone.trim().isEmpty
                             ? null
                             : () => _call(context, ref),
-                        icon: const Icon(Icons.phone),
-                        label: FittedBox(
-                          fit: BoxFit.scaleDown,
-                          child: Text(AdoptionStrings.callLabel(dog.contactPhone)),
-                        ),
                       ),
                     ),
                   ],
@@ -271,7 +281,7 @@ class _InfoChip extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
         color: const Color(0xFF1E2230),
-        borderRadius: BorderRadius.circular(999),
+        borderRadius: BorderRadius.circular(20),
       ),
       child: Text(
         '$label: $value',

@@ -2,10 +2,7 @@ import '../../../core/geo/geo.dart';
 import 'discover_profile.dart';
 
 class GeoQuery {
-  const GeoQuery({
-    required this.origin,
-    required this.radiusKm,
-  });
+  const GeoQuery({required this.origin, required this.radiusKm});
 
   final GeoCoord origin;
   final double radiusKm;
@@ -29,4 +26,3 @@ class GeoQuery {
     ];
   }
 }
-

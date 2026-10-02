@@ -6,11 +6,7 @@ import '../../domain/discover_profile.dart';
 import '../discover_controller.dart';
 
 class CompatibilityCard extends ConsumerWidget {
-  const CompatibilityCard({
-    super.key,
-    required this.other,
-    this.light = false,
-  });
+  const CompatibilityCard({super.key, required this.other, this.light = false});
 
   final DiscoverProfile other;
   final bool light;
@@ -34,11 +30,7 @@ class CompatibilityCard extends ConsumerWidget {
       ),
       child: Text(
         insight.headline,
-        style: TextStyle(
-          color: fg,
-          fontWeight: FontWeight.w800,
-          height: 1.35,
-        ),
+        style: TextStyle(color: fg, fontWeight: FontWeight.w800, height: 1.35),
       ),
     );
   }

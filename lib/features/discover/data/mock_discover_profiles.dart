@@ -41,7 +41,7 @@ const DiscoverProfile mockSecondDog = DiscoverProfile(
   vaccinated: true,
   chipped: true,
   sterilized: false,
-    traits: ['Druželjubiv', 'Miran'],
+  traits: ['Druželjubiv', 'Miran'],
   distanceKm: 0.4,
   weightKg: 16,
   activityStatus: 'Odmaram',

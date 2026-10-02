@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 
 import '../../../core/constants/app_strings.dart';
 import '../../../core/images/dog_photo_urls.dart';
@@ -26,11 +27,31 @@ class AuthRepositoryImpl implements AuthRepository {
       if (firestore == null) {
         return Stream<AppUser?>.value(_mapAuthUser(firebaseUser));
       }
-      return firestore
-          .collection(userCollection)
-          .doc(firebaseUser.uid)
-          .snapshots()
-          .map((doc) => _mapAuthUser(firebaseUser, doc.data()));
+
+      // Emit Auth user immediately, then enrich from Firestore.
+      // Swallow permission errors during logout so the auth stream stays healthy.
+      return Stream<AppUser?>.multi((controller) {
+        controller.add(_mapAuthUser(firebaseUser));
+        final sub = firestore
+            .collection(userCollection)
+            .doc(firebaseUser.uid)
+            .snapshots()
+            .listen(
+          (doc) {
+            if (_datasource.currentUser?.uid != firebaseUser.uid) {
+              return;
+            }
+            controller.add(_mapAuthUser(firebaseUser, doc.data()));
+          },
+          onError: (Object error, StackTrace stackTrace) {
+            debugPrint('User profile stream: $error');
+            if (_datasource.currentUser == null) {
+              controller.add(null);
+            }
+          },
+        );
+        controller.onCancel = sub.cancel;
+      });
     });
   }
 
