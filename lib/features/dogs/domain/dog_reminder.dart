@@ -39,6 +39,26 @@ enum ReminderRepeat {
   custom,
 }
 
+/// Unit for [ReminderRepeat.custom] intervals (count + unit).
+enum CustomRepeatUnit {
+  days,
+  weeks,
+  months,
+}
+
+extension CustomRepeatUnitX on CustomRepeatUnit {
+  String get firestoreValue => name;
+
+  static CustomRepeatUnit? fromString(String? value) {
+    for (final item in CustomRepeatUnit.values) {
+      if (item.name == value) {
+        return item;
+      }
+    }
+    return null;
+  }
+}
+
 /// Days before the event date to fire a local notification.
 enum ReminderOffset {
   onDay,
@@ -142,15 +162,21 @@ class DogReminder {
     /// Preferred day-of-month for monthly/quarterly/yearly schedules (1–31).
     /// Preserves "31st of month" semantics across shorter months.
     this.repeatDayOfMonth,
-    /// Interval in days for [ReminderRepeat.custom] (default 14).
-    this.customIntervalDays = defaultCustomIntervalDays,
+    /// Count for [ReminderRepeat.custom] (paired with [customIntervalUnit]).
+    this.customIntervalCount = defaultCustomIntervalCount,
+    this.customIntervalUnit = CustomRepeatUnit.weeks,
     /// Most recent occurrence that already passed for a repeating reminder.
     this.lastCompletedDate,
     this.createdAt,
     this.updatedAt,
   });
 
-  /// Default custom repeat cadence when the user picks "Prilagođeno".
+  /// Default custom cadence: every 2 weeks (same as former 14-day default).
+  static const int defaultCustomIntervalCount = 2;
+  static const CustomRepeatUnit defaultCustomIntervalUnit =
+      CustomRepeatUnit.weeks;
+
+  /// Legacy default expressed in days (for older docs that only stored days).
   static const int defaultCustomIntervalDays = 14;
 
   final String id;
@@ -164,7 +190,8 @@ class DogReminder {
   final bool isCompleted;
   final int? notificationId;
   final int? repeatDayOfMonth;
-  final int customIntervalDays;
+  final int customIntervalCount;
+  final CustomRepeatUnit customIntervalUnit;
   final DateTime? lastCompletedDate;
   final DateTime? createdAt;
   final DateTime? updatedAt;
@@ -212,7 +239,8 @@ class DogReminder {
     int? notificationId,
     bool clearNotificationId = false,
     int? repeatDayOfMonth,
-    int? customIntervalDays,
+    int? customIntervalCount,
+    CustomRepeatUnit? customIntervalUnit,
     DateTime? lastCompletedDate,
     bool clearLastCompletedDate = false,
     DateTime? createdAt,
@@ -232,7 +260,8 @@ class DogReminder {
           ? null
           : (notificationId ?? this.notificationId),
       repeatDayOfMonth: repeatDayOfMonth ?? this.repeatDayOfMonth,
-      customIntervalDays: customIntervalDays ?? this.customIntervalDays,
+      customIntervalCount: customIntervalCount ?? this.customIntervalCount,
+      customIntervalUnit: customIntervalUnit ?? this.customIntervalUnit,
       lastCompletedDate: clearLastCompletedDate
           ? null
           : (lastCompletedDate ?? this.lastCompletedDate),

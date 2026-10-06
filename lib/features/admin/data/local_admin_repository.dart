@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import '../../map/data/places_repository.dart';
+import '../../map/domain/models/poi_model.dart';
 import '../../support/domain/admin_feedback.dart';
 import '../domain/admin_models.dart';
 import '../domain/admin_repository.dart';
@@ -10,11 +12,14 @@ class LocalAdminRepository implements AdminRepository {
   LocalAdminRepository({
     List<FeedbackEntry>? feedback,
     List<AdminUserEntry>? users,
+    PlacesRepository? placesRepository,
   })  : _feedback = List<FeedbackEntry>.from(feedback ?? _seedFeedback()),
-        _users = List<AdminUserEntry>.from(users ?? _seedUsers());
+        _users = List<AdminUserEntry>.from(users ?? _seedUsers()),
+        _places = placesRepository ?? LocalPlacesRepository();
 
   final List<FeedbackEntry> _feedback;
   final List<AdminUserEntry> _users;
+  final PlacesRepository _places;
   final StreamController<List<FeedbackEntry>> _feedbackController =
       StreamController<List<FeedbackEntry>>.broadcast();
 
@@ -50,6 +55,15 @@ class LocalAdminRepository implements AdminRepository {
     _feedback.removeWhere((entry) => entry.id == feedbackId);
     _feedbackController.add(_sortedFeedback());
   }
+
+  @override
+  Future<String> createPlace(PlaceDraft draft) => _places.createPlace(draft);
+
+  @override
+  Future<void> updatePlace(PoiModel poi) => _places.updatePlace(poi);
+
+  @override
+  Future<void> deletePlace(String placeId) => _places.deletePlace(placeId);
 
   List<FeedbackEntry> _sortedFeedback() {
     return List<FeedbackEntry>.from(_feedback)

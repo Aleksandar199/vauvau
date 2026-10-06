@@ -245,16 +245,28 @@ final mapPlacesProvider = Provider<List<MapPlace>>((ref) {
     return place;
   }
 
+  // Merge by id. Priority (last wins): seed < community pois < places (SoT).
+  // When Firebase is live, skip seed so we don't show duplicate pins that
+  // already exist under different Firestore ids in `places` / `pois`.
   final byId = <String, MapPlace>{};
-  for (final place in [
-    ...mockMapPlaces.map(applyCommunityFlags),
-    ...submitted.map(MapPlace.fromPoi).map(applyCommunityFlags),
-    ...adminPlaces.map(applyCommunityFlags),
-  ]) {
-    if (place.verificationStatus != PoiVerificationStatus.rejected &&
-        !hidden.contains(place.id)) {
-      byId[place.id] = place;
+  void put(MapPlace place) {
+    if (place.verificationStatus == PoiVerificationStatus.rejected ||
+        hidden.contains(place.id)) {
+      return;
     }
+    byId[place.id] = place;
+  }
+
+  if (!isFirebaseReady) {
+    for (final place in mockMapPlaces.map(applyCommunityFlags)) {
+      put(place);
+    }
+  }
+  for (final place in submitted.map(MapPlace.fromPoi).map(applyCommunityFlags)) {
+    put(place);
+  }
+  for (final place in adminPlaces.map(applyCommunityFlags)) {
+    put(place);
   }
   return byId.values.toList();
 });

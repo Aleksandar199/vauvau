@@ -4,11 +4,11 @@ import 'dog_reminder.dart';
 abstract final class ReminderSchedule {
   static bool isRepeating(
     ReminderRepeat repeat, {
-    int customIntervalDays = DogReminder.defaultCustomIntervalDays,
+    int customIntervalCount = DogReminder.defaultCustomIntervalCount,
   }) {
     return switch (repeat) {
       ReminderRepeat.once => false,
-      ReminderRepeat.custom => customIntervalDays > 0,
+      ReminderRepeat.custom => customIntervalCount > 0,
       ReminderRepeat.daily ||
       ReminderRepeat.weekly ||
       ReminderRepeat.monthly ||
@@ -24,17 +24,20 @@ abstract final class ReminderSchedule {
     DateTime from,
     ReminderRepeat repeat, {
     required int dayOfMonth,
-    int customIntervalDays = DogReminder.defaultCustomIntervalDays,
+    int customIntervalCount = DogReminder.defaultCustomIntervalCount,
+    CustomRepeatUnit customIntervalUnit =
+        DogReminder.defaultCustomIntervalUnit,
   }) {
     final day = DateTime(from.year, from.month, from.day);
     return switch (repeat) {
       ReminderRepeat.once => day,
-      ReminderRepeat.custom => DateTime(
-          day.year,
-          day.month,
-          day.day + (customIntervalDays > 0
-              ? customIntervalDays
-              : DogReminder.defaultCustomIntervalDays),
+      ReminderRepeat.custom => addCustomInterval(
+          day,
+          count: customIntervalCount > 0
+              ? customIntervalCount
+              : DogReminder.defaultCustomIntervalCount,
+          unit: customIntervalUnit,
+          dayOfMonth: dayOfMonth,
         ),
       // Calendar-day math (not Duration) avoids DST off-by-one shifts.
       ReminderRepeat.daily => DateTime(day.year, day.month, day.day + 1),
@@ -48,15 +51,32 @@ abstract final class ReminderSchedule {
     };
   }
 
+  static DateTime addCustomInterval(
+    DateTime from, {
+    required int count,
+    required CustomRepeatUnit unit,
+    required int dayOfMonth,
+  }) {
+    final day = DateTime(from.year, from.month, from.day);
+    final n = count > 0 ? count : DogReminder.defaultCustomIntervalCount;
+    return switch (unit) {
+      CustomRepeatUnit.days => DateTime(day.year, day.month, day.day + n),
+      CustomRepeatUnit.weeks => DateTime(day.year, day.month, day.day + n * 7),
+      CustomRepeatUnit.months => addMonths(day, n, dayOfMonth: dayOfMonth),
+    };
+  }
+
   /// Advances [from] until the occurrence is on or after [now]'s calendar day.
   static DateTime advanceToUpcoming(
     DateTime from,
     ReminderRepeat repeat,
     DateTime now, {
     required int dayOfMonth,
-    int customIntervalDays = DogReminder.defaultCustomIntervalDays,
+    int customIntervalCount = DogReminder.defaultCustomIntervalCount,
+    CustomRepeatUnit customIntervalUnit =
+        DogReminder.defaultCustomIntervalUnit,
   }) {
-    if (!isRepeating(repeat, customIntervalDays: customIntervalDays)) {
+    if (!isRepeating(repeat, customIntervalCount: customIntervalCount)) {
       return DateTime(from.year, from.month, from.day);
     }
     final today = DateTime(now.year, now.month, now.day);
@@ -67,7 +87,8 @@ abstract final class ReminderSchedule {
         current,
         repeat,
         dayOfMonth: dayOfMonth,
-        customIntervalDays: customIntervalDays,
+        customIntervalCount: customIntervalCount,
+        customIntervalUnit: customIntervalUnit,
       );
       guard++;
     }
@@ -103,10 +124,10 @@ abstract final class ReminderSchedule {
 extension DogReminderScheduleX on DogReminder {
   int get effectiveRepeatDayOfMonth => repeatDayOfMonth ?? date.day;
 
-  int get effectiveCustomIntervalDays =>
-      customIntervalDays > 0
-          ? customIntervalDays
-          : DogReminder.defaultCustomIntervalDays;
+  int get effectiveCustomIntervalCount =>
+      customIntervalCount > 0
+          ? customIntervalCount
+          : DogReminder.defaultCustomIntervalCount;
 
   /// Returns this reminder with [date] rolled to the next upcoming occurrence
   /// when the current date has passed and [repeatType] is repeating.
@@ -114,7 +135,7 @@ extension DogReminderScheduleX on DogReminder {
     if (isCompleted ||
         !ReminderSchedule.isRepeating(
           repeatType,
-          customIntervalDays: effectiveCustomIntervalDays,
+          customIntervalCount: effectiveCustomIntervalCount,
         )) {
       return this;
     }
@@ -125,7 +146,8 @@ extension DogReminderScheduleX on DogReminder {
     }
 
     final dayOfMonth = effectiveRepeatDayOfMonth;
-    final intervalDays = effectiveCustomIntervalDays;
+    final count = effectiveCustomIntervalCount;
+    final unit = customIntervalUnit;
     DateTime? lastCompleted;
     var cursor = current;
     var guard = 0;
@@ -135,7 +157,8 @@ extension DogReminderScheduleX on DogReminder {
         cursor,
         repeatType,
         dayOfMonth: dayOfMonth,
-        customIntervalDays: intervalDays,
+        customIntervalCount: count,
+        customIntervalUnit: unit,
       );
       guard++;
     }
@@ -148,7 +171,8 @@ extension DogReminderScheduleX on DogReminder {
       date: cursor,
       lastCompletedDate: lastCompleted,
       repeatDayOfMonth: dayOfMonth,
-      customIntervalDays: intervalDays,
+      customIntervalCount: count,
+      customIntervalUnit: unit,
     );
   }
 }

@@ -55,11 +55,12 @@ class ReminderFormSheet extends ConsumerStatefulWidget {
 class _ReminderFormSheetState extends ConsumerState<ReminderFormSheet> {
   late final TextEditingController _title;
   late final TextEditingController _note;
-  late final TextEditingController _customDays;
+  late final TextEditingController _customCount;
   late String _dogId;
   late DateTime _date;
   late ReminderRepeat _repeat;
   late ReminderOffset _offset;
+  late CustomRepeatUnit _customUnit;
   var _saving = false;
 
   @override
@@ -70,9 +71,12 @@ class _ReminderFormSheetState extends ConsumerState<ReminderFormSheet> {
       text: existing?.title ?? ReminderStrings.defaultTitle(widget.type),
     );
     _note = TextEditingController(text: existing?.note ?? '');
-    _customDays = TextEditingController(
-      text: '${existing?.customIntervalDays ?? DogReminder.defaultCustomIntervalDays}',
+    _customCount = TextEditingController(
+      text:
+          '${existing?.customIntervalCount ?? DogReminder.defaultCustomIntervalCount}',
     );
+    _customUnit =
+        existing?.customIntervalUnit ?? DogReminder.defaultCustomIntervalUnit;
     _date = existing?.date ?? DateTime.now().add(const Duration(days: 30));
     _repeat = existing?.repeatType ?? ReminderRepeat.once;
     _offset = existing?.reminderOffset ?? ReminderOffset.threeDaysBefore;
@@ -85,7 +89,7 @@ class _ReminderFormSheetState extends ConsumerState<ReminderFormSheet> {
   void dispose() {
     _title.dispose();
     _note.dispose();
-    _customDays.dispose();
+    _customCount.dispose();
     super.dispose();
   }
 
@@ -93,7 +97,7 @@ class _ReminderFormSheetState extends ConsumerState<ReminderFormSheet> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final multiDog = widget.dogs.length > 1;
-    final isCustom = widget.type == ReminderType.custom;
+    final isCustomType = widget.type == ReminderType.custom;
 
     return Material(
       color: theme.scaffoldBackgroundColor,
@@ -134,7 +138,7 @@ class _ReminderFormSheetState extends ConsumerState<ReminderFormSheet> {
             controller: _title,
             decoration: InputDecoration(
               labelText: ReminderStrings.titleLabel,
-              hintText: isCustom ? ReminderStrings.noteHint : null,
+              hintText: isCustomType ? ReminderStrings.noteHint : null,
             ),
             textCapitalization: TextCapitalization.sentences,
           ),
@@ -179,13 +183,53 @@ class _ReminderFormSheetState extends ConsumerState<ReminderFormSheet> {
           ),
           if (_repeat == ReminderRepeat.custom) ...[
             const SizedBox(height: 12),
-            TextField(
-              controller: _customDays,
-              keyboardType: TextInputType.number,
-              decoration: const InputDecoration(
-                labelText: ReminderStrings.customIntervalLabel,
-                helperText: ReminderStrings.customIntervalHint,
+            Text(
+              ReminderStrings.customIntervalLabel,
+              style: theme.textTheme.labelLarge,
+            ),
+            const SizedBox(height: 4),
+            Text(
+              ReminderStrings.customIntervalHint,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.65),
               ),
+            ),
+            const SizedBox(height: 8),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SizedBox(
+                  width: 88,
+                  child: TextField(
+                    controller: _customCount,
+                    keyboardType: TextInputType.number,
+                    decoration: const InputDecoration(
+                      labelText: 'Broj',
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: DropdownButtonFormField<CustomRepeatUnit>(
+                    initialValue: _customUnit,
+                    decoration: const InputDecoration(
+                      labelText: 'Jedinica',
+                    ),
+                    items: [
+                      for (final unit in CustomRepeatUnit.values)
+                        DropdownMenuItem(
+                          value: unit,
+                          child: Text(ReminderStrings.labelForCustomUnit(unit)),
+                        ),
+                    ],
+                    onChanged: (value) {
+                      if (value != null) {
+                        setState(() => _customUnit = value);
+                      }
+                    },
+                  ),
+                ),
+              ],
             ),
           ],
           const SizedBox(height: 12),
@@ -261,10 +305,10 @@ class _ReminderFormSheetState extends ConsumerState<ReminderFormSheet> {
     try {
       final existing = widget.existing;
       final note = _note.text.trim();
-      final parsedDays = int.tryParse(_customDays.text.trim());
-      final customDays = (parsedDays != null && parsedDays > 0)
-          ? parsedDays
-          : DogReminder.defaultCustomIntervalDays;
+      final parsedCount = int.tryParse(_customCount.text.trim());
+      final customCount = (parsedCount != null && parsedCount > 0)
+          ? parsedCount
+          : DogReminder.defaultCustomIntervalCount;
       await ref.read(reminderControllerProvider).save(
             reminder: DogReminder(
               id: existing?.id ?? '',
@@ -277,7 +321,8 @@ class _ReminderFormSheetState extends ConsumerState<ReminderFormSheet> {
               note: note.isEmpty ? null : note,
               isCompleted: existing?.isCompleted ?? false,
               notificationId: existing?.notificationId,
-              customIntervalDays: customDays,
+              customIntervalCount: customCount,
+              customIntervalUnit: _customUnit,
               createdAt: existing?.createdAt,
             ),
             dogName: widget.dogs

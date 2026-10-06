@@ -67,9 +67,10 @@ class ReminderController {
   }) async {
     final normalized = reminder.copyWith(
       repeatDayOfMonth: reminder.repeatDayOfMonth ?? reminder.date.day,
-      customIntervalDays: reminder.customIntervalDays > 0
-          ? reminder.customIntervalDays
-          : DogReminder.defaultCustomIntervalDays,
+      customIntervalCount: reminder.customIntervalCount > 0
+          ? reminder.customIntervalCount
+          : DogReminder.defaultCustomIntervalCount,
+      customIntervalUnit: reminder.customIntervalUnit,
     );
     final repo = _ref.read(reminderRepositoryProvider);
     final notifications = _ref.read(notificationServiceProvider);

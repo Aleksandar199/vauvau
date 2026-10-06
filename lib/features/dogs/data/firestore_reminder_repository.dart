@@ -46,9 +46,10 @@ class FirestoreReminderRepository implements ReminderRepository {
         'notificationId': reminder.notificationId,
         'repeatDayOfMonth':
             reminder.repeatDayOfMonth ?? reminder.date.day,
-        'customIntervalDays': reminder.customIntervalDays > 0
-            ? reminder.customIntervalDays
-            : DogReminder.defaultCustomIntervalDays,
+        'customIntervalCount': reminder.customIntervalCount > 0
+            ? reminder.customIntervalCount
+            : DogReminder.defaultCustomIntervalCount,
+        'customIntervalUnit': reminder.customIntervalUnit.firestoreValue,
         'lastCompletedDate': reminder.lastCompletedDate == null
             ? null
             : Timestamp.fromDate(reminder.lastCompletedDate!),
@@ -93,12 +94,39 @@ class FirestoreReminderRepository implements ReminderRepository {
       isCompleted: data['isCompleted'] as bool? ?? false,
       notificationId: (data['notificationId'] as num?)?.toInt(),
       repeatDayOfMonth: (data['repeatDayOfMonth'] as num?)?.toInt(),
-      customIntervalDays: (data['customIntervalDays'] as num?)?.toInt() ??
-          DogReminder.defaultCustomIntervalDays,
+      customIntervalCount: _customCount(data),
+      customIntervalUnit: _customUnit(data),
       lastCompletedDate: _date(data['lastCompletedDate']),
       createdAt: _date(data['createdAt']),
       updatedAt: _date(data['updatedAt']),
     );
+  }
+
+  /// Prefers count+unit; falls back to legacy `customIntervalDays` as days.
+  int _customCount(Map<String, dynamic> data) {
+    final count = (data['customIntervalCount'] as num?)?.toInt();
+    if (count != null && count > 0) {
+      return count;
+    }
+    final legacyDays = (data['customIntervalDays'] as num?)?.toInt();
+    if (legacyDays != null && legacyDays > 0) {
+      return legacyDays;
+    }
+    return DogReminder.defaultCustomIntervalCount;
+  }
+
+  CustomRepeatUnit _customUnit(Map<String, dynamic> data) {
+    final unit = CustomRepeatUnitX.fromString(
+      data['customIntervalUnit'] as String?,
+    );
+    if (unit != null) {
+      return unit;
+    }
+    // Legacy docs only stored days.
+    if (data['customIntervalDays'] != null) {
+      return CustomRepeatUnit.days;
+    }
+    return DogReminder.defaultCustomIntervalUnit;
   }
 
   DateTime? _date(Object? value) {

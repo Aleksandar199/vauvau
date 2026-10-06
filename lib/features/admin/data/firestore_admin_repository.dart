@@ -1,12 +1,18 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import '../../map/data/places_repository.dart';
+import '../../map/domain/models/poi_model.dart';
 import '../domain/admin_models.dart';
 import '../domain/admin_repository.dart';
 
 class FirestoreAdminRepository implements AdminRepository {
-  FirestoreAdminRepository({required this.firestore});
+  FirestoreAdminRepository({
+    required this.firestore,
+    PlacesRepository? placesRepository,
+  }) : _places = placesRepository ?? FirestorePlacesRepository(firestore);
 
   final FirebaseFirestore firestore;
+  final PlacesRepository _places;
 
   CollectionReference<Map<String, dynamic>> get _feedback =>
       firestore.collection('admin_feedback');
@@ -54,6 +60,15 @@ class FirestoreAdminRepository implements AdminRepository {
   Future<void> deleteFeedback(String feedbackId) {
     return _feedback.doc(feedbackId).delete();
   }
+
+  @override
+  Future<String> createPlace(PlaceDraft draft) => _places.createPlace(draft);
+
+  @override
+  Future<void> updatePlace(PoiModel poi) => _places.updatePlace(poi);
+
+  @override
+  Future<void> deletePlace(String placeId) => _places.deletePlace(placeId);
 
   FeedbackEntry _feedbackFromDoc(
     QueryDocumentSnapshot<Map<String, dynamic>> doc,

@@ -34,6 +34,10 @@ class PlaceDraft {
   final String createdBy;
 }
 
+/// Official admin-managed places.
+///
+/// [places] is the source of truth. Every create/update/delete must also
+/// mirror into [pois] via [WriteBatch] so map clients never diverge.
 abstract class PlacesRepository {
   Stream<List<MapPlace>> watchPlaces();
 
@@ -60,6 +64,7 @@ class FirestorePlacesRepository implements PlacesRepository {
   @override
   Stream<List<MapPlace>> watchPlaces() async* {
     try {
+      // Read SoT only — map merge prefers these over `pois` mirrors.
       await for (final snapshot in _places.snapshots()) {
         yield snapshot.docs.map(_fromDoc).whereType<MapPlace>().toList();
       }

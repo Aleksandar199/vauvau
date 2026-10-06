@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:latlong2/latlong.dart';
 
 import '../../../core/utils/content_validation_service.dart';
+import '../../admin/presentation/admin_controller.dart';
 import '../../auth/presentation/auth_providers.dart';
 import '../data/address_geocoder.dart';
 import '../data/places_repository.dart';
@@ -353,7 +354,7 @@ class _AddPlaceScreenState extends ConsumerState<AddPlaceScreen> {
       _error = null;
     });
     try {
-      await ref.read(placesRepositoryProvider).createPlace(
+      await ref.read(adminRepositoryProvider).createPlace(
             PlaceDraft(
               name: _name.text.trim(),
               category: _category,

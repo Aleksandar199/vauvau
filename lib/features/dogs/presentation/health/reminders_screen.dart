@@ -341,7 +341,14 @@ class _ReminderTile extends ConsumerWidget {
               Text(reminder.title),
               Text(dogName),
               Text(ReminderStrings.date(reminder.date)),
-              Text(ReminderStrings.labelForRepeat(reminder.repeatType)),
+              Text(
+                reminder.repeatType == ReminderRepeat.custom
+                    ? ReminderStrings.customIntervalSummary(
+                        count: reminder.customIntervalCount,
+                        unit: reminder.customIntervalUnit,
+                      )
+                    : ReminderStrings.labelForRepeat(reminder.repeatType),
+              ),
               Text(ReminderStrings.offsetLabel(reminder.reminderOffset)),
               if (reminder.note != null && reminder.note!.isNotEmpty) ...[
                 const SizedBox(height: 8),

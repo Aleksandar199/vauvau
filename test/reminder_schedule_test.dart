@@ -185,16 +185,28 @@ void main() {
       expect(once.date, DateTime(2026, 10, 1));
     });
 
-    test('custom advances by default 14-day interval', () {
+    test('custom advances by default 2-week interval', () {
       final next = ReminderSchedule.advanceToUpcoming(
         DateTime(2026, 10, 1),
         ReminderRepeat.custom,
         DateTime(2026, 10, 20),
         dayOfMonth: 1,
-        customIntervalDays: DogReminder.defaultCustomIntervalDays,
+        customIntervalCount: DogReminder.defaultCustomIntervalCount,
+        customIntervalUnit: CustomRepeatUnit.weeks,
       );
       // 01.10 + 14 = 15.10 (past), +14 = 29.10
       expect(next, DateTime(2026, 10, 29));
+    });
+
+    test('custom months advances by calendar months', () {
+      final next = ReminderSchedule.nextOccurrence(
+        DateTime(2026, 1, 31),
+        ReminderRepeat.custom,
+        dayOfMonth: 31,
+        customIntervalCount: 1,
+        customIntervalUnit: CustomRepeatUnit.months,
+      );
+      expect(next, DateTime(2026, 2, 28));
     });
 
     test('daily advances across many missed days', () {

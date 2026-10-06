@@ -20,9 +20,12 @@ abstract final class ReminderStrings {
   static const String repeatHint =
       'Koliko često se ova ista obaveza ponavlja. Posle datuma VauVau '
       'automatski postavi sledeći termin.';
-  static const String customIntervalLabel = 'Na koliko dana?';
+  static const String customIntervalLabel = 'Svakih';
   static const String customIntervalHint =
-      'Podrazumevano 14 dana ako ne uneseš drugu vrednost.';
+      'Unesi broj i izaberi dane, nedelje ili mesece.';
+  static const String customUnitDays = 'dana';
+  static const String customUnitWeeks = 'nedelja';
+  static const String customUnitMonths = 'meseci';
   static const String remindMeLabel = 'Podseti me';
   static const String remindMeHint =
       'Kad želiš obaveštenje pre ili na dan obaveze.';
@@ -135,8 +138,24 @@ abstract final class ReminderStrings {
       ReminderRepeat.every3Months => 'Na 3 meseca',
       ReminderRepeat.every6Months => 'Na 6 meseci',
       ReminderRepeat.yearly => 'Jednom godišnje',
-      ReminderRepeat.custom => 'Prilagođeno (na N dana)',
+      ReminderRepeat.custom => 'Prilagođeno',
     };
+  }
+
+  static String labelForCustomUnit(CustomRepeatUnit unit) {
+    return switch (unit) {
+      CustomRepeatUnit.days => customUnitDays,
+      CustomRepeatUnit.weeks => customUnitWeeks,
+      CustomRepeatUnit.months => customUnitMonths,
+    };
+  }
+
+  static String customIntervalSummary({
+    required int count,
+    required CustomRepeatUnit unit,
+  }) {
+    final n = count > 0 ? count : DogReminder.defaultCustomIntervalCount;
+    return 'Svakih $n ${labelForCustomUnit(unit)}';
   }
 
   static String offsetLabel(ReminderOffset offset) {

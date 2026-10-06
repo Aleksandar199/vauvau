@@ -2,12 +2,12 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/firebase/firebase_status.dart';
+import '../../admin/presentation/admin_controller.dart';
 import '../../auth/presentation/auth_providers.dart';
 import '../data/firestore_poi_repository.dart';
 import '../data/poi_seed_data.dart';
 import '../domain/models/poi_model.dart';
 import '../domain/poi_repository.dart';
-import 'cities_controller.dart';
 
 final poiRepositoryProvider = Provider<PoiRepository>((ref) {
   if (isFirebaseReady) {
@@ -40,9 +40,9 @@ class UserPoiSubmissions extends Notifier<List<PoiModel>> {
 
   Future<void> updatePoi(PoiModel poi) async {
     _assertCanWrite(requireAdmin: true);
+    // Admin path: places SoT + pois mirror via WriteBatch (AdminRepository).
     if (isFirebaseReady) {
-      // Keep places + pois in sync via WriteBatch.
-      await ref.read(placesRepositoryProvider).updatePlace(poi);
+      await ref.read(adminRepositoryProvider).updatePlace(poi);
       return;
     }
     final exists = state.any((item) => item.id == poi.id);
@@ -52,20 +52,20 @@ class UserPoiSubmissions extends Notifier<List<PoiModel>> {
               if (item.id == poi.id) poi else item,
           ]
         : [...state, poi];
-    await ref.read(placesRepositoryProvider).updatePlace(poi);
+    await ref.read(adminRepositoryProvider).updatePlace(poi);
   }
 
   Future<void> deletePoi(String id) async {
     _assertCanWrite(requireAdmin: true);
     if (isFirebaseReady) {
-      await ref.read(placesRepositoryProvider).deletePlace(id);
+      await ref.read(adminRepositoryProvider).deletePlace(id);
       return;
     }
     state = [
       for (final item in state)
         if (item.id != id) item,
     ];
-    await ref.read(placesRepositoryProvider).deletePlace(id);
+    await ref.read(adminRepositoryProvider).deletePlace(id);
   }
 
   /// Resolves a POI by id from live Firestore list or seed data.

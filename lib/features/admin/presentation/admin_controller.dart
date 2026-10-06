@@ -3,16 +3,21 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/firebase/firebase_status.dart';
 import '../../auth/presentation/auth_providers.dart';
+import '../../map/presentation/cities_controller.dart';
 import '../data/firestore_admin_repository.dart';
 import '../data/local_admin_repository.dart';
 import '../domain/admin_models.dart';
 import '../domain/admin_repository.dart';
 
 final adminRepositoryProvider = Provider<AdminRepository>((ref) {
+  final places = ref.watch(placesRepositoryProvider);
   if (isFirebaseReady) {
-    return FirestoreAdminRepository(firestore: FirebaseFirestore.instance);
+    return FirestoreAdminRepository(
+      firestore: FirebaseFirestore.instance,
+      placesRepository: places,
+    );
   }
-  final repo = LocalAdminRepository();
+  final repo = LocalAdminRepository(placesRepository: places);
   ref.onDispose(repo.dispose);
   return repo;
 });
