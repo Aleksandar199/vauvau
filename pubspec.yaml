@@ -52,6 +52,7 @@ dependencies:
   flutter_local_notifications: ^22.3.1
   timezone: ^0.11.1
   flutter_timezone: ^5.1.0
+  cached_network_image: ^3.4.1
 
 dev_dependencies:
   flutter_test:
@@ -64,6 +65,7 @@ dev_dependencies:
   # rules and activating additional ones.
   flutter_lints: ^6.0.0
   flutter_native_splash: ^2.4.6
+  flutter_launcher_icons: ^0.14.4
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
@@ -112,3 +114,17 @@ flutter_native_splash:
   web: false
   android_12:
     color: "#38BDF8"
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: assets/images/vauvau_logo.png
+  adaptive_icon_background: "#FFF8F0"
+  adaptive_icon_foreground: assets/images/vauvau_logo.png
+  remove_alpha_ios: true
+  min_sdk_android: 21
+  web:
+    generate: true
+    image_path: assets/images/vauvau_logo.png
+    background_color: "#FFF8F0"
+    theme_color: "#EA580C"

@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
@@ -94,7 +95,9 @@ class FirebaseAuthDatasource {
   }
 
   Future<void> sendPasswordResetEmail(String email) {
-    return _auth.sendPasswordResetEmail(email: email);
+    final normalized = email.trim().toLowerCase();
+    debugPrint('FirebaseAuthDatasource: sendPasswordResetEmail → $normalized');
+    return _auth.sendPasswordResetEmail(email: normalized);
   }
 
   Future<void> deleteCurrentUser() async {

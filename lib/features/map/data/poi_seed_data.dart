@@ -1,5 +1,6 @@
 import '../domain/map_city.dart';
 import '../domain/models/poi_model.dart';
+import 'belgrade_dog_places_seed.dart';
 
 abstract final class PoiSeedData {
   static const String source = 'PetZone / VauVau Baza';
@@ -13,17 +14,23 @@ abstract final class PoiSeedData {
         ...petSitters,
       ];
 
-  static List<PoiModel> get verifiedBelgrade => [
-        ...belgradeEmergencyVets,
-        ...belgradeDogParks,
-        ...belgradeCafes,
-        ...belgradeHotels,
-      ];
+  static List<PoiModel> get verifiedBelgrade {
+    final byId = <String, PoiModel>{
+      for (final poi in belgradeEmergencyVets) poi.id: poi,
+      for (final poi in belgradeLegacyExtras) poi.id: poi,
+      // Newer geocoded Belgrade corpus wins on id collisions.
+      for (final poi in BelgradeDogPlacesSeed.all) poi.id: poi,
+    };
+    return byId.values.toList();
+  }
 
-  static List<PoiModel> get allVerified => [
-        ...verifiedNoviSad,
-        ...verifiedBelgrade,
-      ];
+  static List<PoiModel> get allVerified {
+    final byId = <String, PoiModel>{
+      for (final poi in verifiedNoviSad) poi.id: poi,
+      for (final poi in verifiedBelgrade) poi.id: poi,
+    };
+    return byId.values.toList();
+  }
 
   static List<PoiModel> get verifiedCafes => [
         _cafe(
@@ -494,16 +501,9 @@ abstract final class PoiSeedData {
         ),
       ];
 
-  static List<PoiModel> get belgradeDogParks => [
-        _verified(
-          id: 'bg-park-tasmajdan',
-          name: 'Park za pse Tašmajdan',
-          category: PoiCategory.park,
-          address: 'Bulevar kralja Aleksandra, Palilula / Centar',
-          latitude: 44.8096,
-          longitude: 20.4736,
-          city: MapCity.belgrade,
-        ),
+  /// Legacy Belgrade POIs kept when not present in the geocoded corpus.
+  /// Fake / unverifiable phone entries were removed.
+  static List<PoiModel> get belgradeLegacyExtras => [
         _verified(
           id: 'bg-park-karadjordjev',
           name: 'Park za pse Karađorđev park',
@@ -511,15 +511,6 @@ abstract final class PoiSeedData {
           address: 'Bulevar oslobođenja, Vračar',
           latitude: 44.7969,
           longitude: 20.4663,
-          city: MapCity.belgrade,
-        ),
-        _verified(
-          id: 'bg-park-cubura',
-          name: 'Park za pse Čuburski park',
-          category: PoiCategory.park,
-          address: 'Cara Nikolaja II, Vračar',
-          latitude: 44.7946,
-          longitude: 20.4759,
           city: MapCity.belgrade,
         ),
         _verified(
@@ -540,9 +531,6 @@ abstract final class PoiSeedData {
           longitude: 20.4491,
           city: MapCity.belgrade,
         ),
-      ];
-
-  static List<PoiModel> get belgradeCafes => [
         _verified(
           id: 'bg-cafe-witch',
           name: 'Witch Bar',
@@ -555,26 +543,6 @@ abstract final class PoiSeedData {
           rating: 4.7,
         ),
         _verified(
-          id: 'bg-cafe-zaokret',
-          name: 'Zaokret',
-          category: PoiCategory.cafe,
-          address: 'Cetinjska 15, Beograd',
-          latitude: 44.8179,
-          longitude: 20.4694,
-          city: MapCity.belgrade,
-          rating: 4.6,
-        ),
-        _verified(
-          id: 'bg-cafe-kafenisanjce',
-          name: 'Kafenisanjce',
-          category: PoiCategory.cafe,
-          address: 'Cara Dušana 64, Beograd',
-          latitude: 44.8229,
-          longitude: 20.4573,
-          city: MapCity.belgrade,
-          rating: 4.5,
-        ),
-        _verified(
           id: 'bg-cafe-smokvica',
           name: 'Smokvica',
           category: PoiCategory.cafe,
@@ -585,19 +553,6 @@ abstract final class PoiSeedData {
           rating: 4.8,
         ),
         _verified(
-          id: 'bg-cafe-mali-pijac',
-          name: 'Bistro Mali Pijac',
-          category: PoiCategory.cafe,
-          address: 'Karađorđeva 61, Beograd',
-          latitude: 44.8191,
-          longitude: 20.4456,
-          city: MapCity.belgrade,
-          rating: 4.6,
-        ),
-      ];
-
-  static List<PoiModel> get belgradeHotels => [
-        _verified(
           id: 'bg-hotel-golden-pets',
           name: 'Golden Pets Hotel',
           category: PoiCategory.dogHotel,
@@ -607,7 +562,6 @@ abstract final class PoiSeedData {
           phone: '+381 69 283 2227',
           overnightStay: true,
           hasYard: true,
-          is24_7: true,
           city: MapCity.belgrade,
         ),
         _verified(
@@ -619,19 +573,6 @@ abstract final class PoiSeedData {
           longitude: 20.4962,
           phone: '+381 62 410 442',
           overnightStay: true,
-          hasYard: true,
-          city: MapCity.belgrade,
-        ),
-        _verified(
-          id: 'bg-hotel-doggy',
-          name: 'Doggy Hotel Belgrade',
-          category: PoiCategory.dogHotel,
-          address: 'Surčin, Beograd',
-          latitude: 44.7931,
-          longitude: 20.2802,
-          phone: '+381 64 123 4567',
-          overnightStay: true,
-          dayCare: true,
           hasYard: true,
           city: MapCity.belgrade,
         ),

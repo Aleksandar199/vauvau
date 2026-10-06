@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/theme/app_cards.dart';
-import '../../../../core/theme/app_colors.dart';
 import '../../domain/walk_session.dart';
 import '../map_strings.dart';
 import '../walk_controller.dart';
+import 'walk_history_sheet.dart';
 
 class WalkStatsPanel extends ConsumerWidget {
   const WalkStatsPanel({super.key, required this.walk});
@@ -15,10 +15,6 @@ class WalkStatsPanel extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final distance = walk.distanceKm.toStringAsFixed(2);
-    final speed = walk.speedKmh.toStringAsFixed(1);
-    final pace = walk.paceMinPerKm <= 0
-        ? '—'
-        : walk.paceMinPerKm.toStringAsFixed(1);
     return Material(
       color: Colors.transparent,
       child: Container(
@@ -63,30 +59,13 @@ class WalkStatsPanel extends ConsumerWidget {
                   ),
                 ],
               ),
-              const SizedBox(height: 10),
-              Row(
-                children: [
-                  Expanded(
-                    child: _SecondaryStat(
-                      label: MapStrings.walkSpeed,
-                      value: '$speed km/h',
-                    ),
-                  ),
-                  Expanded(
-                    child: _SecondaryStat(
-                      label: MapStrings.walkPace,
-                      value: pace == '—' ? pace : '$pace min/km',
-                    ),
-                  ),
-                  Expanded(
-                    child: _SecondaryStat(
-                      label: MapStrings.walkCalories,
-                      value: '${walk.caloriesEstimate} kcal',
-                    ),
-                  ),
-                ],
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton(
+                  onPressed: () => showWalkHistorySheet(context),
+                  child: const Text(MapStrings.walkHistory),
+                ),
               ),
-              const SizedBox(height: 14),
               Row(
                 children: [
                   Expanded(
@@ -205,7 +184,27 @@ class WalkStatsPanel extends ConsumerWidget {
       },
     );
     if (ok == true) {
+      final distance = walk.distanceKm.toStringAsFixed(2);
+      final duration = walk.elapsedLabel;
       ref.read(walkControllerProvider.notifier).end();
+      if (!context.mounted) return;
+      final messenger = ScaffoldMessenger.of(context);
+      messenger
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          SnackBar(
+            content: Text(
+              '${MapStrings.walkSaved} $duration · $distance km',
+            ),
+            behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 3),
+            // No SnackBarAction: with an action Flutter keeps the bar until
+            // the user dismisses it when accessibility timing is enabled.
+          ),
+        );
+      Future<void>.delayed(const Duration(seconds: 3), () {
+        messenger.hideCurrentSnackBar();
+      });
     }
   }
 }
@@ -279,36 +278,6 @@ class _PrimaryStat extends StatelessWidget {
             fontSize: 12,
             color: Colors.grey.shade600,
             fontWeight: FontWeight.w500,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _SecondaryStat extends StatelessWidget {
-  const _SecondaryStat({required this.label, required this.value});
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Text(
-          value,
-          style: const TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w700,
-            color: AppColors.primaryDeep,
-          ),
-        ),
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 12,
-            color: Colors.grey.shade600,
           ),
         ),
       ],

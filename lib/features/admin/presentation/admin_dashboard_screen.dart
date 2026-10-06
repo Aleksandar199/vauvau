@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/app_cards.dart';
-import '../../../core/utils/content_validation_service.dart';
 import '../../auth/presentation/auth_providers.dart';
 import '../../discover/domain/discover_profile.dart';
 import '../../discover/presentation/discover_controller.dart';
@@ -17,6 +16,7 @@ import 'tabs/admin_groups_tab.dart';
 import 'tabs/admin_moments_tab.dart';
 import 'tabs/admin_reports_tab.dart';
 import 'tabs/admin_users_tab.dart';
+import 'widgets/admin_edit_poi_dialog.dart';
 
 class AdminDashboardScreen extends ConsumerWidget {
   const AdminDashboardScreen({super.key});
@@ -313,65 +313,15 @@ class _PendingPoisTab extends ConsumerWidget {
     WidgetRef ref,
     PoiModel poi,
   ) async {
-    final name = TextEditingController(text: poi.name);
-    final address = TextEditingController(text: poi.address);
-    final saved = await showDialog<bool>(
+    final result = await showAdminEditPoiDialog(
       context: context,
-      builder: (dialogContext) {
-        return AlertDialog(
-          title: const Text(AdminStrings.editTitle),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: name,
-                decoration: const InputDecoration(labelText: AdminStrings.name),
-              ),
-              TextField(
-                controller: address,
-                decoration:
-                    const InputDecoration(labelText: AdminStrings.address),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(false),
-              child: const Text(AdminStrings.cancel),
-            ),
-            FilledButton(
-              onPressed: () {
-                final invalid =
-                    ContentValidationService.validateTitle(name.text) ??
-                        ContentValidationService.validateText(address.text);
-                if (invalid != null) {
-                  ScaffoldMessenger.of(dialogContext).showSnackBar(
-                    SnackBar(content: Text(invalid)),
-                  );
-                  return;
-                }
-                Navigator.of(dialogContext).pop(true);
-              },
-              child: const Text('Sačuvaj'),
-            ),
-          ],
-        );
-      },
+      ref: ref,
+      poi: poi,
     );
-    if (saved == true) {
-      await ref.read(userPoiSubmissionsProvider.notifier).updatePoi(
-            poi.copyWith(
-              name: name.text.trim(),
-              address: address.text.trim(),
-            ),
-          );
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text(AdminStrings.saved)),
-        );
-      }
+    if (result != AdminEditPoiResult.cancelled && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text(AdminStrings.saved)),
+      );
     }
-    name.dispose();
-    address.dispose();
   }
 }

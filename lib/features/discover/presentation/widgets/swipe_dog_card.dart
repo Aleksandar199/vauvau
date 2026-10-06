@@ -5,7 +5,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/images/dog_image.dart';
 import '../../../../core/network/network_failure.dart';
 import '../../../../core/theme/app_colors.dart';
-import '../../../../core/widgets/feed_state.dart';
 import '../../../../core/widgets/ui_bits.dart';
 import '../../../auth/presentation/auth_providers.dart';
 import '../../../chat/presentation/chat_inbox.dart';
@@ -427,8 +426,18 @@ class _StatusPill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final active = profile.walking;
-    final color = active ? const Color(0xFF15803D) : const Color(0xFF64748B);
+    final label = profile.statusBadge;
+    final lower = label.toLowerCase();
+    final Color color;
+    if (lower.contains('tražim')) {
+      color = const Color(0xFFB45309);
+    } else if (lower.contains('odmar')) {
+      color = const Color(0xFF475569);
+    } else if (profile.walking || lower.contains('šetnj')) {
+      color = const Color(0xFF15803D);
+    } else {
+      color = const Color(0xFF64748B);
+    }
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
@@ -437,7 +446,7 @@ class _StatusPill extends StatelessWidget {
         border: Border.all(color: color.withValues(alpha: 0.3)),
       ),
       child: Text(
-        profile.statusBadge,
+        label,
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
         style: TextStyle(
@@ -832,26 +841,12 @@ class _OwnerRowState extends State<_OwnerRow> {
                   width: 36,
                   height: 36,
                   child: usable
-                      ? Image.network(
-                          url,
+                      ? DogImage(
+                          url: url,
+                          seed: url,
+                          width: 36,
+                          height: 36,
                           fit: BoxFit.cover,
-                          loadingBuilder: (context, child, progress) {
-                            if (progress == null) {
-                              return child;
-                            }
-                            return const SoftPlaceholder(
-                              width: 36,
-                              height: 36,
-                              borderRadius: 18,
-                            );
-                          },
-                          errorBuilder: (context, error, stack) {
-                            return const Icon(
-                              Icons.person,
-                              size: 20,
-                              color: AppColors.primaryDeep,
-                            );
-                          },
                         )
                       : const Icon(
                           Icons.person,

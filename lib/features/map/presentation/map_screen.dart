@@ -13,21 +13,26 @@ import '../../home/presentation/home_tab.dart';
 import '../../discover/presentation/widgets/discover_filter_chip.dart';
 import '../../location/domain/location_access.dart';
 import '../../location/presentation/location_controller.dart';
+import '../../auth/presentation/auth_providers.dart';
 import '../../moderation/domain/content_report.dart';
 import '../../moderation/presentation/report_sheet.dart';
 import '../../notifications/presentation/push_controller.dart';
 import '../data/mock_map_data.dart';
+import '../domain/city_model.dart';
 import '../domain/map_city.dart';
 import '../domain/map_place.dart';
 import '../domain/map_place_type.dart';
 import '../domain/walking_dog_pin.dart';
+import 'add_place_screen.dart';
+import 'cities_controller.dart';
 import 'map_strings.dart';
 import 'maps_launcher.dart';
-import 'poi_report_controller.dart';
 import 'walk_controller.dart';
 import 'widgets/add_poi_sheet.dart';
+import 'widgets/city_picker_sheet.dart';
 import 'widgets/mock_map_canvas.dart';
 import 'widgets/place_sheet.dart';
+import 'widgets/walk_history_sheet.dart';
 import 'widgets/walk_stats_panel.dart';
 import 'widgets/walker_sheet.dart';
 
@@ -41,13 +46,49 @@ class MapScreen extends ConsumerStatefulWidget {
 class _MapScreenState extends ConsumerState<MapScreen> {
   final MapController _mapController = MapController();
   final TextEditingController _search = TextEditingController();
-  MapLayerFilter _filter = MapLayerFilter.all;
+  final Set<MapLayerFilter> _filters = {MapLayerFilter.all};
   final Set<HotelAmenityFilter> _hotelAmenities = {};
-  MapCityFocus _cityFocus = MapCityFocus.noviSad;
   String? _selectedId;
+  bool _showList = false;
+  ProviderSubscription<MapRegionSelection>? _regionSub;
+
+  bool get _hotelsSelected =>
+      _filters.contains(MapLayerFilter.hotels) ||
+      _filters.contains(MapLayerFilter.lodging);
+
+  void _toggleFilter(MapLayerFilter filter) {
+    setState(() {
+      if (filter == MapLayerFilter.all) {
+        _filters
+          ..clear()
+          ..add(MapLayerFilter.all);
+        return;
+      }
+      _filters.remove(MapLayerFilter.all);
+      if (!_filters.add(filter)) {
+        _filters.remove(filter);
+      }
+      if (_filters.isEmpty) {
+        _filters.add(MapLayerFilter.all);
+      }
+    });
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _regionSub = ref.listenManual<MapRegionSelection>(
+      mapRegionProvider,
+      (previous, next) {
+        if (previous == next) return;
+        _applyRegionCamera(next);
+      },
+    );
+  }
 
   @override
   void dispose() {
+    _regionSub?.close();
     _search.dispose();
     _mapController.dispose();
     super.dispose();
@@ -58,8 +99,9 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     final walk = ref.watch(walkControllerProvider);
     final scheduledWalks = ref.watch(scheduledWalksProvider);
     final location = ref.watch(userLocationProvider);
-    final places = _visiblePlaces(ref.watch(mapPlacesProvider));
-    final walkers = _visibleWalkers(ref.watch(walkingDogsProvider));
+    final region = ref.watch(mapRegionProvider);
+    final places = _visiblePlaces(ref.watch(mapPlacesProvider), region);
+    final walkers = _visibleWalkers(ref.watch(walkingDogsProvider), region);
 
     final walkRoute = [
       for (final point in walk.path) LatLng(point.latitude, point.longitude),
@@ -178,34 +220,40 @@ class _MapScreenState extends ConsumerState<MapScreen> {
               const SizedBox(height: 8),
               SizedBox(
                 height: 36,
-                child: SingleChildScrollView(
+                child: ListView(
                   scrollDirection: Axis.horizontal,
-                  child: Row(
-                    children: [
-                      _CityPill(
-                        label: MapStrings.cityNoviSad,
-                        selected: _cityFocus == MapCityFocus.noviSad,
-                        onTap: () => _selectCity(MapCityFocus.noviSad),
-                      ),
-                      const SizedBox(width: 8),
-                      _CityPill(
-                        label: MapStrings.cityBelgrade,
-                        selected: _cityFocus == MapCityFocus.belgrade,
-                        onTap: () => _selectCity(MapCityFocus.belgrade),
-                      ),
-                      const SizedBox(width: 8),
-                      _CityPill(
-                        label: MapStrings.cityMyLocation,
-                        selected: _cityFocus == MapCityFocus.myLocation,
-                        onTap: () => _selectCity(MapCityFocus.myLocation),
-                      ),
-                    ],
-                  ),
+                  children: [
+                    DiscoverFilterChip(
+                      label: MapStrings.cityNoviSad,
+                      selected: region.cityId == SeedCities.noviSad.id,
+                      onTap: () => _selectQuickCity(SeedCities.noviSad),
+                    ),
+                    const SizedBox(width: 8),
+                    DiscoverFilterChip(
+                      label: MapStrings.cityBelgrade,
+                      selected: region.cityId == SeedCities.belgrade.id,
+                      onTap: () => _selectQuickCity(SeedCities.belgrade),
+                    ),
+                    const SizedBox(width: 8),
+                    _CityPickerButton(
+                      label: region.isMyLocation ||
+                              region.cityId == SeedCities.noviSad.id ||
+                              region.cityId == SeedCities.belgrade.id
+                          ? MapStrings.chooseCity
+                          : region.label,
+                      selected: region.isMyLocation ||
+                          (region.cityId != null &&
+                              region.cityId != SeedCities.noviSad.id &&
+                              region.cityId != SeedCities.belgrade.id),
+                      onTap: () =>
+                          showCityPickerSheet(context: context, ref: ref),
+                    ),
+                  ],
                 ),
               ),
               const SizedBox(height: 8),
               SizedBox(
-                height: _filter == MapLayerFilter.hotels ? 88 : 40,
+                height: _hotelsSelected ? 88 : 40,
                 child: Column(
                   children: [
                     SizedBox(
@@ -219,20 +267,29 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                                 padding: const EdgeInsets.only(right: 8),
                                 child: DiscoverFilterChip(
                                   label: filter.label,
-                                  selected: _filter == filter,
-                                  onTap: () => setState(() => _filter = filter),
+                                  selected: _filters.contains(filter),
+                                  onTap: () => _toggleFilter(filter),
                                 ),
                               ),
                             DiscoverFilterChip(
                               label: MapStrings.filterMore,
-                              selected: _filter.isExtraPlaceFilter,
+                              selected: _filters.any((f) => f.isExtraPlaceFilter),
                               onTap: _openMoreFilters,
+                            ),
+                            const SizedBox(width: 8),
+                            _MapViewModeChip(
+                              label: _showList
+                                  ? MapStrings.showMap
+                                  : MapStrings.showList,
+                              selected: _showList,
+                              onTap: () =>
+                                  setState(() => _showList = !_showList),
                             ),
                           ],
                         ),
                       ),
                     ),
-                    if (_filter == MapLayerFilter.hotels) ...[
+                    if (_hotelsSelected) ...[
                       const SizedBox(height: 8),
                       SizedBox(
                         height: 40,
@@ -265,6 +322,35 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                   ],
                 ),
               ),
+              if (places.isEmpty &&
+                  !_filters.contains(MapLayerFilter.walkers)) ...[
+                const SizedBox(height: 8),
+                Material(
+                  color: const Color(0xFF2A2A38),
+                  borderRadius: BorderRadius.circular(14),
+                  elevation: 2,
+                  child: const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          MapStrings.emptyCategoryTitle,
+                          style: TextStyle(
+                            color: Color(0xFFF8FAFC),
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        SizedBox(height: 4),
+                        Text(
+                          MapStrings.emptyCategoryBody,
+                          style: TextStyle(color: Color(0xFFCBD5E1)),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
               if (walk.isActive) ...[
                 const SizedBox(height: 8),
                 WalkGpsBanner(isPaused: walk.isPaused),
@@ -276,6 +362,19 @@ class _MapScreenState extends ConsumerState<MapScreen> {
             ],
           ),
         ),
+        if (_showList)
+          Positioned(
+            left: 12,
+            right: 12,
+            top: 210,
+            bottom: walk.isActive ? 220 : 88,
+            child: _PlacesListPanel(
+              places: places,
+              userCoord: location.coord,
+              onOpen: _selectPlace,
+              onDirections: _openDirections,
+            ),
+          ),
         Positioned(
           right: 12,
           bottom: walk.isActive ? 220 : 88,
@@ -313,84 +412,164 @@ class _MapScreenState extends ConsumerState<MapScreen> {
             left: 16,
             right: 72,
             bottom: 16,
-            child: Material(
-              elevation: 8,
-              shadowColor: Colors.black38,
-              borderRadius: BorderRadius.circular(28),
-              child: FilledButton.icon(
-                style: FilledButton.styleFrom(
-                  minimumSize: const Size(0, 54),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  textStyle: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
+            child: Row(
+              children: [
+                Expanded(
+                  child: Material(
+                    elevation: 8,
+                    shadowColor: Colors.black38,
+                    borderRadius: BorderRadius.circular(28),
+                    child: FilledButton.icon(
+                      style: FilledButton.styleFrom(
+                        minimumSize: const Size(0, 54),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        textStyle: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      onPressed: () => _startWalkFlow(context),
+                      icon: const Icon(Icons.directions_walk),
+                      label: const Text(MapStrings.startWalk),
+                    ),
                   ),
                 ),
-                onPressed: () => _startWalkFlow(context),
-                icon: const Icon(Icons.directions_walk),
-                label: const Text(MapStrings.startWalk),
-              ),
+                const SizedBox(width: 8),
+                Material(
+                  elevation: 8,
+                  shadowColor: Colors.black38,
+                  borderRadius: BorderRadius.circular(16),
+                  color: Theme.of(context).colorScheme.surface,
+                  child: IconButton(
+                    tooltip: MapStrings.walkHistory,
+                    onPressed: () => showWalkHistorySheet(context),
+                    icon: const Icon(Icons.history),
+                    iconSize: 26,
+                    constraints: const BoxConstraints(
+                      minWidth: 54,
+                      minHeight: 54,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
       ],
     );
   }
 
-  List<MapPlace> _visiblePlaces(List<MapPlace> source) {
-    if (!_filter.showsPlaces) {
+  List<MapPlace> _visiblePlaces(
+    List<MapPlace> source,
+    MapRegionSelection region,
+  ) {
+    final onlyWalkers = _filters.length == 1 &&
+        _filters.contains(MapLayerFilter.walkers);
+    if (onlyWalkers) {
       return const [];
     }
     final query = _search.text.trim().toLowerCase();
-    final type = _filter.placeType;
-    return source.where((place) {
-      final matchesQuery = query.isEmpty ||
-          place.name.toLowerCase().contains(query) ||
-          place.neighborhood.toLowerCase().contains(query);
+    final user = ref.read(userLocationProvider).coord;
+    final center = mapRegionCenter(region, user);
+    final nearbyOnly = _filters.contains(MapLayerFilter.nearby);
+    final showAllPlaces = _filters.contains(MapLayerFilter.all) ||
+        (_filters.length == 1 && nearbyOnly);
+    final selectedTypes = <MapPlaceType>{
+      for (final filter in _filters)
+        if (filter.placeType != null) filter.placeType!,
+    };
+    final emergencyOnly = _filters.contains(MapLayerFilter.emergency);
+
+    final result = source.where((place) {
+      final haystack = [
+        place.name,
+        place.neighborhood,
+        place.municipality,
+        place.type.filterLabel,
+        place.type.name,
+      ].join(' ').toLowerCase();
+      final matchesQuery = query.isEmpty || haystack.contains(query);
       if (!matchesQuery) {
         return false;
       }
-      if (_cityFocus == MapCityFocus.noviSad &&
-          place.city != MapCity.noviSad) {
+      if (!_placeInRegion(place, region, center)) {
         return false;
       }
-      if (_cityFocus == MapCityFocus.belgrade &&
-          place.city != MapCity.belgrade) {
+      if (nearbyOnly) {
+        final distance = haversineKm(
+          user,
+          GeoCoord(place.latitude, place.longitude),
+        );
+        if (distance > 3) return false;
+      }
+      if (emergencyOnly && !(place.is24_7 || place.isEmergencyService)) {
         return false;
       }
-      if (_filter == MapLayerFilter.emergency) {
-        return place.is24_7 || place.isEmergencyService;
+      if (!showAllPlaces && selectedTypes.isNotEmpty) {
+        if (!selectedTypes.contains(place.type)) {
+          // Emergency alone can match vets without type chip.
+          if (!(emergencyOnly && place.type == MapPlaceType.vet)) {
+            return false;
+          }
+        }
       }
-      if (type != null && place.type != type) {
-        return false;
-      }
-      if (_filter == MapLayerFilter.hotels &&
-          !_matchesHotelAmenities(place)) {
+      if (_hotelsSelected && !_matchesHotelAmenities(place)) {
         return false;
       }
       return true;
     }).toList();
+
+    result.sort((a, b) {
+      if (a.isSponsored != b.isSponsored) {
+        return a.isSponsored ? -1 : 1;
+      }
+      return b.sponsorPriority.compareTo(a.sponsorPriority);
+    });
+    return result;
   }
 
-  List<WalkingDogPin> _visibleWalkers(List<WalkingDogPin> source) {
-    if (_cityFocus == MapCityFocus.belgrade) {
-      return const [];
+  bool _placeInRegion(
+    MapPlace place,
+    MapRegionSelection region,
+    GeoCoord center,
+  ) {
+    final cityId = region.cityId;
+    if (cityId != null && cityId.isNotEmpty) {
+      if (place.cityId == cityId) return true;
+      if (cityId == 'novi-sad' && place.city == MapCity.noviSad) return true;
+      if (cityId == 'beograd' && place.city == MapCity.belgrade) return true;
     }
-    if (!_filter.showsWalkers) {
+    final distance = haversineKm(
+      center,
+      GeoCoord(place.latitude, place.longitude),
+    );
+    return distance <= region.radiusKm;
+  }
+
+  List<WalkingDogPin> _visibleWalkers(
+    List<WalkingDogPin> source,
+    MapRegionSelection region,
+  ) {
+    final showWalkers = _filters.contains(MapLayerFilter.all) ||
+        _filters.contains(MapLayerFilter.walkers);
+    if (!showWalkers) {
       return const [];
     }
     final query = _search.text.trim().toLowerCase();
-    if (query.isEmpty) {
-      return source;
-    }
-    return source
-        .where(
-          (pin) =>
-              pin.profile.name.toLowerCase().contains(query) ||
-              pin.status.toLowerCase().contains(query),
-        )
-        .toList();
+    final user = ref.read(userLocationProvider).coord;
+    final center = mapRegionCenter(region, user);
+    return source.where((pin) {
+      final inRegion = haversineKm(
+            center,
+            GeoCoord(pin.latitude, pin.longitude),
+          ) <=
+          region.radiusKm;
+      if (!inRegion) return false;
+      if (query.isEmpty) return true;
+      return pin.profile.name.toLowerCase().contains(query) ||
+          pin.status.toLowerCase().contains(query);
+    }).toList();
   }
 
   bool _matchesHotelAmenities(MapPlace place) {
@@ -414,16 +593,23 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     return true;
   }
 
-  Future<void> _selectCity(MapCityFocus focus) async {
-    setState(() => _cityFocus = focus);
-    if (focus == MapCityFocus.myLocation) {
+  void _selectQuickCity(CityModel fallback) {
+    final cities =
+        ref.read(citiesProvider).asData?.value ?? SeedCities.all;
+    final match = cities.where((c) => c.id == fallback.id);
+    ref.read(mapRegionProvider.notifier).selectCity(
+          match.isNotEmpty ? match.first : fallback,
+        );
+  }
+
+  Future<void> _applyRegionCamera(MapRegionSelection region) async {
+    if (region.isMyLocation) {
       await _goToMyLocation();
       return;
     }
-    final target = focus == MapCityFocus.belgrade
-        ? MapCityCameras.belgrade
-        : MapCityCameras.noviSad;
-    await _flyTo(target, MapCityCameras.cityZoom);
+    final city = region.city;
+    if (city == null) return;
+    await _flyTo(city.center, region.zoom);
   }
 
   Future<void> _flyTo(LatLng dest, double zoom) async {
@@ -451,7 +637,8 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   }
 
   Future<void> _openMoreFilters() async {
-    const addPlaceToken = Object();
+    const communityPlaceToken = Object();
+    const adminPlaceToken = Object();
     final selected = await showModalBottomSheet<Object>(
       context: context,
       showDragHandle: true,
@@ -471,14 +658,22 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                 ListTile(
                   leading: const Icon(Icons.add_location_alt_outlined),
                   title: const Text(MapStrings.addPlace),
-                  onTap: () => Navigator.of(sheetContext).pop(addPlaceToken),
+                  onTap: () =>
+                      Navigator.of(sheetContext).pop(communityPlaceToken),
                 ),
+                if (ref.read(isAdminProvider))
+                  ListTile(
+                    leading: const Icon(Icons.admin_panel_settings_outlined),
+                    title: const Text(MapStrings.addPlaceAdminTitle),
+                    onTap: () =>
+                        Navigator.of(sheetContext).pop(adminPlaceToken),
+                  ),
                 const Divider(),
                 for (final filter in MapLayerFilterX.extra)
                   ListTile(
                     leading: Icon(filter.placeType?.icon ?? Icons.place),
                     title: Text(filter.label),
-                    selected: _filter == filter,
+                    selected: _filters.contains(filter),
                     onTap: () => Navigator.of(sheetContext).pop(filter),
                   ),
               ],
@@ -490,20 +685,28 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     if (!mounted) {
       return;
     }
-    if (identical(selected, addPlaceToken)) {
+    if (identical(selected, communityPlaceToken)) {
+      final region = ref.read(mapRegionProvider);
       await showAddPoiSheet(
         context,
         ref,
-        initialCity: switch (_cityFocus) {
-          MapCityFocus.belgrade => MapCity.belgrade,
-          MapCityFocus.myLocation => MapCity.other,
-          MapCityFocus.noviSad => MapCity.noviSad,
-        },
+        initialCity: region.cityId == SeedCities.belgrade.id
+            ? MapCity.belgrade
+            : MapCity.noviSad,
+      );
+      return;
+    }
+    if (identical(selected, adminPlaceToken)) {
+      final region = ref.read(mapRegionProvider);
+      await openAddPlaceScreen(
+        context,
+        ref,
+        initialCityId: region.cityId,
       );
       return;
     }
     if (selected is MapLayerFilter) {
-      setState(() => _filter = selected);
+      _toggleFilter(selected);
     }
   }
 
@@ -617,12 +820,6 @@ class _MapScreenState extends ConsumerState<MapScreen> {
       ),
       onDirections: () => _openDirections(place),
       onCall: place.phone.isEmpty ? null : () => _callPlace(place),
-      onReport: () {
-        ref.read(poiReportsProvider.notifier).report(place.id);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text(MapStrings.reportThanks)),
-        );
-      },
       onInappropriate: () {
         showContentReportSheet(
           context: context,
@@ -696,53 +893,78 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     final status = await showDialog<String>(
       context: context,
       builder: (dialogContext) {
-        return AlertDialog(
-          title: const Text(MapStrings.startWalk),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              TextField(
-                controller: controller,
-                maxLines: 3,
-                decoration: const InputDecoration(
-                  labelText: MapStrings.statusLabel,
-                  hintText: MapStrings.statusHint,
+        var selected = controller.text.trim();
+        return StatefulBuilder(
+          builder: (context, setLocalState) {
+            Widget statusChip(String label) {
+              final isSelected = selected == label;
+              return ChoiceChip(
+                label: Text(label),
+                selected: isSelected,
+                onSelected: (_) {
+                  controller.text = label;
+                  setLocalState(() => selected = label);
+                },
+                selectedColor: const Color(0xFF1D4ED8),
+                backgroundColor: const Color(0xFFF3F4F6),
+                side: BorderSide(
+                  color: isSelected
+                      ? const Color(0xFF1D4ED8)
+                      : const Color(0xFFD1D5DB),
                 ),
-              ),
-              const SizedBox(height: 12),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
+                labelStyle: TextStyle(
+                  color: isSelected
+                      ? Colors.white
+                      : const Color(0xFF111827),
+                  fontWeight: FontWeight.w700,
+                  fontSize: 13,
+                ),
+                showCheckmark: false,
+              );
+            }
+
+            return AlertDialog(
+              title: const Text(MapStrings.startWalk),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  ActionChip(
-                    label: const Text(MapStrings.statusWalking),
-                    onPressed: () => controller.text = MapStrings.statusWalking,
+                  TextField(
+                    controller: controller,
+                    maxLines: 3,
+                    onChanged: (value) {
+                      setLocalState(() => selected = value.trim());
+                    },
+                    decoration: const InputDecoration(
+                      labelText: MapStrings.statusLabel,
+                      hintText: MapStrings.statusHint,
+                    ),
                   ),
-                  ActionChip(
-                    label: const Text(MapStrings.statusResting),
-                    onPressed: () => controller.text = MapStrings.statusResting,
-                  ),
-                  ActionChip(
-                    label: const Text(MapStrings.statusLookingForPlay),
-                    onPressed: () =>
-                        controller.text = MapStrings.statusLookingForPlay,
+                  const SizedBox(height: 12),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      statusChip(MapStrings.statusWalking),
+                      statusChip(MapStrings.statusResting),
+                      statusChip(MapStrings.statusLookingForPlay),
+                    ],
                   ),
                 ],
               ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(),
-              child: const Text(MapStrings.cancel),
-            ),
-            FilledButton(
-              onPressed: () =>
-                  Navigator.of(dialogContext).pop(controller.text.trim()),
-              child: const Text(MapStrings.confirm),
-            ),
-          ],
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(),
+                  child: const Text(MapStrings.cancel),
+                ),
+                FilledButton(
+                  onPressed: () =>
+                      Navigator.of(dialogContext).pop(controller.text.trim()),
+                  child: const Text(MapStrings.confirm),
+                ),
+              ],
+            );
+          },
         );
       },
     );
@@ -756,8 +978,9 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   }
 }
 
-class _CityPill extends StatelessWidget {
-  const _CityPill({
+/// Dark chip so Lista/Mapa stays readable on the map overlay.
+class _MapViewModeChip extends StatelessWidget {
+  const _MapViewModeChip({
     required this.label,
     required this.selected,
     required this.onTap,
@@ -769,9 +992,10 @@ class _CityPill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final bg = selected ? const Color(0xFF1D4ED8) : const Color(0xFF2A2A38);
     return Material(
-      color: selected ? const Color(0xFF2A2A38) : Colors.white,
-      elevation: selected ? 3 : 1,
+      color: bg,
+      elevation: 3,
       borderRadius: BorderRadius.circular(18),
       child: InkWell(
         onTap: onTap,
@@ -780,11 +1004,189 @@ class _CityPill extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           child: Text(
             label,
-            style: TextStyle(
-              color: selected ? const Color(0xFFF8FAFC) : const Color(0xFF1F2937),
+            style: const TextStyle(
+              color: Color(0xFFF8FAFC),
               fontWeight: FontWeight.w700,
               fontSize: 12,
             ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _PlacesListPanel extends StatelessWidget {
+  const _PlacesListPanel({
+    required this.places,
+    required this.userCoord,
+    required this.onOpen,
+    required this.onDirections,
+  });
+
+  final List<MapPlace> places;
+  final GeoCoord userCoord;
+  final ValueChanged<MapPlace> onOpen;
+  final ValueChanged<MapPlace> onDirections;
+
+  static const _bg = Color(0xFFFFFFFF);
+  static const _title = Color(0xFF111827);
+  static const _body = Color(0xFF374151);
+  static const _muted = Color(0xFF6B7280);
+  static const _icon = Color(0xFF1F2937);
+
+  @override
+  Widget build(BuildContext context) {
+    if (places.isEmpty) {
+      return Material(
+        color: _bg,
+        elevation: 6,
+        borderRadius: BorderRadius.circular(16),
+        child: const Padding(
+          padding: EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                MapStrings.emptyCategoryTitle,
+                style: TextStyle(
+                  fontWeight: FontWeight.w800,
+                  color: _title,
+                  fontSize: 16,
+                ),
+              ),
+              SizedBox(height: 6),
+              Text(
+                MapStrings.emptyCategoryBody,
+                style: TextStyle(color: _body, fontSize: 14),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    final grouped = <MapPlaceType, List<MapPlace>>{};
+    for (final place in places) {
+      grouped.putIfAbsent(place.type, () => []).add(place);
+    }
+
+    return Material(
+      color: _bg,
+      elevation: 6,
+      borderRadius: BorderRadius.circular(16),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(16),
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
+          children: [
+            const Text(
+              MapStrings.placesListTitle,
+              style: TextStyle(
+                fontWeight: FontWeight.w800,
+                color: _title,
+                fontSize: 16,
+              ),
+            ),
+            const SizedBox(height: 8),
+            for (final entry in grouped.entries) ...[
+              Padding(
+                padding: const EdgeInsets.only(top: 8, bottom: 4),
+                child: Text(
+                  entry.key.filterLabel.toUpperCase(),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 12,
+                    letterSpacing: 0.4,
+                    color: _muted,
+                  ),
+                ),
+              ),
+              for (final place in entry.value)
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: CircleAvatar(
+                    backgroundColor: place.pinColor,
+                    child: Icon(place.type.icon, color: Colors.white, size: 18),
+                  ),
+                  title: Text(
+                    place.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w700,
+                      color: _title,
+                      fontSize: 15,
+                    ),
+                  ),
+                  subtitle: Text(
+                    [
+                      place.municipality.isNotEmpty
+                          ? place.municipality
+                          : place.address,
+                      '${haversineKm(userCoord, GeoCoord(place.latitude, place.longitude)).toStringAsFixed(1)} km',
+                    ].join(' · '),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(color: _body, fontSize: 13),
+                  ),
+                  trailing: IconButton(
+                    tooltip: MapStrings.openNavigation,
+                    onPressed: () => onDirections(place),
+                    icon: const Icon(Icons.directions, color: _icon),
+                  ),
+                  onTap: () => onOpen(place),
+                ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _CityPickerButton extends StatelessWidget {
+  const _CityPickerButton({
+    required this.label,
+    required this.onTap,
+    this.selected = false,
+  });
+
+  final String label;
+  final VoidCallback onTap;
+  final bool selected;
+
+  @override
+  Widget build(BuildContext context) {
+    final bg = selected ? const Color(0xFF1D4ED8) : const Color(0xFF2A2A38);
+    return Material(
+      color: bg,
+      elevation: 3,
+      borderRadius: BorderRadius.circular(18),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(18),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(
+                Icons.expand_more,
+                size: 18,
+                color: Color(0xFFF8FAFC),
+              ),
+              const SizedBox(width: 4),
+              Text(
+                label,
+                style: const TextStyle(
+                  color: Color(0xFFF8FAFC),
+                  fontWeight: FontWeight.w700,
+                  fontSize: 12,
+                ),
+              ),
+            ],
           ),
         ),
       ),

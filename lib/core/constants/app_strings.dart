@@ -28,8 +28,28 @@ abstract final class AppStrings {
   static const String createAccount = 'Napravi nalog';
   static const String alreadyHaveAccount = 'Već imaš nalog? Prijavi se';
   static const String forgotPassword = 'Zaboravljena lozinka?';
+  static const String forgotPasswordTitle = 'Zaboravljena lozinka';
+  static const String forgotPasswordBody =
+      'Unesite email adresu naloga. Poslaćemo vam link za resetovanje lozinke.';
+  static const String sendResetLink = 'Pošalji link';
   static const String resetPasswordSent =
       'Link za resetovanje lozinke je poslat na vaš email.';
+  static const String resetPasswordSentTitle = 'Link je poslat';
+  static const String resetPasswordSentBodyPrefix =
+      'Uputstvo za resetovanje lozinke je poslato na adresu:';
+  static const String resetPasswordSentBodySuffix =
+      'Proverite vaš Inbox i Spam/Junk sanduče.';
+  static const String resetPasswordUserNotFound =
+      'Korisnik sa ovom e-mail adresom nije registrovan.';
+  static const String resetPasswordTooManyRequests =
+      'Previše pokušaja slanja. Pokušajte ponovo malo kasnije.';
+  static const String resetPasswordFailed =
+      'Došlo je do greške pri slanju zahteva.';
+  static const String resetPasswordFailedDetail = 'Neuspešno slanje: ';
+  static const String errorTitle = 'Greška';
+  static const String ok = 'U redu';
+  static const String close = 'Zatvori';
+  static const String cancel = 'Otkaži';
   static const String signOut = 'Odjavi se';
   static const String emailInvalid = 'Unesite ispravnu email adresu.';
   static const String passwordTooShort = 'Lozinka mora imati najmanje 6 karaktera.';

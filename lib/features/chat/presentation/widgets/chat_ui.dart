@@ -55,7 +55,10 @@ class UnreadCountBadge extends StatelessWidget {
 }
 
 /// Bottom compose row: attach + rounded field + circular send.
-class ChatInputBar extends StatelessWidget {
+///
+/// Keeps the text field focused after send so the user can type the next
+/// message without tapping the input again.
+class ChatInputBar extends StatefulWidget {
   const ChatInputBar({
     super.key,
     required this.controller,
@@ -80,6 +83,41 @@ class ChatInputBar extends StatelessWidget {
   final bool enabled;
 
   @override
+  State<ChatInputBar> createState() => _ChatInputBarState();
+}
+
+class _ChatInputBarState extends State<ChatInputBar> {
+  FocusNode? _ownedFocus;
+
+  FocusNode get _focus => widget.focusNode ?? _ownedFocus!;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.focusNode == null) {
+      _ownedFocus = FocusNode(debugLabel: 'ChatInputBar');
+    }
+  }
+
+  @override
+  void dispose() {
+    _ownedFocus?.dispose();
+    super.dispose();
+  }
+
+  void _sendAndKeepFocus() {
+    widget.onSend();
+    // Send button / TextInputAction.send often steals or drops focus; restore
+    // it after the frame so the keyboard stays open for the next message.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !widget.enabled) {
+        return;
+      }
+      _focus.requestFocus();
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     return SafeArea(
       top: false,
@@ -87,21 +125,21 @@ class ChatInputBar extends StatelessWidget {
         padding: ChatUiTokens.inputBarPadding,
         child: Row(
           children: [
-            if (onAttach != null)
+            if (widget.onAttach != null)
               IconButton(
-                tooltip: attachTooltip,
-                onPressed: enabled ? onAttach : null,
-                icon: Icon(attachIcon),
+                tooltip: widget.attachTooltip,
+                onPressed: widget.enabled ? widget.onAttach : null,
+                icon: Icon(widget.attachIcon),
               ),
             Expanded(
               child: TextField(
-                controller: controller,
-                focusNode: focusNode,
-                enabled: enabled,
+                controller: widget.controller,
+                focusNode: _focus,
+                enabled: widget.enabled,
                 textInputAction: TextInputAction.send,
-                onSubmitted: (_) => onSend(),
+                onSubmitted: (_) => _sendAndKeepFocus(),
                 decoration: InputDecoration(
-                  hintText: hintText,
+                  hintText: widget.hintText,
                   filled: true,
                   fillColor: Theme.of(context).colorScheme.surfaceContainerHighest
                       .withValues(alpha: 0.55),
@@ -133,8 +171,8 @@ class ChatInputBar extends StatelessWidget {
               width: ChatUiTokens.sendButtonSize,
               height: ChatUiTokens.sendButtonSize,
               child: IconButton.filled(
-                tooltip: sendTooltip,
-                onPressed: enabled ? onSend : null,
+                tooltip: widget.sendTooltip,
+                onPressed: widget.enabled ? _sendAndKeepFocus : null,
                 style: IconButton.styleFrom(
                   backgroundColor: AppColors.primary,
                   foregroundColor: AppColors.onPrimary,

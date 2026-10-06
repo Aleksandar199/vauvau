@@ -2,12 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/theme/app_cards.dart';
+import '../../../map/domain/models/poi_model.dart';
 import '../../../map/presentation/user_poi_controller.dart';
 import '../../../moderation/domain/content_report.dart';
 import '../../../moderation/presentation/report_controller.dart';
 import '../../../moments/presentation/moments_controller.dart';
 import '../admin_strings.dart';
 import '../widgets/admin_confirm_dialog.dart';
+import '../widgets/admin_edit_poi_dialog.dart';
 
 class AdminReportsTab extends ConsumerWidget {
   const AdminReportsTab({super.key});
@@ -32,10 +34,16 @@ class _ReportCard extends ConsumerWidget {
 
   final ContentReport report;
 
+  bool get _isPoi => report.targetType == ReportContentType.poi;
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final details = report.details;
+    final title = report.targetName.trim().isNotEmpty
+        ? report.targetName.trim()
+        : report.targetId;
+
     return Container(
       decoration: BoxDecoration(
         color: theme.cardTheme.color ?? theme.colorScheme.surface,
@@ -103,12 +111,21 @@ class _ReportCard extends ConsumerWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            '${report.targetTypeKey} • ${report.targetId}',
-            style: TextStyle(
-              fontSize: 12,
-              color: Colors.grey.shade600,
+            _isPoi ? title : '${report.targetTypeKey} • ${report.targetId}',
+            style: theme.textTheme.titleSmall?.copyWith(
+              fontWeight: FontWeight.w700,
             ),
           ),
+          if (_isPoi && report.targetName.trim().isNotEmpty) ...[
+            const SizedBox(height: 2),
+            Text(
+              'ID: ${report.targetId}',
+              style: TextStyle(
+                fontSize: 11,
+                color: Colors.grey.shade600,
+              ),
+            ),
+          ],
           if (details != null) ...[
             const SizedBox(height: 8),
             Text(
@@ -120,6 +137,25 @@ class _ReportCard extends ConsumerWidget {
             ),
           ],
           const SizedBox(height: 12),
+          if (_isPoi) ...[
+            SizedBox(
+              width: double.infinity,
+              height: 42,
+              child: FilledButton.icon(
+                style: FilledButton.styleFrom(
+                  backgroundColor: const Color(0xFF1D4ED8),
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+                onPressed: () => _editAndResolve(context, ref),
+                icon: const Icon(Icons.edit_outlined, size: 18),
+                label: const Text(AdminStrings.editAndResolve),
+              ),
+            ),
+            const SizedBox(height: 8),
+          ],
           Row(
             children: [
               Expanded(
@@ -192,6 +228,65 @@ class _ReportCard extends ConsumerWidget {
     );
   }
 
+  Future<void> _editAndResolve(BuildContext context, WidgetRef ref) async {
+    final existing =
+        ref.read(userPoiSubmissionsProvider.notifier).findById(report.targetId);
+    final poi = existing ??
+        PoiModel(
+          id: report.targetId,
+          name: report.targetName.trim().isNotEmpty
+              ? report.targetName.trim()
+              : report.targetId,
+          category: PoiCategory.park,
+          address: '',
+          latitude: 45.2671,
+          longitude: 19.8335,
+          lastVerified: DateTime.now(),
+          source: 'Admin ispravka',
+          verificationStatus: PoiVerificationStatus.unknown,
+        );
+
+    final result = await showAdminEditPoiDialog(
+      context: context,
+      ref: ref,
+      poi: poi,
+      reportReason: report.reason,
+      reportDetails: report.details,
+      offerResolve: true,
+    );
+
+    if (result == AdminEditPoiResult.cancelled || !context.mounted) {
+      return;
+    }
+
+    if (result == AdminEditPoiResult.savedAndResolved) {
+      await ref.read(reportControllerProvider).markReviewed(
+            report.id,
+            reporterId: report.reporterId,
+          );
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(AdminStrings.poiUpdatedAndResolved),
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: Color(0xFF166534),
+          ),
+        );
+      }
+      return;
+    }
+
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(AdminStrings.saved),
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: Color(0xFF166534),
+        ),
+      );
+    }
+  }
+
   Future<void> _deleteContent(BuildContext context, WidgetRef ref) async {
     final confirmed = await confirmAdminDelete(
       context,
@@ -217,13 +312,17 @@ class _ReportCard extends ConsumerWidget {
         case ReportContentType.chat:
           break;
       }
-      await ref.read(reportControllerProvider).markActionTaken(report.id);
+      await ref.read(reportControllerProvider).markActionTaken(
+            report.id,
+            reporterId: report.reporterId,
+          );
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text(AdminStrings.blocked)),
         );
       }
-    } catch (_) {
+    } catch (error) {
+      debugPrint('Admin delete/report action failed: $error');
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text(AdminStrings.actionFailed)),
@@ -240,9 +339,15 @@ class _ReportCard extends ConsumerWidget {
     final controller = ref.read(reportControllerProvider);
     try {
       if (reviewed) {
-        await controller.markReviewed(report.id);
+        await controller.markReviewed(
+          report.id,
+          reporterId: report.reporterId,
+        );
       } else {
-        await controller.dismiss(report.id);
+        await controller.dismiss(
+          report.id,
+          reporterId: report.reporterId,
+        );
       }
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -250,10 +355,13 @@ class _ReportCard extends ConsumerWidget {
             content: Text(
               reviewed ? AdminStrings.reportReviewed : AdminStrings.dismissed,
             ),
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: const Color(0xFF166534),
           ),
         );
       }
-    } catch (_) {
+    } catch (error) {
+      debugPrint('Admin report status update failed: $error');
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text(AdminStrings.actionFailed)),

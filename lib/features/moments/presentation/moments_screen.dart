@@ -16,9 +16,6 @@ class MomentsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final moments = ref.watch(visibleMomentsProvider);
-    // Keep Scaffold stable: do NOT watch seenStories here — that rebuilds the
-    // whole scaffold (and used to blow up Flutter web hit-testing the FAB)
-    // every time a story is marked seen under an open viewer.
     void addStory() => showCreateMomentSheet(context);
 
     return Scaffold(
@@ -33,7 +30,9 @@ class MomentsScreen extends ConsumerWidget {
         ],
       ),
       body: moments.when(
-        loading: () => FeedStateView.loadingBody(),
+        skipLoadingOnReload: true,
+        skipLoadingOnRefresh: true,
+        loading: () => const FeedShimmerGrid(childAspectRatio: 0.62),
         error: (error, stack) => FeedStateView(
           icon: Icons.error_outline,
           title: MomentsStrings.loadError,
@@ -46,21 +45,55 @@ class MomentsScreen extends ConsumerWidget {
   }
 }
 
-class _MomentsBody extends ConsumerWidget {
+class _MomentsBody extends ConsumerStatefulWidget {
   const _MomentsBody({required this.onAddStory});
 
   final VoidCallback onAddStory;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_MomentsBody> createState() => _MomentsBodyState();
+}
+
+class _MomentsBodyState extends ConsumerState<_MomentsBody> {
+  final _scroll = ScrollController();
+
+  @override
+  void initState() {
+    super.initState();
+    _scroll.addListener(_onScroll);
+  }
+
+  @override
+  void dispose() {
+    _scroll.removeListener(_onScroll);
+    _scroll.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    if (!_scroll.hasClients) {
+      return;
+    }
+    final position = _scroll.position;
+    if (position.pixels < position.maxScrollExtent - 420) {
+      return;
+    }
+    ref.read(momentsControllerProvider.notifier).loadMore();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final groups = ref.watch(activeStoryGroupsProvider);
+    final controller = ref.watch(momentsControllerProvider.notifier);
+    final loadingMore = controller.isLoadingMore;
 
     return CustomScrollView(
+      controller: _scroll,
       slivers: [
         SliverToBoxAdapter(
           child: Padding(
             padding: const EdgeInsets.only(top: 8),
-            child: StoriesRail(onAddStory: onAddStory),
+            child: StoriesRail(onAddStory: widget.onAddStory),
           ),
         ),
         SliverToBoxAdapter(
@@ -105,7 +138,7 @@ class _MomentsBody extends ConsumerWidget {
             ),
           ),
           SliverPadding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
             sliver: SliverGrid.builder(
               gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                 crossAxisCount: 2,
@@ -124,6 +157,21 @@ class _MomentsBody extends ConsumerWidget {
               ),
             ),
           ),
+          if (loadingMore || controller.hasMore)
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 28),
+                child: Center(
+                  child: loadingMore
+                      ? const SizedBox(
+                          width: 22,
+                          height: 22,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const SizedBox(height: 22),
+                ),
+              ),
+            ),
         ],
       ],
     );
@@ -149,6 +197,7 @@ class _StoryTile extends ConsumerWidget {
         child: Stack(
           fit: StackFit.expand,
           children: [
+            // Aspect locked by the grid cell — prevents layout jump on decode.
             DogImage(url: group.coverUrl, seed: latest.id),
             const DecoratedBox(
               decoration: BoxDecoration(

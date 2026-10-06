@@ -16,21 +16,99 @@ import '../domain/moment_model.dart';
 import '../domain/moments_repository.dart';
 
 class MomentsController extends Notifier<AsyncValue<List<MomentModel>>> {
+  static const int pageSize = 20;
+
+  var _hasMore = true;
+  var _loadingMore = false;
+  List<MomentModel> _older = const [];
+  Object? _cursor;
+  List<MomentModel>? _live;
+  List<MomentModel>? _cached;
+
+  bool get hasMore => _hasMore;
+  bool get isLoadingMore => _loadingMore;
+
   @override
   AsyncValue<List<MomentModel>> build() {
     final repo = ref.watch(momentsRepositoryProvider);
-    final sub = repo.watchMoments().listen(
-      (moments) => state = AsyncValue.data(moments),
+    final sub = repo.watchMoments(limit: pageSize).listen(
+      (moments) {
+        _live = moments;
+        if (_older.isEmpty) {
+          _hasMore = moments.length >= pageSize;
+        }
+        final merged = _merged();
+        _cached = merged;
+        state = AsyncValue.data(merged);
+      },
       onError: (Object error, StackTrace stack) {
         debugPrint('Moments stream: $error');
-        state = AsyncValue.error(error, stack);
+        if (_cached == null) {
+          state = AsyncValue.error(error, stack);
+        }
       },
     );
     ref.onDispose(sub.cancel);
-    return const AsyncValue.loading();
+    return _cached != null
+        ? AsyncValue.data(_cached!)
+        : const AsyncValue.loading();
   }
 
-  void reload() => ref.invalidateSelf();
+  List<MomentModel> _merged() {
+    final live = _live ?? const <MomentModel>[];
+    if (_older.isEmpty) {
+      return live;
+    }
+    final seen = {for (final moment in live) moment.id};
+    return [
+      ...live,
+      for (final moment in _older)
+        if (!seen.contains(moment.id)) moment,
+    ];
+  }
+
+  void reload() {
+    _older = const [];
+    _cursor = null;
+    _hasMore = true;
+    _live = null;
+    _cached = null;
+    ref.invalidateSelf();
+  }
+
+  Future<void> loadMore() async {
+    if (_loadingMore || !_hasMore) {
+      return;
+    }
+    final shown = state.asData?.value;
+    if (shown == null) {
+      return;
+    }
+    _loadingMore = true;
+    // Trigger listeners (footer spinner) without clearing the list.
+    state = AsyncValue.data(shown);
+    try {
+      final page = await ref.read(momentsRepositoryProvider).fetchMomentsPage(
+            cursor: _cursor,
+            limit: pageSize,
+          );
+      _older = [..._older, ...page.items];
+      _cursor = page.nextCursor;
+      _hasMore = page.hasMore && page.items.isNotEmpty;
+      final merged = _merged();
+      _cached = merged;
+      state = AsyncValue.data(merged);
+    } catch (error, stack) {
+      debugPrint('Moments loadMore failed: $error');
+      debugPrint('$stack');
+    } finally {
+      _loadingMore = false;
+      final value = _cached ?? state.asData?.value;
+      if (value != null) {
+        state = AsyncValue.data(value);
+      }
+    }
+  }
 
   Future<void> toggleLike(String momentId) {
     return ref.read(momentsRepositoryProvider).toggleLike(momentId);
@@ -96,20 +174,26 @@ String _currentUserId(Ref ref, String fallback) {
 }
 
 final momentsRepositoryProvider = Provider<MomentsRepository>((ref) {
-  final user = ref.watch(authStateProvider).asData?.value;
-  final uid = _currentUserId(ref, user?.uid ?? '');
-  final name = (user?.displayName ?? '').trim().isEmpty
-      ? 'Korisnik'
-      : user!.displayName!.trim();
+  // Only recreate when uid changes — avoids tearing down the Firestore stream.
+  final uid = ref.watch(
+    authStateProvider.select((async) => async.asData?.value?.uid ?? ''),
+  );
+  final resolvedUid = _currentUserId(ref, uid);
+  final displayName = ref.watch(
+    authStateProvider.select(
+      (async) => async.asData?.value?.displayName?.trim() ?? '',
+    ),
+  );
+  final name = displayName.isEmpty ? 'Korisnik' : displayName;
   if (isFirebaseReady) {
     return FirestoreMomentsRepository(
       firestore: FirebaseFirestore.instance,
-      currentUserId: uid,
+      currentUserId: resolvedUid,
       authorName: name,
     );
   }
   final repo = LocalMomentsRepository(
-    currentUserId: uid.isEmpty ? 'local-user' : uid,
+    currentUserId: resolvedUid.isEmpty ? 'local-user' : resolvedUid,
     authorName: name == 'Korisnik' ? 'Ti' : name,
   );
   ref.onDispose(repo.dispose);
@@ -142,7 +226,9 @@ final momentCommentsProvider =
     });
 
 final momentsMemberIdProvider = Provider<String>((ref) {
-  final signedIn = ref.watch(authStateProvider).asData?.value?.uid ?? '';
+  final signedIn = ref.watch(
+    authStateProvider.select((async) => async.asData?.value?.uid ?? ''),
+  );
   final uid = _currentUserId(ref, signedIn);
   if (uid.isNotEmpty) {
     return uid;

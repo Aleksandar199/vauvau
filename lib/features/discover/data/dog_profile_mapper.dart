@@ -43,6 +43,10 @@ DiscoverProfile discoverProfileFromMap(String id, Map<String, dynamic> data) {
     traits: _stringList(data['temperament'] ?? data['traits']),
     weightKg: (data['weightKg'] as num?)?.toDouble() ?? 0,
     walking: data['isWalking'] as bool? ?? false,
+    activityStatus: (data['walkStatus'] as String? ??
+            data['activityStatus'] as String? ??
+            '')
+        .trim(),
     latitude: coord.latitude,
     longitude: coord.longitude,
     goodWithDogs:

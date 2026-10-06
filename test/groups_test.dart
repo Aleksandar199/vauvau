@@ -86,7 +86,7 @@ void main() {
     expect(find.text(GroupsStrings.title), findsOneWidget);
     expect(find.text('🏃‍♂️ Aktivne šetnje & Playdate'), findsOneWidget);
     expect(find.text('🌊 Kej / Žeželjev most'), findsOneWidget);
-    expect(find.text(GroupsStrings.createGroup), findsOneWidget);
+    expect(find.byTooltip(GroupsStrings.createGroup), findsOneWidget);
     expect(find.text(GroupsStrings.join), findsWidgets);
 
     await tester.tap(find.text(GroupsStrings.join).first);
@@ -121,8 +121,9 @@ void main() {
     );
     await tester.pump();
 
-    await tester.tap(find.text(GroupsStrings.createGroup));
-    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip(GroupsStrings.createGroup));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
     await tester.enterText(
       find.widgetWithText(TextFormField, GroupsStrings.groupName),
       'Nova park grupa',
@@ -139,7 +140,8 @@ void main() {
     );
 
     await tester.tap(find.text(GroupsStrings.ok));
-    await tester.pumpAndSettle();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
     expect(find.byType(CreateGroupSheet), findsNothing);
   });
 }

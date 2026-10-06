@@ -11,6 +11,7 @@ class ContentReport {
     required this.reason,
     required this.timestamp,
     this.reportedUserId = '',
+    this.targetName = '',
     this.details,
     this.status = ReportStatus.pending,
   });
@@ -20,6 +21,8 @@ class ContentReport {
   final String reportedUserId;
   final ReportContentType targetType;
   final String targetId;
+  /// Human-readable place/profile name when available (e.g. POI placeName).
+  final String targetName;
   final String reason;
   final String? details;
   final DateTime timestamp;
@@ -27,13 +30,14 @@ class ContentReport {
 
   bool get isActive => status == ReportStatus.pending;
 
-  ContentReport copyWith({ReportStatus? status}) {
+  ContentReport copyWith({ReportStatus? status, String? targetName}) {
     return ContentReport(
       id: id,
       reporterId: reporterId,
       reportedUserId: reportedUserId,
       targetType: targetType,
       targetId: targetId,
+      targetName: targetName ?? this.targetName,
       reason: reason,
       details: details,
       timestamp: timestamp,
@@ -85,5 +89,6 @@ abstract class ReportRepository {
   Future<void> updateStatus({
     required String id,
     required ReportStatus status,
+    String reporterId = '',
   });
 }

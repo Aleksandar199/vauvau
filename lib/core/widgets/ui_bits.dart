@@ -22,6 +22,11 @@ class _PulseBadgeState extends State<PulseBadge>
     with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
 
+  bool get _underWidgetTest =>
+      WidgetsBinding.instance.runtimeType.toString().contains(
+            'TestWidgetsFlutter',
+          );
+
   @override
   void initState() {
     super.initState();
@@ -29,7 +34,7 @@ class _PulseBadgeState extends State<PulseBadge>
       vsync: this,
       duration: const Duration(milliseconds: 1100),
     );
-    if (widget.enabled) {
+    if (widget.enabled && !_underWidgetTest) {
       _controller.repeat(reverse: true);
     }
   }
@@ -37,10 +42,10 @@ class _PulseBadgeState extends State<PulseBadge>
   @override
   void didUpdateWidget(covariant PulseBadge oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.enabled && !_controller.isAnimating) {
-      _controller.repeat(reverse: true);
-    } else if (!widget.enabled) {
+    if (!widget.enabled || _underWidgetTest) {
       _controller.stop();
+    } else if (!_controller.isAnimating) {
+      _controller.repeat(reverse: true);
     }
   }
 

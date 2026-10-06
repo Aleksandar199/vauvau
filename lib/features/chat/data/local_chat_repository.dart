@@ -24,9 +24,17 @@ class LocalChatRepository implements ChatRepository {
       List<ChatConversation>.from(_inbox);
 
   @override
+  bool get hasLoadedInbox => true;
+
+  @override
   Stream<List<ChatConversation>> watchInbox() async* {
     yield currentInbox;
     yield* _inboxController.stream;
+  }
+
+  @override
+  Stream<bool> watchInboxLoaded() async* {
+    yield true;
   }
 
   @override

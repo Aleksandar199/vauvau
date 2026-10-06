@@ -1,11 +1,11 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/firebase/firebase_status.dart';
 import '../../auth/presentation/auth_providers.dart';
 import '../../dogs/presentation/dog_providers.dart';
 import '../../location/presentation/location_controller.dart';
+import '../../map/presentation/walk_controller.dart';
 import '../../moderation/presentation/block_controller.dart';
 import '../../moderation/presentation/report_controller.dart';
 import '../../profile/domain/matching_filters.dart';
@@ -82,21 +82,42 @@ class DiscoverState {
 }
 
 class DiscoverController extends Notifier<DiscoverState> {
+  DiscoverCategory _category = DiscoverCategory.all;
+  String _query = '';
+
   @override
   DiscoverState build() {
+    final walkActive = ref.watch(
+      walkControllerProvider.select((walk) => walk.isActive),
+    );
+    final walkStatus = ref.watch(
+      walkControllerProvider.select((walk) => walk.statusMessage),
+    );
+    var myDog = ref.watch(currentDiscoverDogProvider);
+    if (walkActive) {
+      final status = (walkStatus ?? '').trim();
+      myDog = myDog.copyWith(
+        walking: true,
+        activityStatus: status.isEmpty ? 'U šetnji' : status,
+      );
+    }
     return DiscoverState(
       catalog: ref
           .watch(matchingFiltersProvider)
           .apply(ref.watch(discoverFeedProvider)),
-      myDog: ref.watch(currentDiscoverDogProvider),
+      myDog: myDog,
+      query: _query,
+      category: _category,
     );
   }
 
   void setQuery(String query) {
+    _query = query;
     state = state.copyWith(query: query);
   }
 
   void setCategory(DiscoverCategory category) {
+    _category = category;
     state = state.copyWith(category: category);
   }
 
@@ -134,6 +155,8 @@ class DiscoverController extends Notifier<DiscoverState> {
   }
 
   void resetFilters() {
+    _query = '';
+    _category = DiscoverCategory.all;
     ref.read(matchingFiltersProvider.notifier).apply(const MatchingFilters());
     state = state.copyWith(query: '', category: DiscoverCategory.all);
   }
@@ -180,6 +203,13 @@ final discoverFeedProvider = Provider<List<DiscoverProfile>>((ref) {
   final ownerName =
       ref.watch(authStateProvider).asData?.value?.displayName ?? '';
   final ownDogs = ref.watch(ownerDogsProvider).asData?.value ?? const [];
+  final walkActive = ref.watch(
+    walkControllerProvider.select((walk) => walk.isActive),
+  );
+  final walkStatus = ref.watch(
+    walkControllerProvider.select((walk) => walk.statusMessage),
+  );
+  final activeDogId = ref.watch(currentDiscoverDogProvider.select((dog) => dog.id));
   final byId = <String, DiscoverProfile>{
     for (final profile in source) profile.id: profile,
   };
@@ -187,20 +217,38 @@ final discoverFeedProvider = Provider<List<DiscoverProfile>>((ref) {
     if (dog.id == 'local-luna') {
       continue;
     }
-    byId[dog.id] = discoverProfileFromDog(dog, ownerName: ownerName);
+    final fromDog = discoverProfileFromDog(dog, ownerName: ownerName);
+    final existing = byId[dog.id];
+    // Keep live walkStatus/isWalking from Firestore — own-dog merge used to
+    // wipe them and force the card back to "Odmaram".
+    byId[dog.id] = existing == null
+        ? fromDog
+        : fromDog.copyWith(
+            walking: existing.walking,
+            activityStatus: existing.activityStatus,
+            latitude: existing.latitude ?? fromDog.latitude,
+            longitude: existing.longitude ?? fromDog.longitude,
+          );
   }
+
+  // Instant local overlay while a walk session is active.
+  if (walkActive && activeDogId.isNotEmpty) {
+    final current = byId[activeDogId];
+    if (current != null) {
+      final status = (walkStatus ?? '').trim();
+      byId[activeDogId] = current.copyWith(
+        walking: true,
+        activityStatus: status.isEmpty ? 'U šetnji' : status,
+      );
+    }
+  }
+
   return [
     for (final profile in byId.values)
       if (!hidden.contains(profile.id) && !blocked.contains(profile.ownerId))
         profile,
-  ]..forEach(_debugDogPhotos);
+  ];
 });
-
-void _debugDogPhotos(DiscoverProfile dog) {
-  debugPrint(
-    '🐶 DOG DEBUG: Name: ${dog.name}, imageUrl: ${dog.imageUrl}, photoUrl: ${dog.photoUrl}, photos: ${dog.photos}',
-  );
-}
 
 final discoverControllerProvider =
     NotifierProvider<DiscoverController, DiscoverState>(DiscoverController.new);

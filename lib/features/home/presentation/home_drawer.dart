@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/images/dog_image.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../admin/presentation/admin_controller.dart';
 import '../../admin/presentation/admin_dashboard_screen.dart';
@@ -195,18 +196,23 @@ class _DrawerHeader extends StatelessWidget {
                 CircleAvatar(
                   radius: 22,
                   backgroundColor: Colors.white24,
-                  backgroundImage:
-                      photoUrl.isEmpty ? null : NetworkImage(photoUrl),
-                  child: photoUrl.isEmpty
-                      ? Text(
+                  child: photoUrl.startsWith('http')
+                      ? ClipOval(
+                          child: buildDogImage(
+                            photoUrl,
+                            seed: photoUrl,
+                            width: 44,
+                            height: 44,
+                          ),
+                        )
+                      : Text(
                           firstName.isEmpty ? 'V' : firstName[0].toUpperCase(),
                           style: const TextStyle(
                             color: Colors.white,
                             fontSize: 18,
                             fontWeight: FontWeight.w700,
                           ),
-                        )
-                      : null,
+                        ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(

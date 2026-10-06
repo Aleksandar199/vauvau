@@ -4,8 +4,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:vauvau/core/services/notification_service.dart';
 import 'package:vauvau/features/dogs/data/local_health_repository.dart';
 import 'package:vauvau/features/dogs/domain/health_record.dart';
-import 'package:vauvau/features/dogs/presentation/health/dog_health_tab.dart';
 import 'package:vauvau/features/dogs/presentation/health/health_controller.dart';
+import 'package:vauvau/features/dogs/presentation/health/health_record_sheet.dart';
 import 'package:vauvau/features/dogs/presentation/health/health_strings.dart';
 
 class _RecordingNotificationService extends NotificationService {
@@ -138,25 +138,14 @@ void main() {
     expect(stored.single.notificationId, isNull);
   });
 
-  testWidgets('health section shows a card per category', (tester) async {
+  testWidgets('health record sheet still edits an existing category',
+      (tester) async {
     await tester.binding.setSurfaceSize(const Size(412, 892));
     addTearDown(() async {
       await tester.binding.setSurfaceSize(null);
     });
 
-    final repo = LocalHealthRepository(
-      seed: [
-        HealthRecord(
-          id: 'rabies-1',
-          dogId: 'dog-1',
-          category: HealthCategory.vaccineRabies,
-          title: 'Vakcina protiv besnila',
-          administeredDate: DateTime(2026, 3, 1),
-          nextDueDate: DateTime(2027, 3, 1),
-          notificationId: 42,
-        ),
-      ],
-    );
+    final repo = LocalHealthRepository();
     addTearDown(repo.dispose);
 
     await tester.pumpWidget(
@@ -166,36 +155,31 @@ void main() {
           notificationServiceProvider
               .overrideWith((ref) => _RecordingNotificationService()),
         ],
-        child: const MaterialApp(
+        child: MaterialApp(
           home: Scaffold(
-            body: SingleChildScrollView(
-              child: DogHealthTab(dogId: 'dog-1', dogName: 'Luna'),
+            body: HealthRecordSheet(
+              dogId: 'dog-1',
+              dogName: 'Luna',
+              category: HealthCategory.vaccineRabies,
+              existing: HealthRecord(
+                id: 'rabies-1',
+                dogId: 'dog-1',
+                category: HealthCategory.vaccineRabies,
+                title: 'Vakcina protiv besnila',
+                administeredDate: DateTime(2026, 3, 1),
+                nextDueDate: DateTime(2027, 3, 1),
+                notificationId: 42,
+              ),
             ),
           ),
         ),
       ),
     );
     await tester.pump();
-    await tester.pump();
 
-    expect(find.text(HealthStrings.sectionTitle), findsOneWidget);
-    for (final category in HealthCategory.values) {
-      expect(
-        find.text(HealthStrings.categoryLabel(category)),
-        findsOneWidget,
-      );
-    }
-    expect(find.text('Vakcina protiv besnila'), findsOneWidget);
-    expect(find.text(HealthStrings.statusValid), findsOneWidget);
-    expect(find.text(HealthStrings.reminderBadge), findsOneWidget);
-    expect(find.text(HealthStrings.noRecord), findsNWidgets(3));
-
-    await tester.tap(find.text(HealthStrings.categoryLabel(
-      HealthCategory.deworming,
-    )));
-    await tester.pumpAndSettle();
     expect(find.text(HealthStrings.reminderToggle), findsOneWidget);
     expect(find.text(HealthStrings.administeredDate), findsOneWidget);
     expect(find.text(HealthStrings.nextDueDate), findsOneWidget);
+    expect(find.text('Vakcina protiv besnila'), findsOneWidget);
   });
 }

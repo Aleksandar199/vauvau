@@ -98,10 +98,28 @@ class DiscoverProfile {
   }
 
   String get statusBadge {
-    if (activityStatus.isNotEmpty) {
-      return activityStatus;
+    final raw = activityStatus.trim();
+    if (raw.isNotEmpty) {
+      return decorateWalkStatus(raw);
     }
     return walking ? '🟢 U šetnji' : 'Odmaram';
+  }
+
+  /// Normalizes walk/status labels for Discover cards.
+  static String decorateWalkStatus(String raw) {
+    final value = raw.trim();
+    if (value.isEmpty) return value;
+    final lower = value.toLowerCase();
+    if (lower.contains('šetnj') && !value.contains('🟢')) {
+      return '🟢 $value';
+    }
+    if (lower.contains('tražim') && !value.contains('🎾')) {
+      return '🎾 $value';
+    }
+    if (lower.contains('odmar') && !value.contains('😴')) {
+      return '😴 $value';
+    }
+    return value;
   }
 
   String get ageLabel {

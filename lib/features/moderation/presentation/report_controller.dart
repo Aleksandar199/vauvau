@@ -66,24 +66,27 @@ class ReportController {
         );
   }
 
-  Future<void> markReviewed(String id) {
+  Future<void> markReviewed(String id, {String reporterId = ''}) {
     return _ref.read(reportRepositoryProvider).updateStatus(
           id: id,
           status: ReportStatus.reviewed,
+          reporterId: reporterId,
         );
   }
 
-  Future<void> markActionTaken(String id) {
+  Future<void> markActionTaken(String id, {String reporterId = ''}) {
     return _ref.read(reportRepositoryProvider).updateStatus(
           id: id,
           status: ReportStatus.actionTaken,
+          reporterId: reporterId,
         );
   }
 
-  Future<void> dismiss(String id) {
+  Future<void> dismiss(String id, {String reporterId = ''}) {
     return _ref.read(reportRepositoryProvider).updateStatus(
           id: id,
           status: ReportStatus.dismissed,
+          reporterId: reporterId,
         );
   }
 }

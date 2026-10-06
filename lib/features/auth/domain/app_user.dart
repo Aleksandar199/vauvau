@@ -90,6 +90,31 @@ class AppUser {
     );
   }
 
+  /// Resolves the owner avatar stored on the user document.
+  /// Prefers `customPhotoUrl`, then Firestore `photoUrl` when it is not just
+  /// mirroring the Firebase Auth / Google avatar.
+  static String ownerPhotoFromDocument(
+    Map<String, dynamic>? data, {
+    String authPhotoUrl = '',
+  }) {
+    final doc = data ?? const <String, dynamic>{};
+    final authPhoto = authPhotoUrl.trim();
+    final docCustom = (doc['customPhotoUrl'] as String?)?.trim() ?? '';
+    if (docCustom.isNotEmpty) {
+      return docCustom;
+    }
+    final docPhoto = (doc['photoUrl'] as String?)?.trim() ?? '';
+    if (docPhoto.isEmpty) {
+      return '';
+    }
+    // Email/password users have no Auth photo — treat Firestore photoUrl as
+    // the owner upload. Google users: only use it when it differs from Auth.
+    if (authPhoto.isEmpty || docPhoto != authPhoto) {
+      return docPhoto;
+    }
+    return '';
+  }
+
   static AppUser fromAuthAndDocument({
     required String uid,
     String? email,
@@ -99,11 +124,7 @@ class AppUser {
   }) {
     final doc = data ?? const <String, dynamic>{};
     final authPhoto = photoUrl?.trim() ?? '';
-    final docCustom = (doc['customPhotoUrl'] as String?)?.trim() ?? '';
-    final docPhoto = (doc['photoUrl'] as String?)?.trim() ?? '';
-    final storedPhoto = docCustom.isNotEmpty
-        ? docCustom
-        : (docPhoto.isNotEmpty && docPhoto != authPhoto ? docPhoto : '');
+    final storedPhoto = ownerPhotoFromDocument(doc, authPhotoUrl: authPhoto);
     return AppUser(
       uid: uid,
       email: (doc['email'] as String?)?.trim().isNotEmpty == true

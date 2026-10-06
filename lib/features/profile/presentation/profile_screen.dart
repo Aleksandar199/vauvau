@@ -80,6 +80,10 @@ class ProfileScreen extends ConsumerWidget {
                   DogHealthTab(
                     dogId: profile.dog.id,
                     dogName: profile.dog.name,
+                    dogs: [
+                      for (final dog in profile.dogs)
+                        (id: dog.id, name: dog.name),
+                    ],
                   ),
                 ],
               ],

@@ -262,10 +262,19 @@ class _AddPoiSheetState extends ConsumerState<AddPoiSheet> {
 extension PoiCategorySubmitLabel on PoiCategory {
   String get submitLabel => switch (this) {
         PoiCategory.cafe => MapStrings.cafe,
+        PoiCategory.restaurant => MapStrings.restaurant,
         PoiCategory.park => MapStrings.park,
         PoiCategory.petShop => MapStrings.petShop,
+        PoiCategory.groomer => MapStrings.groomer,
         PoiCategory.vet => MapStrings.vet,
+        PoiCategory.lodging => MapStrings.lodging,
+        PoiCategory.training => MapStrings.training,
         PoiCategory.dogHotel => MapStrings.dogHotel,
+        PoiCategory.selfWash => MapStrings.selfWash,
+        PoiCategory.dogTreats => MapStrings.dogTreats,
+        PoiCategory.shelter => MapStrings.shelter,
+        PoiCategory.water => MapStrings.waterForDogs,
         PoiCategory.petSitter => MapStrings.petSitter,
+        PoiCategory.other => MapStrings.otherPlace,
       };
 }

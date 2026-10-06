@@ -12,6 +12,7 @@ class SplashScreen extends StatefulWidget {
   static const Color skyEnd = Color(0xFF0F172A);
   static const String tagline = 'Spajamo pse i vlasnike za šetnju i druženje';
   static const Duration hold = Duration(seconds: 2);
+  static const String logoAsset = 'assets/images/vauvau_splash.png';
 
   @override
   State<SplashScreen> createState() => SplashScreenState();
@@ -38,7 +39,7 @@ class SplashScreenState extends State<SplashScreen>
     );
     _pulse = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1400),
+      duration: const Duration(milliseconds: 2200),
     )..repeat(reverse: true);
     _load = AnimationController(
       vsync: this,
@@ -46,21 +47,21 @@ class SplashScreenState extends State<SplashScreen>
     );
     _fade = CurvedAnimation(
       parent: _intro,
-      curve: const Interval(0, 0.7, curve: Curves.easeOutCubic),
+      curve: const Interval(0, 0.75, curve: Curves.easeOutCubic),
     );
-    _scale = Tween<double>(begin: 0.86, end: 1).animate(
+    _scale = Tween<double>(begin: 0.92, end: 1).animate(
       CurvedAnimation(
         parent: _intro,
-        curve: const Interval(0, 0.65, curve: Curves.easeOutBack),
+        curve: const Interval(0, 0.8, curve: Curves.easeOutCubic),
       ),
     );
     _copySlide = Tween<Offset>(
-      begin: const Offset(0, 0.12),
+      begin: const Offset(0, 0.08),
       end: Offset.zero,
     ).animate(
       CurvedAnimation(
         parent: _intro,
-        curve: const Interval(0.18, 0.85, curve: Curves.easeOutCubic),
+        curve: const Interval(0.22, 0.9, curve: Curves.easeOutCubic),
       ),
     );
     _progress = CurvedAnimation(parent: _load, curve: Curves.easeInOutCubic);
@@ -98,7 +99,13 @@ class SplashScreenState extends State<SplashScreen>
 
   @override
   Widget build(BuildContext context) {
-    final pulse = Tween<double>(begin: 1, end: 1.045).animate(
+    final size = MediaQuery.sizeOf(context);
+    final shortest = size.shortestSide;
+    final dogWidth = (shortest * (shortest < 600 ? 0.58 : 0.36)).clamp(
+      180.0,
+      300.0,
+    );
+    final pulse = Tween<double>(begin: 1, end: 1.015).animate(
       CurvedAnimation(parent: _pulse, curve: Curves.easeInOut),
     );
 
@@ -129,24 +136,39 @@ class SplashScreenState extends State<SplashScreen>
                     scale: _scale,
                     child: ScaleTransition(
                       scale: pulse,
-                      child: const _SplashMark(),
+                      child: _DogMark(width: dogWidth),
                     ),
                   ),
                 ),
-                const SizedBox(height: 28),
+                const SizedBox(height: 20),
                 FadeTransition(
                   opacity: _fade,
                   child: SlideTransition(
                     position: _copySlide,
-                    child: const Text(
-                      SplashScreen.tagline,
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: Color(0xFFCBD5E1),
-                        fontSize: 15,
-                        height: 1.45,
-                        fontWeight: FontWeight.w500,
-                      ),
+                    child: Column(
+                      children: [
+                        Text(
+                          'VauVau',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.96),
+                            fontSize: shortest < 360 ? 28 : 32,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 0.4,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          SplashScreen.tagline,
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: const Color(0xFFCBD5E1),
+                            fontSize: shortest < 360 ? 13.5 : 15,
+                            height: 1.45,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
@@ -188,33 +210,18 @@ class SplashScreenState extends State<SplashScreen>
   }
 }
 
-class _SplashMark extends StatelessWidget {
-  const _SplashMark();
+class _DogMark extends StatelessWidget {
+  const _DogMark({required this.width});
 
-  static const String assetPath = 'assets/images/vauvau_logo.jpg';
+  final double width;
 
   @override
   Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(28),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.primary.withValues(alpha: 0.28),
-            blurRadius: 36,
-            offset: const Offset(0, 16),
-          ),
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(28),
-        child: Image.asset(
-          assetPath,
-          width: 240,
-          fit: BoxFit.contain,
-        ),
-      ),
+    return Image.asset(
+      SplashScreen.logoAsset,
+      width: width,
+      fit: BoxFit.contain,
+      filterQuality: FilterQuality.high,
     );
   }
 }

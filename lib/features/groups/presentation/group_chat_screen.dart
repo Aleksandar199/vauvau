@@ -32,6 +32,7 @@ class GroupChatScreen extends ConsumerStatefulWidget {
 
 class _GroupChatScreenState extends ConsumerState<GroupChatScreen> {
   final _input = TextEditingController();
+  final _inputFocus = FocusNode(debugLabel: 'GroupChatInput');
   final _scroll = ScrollController();
   var _sendingPhoto = false;
 
@@ -46,8 +47,18 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen> {
   @override
   void dispose() {
     _input.dispose();
+    _inputFocus.dispose();
     _scroll.dispose();
     super.dispose();
+  }
+
+  void _keepInputFocused() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || _sendingPhoto) {
+        return;
+      }
+      _inputFocus.requestFocus();
+    });
   }
 
   void _scrollToEnd() {
@@ -77,6 +88,7 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen> {
       return;
     }
     _input.clear();
+    _keepInputFocused();
     if (widget.isEvent) {
       await ref.read(eventsControllerProvider.notifier).sendText(
             widget.threadId,
@@ -88,7 +100,12 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen> {
             text,
           );
     }
+    if (!mounted) {
+      return;
+    }
     _scrollToEnd();
+    // Rebuild after the new message can drop focus — restore it again.
+    _keepInputFocused();
   }
 
   Future<void> _pickPhoto() async {
@@ -237,6 +254,7 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen> {
           if (_sendingPhoto) const LinearProgressIndicator(minHeight: 2),
           ChatInputBar(
             controller: _input,
+            focusNode: _inputFocus,
             onSend: _sendText,
             onAttach: _pickPhoto,
             attachIcon: Icons.photo_camera_outlined,

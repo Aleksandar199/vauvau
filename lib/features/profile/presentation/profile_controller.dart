@@ -197,6 +197,8 @@ class ProfileController extends Notifier<UserProfile> {
     await ref
         .read(authRepositoryProvider)
         .saveOwnerCustomPhoto(uid: user.uid, customPhotoUrl: trimmed);
+    // Force auth stream consumers (Profil, Meni drawer) to pick up the new URL.
+    ref.invalidate(authStateProvider);
   }
 
   String _cityName(String cityId, String fallback) {

@@ -42,14 +42,30 @@ class FirestorePoiRepository implements PoiRepository {
       dayCare: data['dayCare'] as bool? ?? false,
       hasYard: data['hasYard'] as bool? ?? false,
       pricePerNight: (data['pricePerNight'] as num?)?.toDouble(),
+      openingHours: data['openingHours'] as String? ?? '',
       petFriendly: data['petFriendly'] as bool? ?? true,
+      dogFriendlyIndoor: data['dogFriendlyIndoor'] as bool?,
+      dogFriendlyOutdoor: data['dogFriendlyOutdoor'] as bool?,
+      waterAvailable: data['waterAvailable'] as bool?,
+      municipality: data['municipality'] as String? ?? '',
+      description: data['description'] as String? ?? '',
+      imageUrl: data['imageUrl'] as String?,
+      sourceUrl: data['sourceUrl'] as String? ?? '',
       city: _city(data['city'] as String?),
+      cityId: data['cityId'] as String? ?? '',
       verificationStatus: PoiVerificationStatusX.fromString(
         data['verificationStatus'] as String?,
       ),
       lastVerified: verified is Timestamp ? verified.toDate() : DateTime.now(),
       source: data['source'] as String? ?? 'VauVau',
       rating: (data['rating'] as num?)?.toDouble(),
+      isSponsored: data['isSponsored'] as bool? ?? false,
+      sponsorName: data['sponsorName'] as String? ?? '',
+      sponsoredUntil: data['sponsoredUntil'] is Timestamp
+          ? (data['sponsoredUntil'] as Timestamp).toDate()
+          : null,
+      sponsorBadge: data['sponsorBadge'] as String? ?? '',
+      sponsorPriority: (data['sponsorPriority'] as num?)?.toInt() ?? 0,
     );
   }
 
@@ -69,12 +85,28 @@ class FirestorePoiRepository implements PoiRepository {
       'dayCare': poi.dayCare,
       'hasYard': poi.hasYard,
       'pricePerNight': poi.pricePerNight,
+      'openingHours': poi.openingHours,
       'petFriendly': poi.petFriendly,
+      'dogFriendlyIndoor': poi.dogFriendlyIndoor,
+      'dogFriendlyOutdoor': poi.dogFriendlyOutdoor,
+      'waterAvailable': poi.waterAvailable,
+      'municipality': poi.municipality,
+      'description': poi.description,
+      'imageUrl': poi.imageUrl,
+      'sourceUrl': poi.sourceUrl,
       'city': poi.city.name,
+      'cityId': poi.resolvedCityId,
       'verificationStatus': poi.verificationStatus.firestoreValue,
       'lastVerified': Timestamp.fromDate(poi.lastVerified),
       'source': poi.source,
       'rating': poi.rating,
+      'isSponsored': poi.isSponsored,
+      'sponsorName': poi.sponsorName,
+      'sponsoredUntil': poi.sponsoredUntil == null
+          ? null
+          : Timestamp.fromDate(poi.sponsoredUntil!),
+      'sponsorBadge': poi.sponsorBadge,
+      'sponsorPriority': poi.sponsorPriority,
     };
   }
 

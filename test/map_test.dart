@@ -44,19 +44,26 @@ void main() {
     await tester.pump();
 
     expect(find.text(MapStrings.confirm), findsOneWidget);
+    await tester.tap(find.text(MapStrings.statusWalking));
+    await tester.pump();
     await tester.tap(find.text(MapStrings.confirm));
     await tester.pump();
 
-    expect(find.text(MapStrings.walking), findsOneWidget);
-    expect(find.text(MapStrings.remaining(30)), findsOneWidget);
     expect(find.text(MapStrings.endWalk), findsOneWidget);
     expect(find.text(MapStrings.startWalk), findsNothing);
 
     await tester.tap(find.text(MapStrings.endWalk));
     await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    // Confirm dialog also uses the same "Završi šetnju" label.
+    await tester.tap(find.text(MapStrings.endWalk).last);
+    await tester.pump();
+    // Walk saved snackbar uses a 3s timer.
+    await tester.pump(const Duration(seconds: 3));
+    await tester.pump(const Duration(milliseconds: 100));
 
     expect(find.text(MapStrings.startWalk), findsOneWidget);
-    expect(find.text(MapStrings.walking), findsNothing);
+    expect(find.text(MapStrings.endWalk), findsNothing);
   });
 
   testWidgets('renders map pins and location bottom sheet', (tester) async {
@@ -75,6 +82,9 @@ void main() {
     expect(find.byKey(const Key('place-park-ive-andrica')), findsNothing);
     expect(find.byKey(const Key('walker-bobi')), findsNothing);
 
+    // Multi-select: clear cafes, then pick pet shops / groomers from Više filtera.
+    await tester.tap(find.text(MapStrings.filterCafes));
+    await tester.pump();
     await tester.ensureVisible(find.text(MapStrings.filterMore));
     await tester.tap(find.text(MapStrings.filterMore));
     await tester.pump();
@@ -89,12 +99,22 @@ void main() {
     await tester.tap(find.text(MapStrings.filterMore));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
+    await tester.tap(find.text(MapStrings.filterPetShops));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.ensureVisible(find.text(MapStrings.filterMore));
+    await tester.tap(find.text(MapStrings.filterMore));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
     await tester.tap(find.text(MapStrings.filterGroomers));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
     expect(find.byKey(const Key('place-dog-tales')), findsOneWidget);
     expect(find.byKey(const Key('place-pet-house')), findsNothing);
 
+    await tester.ensureVisible(find.text(MapStrings.filterAll));
+    await tester.tap(find.text(MapStrings.filterAll));
+    await tester.pump();
     await tester.ensureVisible(find.text(MapStrings.filterParks));
     await tester.tap(find.text(MapStrings.filterParks));
     await tester.pump();
@@ -109,7 +129,7 @@ void main() {
     expect(find.textContaining('Ive Andrića •'), findsOneWidget);
     expect(find.textContaining(MapStrings.verifiedBadge), findsOneWidget);
     expect(find.text(MapStrings.openProfile), findsOneWidget);
-    expect(find.text(MapStrings.navigation), findsOneWidget);
+    expect(find.text(MapStrings.openNavigation), findsOneWidget);
     expect(find.text(MapStrings.reportChange), findsOneWidget);
   });
 

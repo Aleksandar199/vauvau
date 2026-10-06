@@ -20,9 +20,14 @@ class FirestoreChatRepository implements ChatRepository {
   List<ChatConversation> _inbox = const [];
   final StreamController<List<ChatConversation>> _inboxController =
       StreamController<List<ChatConversation>>.broadcast();
+  final StreamController<bool> _loadedController =
+      StreamController<bool>.broadcast();
   StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _roomsSub;
   final Map<String, StreamSubscription<QuerySnapshot<Map<String, dynamic>>>>
       _messageSubs = {};
+  var _hasLoadedInbox = false;
+  Timer? _cacheHoldTimer;
+  Timer? _emitDebounce;
 
   CollectionReference<Map<String, dynamic>> get _rooms =>
       _firestore.collection('chats');
@@ -45,16 +50,47 @@ class FirestoreChatRepository implements ChatRepository {
     for (final chat in rooms) {
       _messageSubs.putIfAbsent(
         chat.id,
-        () => _rooms.doc(chat.id).collection('messages').orderBy('timestamp').snapshots().listen(
-              (messages) => _onMessages(chat.id, messages),
-            ),
+        () => _rooms
+            .doc(chat.id)
+            .collection('messages')
+            .orderBy('timestamp')
+            .snapshots()
+            .listen((messages) => _onMessages(chat.id, messages)),
       );
     }
     _inbox = [
       for (final chat in rooms)
         _merge(chat, _byId(chat.id)?.messages ?? const []),
     ];
-    _emit();
+
+    // Avoid flashing a partial cached inbox (often 1 room) before the
+    // server snapshot arrives with the full conversation list.
+    if (!_hasLoadedInbox) {
+      final fromCache = snapshot.metadata.isFromCache;
+      if (fromCache) {
+        _cacheHoldTimer ??= Timer(const Duration(milliseconds: 1000), () {
+          _publishInitialInbox();
+        });
+        return;
+      }
+      _cacheHoldTimer?.cancel();
+      _cacheHoldTimer = null;
+      _publishInitialInbox();
+      return;
+    }
+    _emitNow();
+  }
+
+  void _publishInitialInbox() {
+    if (_hasLoadedInbox) {
+      _emitNow();
+      return;
+    }
+    _hasLoadedInbox = true;
+    if (!_loadedController.isClosed) {
+      _loadedController.add(true);
+    }
+    _emitNow();
   }
 
   void _onMessages(
@@ -66,7 +102,12 @@ class FirestoreChatRepository implements ChatRepository {
       for (final chat in _inbox)
         if (chat.id == roomId) _merge(chat, messages) else chat,
     ];
-    _emit();
+    if (!_hasLoadedInbox) {
+      return;
+    }
+    // Coalesce rapid per-room message hydrations into one UI update.
+    _emitDebounce?.cancel();
+    _emitDebounce = Timer(const Duration(milliseconds: 80), _emitNow);
   }
 
   ChatConversation? _byId(String id) {
@@ -87,9 +128,18 @@ class FirestoreChatRepository implements ChatRepository {
       List<ChatConversation>.from(_inbox);
 
   @override
+  bool get hasLoadedInbox => _hasLoadedInbox;
+
+  @override
   Stream<List<ChatConversation>> watchInbox() async* {
     yield currentInbox;
     yield* _inboxController.stream;
+  }
+
+  @override
+  Stream<bool> watchInboxLoaded() async* {
+    yield _hasLoadedInbox;
+    yield* _loadedController.stream;
   }
 
   @override
@@ -276,11 +326,14 @@ class FirestoreChatRepository implements ChatRepository {
 
   @override
   void dispose() {
+    _cacheHoldTimer?.cancel();
+    _emitDebounce?.cancel();
     _roomsSub?.cancel();
     for (final sub in _messageSubs.values) {
       sub.cancel();
     }
     _inboxController.close();
+    _loadedController.close();
   }
 
   Future<void> _writeMessage(
@@ -383,7 +436,7 @@ class FirestoreChatRepository implements ChatRepository {
     return null;
   }
 
-  void _emit() {
+  void _emitNow() {
     if (!_inboxController.isClosed) {
       _inboxController.add(currentInbox);
     }

@@ -2,15 +2,23 @@ import '../domain/map_place_type.dart';
 
 enum MapLayerFilter {
   all,
-  cafes,
+  nearby,
   parks,
-  hotels,
-  sitters,
-  emergency,
-  walkers,
   petShops,
   groomers,
   vets,
+  emergency,
+  cafes,
+  restaurants,
+  lodging,
+  training,
+  hotels,
+  selfWash,
+  dogTreats,
+  shelter,
+  water,
+  sitters,
+  walkers,
 }
 
 enum HotelAmenityFilter { overnight, dayCare, yard, allDay }
@@ -18,25 +26,40 @@ enum HotelAmenityFilter { overnight, dayCare, yard, allDay }
 extension MapLayerFilterX on MapLayerFilter {
   String get label => switch (this) {
         MapLayerFilter.all => MapStrings.filterAll,
+        MapLayerFilter.nearby => MapStrings.filterNearby,
         MapLayerFilter.parks => MapStrings.filterParks,
-        MapLayerFilter.cafes => MapStrings.filterCafes,
-        MapLayerFilter.hotels => MapStrings.filterHotels,
-        MapLayerFilter.sitters => MapStrings.filterSitters,
-        MapLayerFilter.emergency => MapStrings.filterEmergency,
         MapLayerFilter.petShops => MapStrings.filterPetShops,
         MapLayerFilter.groomers => MapStrings.filterGroomers,
         MapLayerFilter.vets => MapStrings.filterVets,
+        MapLayerFilter.emergency => MapStrings.filterEmergency,
+        MapLayerFilter.cafes => MapStrings.filterCafes,
+        MapLayerFilter.restaurants => MapStrings.filterRestaurants,
+        MapLayerFilter.lodging => MapStrings.filterLodging,
+        MapLayerFilter.training => MapStrings.filterTraining,
+        MapLayerFilter.hotels => MapStrings.filterHotels,
+        MapLayerFilter.selfWash => MapStrings.filterSelfWash,
+        MapLayerFilter.dogTreats => MapStrings.filterDogTreats,
+        MapLayerFilter.shelter => MapStrings.filterShelter,
+        MapLayerFilter.water => MapStrings.filterWater,
+        MapLayerFilter.sitters => MapStrings.filterSitters,
         MapLayerFilter.walkers => MapStrings.filterWalkers,
       };
 
   MapPlaceType? get placeType => switch (this) {
         MapLayerFilter.parks => MapPlaceType.park,
         MapLayerFilter.cafes => MapPlaceType.cafe,
-        MapLayerFilter.hotels => MapPlaceType.dogHotel,
-        MapLayerFilter.sitters => MapPlaceType.petSitter,
+        MapLayerFilter.restaurants => MapPlaceType.restaurant,
         MapLayerFilter.petShops => MapPlaceType.petShop,
         MapLayerFilter.groomers => MapPlaceType.groomer,
         MapLayerFilter.vets => MapPlaceType.vet,
+        MapLayerFilter.lodging => MapPlaceType.lodging,
+        MapLayerFilter.training => MapPlaceType.training,
+        MapLayerFilter.hotels => MapPlaceType.dogHotel,
+        MapLayerFilter.selfWash => MapPlaceType.selfWash,
+        MapLayerFilter.dogTreats => MapPlaceType.dogTreats,
+        MapLayerFilter.shelter => MapPlaceType.shelter,
+        MapLayerFilter.water => MapPlaceType.water,
+        MapLayerFilter.sitters => MapPlaceType.petSitter,
         _ => null,
       };
 
@@ -46,13 +69,22 @@ extension MapLayerFilterX on MapLayerFilter {
       this == MapLayerFilter.all || this == MapLayerFilter.walkers;
 
   bool get isExtraPlaceFilter =>
+      this == MapLayerFilter.nearby ||
       this == MapLayerFilter.petShops ||
       this == MapLayerFilter.groomers ||
       this == MapLayerFilter.vets ||
+      this == MapLayerFilter.emergency ||
+      this == MapLayerFilter.restaurants ||
+      this == MapLayerFilter.lodging ||
+      this == MapLayerFilter.training ||
       this == MapLayerFilter.hotels ||
-      this == MapLayerFilter.sitters ||
-      this == MapLayerFilter.emergency;
+      this == MapLayerFilter.selfWash ||
+      this == MapLayerFilter.dogTreats ||
+      this == MapLayerFilter.shelter ||
+      this == MapLayerFilter.water ||
+      this == MapLayerFilter.sitters;
 
+  /// Compact chips on the map header.
   static const primary = [
     MapLayerFilter.all,
     MapLayerFilter.cafes,
@@ -60,11 +92,21 @@ extension MapLayerFilterX on MapLayerFilter {
     MapLayerFilter.walkers,
   ];
 
+  /// Everything else lives under "Više filtera".
   static const extra = [
-    MapLayerFilter.vets,
+    MapLayerFilter.nearby,
     MapLayerFilter.petShops,
     MapLayerFilter.groomers,
+    MapLayerFilter.vets,
+    MapLayerFilter.emergency,
+    MapLayerFilter.restaurants,
+    MapLayerFilter.lodging,
+    MapLayerFilter.training,
     MapLayerFilter.hotels,
+    MapLayerFilter.selfWash,
+    MapLayerFilter.dogTreats,
+    MapLayerFilter.shelter,
+    MapLayerFilter.water,
     MapLayerFilter.sitters,
   ];
 }
@@ -91,9 +133,15 @@ abstract final class MapStrings {
       'Da li ste sigurni da želite da završite šetnju?';
   static const String walkTime = 'Vreme';
   static const String walkDistance = 'Km';
-  static const String walkSpeed = 'Brzina';
-  static const String walkPace = 'Tempo';
-  static const String walkCalories = 'Kalorije';
+  static const String walkHistory = 'Moje šetnje';
+  static const String walkHistoryTitle = 'Istorija šetnji';
+  static const String walkHistoryEmpty =
+      'Još nema sačuvanih šetnji. Završi šetnju da se upiše ovde.';
+  static const String walkHistoryLastDays = 'Poslednjih 7 dana';
+  static const String walkHistoryTotal = 'Ukupno';
+  static const String walkSaved = 'Šetnja je sačuvana.';
+  static const String walkSaveFailed =
+      'Šetnja nije sačuvana. Pokušajte ponovo kasnije.';
   static const String gpsActiveBanner =
       'GPS Praćenje aktivno • Aplikacija prati šetnju u pozadini';
   static const String gpsPausedBanner =
@@ -117,21 +165,44 @@ abstract final class MapStrings {
   static const String reportChange = 'Prijavi promenu';
   static const String reportTitle = 'Prijavi promenu';
   static const String reportBody =
-      'Da li ovaj kafić više nije pet-friendly ili je park zatvoren?';
+      'Potvrdite da je objekat tačan, ili prijavite šta treba ispraviti.';
   static const String reportConfirm = 'Prijavi';
-  static const String reportThanks = 'Hvala, prijava je zabeležena.';
+  static const String reportThanks =
+      'Hvala! Vaša prijava je poslata adminu.';
+  static const String reportChangeTypeLabel = 'Vrsta promene';
+  static const String reportChangeDescriptionLabel = 'Opis (opciono)';
+  static const String reportChangeDescriptionHint =
+      'Npr. novo radno vreme, tačnija adresa...';
+  static const String reportChangeTypeRequired = 'Izaberite vrstu promene.';
+  static const String reportChangeConfirmVerified =
+      'Potvrđujem da je objekat proveren';
+  static const String reportChangeWrongHours = 'Pogrešno radno vreme';
+  static const String reportChangeClosed = 'Objekat je zatvoren';
+  static const String reportChangeWrongLocation = 'Netačna lokacija';
+  static const String reportChangeOther = 'Ostalo';
+  static const String reportChangeFailed =
+      'Prijava nije poslata. Pokušajte ponovo.';
+  static const String reportChangeSubmit = 'Pošalji prijavu';
+  static const String reportConfirmThanks =
+      'Hvala! Potvrda je zabeležena i poslata adminu.';
   static const String verifiedBadge = '✓ Potvrđeno';
   static const String reportedBadge = 'Prijavljeno';
   static const String submittedBadge = 'Predloženo';
   static const String pendingBadge = 'Na čekanju';
   static const String unknownBadge = 'Nije provereno';
   static const String cafeFriendlyBadge = '☕ Pet Friendly';
+  static const String restaurantBadge = '🍽️ Dog-friendly restoran';
   static const String dogParkBadge = '🐕 Park za pse';
   static const String emergencyBadge = '🚨 DEŽURNO 0-24H';
+  static const String sponsoredBadge = 'PREMIUM PARTNER';
   static const String amenityOvernight = '🌙 Prenoćište';
   static const String amenityDayCare = '☀️ Dnevni boravak';
   static const String amenityYard = '🌳 Dvorište';
   static const String amenity24h = '00-24h dostupnost';
+  static const String amenityDogFriendly = '🐶 Dog friendly';
+  static const String amenityOutdoor = '🌳 Outdoor';
+  static const String amenityWater = '💧 Voda';
+  static const String hoursLabel = 'Radno vreme';
   static const String sourceLabel = 'Izvor';
   static const String userSource = 'VauVau Zajednica';
   static const String navigationFailed = 'Navigacija nije dostupna na uređaju.';
@@ -140,36 +211,74 @@ abstract final class MapStrings {
   static const String viewCard = 'Mini-kartica';
   static const String park = 'Park / istrčavalište';
   static const String cafe = 'Pet-friendly kafić';
+  static const String restaurant = 'Dog-friendly restoran';
   static const String petShop = 'Pet shop';
   static const String groomer = 'Grumer';
   static const String vet = 'Veterinar';
+  static const String lodging = 'Pet-friendly smeštaj';
+  static const String training = 'Dresura / škola za pse';
   static const String dogHotel = 'Hotel za pse';
+  static const String selfWash = 'Samouslužna perionica';
+  static const String dogTreats = 'Hrana / poslastice za pse';
+  static const String shelter = 'Azil / udomljavanje';
+  static const String waterForDogs = 'Voda za pse';
+  static const String otherPlace = 'Dog-friendly mesto';
   static const String petSitter = 'Kućno čuvanje';
   static const String walkingDogs = 'Psi trenutno u šetnji';
   static const String joinWalkStatusPrefix = 'Šetamo se kod';
-  static const String searchHint =
-      'Pretraži parkove, kafiće, hotele i dežurne veterinarske...';
+  static const String searchHint = 'Pretraži mesta...';
   static const String filterAll = 'Sve';
-  static const String filterParks = 'Parkovi';
-  static const String filterCafes = 'Kafići';
-  static const String filterHotels = 'Hoteli za pse';
+  static const String filterNearby = 'U blizini';
+  static const String filterParks = '🐕 Parkovi';
+  static const String filterCafes = '☕ Kafići';
+  static const String filterRestaurants = '🍽️ Restorani';
+  static const String filterHotels = '🏠 Pansion';
+  static const String filterLodging = '🏨 Smeštaj';
+  static const String filterTraining = '🎓 Dresura';
+  static const String filterSelfWash = '🛁 Perionica';
+  static const String filterDogTreats = '🥩 Hrana';
+  static const String filterShelter = '🐾 Udomljavanje';
+  static const String filterWater = '💧 Voda';
   static const String filterSitters = 'Dog Sitter / Čuvanje';
-  static const String filterEmergency = '24/7 Hitno';
-  static const String filterPetShops = 'Pet Shop';
-  static const String filterGroomers = 'Grooming / Frizerski saloni';
-  static const String filterVets = 'Veterinari';
+  static const String filterEmergency = '🚨 24/7 Hitno';
+  static const String filterPetShops = '🛍️ Pet Shop';
+  static const String filterGroomers = '✂️ Grooming';
+  static const String filterVets = '🏥 Veterinar';
   static const String filterWalkers = 'Psi u šetnji';
   static const String filterMore = '⚙️ Više filtera';
+  static const String emptyCategoryTitle = 'Još nema lokacija u ovoj kategoriji.';
+  static const String emptyCategoryBody = 'Uskoro dodajemo još mesta.';
+  static const String placesListTitle = 'Lista mesta';
+  static const String showList = 'Lista';
+  static const String showMap = 'Mapa';
+  static const String openNavigation = 'Pokreni navigaciju';
+  static const String websiteAction = 'Sajt';
   static const String addPlace = '+ Dodaj mesto / lokal';
+  static const String addPlaceAdminTitle = 'Dodaj mesto (Admin)';
+  static const String adminOnlyPlace = 'Samo admin može da dodaje mesta.';
+  static const String chooseCity = 'Izaberi grad';
   static const String cityNoviSad = 'Novi Sad';
   static const String cityBelgrade = 'Beograd';
   static const String cityMyLocation = 'Moja lokacija 📍';
+  static const String cityMyLocationSubtitle = 'Koristi GPS poziciju uređaja';
   static const String placeCity = 'Grad';
+  static const String placeCityRequired = 'Izaberite grad.';
   static const String placeName = 'Naziv objekta / mesta';
   static const String placeNameRequired = 'Unesite naziv mesta.';
   static const String placeCategory = 'Kategorija';
   static const String placeAddress = 'Adresa / lokacija';
+  static const String placeAddressSearch = 'Adresa / pretraga ulice';
   static const String placeAddressRequired = 'Unesite adresu.';
+  static const String searchAddress = 'Pronađi adresu';
+  static const String addressNotFound = 'Adresa nije pronađena. Probajte drugačiji upit.';
+  static const String addressSearchFailed =
+      'Pretraga adrese nije uspela. Pokušajte ponovo.';
+  static const String fineTuneLocation = 'Podesi tačnu lokaciju';
+  static const String fineTuneLocationHint =
+      'Dodirnite mapu da pomerite pin na tačno mesto.';
+  static const String coordinates = 'Koordinate';
+  static const String openingHoursOptional = 'Radno vreme (opciono)';
+  static const String openingHoursHint = 'Npr. Pon–Pet 09–20';
   static const String placePhone = 'Kontakt telefon';
   static const String toggle24h = 'Radno vreme 24/7';
   static const String toggleEmergency = 'Hitne intervencije 0-24';
@@ -178,7 +287,8 @@ abstract final class MapStrings {
   static const String toggleYard = 'Ima dvorište';
   static const String pricePerNight = 'Cena po noćenju (RSD)';
   static const String submitPlace = 'Sačuvaj mesto';
-  static const String placeAdded = 'Mesto je dodato na vašu mapu.';
+  static const String placeAdded = 'Mesto je dodato na mapu.';
+  static const String placeAddFailed = 'Mesto nije sačuvano. Pokušajte ponovo.';
   static const String zoomIn = 'Uvećaj';
   static const String zoomOut = 'Umanji';
   static const String myLocation = 'Moja lokacija';

@@ -6,7 +6,13 @@ import '../domain/chat_room.dart';
 abstract class ChatRepository {
   List<ChatConversation> get currentInbox;
 
+  /// True after the first usable inbox snapshot is ready for the UI.
+  bool get hasLoadedInbox;
+
   Stream<List<ChatConversation>> watchInbox();
+
+  /// Emits whenever [hasLoadedInbox] flips to true (and the current value).
+  Stream<bool> watchInboxLoaded();
 
   Stream<List<ChatRoom>> watchRooms();
 

@@ -18,6 +18,7 @@ abstract class AuthRepository {
     String neighborhoodId = '',
     String neighborhoodName = '',
     String bio = '',
+    String customPhotoUrl = '',
   });
 
   Future<AppUser> signInWithGoogle();

@@ -38,9 +38,29 @@ class LocalMomentsRepository implements MomentsRepository {
   }
 
   @override
-  Stream<List<MomentModel>> watchMoments() async* {
-    yield _sorted();
-    yield* _momentsController.stream;
+  Stream<List<MomentModel>> watchMoments({int limit = 20}) async* {
+    yield _sorted().take(limit).toList();
+    yield* _momentsController.stream.map((items) => items.take(limit).toList());
+  }
+
+  @override
+  Future<MomentsPage> fetchMomentsPage({
+    Object? cursor,
+    int limit = 20,
+  }) async {
+    final all = _sorted();
+    final start = cursor is int ? cursor : limit;
+    if (start >= all.length) {
+      return const MomentsPage(items: [], hasMore: false);
+    }
+    final end = (start + limit).clamp(0, all.length);
+    final slice = all.sublist(start, end);
+    final next = end < all.length ? end : null;
+    return MomentsPage(
+      items: slice,
+      nextCursor: next,
+      hasMore: next != null,
+    );
   }
 
   @override

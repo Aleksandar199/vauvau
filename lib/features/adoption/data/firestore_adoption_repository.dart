@@ -20,14 +20,17 @@ class FirestoreAdoptionRepository implements AdoptionRepository {
 
   @override
   Stream<List<AdoptionDog>> watchAdoptionDogs() {
-    return _col.orderBy('createdAt', descending: true).snapshots().map(
-          (snapshot) => snapshot.docs.map(_fromDoc).toList(),
-        );
+    return _col
+        .orderBy('createdAt', descending: true)
+        .limit(20)
+        .snapshots()
+        .map((snapshot) => snapshot.docs.map(_fromDoc).toList());
   }
 
   @override
   Future<List<AdoptionDog>> getAdoptionDogs() async {
-    final snapshot = await _col.orderBy('createdAt', descending: true).get();
+    final snapshot =
+        await _col.orderBy('createdAt', descending: true).limit(20).get();
     return snapshot.docs.map(_fromDoc).toList();
   }
 

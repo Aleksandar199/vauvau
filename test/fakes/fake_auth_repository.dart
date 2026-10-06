@@ -29,6 +29,7 @@ class FakeAuthRepository implements AuthRepository {
     String neighborhoodId = '',
     String neighborhoodName = '',
     String bio = '',
+    String customPhotoUrl = '',
   }) async {
     user = AppUser(
       uid: 'fake',
@@ -39,6 +40,7 @@ class FakeAuthRepository implements AuthRepository {
       neighborhoodId: neighborhoodId,
       neighborhoodName: neighborhoodName,
       bio: bio,
+      customPhotoUrl: customPhotoUrl,
     );
     return user!;
   }

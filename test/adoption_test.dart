@@ -45,11 +45,11 @@ void main() {
 
     expect(find.text(AdoptionStrings.title), findsOneWidget);
     expect(find.text(AdoptionStrings.subtitle), findsOneWidget);
-    expect(find.text(AdoptionStrings.addCta), findsOneWidget);
-    expect(find.text('Bara 1 god.'), findsOneWidget);
+    expect(find.byTooltip(AdoptionStrings.addCta), findsOneWidget);
+    expect(find.text('Bara · 1 god.'), findsOneWidget);
     expect(find.text(AdoptionStrings.badge), findsWidgets);
 
-    await tester.tap(find.text('Bara 1 god.'));
+    await tester.tap(find.text('Bara · 1 god.'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
 

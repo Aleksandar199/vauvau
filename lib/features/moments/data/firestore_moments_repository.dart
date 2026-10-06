@@ -46,11 +46,50 @@ class FirestoreMomentsRepository implements MomentsRepository {
   }
 
   @override
-  Stream<List<MomentModel>> watchMoments() {
+  Stream<List<MomentModel>> watchMoments({int limit = 20}) {
     return _col
         .orderBy('createdAt', descending: true)
+        .limit(limit)
         .snapshots()
         .map(_fromSnapshot);
+  }
+
+  @override
+  Future<MomentsPage> fetchMomentsPage({
+    Object? cursor,
+    int limit = 20,
+  }) async {
+    Query<Map<String, dynamic>> query =
+        _col.orderBy('createdAt', descending: true).limit(limit);
+
+    if (cursor is DocumentSnapshot<Map<String, dynamic>>) {
+      query = query.startAfterDocument(cursor);
+    } else {
+      // First "load more": skip the live window (newest [limit] docs).
+      final head = await _col
+          .orderBy('createdAt', descending: true)
+          .limit(limit)
+          .get();
+      if (head.docs.isEmpty) {
+        return const MomentsPage(items: [], hasMore: false);
+      }
+      query = _col
+          .orderBy('createdAt', descending: true)
+          .startAfterDocument(head.docs.last)
+          .limit(limit);
+    }
+
+    final snapshot = await query.get();
+    final items = [
+      for (final doc in snapshot.docs)
+        _fromDoc(doc, pending: doc.metadata.hasPendingWrites),
+    ];
+    final last = snapshot.docs.isEmpty ? null : snapshot.docs.last;
+    return MomentsPage(
+      items: items,
+      nextCursor: last,
+      hasMore: snapshot.docs.length >= limit,
+    );
   }
 
   @override

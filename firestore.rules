@@ -37,6 +37,22 @@ service cloud.firestore {
       match /blocked_users/{blockedUserId} {
         allow read, write: if isOwner(userId) || isAdmin();
       }
+
+      // Map place corrections saved under the reporter until top-level
+      // change_requests rules are deployed everywhere.
+      match /place_change_requests/{requestId} {
+        allow create: if isOwner(userId)
+          && request.resource.data.reportedByUserId == request.auth.uid
+          && request.resource.data.status == 'pending';
+        allow read: if isOwner(userId) || isAdmin();
+        allow update, delete: if isAdmin();
+      }
+
+      // Completed walk sessions (duration + distance) for the owner.
+      match /walks/{walkId} {
+        allow read, create: if isOwner(userId);
+        allow update, delete: if isOwner(userId) || isAdmin();
+      }
     }
 
     match /notifications/{notificationId} {
@@ -62,10 +78,32 @@ service cloud.firestore {
       allow update, delete: if isAdmin();
     }
 
+    // Dynamic map cities (Novi Sad, Beograd, …).
+    match /cities/{cityId} {
+      allow read: if true;
+      allow create, update, delete: if isAdmin();
+    }
+
+    // Admin-managed places (also mirrored into pois for map markers).
+    match /places/{placeId} {
+      allow read: if true;
+      allow create, update, delete: if isAdmin();
+    }
+
     match /reports/{reportId} {
       allow create: if isAuthenticated() &&
         request.resource.data.reporterId == request.auth.uid &&
         request.resource.data.status == 'pending';
+      allow read, update, delete: if isAdmin();
+    }
+
+    // Map place corrections from the community (hours, closed, location…).
+    match /change_requests/{requestId} {
+      allow create: if isAuthenticated() &&
+        request.resource.data.reportedByUserId == request.auth.uid &&
+        request.resource.data.status == 'pending' &&
+        request.resource.data.placeId is string &&
+        request.resource.data.changeType is string;
       allow read, update, delete: if isAdmin();
     }
 
@@ -104,6 +142,13 @@ service cloud.firestore {
       }
 
       match /health_records/{recordId} {
+        allow read, write: if isAuthenticated() &&
+          get(/databases/$(database)/documents/dogs/$(dogId)).data.ownerId ==
+            request.auth.uid;
+        allow read, write: if isAdmin();
+      }
+
+      match /reminders/{reminderId} {
         allow read, write: if isAuthenticated() &&
           get(/databases/$(database)/documents/dogs/$(dogId)).data.ownerId ==
             request.auth.uid;

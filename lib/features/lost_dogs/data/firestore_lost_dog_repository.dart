@@ -20,7 +20,8 @@ class FirestoreLostDogRepository implements LostDogRepository {
   @override
   Stream<List<LostDog>> watchLostDogs() {
     // Sort client-side so missing createdAt / index issues don't blank the feed.
-    return _col.snapshots().map((snapshot) {
+    // Cap the snapshot size so the list stays responsive as the catalog grows.
+    return _col.limit(40).snapshots().map((snapshot) {
       final dogs = <LostDog>[];
       for (final doc in snapshot.docs) {
         try {

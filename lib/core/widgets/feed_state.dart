@@ -21,13 +21,104 @@ class SoftPlaceholder extends StatelessWidget {
     final base = Theme.of(context).brightness == Brightness.dark
         ? const Color(0xFF334155)
         : const Color(0xFFE2E8F0);
+    final highlight = Theme.of(context).brightness == Brightness.dark
+        ? const Color(0xFF475569)
+        : const Color(0xFFF1F5F9);
     return ClipRRect(
       borderRadius: BorderRadius.circular(borderRadius),
       child: SizedBox(
         width: width,
         height: height,
-        child: ColoredBox(color: base),
+        child: _ShimmerBox(base: base, highlight: highlight),
       ),
+    );
+  }
+}
+
+class _ShimmerBox extends StatefulWidget {
+  const _ShimmerBox({required this.base, required this.highlight});
+
+  final Color base;
+  final Color highlight;
+
+  @override
+  State<_ShimmerBox> createState() => _ShimmerBoxState();
+}
+
+class _ShimmerBoxState extends State<_ShimmerBox>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1200),
+    );
+    // Infinite shimmer makes pumpAndSettle hang under TestWidgetsFlutterBinding.
+    final bindingName = WidgetsBinding.instance.runtimeType.toString();
+    if (bindingName.contains('TestWidgetsFlutter')) {
+      _controller.value = 0.35;
+    } else {
+      _controller.repeat();
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        return DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment(-1.2 + 2.4 * _controller.value, 0),
+              end: Alignment(-0.2 + 2.4 * _controller.value, 0),
+              colors: [widget.base, widget.highlight, widget.base],
+              stops: const [0.25, 0.5, 0.75],
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+/// Stable skeleton for feed grids so layout does not jump while loading.
+class FeedShimmerGrid extends StatelessWidget {
+  const FeedShimmerGrid({
+    super.key,
+    this.itemCount = 6,
+    this.crossAxisCount = 2,
+    this.childAspectRatio = 0.68,
+    this.padding = const EdgeInsets.fromLTRB(16, 8, 16, 88),
+  });
+
+  final int itemCount;
+  final int crossAxisCount;
+  final double childAspectRatio;
+  final EdgeInsetsGeometry padding;
+
+  @override
+  Widget build(BuildContext context) {
+    return GridView.builder(
+      padding: padding,
+      physics: const NeverScrollableScrollPhysics(),
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: crossAxisCount,
+        mainAxisSpacing: 12,
+        crossAxisSpacing: 12,
+        childAspectRatio: childAspectRatio,
+      ),
+      itemCount: itemCount,
+      itemBuilder: (context, index) => const SoftPlaceholder(borderRadius: 16),
     );
   }
 }

@@ -1,10 +1,9 @@
 import '../../domain/health_record.dart';
 
 abstract final class HealthStrings {
-  static const String sectionTitle = 'Karton zdravlja & Podsetnici';
+  static const String sectionTitle = 'Karton zdravlja';
   static const String sectionIntro =
-      'Vodite evidenciju o vakcinama i zaštiti od parazita. VauVau vas može '
-      'podsetiti na telefonu.';
+      'Evidencija vakcina i zaštite od parazita za tvog psa.';
   static const String addOrUpdate = 'Dodaj / Ažuriraj zapis';
   static const String administeredDate = 'Datum primene';
   static const String nextDueDate = 'Sledeći datum / Rok';

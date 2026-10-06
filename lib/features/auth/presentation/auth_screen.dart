@@ -13,6 +13,7 @@ import '../../../core/widgets/primary_button.dart';
 import '../domain/auth_exception.dart';
 import 'auth_controller.dart';
 import 'auth_providers.dart';
+import 'forgot_password_dialog.dart';
 import 'widgets/auth_text_field.dart';
 import 'widgets/google_sign_in_button.dart';
 
@@ -91,21 +92,9 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
   }
 
   Future<void> _forgotPassword() async {
-    final email = _signInEmailController.text.trim();
-    if (email.isEmpty || !email.contains('@')) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text(AppStrings.emailInvalid)),
-      );
-      return;
-    }
-    final success = await ref
-        .read(authControllerProvider.notifier)
-        .sendPasswordResetEmail(email);
-    if (!mounted || !success) {
-      return;
-    }
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text(AppStrings.resetPasswordSent)),
+    await showForgotPasswordDialog(
+      context,
+      initialEmail: _signInEmailController.text.trim(),
     );
   }
 
@@ -134,6 +123,8 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
       );
       return;
     }
+    final ownerPhoto =
+        _ownerPhotoUrl.startsWith('http') ? _ownerPhotoUrl.trim() : '';
     final success = await ref.read(authControllerProvider.notifier).register(
           name: _nameController.text.trim(),
           email: _signUpEmailController.text.trim(),
@@ -143,17 +134,30 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
           neighborhoodId: neighborhoodId,
           neighborhoodName: neighborhoodName,
           bio: '',
+          customPhotoUrl: ownerPhoto,
         );
     if (!mounted || !success) {
       return;
     }
-    if (_ownerPhotoUrl.startsWith('http')) {
-      final uid = FirebaseAuth.instance.currentUser?.uid;
-      if (uid != null) {
-        await ref.read(authRepositoryProvider).saveOwnerCustomPhoto(
-              uid: uid,
-              customPhotoUrl: _ownerPhotoUrl,
-            );
+    // Belt-and-suspenders: ensure photo is persisted even if signup write
+    // raced ahead of Auth user creation.
+    if (ownerPhoto.isNotEmpty) {
+      try {
+        final uid = ref.read(authStateProvider).asData?.value?.uid ??
+            FirebaseAuth.instance.currentUser?.uid;
+        if (uid != null && uid.isNotEmpty) {
+          await ref.read(authRepositoryProvider).saveOwnerCustomPhoto(
+                uid: uid,
+                customPhotoUrl: ownerPhoto,
+              );
+        }
+      } catch (error) {
+        debugPrint('Owner photo save after register: $error');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text(AppStrings.photoUploadFailed)),
+          );
+        }
       }
     }
     if (!mounted) {

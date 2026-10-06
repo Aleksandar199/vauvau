@@ -29,6 +29,7 @@ class LocalReportRepository implements ReportRepository {
   Future<void> updateStatus({
     required String id,
     required ReportStatus status,
+    String reporterId = '',
   }) async {
     for (var i = 0; i < _items.length; i++) {
       if (_items[i].id == id) {

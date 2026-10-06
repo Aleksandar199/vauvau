@@ -38,6 +38,7 @@ class AuthController extends Notifier<AsyncValue<void>> {
     String neighborhoodId = '',
     String neighborhoodName = '',
     String bio = '',
+    String customPhotoUrl = '',
   }) {
     return _run(
       AuthBusy.email,
@@ -51,6 +52,7 @@ class AuthController extends Notifier<AsyncValue<void>> {
               neighborhoodId: neighborhoodId,
               neighborhoodName: neighborhoodName,
               bio: bio,
+              customPhotoUrl: customPhotoUrl,
             );
         ref.read(sessionSignedOutProvider.notifier).setSignedOut(false);
       },

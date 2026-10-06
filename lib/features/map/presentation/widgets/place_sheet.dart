@@ -1,11 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/utils/external_link_launcher.dart';
 import '../../../moderation/presentation/moderation_strings.dart';
 import '../../domain/map_place.dart';
 import '../../domain/map_place_type.dart';
 import '../../domain/models/poi_model.dart';
+import '../../../auth/presentation/auth_providers.dart';
 import '../map_strings.dart';
+import '../poi_report_controller.dart';
+import '../user_poi_controller.dart';
 
 Future<void> showPlaceSheet({
   required BuildContext context,
@@ -14,7 +19,6 @@ Future<void> showPlaceSheet({
   required VoidCallback onJoin,
   required VoidCallback onDirections,
   VoidCallback? onCall,
-  required VoidCallback onReport,
   VoidCallback? onInappropriate,
 }) {
   return showModalBottomSheet<void>(
@@ -28,14 +32,13 @@ Future<void> showPlaceSheet({
         onJoin: onJoin,
         onDirections: onDirections,
         onCall: onCall,
-        onReport: onReport,
         onInappropriate: onInappropriate,
       );
     },
   );
 }
 
-class PlacePreviewSheet extends StatefulWidget {
+class PlacePreviewSheet extends ConsumerStatefulWidget {
   const PlacePreviewSheet({
     super.key,
     required this.place,
@@ -43,7 +46,6 @@ class PlacePreviewSheet extends StatefulWidget {
     required this.onJoin,
     required this.onDirections,
     this.onCall,
-    required this.onReport,
     this.onInappropriate,
   });
 
@@ -52,201 +54,527 @@ class PlacePreviewSheet extends StatefulWidget {
   final VoidCallback onJoin;
   final VoidCallback onDirections;
   final VoidCallback? onCall;
-  final VoidCallback onReport;
   final VoidCallback? onInappropriate;
 
   @override
-  State<PlacePreviewSheet> createState() => _PlacePreviewSheetState();
+  ConsumerState<PlacePreviewSheet> createState() => _PlacePreviewSheetState();
 }
 
-class _PlacePreviewSheetState extends State<PlacePreviewSheet> {
+class _PlacePreviewSheetState extends ConsumerState<PlacePreviewSheet> {
   bool _expanded = false;
 
   @override
   Widget build(BuildContext context) {
     final place = widget.place;
     final theme = Theme.of(context);
-    return Padding(
-      padding: EdgeInsets.fromLTRB(
-        24,
-        8,
-        24,
-        20 + MediaQuery.viewInsetsOf(context).bottom,
-      ),
-      child: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(place.name, style: theme.textTheme.titleLarge),
-            const SizedBox(height: 10),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
+    final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
+    final maxHeight = MediaQuery.sizeOf(context).height * 0.88;
+
+    return SafeArea(
+      child: ConstrainedBox(
+        constraints: BoxConstraints(maxHeight: maxHeight),
+        child: Padding(
+          padding: EdgeInsets.fromLTRB(24, 8, 24, 8 + bottomInset),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                if (place.isEmergencyService ||
-                    (place.is24_7 && place.type == MapPlaceType.vet))
-                  const _Badge(
-                    label: MapStrings.emergencyBadge,
-                    background: Color(0xFFFEE2E2),
-                    foreground: Color(0xFFB91C1C),
-                  )
-                else
-                  _Badge(
-                    label: _categoryBadge(place.type),
-                    background: place.pinColor.withValues(alpha: 0.16),
-                    foreground: const Color(0xFF1F2937),
-                  ),
-                _VerificationBadge(place: place),
-                if (place.overnightStay)
-                  const _Badge(
-                    label: MapStrings.amenityOvernight,
-                    background: Color(0xFFEEF2FF),
-                    foreground: Color(0xFF312E81),
-                  ),
-                if (place.dayCare)
-                  const _Badge(
-                    label: MapStrings.amenityDayCare,
-                    background: Color(0xFFFEF3C7),
-                    foreground: Color(0xFF92400E),
-                  ),
-                if (place.hasYard)
-                  const _Badge(
-                    label: MapStrings.amenityYard,
-                    background: Color(0xFFDCFCE7),
-                    foreground: Color(0xFF166534),
-                  ),
-                if (place.pricePerNight != null)
-                  _Badge(
-                    label: MapStrings.pricePerNightLabel(place.pricePerNight!),
-                    background: const Color(0xFFF3F4F6),
-                    foreground: const Color(0xFF1F2937),
-                  ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Text(
-              MapStrings.addressAndDistance(place.address, widget.distanceKm),
-              style: theme.textTheme.bodyMedium,
-            ),
-            if (_expanded) ...[
-              const SizedBox(height: 12),
-              if (place.source.isNotEmpty)
-                Text(
-                  '${MapStrings.sourceLabel}: ${place.source}',
-                  style: theme.textTheme.bodySmall,
+                Text(place.name, style: theme.textTheme.titleLarge),
+                const SizedBox(height: 10),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    if (place.isEmergencyService ||
+                        (place.is24_7 && place.type == MapPlaceType.vet))
+                      const _Badge(
+                        label: MapStrings.emergencyBadge,
+                        background: Color(0xFFB91C1C),
+                        foreground: Colors.white,
+                      )
+                    else
+                      _Badge(
+                        label: _categoryBadge(place.type),
+                        background: place.pinColor,
+                        foreground: Colors.white,
+                      ),
+                    _VerificationBadge(place: place),
+                    if (place.isSponsored)
+                      _Badge(
+                        label: place.sponsorBadge.isNotEmpty
+                            ? place.sponsorBadge
+                            : MapStrings.sponsoredBadge,
+                        background: const Color(0xFF7C3AED),
+                        foreground: Colors.white,
+                      ),
+                    if (place.petFriendly)
+                      const _Badge(
+                        label: MapStrings.amenityDogFriendly,
+                        background: Color(0xFFEEF2FF),
+                        foreground: Color(0xFF312E81),
+                      ),
+                    if (place.dogFriendlyOutdoor == true)
+                      const _Badge(
+                        label: MapStrings.amenityOutdoor,
+                        background: Color(0xFFDCFCE7),
+                        foreground: Color(0xFF166534),
+                      ),
+                    if (place.waterAvailable == true)
+                      const _Badge(
+                        label: MapStrings.amenityWater,
+                        background: Color(0xFFE0F2FE),
+                        foreground: Color(0xFF075985),
+                      ),
+                    if (place.overnightStay)
+                      const _Badge(
+                        label: MapStrings.amenityOvernight,
+                        background: Color(0xFFEEF2FF),
+                        foreground: Color(0xFF312E81),
+                      ),
+                    if (place.dayCare)
+                      const _Badge(
+                        label: MapStrings.amenityDayCare,
+                        background: Color(0xFFFEF3C7),
+                        foreground: Color(0xFF92400E),
+                      ),
+                    if (place.hasYard)
+                      const _Badge(
+                        label: MapStrings.amenityYard,
+                        background: Color(0xFFDCFCE7),
+                        foreground: Color(0xFF166534),
+                      ),
+                    if (place.pricePerNight != null)
+                      _Badge(
+                        label:
+                            MapStrings.pricePerNightLabel(place.pricePerNight!),
+                        background: const Color(0xFFF3F4F6),
+                        foreground: const Color(0xFF1F2937),
+                      ),
+                  ],
                 ),
-              if (place.rating != null)
+                if (place.municipality.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    place.municipality,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 12),
                 Text(
-                  MapStrings.ratingLabel(place.rating!),
-                  style: theme.textTheme.titleMedium,
+                  MapStrings.addressAndDistance(
+                    place.address,
+                    widget.distanceKm,
+                  ),
+                  style: theme.textTheme.bodyMedium,
                 ),
-              if (place.nearbyDogs > 0) ...[
+                if (place.openingHours.trim().isNotEmpty) ...[
+                  const SizedBox(height: 6),
+                  Text(
+                    '${MapStrings.hoursLabel}: ${place.openingHours.trim()}',
+                    style: theme.textTheme.bodyMedium,
+                  ),
+                ],
+                if (_expanded) ...[
+                  const SizedBox(height: 12),
+                  if (place.source.isNotEmpty)
+                    Text(
+                      '${MapStrings.sourceLabel}: ${place.source}',
+                      style: theme.textTheme.bodySmall,
+                    ),
+                  if (place.rating != null)
+                    Text(
+                      MapStrings.ratingLabel(place.rating!),
+                      style: theme.textTheme.titleMedium,
+                    ),
+                  if (place.nearbyDogs > 0) ...[
+                    const SizedBox(height: 4),
+                    Text(MapStrings.nearbyCount(place.nearbyDogs)),
+                  ],
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: () {
+                        Navigator.of(context).pop();
+                        widget.onJoin();
+                      },
+                      icon: const Icon(Icons.directions_walk),
+                      label: const Text(MapStrings.join),
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 20),
+                Row(
+                  children: [
+                    Expanded(
+                      child: FilledButton.icon(
+                        onPressed: () => setState(() => _expanded = true),
+                        icon: const Icon(Icons.info_outline),
+                        label: const Text(MapStrings.openProfile),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: FilledButton.tonalIcon(
+                        onPressed: () {
+                          Navigator.of(context).pop();
+                          widget.onDirections();
+                        },
+                        icon: const Icon(Icons.map_outlined),
+                        label: const Text(MapStrings.openNavigation),
+                      ),
+                    ),
+                  ],
+                ),
+                if (place.website != null && place.website!.trim().isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: () {
+                        final raw = place.website!.trim();
+                        final uri = Uri.tryParse(
+                          raw.startsWith('http') ? raw : 'https://$raw',
+                        );
+                        if (uri != null) {
+                          const ExternalLinkLauncher().open(uri);
+                        }
+                      },
+                      icon: const Icon(Icons.language),
+                      label: const Text(MapStrings.websiteAction),
+                    ),
+                  ),
+                ],
+                if (widget.onCall != null) ...[
+                  const SizedBox(height: 8),
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton.icon(
+                      style: FilledButton.styleFrom(
+                        backgroundColor: const Color(0xFFDC2626),
+                        foregroundColor: Colors.white,
+                      ),
+                      onPressed: () {
+                        Navigator.of(context).pop();
+                        widget.onCall!();
+                      },
+                      icon: const Icon(Icons.call),
+                      label: const Text(MapStrings.callNow),
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 4),
-                Text(MapStrings.nearbyCount(place.nearbyDogs)),
-              ],
-              const SizedBox(height: 12),
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton.icon(
-                  onPressed: () {
-                    Navigator.of(context).pop();
-                    widget.onJoin();
-                  },
-                  icon: const Icon(Icons.directions_walk),
-                  label: const Text(MapStrings.join),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextButton(
+                        style: TextButton.styleFrom(
+                          minimumSize: Size.zero,
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 4,
+                            vertical: 10,
+                          ),
+                          visualDensity: VisualDensity.compact,
+                        ),
+                        onPressed: () => _openReportChangeDialog(context),
+                        child: const FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(
+                            MapStrings.reportChange,
+                            maxLines: 1,
+                            softWrap: false,
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                      ),
+                    ),
+                    if (widget.onInappropriate != null) ...[
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: TextButton(
+                          style: TextButton.styleFrom(
+                            minimumSize: Size.zero,
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 4,
+                              vertical: 10,
+                            ),
+                            visualDensity: VisualDensity.compact,
+                          ),
+                          onPressed: () {
+                            Navigator.of(context).pop();
+                            widget.onInappropriate!();
+                          },
+                          child: const FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Text(
+                              ModerationStrings.reportAction,
+                              maxLines: 1,
+                              softWrap: false,
+                              textAlign: TextAlign.center,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
-              ),
-            ],
-            const SizedBox(height: 20),
-            Row(
-              children: [
-                Expanded(
-                  child: FilledButton.icon(
-                    onPressed: () => setState(() => _expanded = true),
-                    icon: const Icon(Icons.info_outline),
-                    label: const Text(MapStrings.openProfile),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: FilledButton.tonalIcon(
-                    onPressed: () {
-                      Navigator.of(context).pop();
-                      widget.onDirections();
-                    },
-                    icon: const Icon(Icons.map_outlined),
-                    label: const Text(MapStrings.navigation),
-                  ),
-                ),
+                const SizedBox(height: 24),
               ],
             ),
-            if (widget.onCall != null) ...[
-              const SizedBox(height: 8),
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton.icon(
-                  style: FilledButton.styleFrom(
-                    backgroundColor: const Color(0xFFDC2626),
-                    foregroundColor: Colors.white,
-                  ),
-                  onPressed: () {
-                    Navigator.of(context).pop();
-                    widget.onCall!();
-                  },
-                  icon: const Icon(Icons.call),
-                  label: const Text(MapStrings.callNow),
-                ),
-              ),
-            ],
-            const SizedBox(height: 4),
-            Align(
-              alignment: Alignment.centerLeft,
-              child: TextButton(
-                onPressed: () => _confirmReport(context),
-                child: const Text(MapStrings.reportChange),
-              ),
-            ),
-            if (widget.onInappropriate != null)
-              Align(
-                alignment: Alignment.centerLeft,
-                child: TextButton(
-                  onPressed: () {
-                    Navigator.of(context).pop();
-                    widget.onInappropriate!();
-                  },
-                  child: const Text(ModerationStrings.reportAction),
-                ),
-              ),
-          ],
+          ),
         ),
       ),
     );
   }
 
-  Future<void> _confirmReport(BuildContext context) async {
-    final confirmed = await showDialog<bool>(
+  Future<void> _openReportChangeDialog(BuildContext context) async {
+    // Capture before nested sheets close — sheet context unmounts on pop.
+    final messenger = ScaffoldMessenger.of(context);
+
+    var confirmedVerified = false;
+    final submitted = await showModalBottomSheet<bool>(
       context: context,
-      builder: (dialogContext) {
-        return AlertDialog(
-          title: const Text(MapStrings.reportTitle),
-          content: const Text(MapStrings.reportBody),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(false),
-              child: const Text(MapStrings.cancel),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.of(dialogContext).pop(true),
-              child: const Text(MapStrings.reportConfirm),
-            ),
-          ],
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (sheetContext) {
+        return _ReportChangeSheet(
+          place: widget.place,
+          onSubmit: (changeType, description) async {
+            final isConfirm =
+                changeType == MapStrings.reportChangeConfirmVerified;
+            confirmedVerified = isConfirm;
+            await ref.read(poiReportsProvider.notifier).submitChangeRequest(
+                  placeId: widget.place.id,
+                  placeName: widget.place.name,
+                  changeType: changeType,
+                  description: description,
+                  markAsReported: !isConfirm,
+                );
+            if (isConfirm) {
+              ref
+                  .read(poiConfirmationsProvider.notifier)
+                  .confirm(widget.place.id);
+              if (ref.read(isAdminProvider)) {
+                try {
+                  await ref
+                      .read(userPoiSubmissionsProvider.notifier)
+                      .approve(widget.place.id);
+                } catch (error) {
+                  debugPrint('Admin POI approve skipped: $error');
+                }
+              }
+            }
+          },
         );
       },
     );
-    if (confirmed == true && context.mounted) {
+
+    if (submitted != true) return;
+
+    if (context.mounted) {
       Navigator.of(context).pop();
-      widget.onReport();
+    }
+    messenger
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(
+            confirmedVerified
+                ? MapStrings.reportConfirmThanks
+                : MapStrings.reportThanks,
+          ),
+          behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 4),
+          backgroundColor: const Color(0xFF166534),
+          margin: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+        ),
+      );
+  }
+}
+
+class _ReportChangeSheet extends StatefulWidget {
+  const _ReportChangeSheet({
+    required this.place,
+    required this.onSubmit,
+  });
+
+  final MapPlace place;
+  final Future<void> Function(String changeType, String description) onSubmit;
+
+  @override
+  State<_ReportChangeSheet> createState() => _ReportChangeSheetState();
+}
+
+class _ReportChangeSheetState extends State<_ReportChangeSheet> {
+  static const _changeTypes = <String>[
+    MapStrings.reportChangeConfirmVerified,
+    MapStrings.reportChangeWrongHours,
+    MapStrings.reportChangeClosed,
+    MapStrings.reportChangeWrongLocation,
+    MapStrings.reportChangeOther,
+  ];
+
+  final _formKey = GlobalKey<FormState>();
+  final _descriptionController = TextEditingController();
+  String? _selectedType;
+  bool _submitting = false;
+  String? _error;
+
+  @override
+  void dispose() {
+    _descriptionController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
+
+    return SafeArea(
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(24, 8, 24, 24 + bottomInset),
+        child: SingleChildScrollView(
+          child: Form(
+            key: _formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(MapStrings.reportTitle, style: theme.textTheme.titleLarge),
+                const SizedBox(height: 4),
+                Text(
+                  widget.place.name,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  MapStrings.reportBody,
+                  style: theme.textTheme.bodySmall,
+                ),
+                const SizedBox(height: 16),
+                DropdownButtonFormField<String>(
+                  initialValue: _selectedType,
+                  decoration: const InputDecoration(
+                    labelText: MapStrings.reportChangeTypeLabel,
+                    border: OutlineInputBorder(),
+                  ),
+                  items: [
+                    for (final type in _changeTypes)
+                      DropdownMenuItem(value: type, child: Text(type)),
+                  ],
+                  onChanged: _submitting
+                      ? null
+                      : (value) => setState(() {
+                            _selectedType = value;
+                            _error = null;
+                          }),
+                  validator: (value) => value == null || value.isEmpty
+                      ? MapStrings.reportChangeTypeRequired
+                      : null,
+                ),
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: _descriptionController,
+                  enabled: !_submitting,
+                  maxLines: 3,
+                  maxLength: 500,
+                  decoration: const InputDecoration(
+                    labelText: MapStrings.reportChangeDescriptionLabel,
+                    hintText: MapStrings.reportChangeDescriptionHint,
+                    border: OutlineInputBorder(),
+                    alignLabelWithHint: true,
+                  ),
+                ),
+                if (_error != null) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    _error!,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.error,
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: _submitting
+                            ? null
+                            : () => Navigator.of(context).pop(false),
+                        child: const Text(MapStrings.cancel),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: FilledButton(
+                        onPressed: _submitting ? null : _submit,
+                        child: _submitting
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : const Text(MapStrings.reportChangeSubmit),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _submit() async {
+    if (!(_formKey.currentState?.validate() ?? false)) return;
+    final changeType = _selectedType;
+    if (changeType == null) return;
+
+    setState(() {
+      _submitting = true;
+      _error = null;
+    });
+    try {
+      await widget.onSubmit(
+        changeType,
+        _descriptionController.text.trim(),
+      );
+      if (mounted) Navigator.of(context).pop(true);
+    } catch (error) {
+      debugPrint('POI change report submit failed: $error');
+      if (!mounted) return;
+      final message = error is StateError
+          ? error.message
+          : MapStrings.reportChangeFailed;
+      setState(() {
+        _submitting = false;
+        _error = message;
+      });
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          SnackBar(
+            content: Text(message),
+            behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 4),
+            backgroundColor: const Color(0xFFB91C1C),
+            margin: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+          ),
+        );
     }
   }
 }
@@ -399,10 +727,18 @@ String _categoryBadge(MapPlaceType type) {
   return switch (type) {
     MapPlaceType.park => MapStrings.dogParkBadge,
     MapPlaceType.cafe => MapStrings.cafeFriendlyBadge,
+    MapPlaceType.restaurant => MapStrings.restaurantBadge,
     MapPlaceType.petShop => MapStrings.petShop,
     MapPlaceType.groomer => MapStrings.groomer,
     MapPlaceType.vet => MapStrings.vet,
+    MapPlaceType.lodging => MapStrings.lodging,
+    MapPlaceType.training => MapStrings.training,
     MapPlaceType.dogHotel => MapStrings.dogHotel,
+    MapPlaceType.selfWash => MapStrings.selfWash,
+    MapPlaceType.dogTreats => MapStrings.dogTreats,
+    MapPlaceType.shelter => MapStrings.shelter,
+    MapPlaceType.water => MapStrings.waterForDogs,
     MapPlaceType.petSitter => MapStrings.petSitter,
+    MapPlaceType.other => MapStrings.otherPlace,
   };
 }

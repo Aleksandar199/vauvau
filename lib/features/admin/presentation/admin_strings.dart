@@ -33,8 +33,39 @@ abstract final class AdminStrings {
   static const String blocked = 'Sadržaj je uklonjen.';
   static const String dismissed = 'Prijava je odbačena.';
   static const String editTitle = 'Izmeni mesto';
+  static const String editAndResolve = 'Izmeni i reši';
+  static const String saveAndResolve = 'Sačuvaj i označi rešeno';
+  static const String saveOnly = 'Samo sačuvaj izmene';
+  static const String reportContextTitle = 'Šta je prijavljeno';
   static const String name = 'Naziv';
   static const String address = 'Adresa';
+  static const String openingHours = 'Radno vreme';
+  static const String openingHoursHint = 'Npr. Pon–Pet 09–20, Sub 10–14';
+  static const String pricePerNight = 'Cena po noći (RSD)';
+  static const String pricePerNightHint = 'Ostavi prazno ako nema';
+  static const String phone = 'Telefon';
+  static const String website = 'Website';
+  static const String latitude = 'Geografska širina';
+  static const String longitude = 'Geografska dužina';
+  static const String verificationStatus = 'Status provere';
+  static const String statusVerified = '✓ Potvrđeno';
+  static const String statusPending = 'Na čekanju';
+  static const String statusSubmitted = 'Predloženo';
+  static const String statusReported = 'Prijavljeno';
+  static const String statusRejected = 'Odbijeno';
+  static const String statusUnknown = 'Nije provereno';
+  static const String flag24h = 'Dostupno 00–24h';
+  static const String flagEmergency = 'Dežurna služba';
+  static const String flagOvernight = 'Prenoćište';
+  static const String flagDayCare = 'Dnevni boravak';
+  static const String flagYard = 'Dvorište';
+  static const String flagPetFriendly = 'Pet-friendly';
+  static const String invalidCoords = 'Unesite ispravne koordinate.';
+  static const String invalidPrice = 'Unesite ispravnu cenu ili ostavite prazno.';
+  static const String poiNotFound =
+      'Mesto nije pronađeno. Proverite ID ili dodajte ga kao novi POI.';
+  static const String poiUpdatedAndResolved =
+      'Mesto je izmenjeno i prijava je rešena.';
 
   static const String drawerItem = 'Admin Panel';
   static const String feedbackTab = '📩 Poruke & Feedback';

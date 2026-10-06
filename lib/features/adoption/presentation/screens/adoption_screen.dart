@@ -51,7 +51,7 @@ class AdoptionScreen extends ConsumerWidget {
           const SizedBox(height: 12),
           Expanded(
             child: dogsAsync.when(
-              loading: () => FeedStateView.loadingBody(),
+              loading: () => const FeedShimmerGrid(),
               error: (error, stack) => FeedStateView(
                 icon: Icons.error_outline,
                 title: AdoptionStrings.loadError,

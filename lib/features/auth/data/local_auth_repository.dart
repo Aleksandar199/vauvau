@@ -49,6 +49,7 @@ class LocalAuthRepository implements AuthRepository {
     String neighborhoodId = '',
     String neighborhoodName = '',
     String bio = '',
+    String customPhotoUrl = '',
   }) {
     return _setUser(
       AppUser(
@@ -60,6 +61,7 @@ class LocalAuthRepository implements AuthRepository {
         neighborhoodId: neighborhoodId,
         neighborhoodName: neighborhoodName,
         bio: bio,
+        customPhotoUrl: customPhotoUrl.trim(),
       ),
     );
   }

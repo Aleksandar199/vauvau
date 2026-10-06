@@ -163,6 +163,18 @@ final chatInboxProvider =
   ChatInboxController.new,
 );
 
+/// False until the chat repository has a first usable inbox snapshot.
+final chatInboxLoadedProvider = Provider<bool>((ref) {
+  final repo = ref.watch(chatRepositoryProvider);
+  // Keep Riverpod subscribed so UI rebuilds when bootstrap completes.
+  ref.watch(_chatInboxLoadedStreamProvider);
+  return repo.hasLoadedInbox;
+});
+
+final _chatInboxLoadedStreamProvider = StreamProvider<bool>((ref) {
+  return ref.watch(chatRepositoryProvider).watchInboxLoaded();
+});
+
 /// Inbox without threads from blocked users.
 final visibleConversationsProvider = Provider<List<ChatConversation>>((ref) {
   final blocked = ref.watch(blockedUserIdsProvider);

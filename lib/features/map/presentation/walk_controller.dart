@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/firebase/firebase_status.dart';
@@ -16,10 +17,13 @@ import '../data/mock_map_data.dart';
 import '../domain/map_place.dart';
 import '../domain/models/poi_model.dart';
 import '../domain/walk_presence_repository.dart';
+import '../domain/walk_record.dart';
 import '../domain/walk_session.dart';
 import '../domain/walking_dog_pin.dart';
+import 'cities_controller.dart';
 import 'poi_report_controller.dart';
 import 'user_poi_controller.dart';
+import 'walk_history_controller.dart';
 
 class WalkController extends Notifier<WalkSession> {
   Timer? _timer;
@@ -75,17 +79,18 @@ class WalkController extends Notifier<WalkSession> {
         state = state.copyWith(now: DateTime.now());
       }
     });
-    if (_shareLocation) {
-      unawaited(
-        ref.read(walkPresenceRepositoryProvider).setWalking(
-              userId: _userId,
-              dogId: _dogId,
-              isWalking: true,
-              location: startCoord,
-              statusMessage: statusMessage,
-            ),
-      );
-    }
+    // Always publish walk + status to dog/user docs so Discover cards
+    // show "U šetnji / Odmaram / Tražim društvo". Map pin sharing stays
+    // gated by showLocationOnMap for live location updates.
+    unawaited(
+      ref.read(walkPresenceRepositoryProvider).setWalking(
+            userId: _userId,
+            dogId: _dogId,
+            isWalking: true,
+            location: startCoord,
+            statusMessage: statusMessage,
+          ),
+    );
     _positionSub =
         ref.read(locationClientProvider).watchWalkPosition().listen((coord) {
       ref.read(userLocationProvider.notifier).setCoord(coord);
@@ -132,6 +137,14 @@ class WalkController extends Notifier<WalkSession> {
   }
 
   void end() {
+    final session = state;
+    final startedAt = session.startedAt;
+    final durationSeconds = session.elapsed.inSeconds;
+    final distanceKm = session.distanceKm;
+    final statusMessage = (session.statusMessage ?? '').trim();
+    final userId = _userId;
+    final dogId = _dogId;
+
     _timer?.cancel();
     _timer = null;
     // Cancelling the stream stops Android's location foreground service.
@@ -140,12 +153,41 @@ class WalkController extends Notifier<WalkSession> {
     state = WalkSession(isActive: false, now: DateTime.now());
     unawaited(
       ref.read(walkPresenceRepositoryProvider).setWalking(
-            userId: _userId,
-            dogId: _dogId,
+            userId: userId,
+            dogId: dogId,
             isWalking: false,
             location: ref.read(userLocationProvider).coord,
           ),
     );
+
+    // Persist completed walks (skip tiny accidental taps).
+    if (startedAt != null &&
+        userId.isNotEmpty &&
+        userId != 'local-user' &&
+        (durationSeconds >= 30 || distanceKm >= 0.05)) {
+      final endedAt = DateTime.now();
+      unawaited(
+        ref
+            .read(walkHistoryRepositoryProvider)
+            .save(
+              WalkRecord(
+                id: 'walk-${endedAt.millisecondsSinceEpoch}',
+                userId: userId,
+                dogId: dogId,
+                distanceKm: distanceKm,
+                durationSeconds: durationSeconds,
+                startedAt: startedAt,
+                endedAt: endedAt,
+                statusMessage: statusMessage,
+              ),
+            )
+            .then((_) {
+          ref.invalidate(walkHistoryProvider);
+        }).catchError((Object error) {
+          debugPrint('Walk history save failed: $error');
+        }),
+      );
+    }
   }
 
   void _appendPoint(GeoCoord coord) {
@@ -182,22 +224,32 @@ final walkControllerProvider =
 
 final mapPlacesProvider = Provider<List<MapPlace>>((ref) {
   final reported = ref.watch(poiReportsProvider);
+  final confirmed = ref.watch(poiConfirmationsProvider);
   final submitted = ref.watch(userPoiSubmissionsProvider);
+  final adminPlaces =
+      ref.watch(livePlacesProvider).asData?.value ?? const <MapPlace>[];
   final hidden = ref.watch(hiddenContentProvider);
-  MapPlace applyReports(MapPlace place) {
-    if (!reported.contains(place.id)) {
-      return place;
+  MapPlace applyCommunityFlags(MapPlace place) {
+    if (confirmed.contains(place.id)) {
+      return place.copyWith(
+        verificationStatus: PoiVerificationStatus.verified,
+        lastVerified: DateTime.now(),
+      );
     }
-    return place.copyWith(
-      verificationStatus: PoiVerificationStatus.reported,
-      petFriendly: false,
-    );
+    if (reported.contains(place.id)) {
+      return place.copyWith(
+        verificationStatus: PoiVerificationStatus.reported,
+        petFriendly: false,
+      );
+    }
+    return place;
   }
 
   final byId = <String, MapPlace>{};
   for (final place in [
-    ...mockMapPlaces.map(applyReports),
-    ...submitted.map(MapPlace.fromPoi).map(applyReports),
+    ...mockMapPlaces.map(applyCommunityFlags),
+    ...submitted.map(MapPlace.fromPoi).map(applyCommunityFlags),
+    ...adminPlaces.map(applyCommunityFlags),
   ]) {
     if (place.verificationStatus != PoiVerificationStatus.rejected &&
         !hidden.contains(place.id)) {

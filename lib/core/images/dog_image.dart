@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
 import '../widgets/feed_state.dart';
@@ -87,36 +88,31 @@ class DogImage extends StatelessWidget {
     return _network(src, isFallback: true);
   }
 
+  Widget _placeholder() {
+    return SoftPlaceholder(width: width, height: height);
+  }
+
   Widget _network(String src, {required bool isFallback}) {
-    return Image.network(
-      src,
+    return CachedNetworkImage(
+      imageUrl: src,
       width: width,
       height: height,
       fit: fit,
-      gaplessPlayback: true,
-      frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
-        if (wasSynchronouslyLoaded || frame != null) {
-          return child;
-        }
-        return SoftPlaceholder(width: width, height: height);
-      },
-      loadingBuilder: (context, child, progress) {
-        if (progress == null) {
-          return child;
-        }
-        return SoftPlaceholder(width: width, height: height);
-      },
-      errorBuilder: (context, error, stackTrace) {
+      fadeInDuration: const Duration(milliseconds: 180),
+      fadeOutDuration: const Duration(milliseconds: 120),
+      placeholder: (context, url) => _placeholder(),
+      errorWidget: (context, url, error) {
         if (!isFallback) {
           return _fallback();
         }
         if (src != kFallbackDogPhotoUrl) {
-          return Image.network(
-            kFallbackDogPhotoUrl,
+          return CachedNetworkImage(
+            imageUrl: kFallbackDogPhotoUrl,
             width: width,
             height: height,
             fit: fit,
-            errorBuilder: (context, error, stackTrace) => _broken(),
+            placeholder: (context, url) => _placeholder(),
+            errorWidget: (context, url, error) => _broken(),
           );
         }
         return _broken();

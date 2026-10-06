@@ -35,7 +35,9 @@ Map<String, dynamic> userDocumentPayload(
     payload['customPhotoUrl'] = ownerPhoto;
   }
   if (includeRole) {
-    payload['role'] = UserRole.user.firestoreValue;
+    // Preserve the caller's role (admin must not be overwritten to "user"
+    // on ordinary profile saves).
+    payload['role'] = user.role.firestoreValue;
   }
   if (includeCreatedAt) {
     payload['createdAt'] = FieldValue.serverTimestamp();

@@ -7,7 +7,11 @@ void main() {
     await tester.pumpWidget(const MaterialApp(home: SplashScreen()));
     await tester.pump();
 
-    expect(find.image(const AssetImage('assets/images/vauvau_logo.jpg')), findsOneWidget);
+    expect(
+      find.image(const AssetImage(SplashScreen.logoAsset)),
+      findsOneWidget,
+    );
+    expect(find.text('VauVau'), findsOneWidget);
     expect(find.text(SplashScreen.tagline), findsOneWidget);
   });
 }

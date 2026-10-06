@@ -83,6 +83,7 @@ class AuthRepositoryImpl implements AuthRepository {
     String neighborhoodId = '',
     String neighborhoodName = '',
     String bio = '',
+    String customPhotoUrl = '',
   }) async {
     try {
       final credential = await _datasource.signUpWithEmailAndPassword(
@@ -90,6 +91,7 @@ class AuthRepositoryImpl implements AuthRepository {
         password: password,
       );
       await _datasource.updateDisplayName(name.trim());
+      final ownerPhoto = customPhotoUrl.trim();
       final user = _requireUser(_datasource.currentUser ?? credential.user)
           .copyWith(
             displayName: name.trim(),
@@ -98,6 +100,7 @@ class AuthRepositoryImpl implements AuthRepository {
             neighborhoodId: neighborhoodId.trim(),
             neighborhoodName: neighborhoodName.trim(),
             bio: bio.trim(),
+            customPhotoUrl: ownerPhoto,
           );
       await _upsertUser(
         user,
@@ -107,7 +110,17 @@ class AuthRepositoryImpl implements AuthRepository {
         neighborhoodId: neighborhoodId.trim(),
         neighborhoodName: neighborhoodName.trim(),
         bio: bio.trim(),
+        writeOwnerPhoto: ownerPhoto.isNotEmpty,
       );
+      if (ownerPhoto.isNotEmpty) {
+        // Best-effort Auth avatar sync so all surfaces that read photoURL
+        // stay aligned with the uploaded owner photo.
+        try {
+          await _datasource.currentUser?.updatePhotoURL(ownerPhoto);
+        } catch (error) {
+          debugPrint('Auth photoURL sync skipped: $error');
+        }
+      }
       return user;
     } on FirebaseAuthException catch (error) {
       throw _mapFirebase(error);
@@ -229,6 +242,8 @@ class AuthRepositoryImpl implements AuthRepository {
           userDocumentPayload(
             next,
             includeCreatedAt: false,
+            // Never clobber Firestore admin role during profile edits.
+            includeRole: false,
             includeDog: writeDog,
             includeOwnerPhoto: false,
           ),
@@ -271,18 +286,44 @@ class AuthRepositoryImpl implements AuthRepository {
     required String uid,
     required String customPhotoUrl,
   }) async {
+    final trimmed = customPhotoUrl.trim();
+    if (trimmed.isEmpty) {
+      return;
+    }
     final firestore = _firestore;
     if (firestore == null) {
       return;
     }
-    await firestore.collection(userCollection).doc(uid).set(
-      {
-        'photoUrl': customPhotoUrl,
-        'customPhotoUrl': customPhotoUrl,
+    final ref = firestore.collection(userCollection).doc(uid);
+    await firestore.runTransaction((transaction) async {
+      final snapshot = await transaction.get(ref);
+      if (!snapshot.exists) {
+        transaction.set(ref, {
+          'uid': uid,
+          'role': UserRole.user.firestoreValue,
+          'photoUrl': trimmed,
+          'customPhotoUrl': trimmed,
+          'createdAt': FieldValue.serverTimestamp(),
+          'updatedAt': FieldValue.serverTimestamp(),
+        });
+        return;
+      }
+      // Partial update keeps role and other fields untouched for security rules.
+      transaction.update(ref, {
+        'photoUrl': trimmed,
+        'customPhotoUrl': trimmed,
         'updatedAt': FieldValue.serverTimestamp(),
-      },
-      SetOptions(merge: true),
-    );
+      });
+    });
+    final authUser = _datasource.currentUser;
+    if (authUser != null && authUser.uid == uid) {
+      try {
+        await authUser.updatePhotoURL(trimmed);
+        await authUser.reload();
+      } catch (error) {
+        debugPrint('Auth photoURL sync skipped: $error');
+      }
+    }
   }
 
   AppUser _mapAuthUser(User user, [Map<String, dynamic>? data]) {
@@ -354,6 +395,7 @@ class AuthRepositoryImpl implements AuthRepository {
     String? neighborhoodId,
     String? neighborhoodName,
     String? bio,
+    bool writeOwnerPhoto = false,
   }) async {
     final firestore = _firestore;
     if (firestore == null) {
@@ -363,6 +405,10 @@ class AuthRepositoryImpl implements AuthRepository {
     await firestore.runTransaction((transaction) async {
       final snapshot = await transaction.get(ref);
       final existing = snapshot.data();
+      final preservedPhoto = AppUser.ownerPhotoFromDocument(
+        existing,
+        authPhotoUrl: user.photoUrl,
+      );
       final next = user.copyWith(
         displayName: name ?? user.displayName,
         city: (city != null && city.isNotEmpty)
@@ -382,21 +428,22 @@ class AuthRepositoryImpl implements AuthRepository {
                 : (existing?['neighborhoodName'] as String? ??
                     user.neighborhoodName),
         bio: bio ?? (existing?['bio'] as String? ?? user.bio),
-        customPhotoUrl: (existing?['customPhotoUrl'] as String?)?.trim().isNotEmpty ==
-                true
-            ? (existing!['customPhotoUrl'] as String)
-            : user.customPhotoUrl,
+        customPhotoUrl: user.customPhotoUrl.trim().isNotEmpty
+            ? user.customPhotoUrl.trim()
+            : preservedPhoto,
         role: UserRoleX.fromString(existing?['role'] as String?),
         dog: existing == null
             ? user.dog
             : UserDogProfile.fromMap(existing['dog']),
       );
+      final shouldWritePhoto =
+          writeOwnerPhoto || next.customPhotoUrl.trim().isNotEmpty;
       final payload = userDocumentPayload(
         next,
         includeCreatedAt: existing == null || existing['createdAt'] == null,
         includeRole: existing == null,
         includeDog: existing == null,
-        includeOwnerPhoto: false,
+        includeOwnerPhoto: shouldWritePhoto,
       );
       if (existing != null) {
         payload.remove('role');

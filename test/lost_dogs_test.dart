@@ -77,7 +77,7 @@ void main() {
 
     expect(find.text(LostDogStrings.title), findsOneWidget);
     expect(find.text(LostDogStrings.banner), findsOneWidget);
-    expect(find.text(LostDogStrings.addCta), findsOneWidget);
+    expect(find.byTooltip(LostDogStrings.addCta), findsOneWidget);
     expect(find.text('Maks je nestao'), findsOneWidget);
     expect(find.textContaining('Novi Sad – Telep'), findsWidgets);
     expect(find.text(LostDogStrings.sighting), findsOneWidget);
@@ -111,8 +111,9 @@ void main() {
     await tester.pump();
     await tester.pump();
 
-    await tester.tap(find.textContaining(LostDogStrings.tabFound));
-    await tester.pumpAndSettle();
+    await tester.tap(find.byType(Tab).at(1));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
 
     expect(find.text(LostDogStrings.foundBadge), findsOneWidget);
     expect(find.text(LostDogStrings.contactFinder), findsOneWidget);

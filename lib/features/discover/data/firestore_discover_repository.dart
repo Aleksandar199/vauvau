@@ -101,12 +101,6 @@ class FirestoreDiscoverRepository implements DiscoverRepository {
     for (final doc in docs) {
       final data = doc.data();
       final profile = discoverProfileFromMap(doc.id, data);
-      debugPrint(
-        '🐶 DOG DEBUG: Name: ${profile.name}, imageUrl: ${profile.imageUrl}, photoUrl: ${data['photoUrl']}, photos: ${data['photos']}',
-      );
-      debugPrint(
-        '🐶 DOG DEBUG RAW id=${profile.id} photoUrls=${data['photoUrls']} galleryUrls=${data['galleryUrls']} imageUrl=${data['imageUrl']} image=${data['image']}',
-      );
       profiles.add(profile);
     }
     return geo == null ? profiles : geo.apply(profiles);

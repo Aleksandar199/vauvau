@@ -13,6 +13,10 @@ Future<bool> showContentReportSheet({
   String reportedUserId = '',
   List<String>? reasons,
 }) async {
+  // Capture parent messenger before the modal opens — snackbars shown from
+  // inside the sheet render behind the barrier until the sheet closes.
+  final messenger = ScaffoldMessenger.of(context);
+
   final sent = await showModalBottomSheet<bool>(
     context: context,
     isScrollControlled: true,
@@ -38,10 +42,22 @@ Future<bool> showContentReportSheet({
       );
     },
   );
-  if (sent == true && context.mounted) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text(ModerationStrings.reportThanks)),
+
+  if (!context.mounted) return sent ?? false;
+
+  messenger.hideCurrentSnackBar();
+  if (sent == true) {
+    messenger.showSnackBar(
+      const SnackBar(
+        content: Text(ModerationStrings.reportThanks),
+        behavior: SnackBarBehavior.floating,
+        duration: Duration(seconds: 4),
+        backgroundColor: Color(0xFF166534),
+        margin: EdgeInsets.fromLTRB(16, 0, 16, 24),
+      ),
     );
+  } else if (sent == false) {
+    // Explicit cancel — no toast.
   }
   return sent ?? false;
 }
@@ -67,6 +83,7 @@ class _ReportSheetState extends ConsumerState<_ReportSheet> {
   final _details = TextEditingController();
   late String _reason = widget.reasons.first;
   var _sending = false;
+  String? _error;
 
   @override
   void dispose() {
@@ -79,6 +96,7 @@ class _ReportSheetState extends ConsumerState<_ReportSheet> {
     final buttonShape = RoundedRectangleBorder(
       borderRadius: BorderRadius.circular(12),
     );
+    final theme = Theme.of(context);
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
       child: Column(
@@ -87,14 +105,14 @@ class _ReportSheetState extends ConsumerState<_ReportSheet> {
         children: [
           Text(
             ModerationStrings.reportTitle,
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.w800,
-                ),
+            style: theme.textTheme.titleLarge?.copyWith(
+              fontWeight: FontWeight.w800,
+            ),
           ),
           const SizedBox(height: 4),
           Text(
             ModerationStrings.reportIntro,
-            style: Theme.of(context).textTheme.bodySmall,
+            style: theme.textTheme.bodySmall,
           ),
           const SizedBox(height: 8),
           RadioGroup<String>(
@@ -103,7 +121,10 @@ class _ReportSheetState extends ConsumerState<_ReportSheet> {
                 ? (_) {}
                 : (value) {
                     if (value != null) {
-                      setState(() => _reason = value);
+                      setState(() {
+                        _reason = value;
+                        _error = null;
+                      });
                     }
                   },
             child: Column(
@@ -131,6 +152,16 @@ class _ReportSheetState extends ConsumerState<_ReportSheet> {
               ),
             ),
           ),
+          if (_error != null) ...[
+            const SizedBox(height: 12),
+            Text(
+              _error!,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.colorScheme.error,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
           const SizedBox(height: 16),
           SizedBox(
             height: 48,
@@ -162,7 +193,10 @@ class _ReportSheetState extends ConsumerState<_ReportSheet> {
   }
 
   Future<void> _submit() async {
-    setState(() => _sending = true);
+    setState(() {
+      _sending = true;
+      _error = null;
+    });
     try {
       await ref.read(reportControllerProvider).submit(
             targetType: widget.targetType,
@@ -174,14 +208,16 @@ class _ReportSheetState extends ConsumerState<_ReportSheet> {
       if (mounted) {
         Navigator.of(context).pop(true);
       }
-    } catch (_) {
-      if (!mounted) {
-        return;
-      }
-      setState(() => _sending = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text(ModerationStrings.reportFailed)),
-      );
+    } catch (error) {
+      debugPrint('Content report submit failed: $error');
+      if (!mounted) return;
+      final message = error is StateError
+          ? error.message
+          : ModerationStrings.reportFailed;
+      setState(() {
+        _sending = false;
+        _error = message;
+      });
     }
   }
 }
