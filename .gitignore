@@ -54,6 +54,8 @@ app.*.map.json
 
 # Local tooling / caches / test scratch output
 /docs/reels/ffmpeg/
+/firebase.exe
+/firebase-tools-instant-win.exe
 /.firebase/
 /moments_fail.txt
 /flutter_*.png
