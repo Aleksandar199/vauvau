@@ -89,7 +89,7 @@ class _ChatListScreenState extends ConsumerState<ChatListScreen> {
           child: TextField(
             enabled: inboxLoaded,
             onChanged: (value) => setState(() => _query = value),
-            decoration: const InputDecoration(
+            decoration: InputDecoration(
               hintText: ChatStrings.searchHint,
               prefixIcon: Icon(Icons.search),
               filled: true,
@@ -121,7 +121,7 @@ class _ChatListScreenState extends ConsumerState<ChatListScreen> {
                     : visible.isEmpty &&
                             visibleGroups.isEmpty &&
                             visibleEvents.isEmpty
-                        ? const Center(
+                        ? Center(
                             key: ValueKey('inbox-no-search'),
                             child: Text(ChatStrings.noSearchResults),
                           )
@@ -194,7 +194,7 @@ class _ChatListScreenState extends ConsumerState<ChatListScreen> {
                                     },
                                   ),
                                 ),
-                                const SizedBox(height: 20),
+                                SizedBox(height: 20),
                               ],
                               if (merged.isNotEmpty) ...[
                                 Text(
@@ -540,7 +540,7 @@ class _EmptyMatches extends StatelessWidget {
             size: 64,
             color: AppColors.primary.withValues(alpha: 0.9),
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           Text(
             ChatStrings.emptyTitle,
             textAlign: TextAlign.center,
@@ -548,7 +548,7 @@ class _EmptyMatches extends StatelessWidget {
                   fontWeight: FontWeight.w800,
                 ),
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           Text(
             ChatStrings.emptySubtitle,
             textAlign: TextAlign.center,
@@ -559,7 +559,7 @@ class _EmptyMatches extends StatelessWidget {
                       .withValues(alpha: 0.68),
                 ),
           ),
-          const SizedBox(height: 24),
+          SizedBox(height: 24),
           PrimaryButton(
             label: ChatStrings.findFriends,
             onPressed: onFindFriends,

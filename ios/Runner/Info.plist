@@ -44,7 +44,9 @@
 		<key>NSLocationWhenInUseUsageDescription</key>
 		<string>VauVau koristi vašu lokaciju da prikaže pse u blizini i da deli status „U šetnji“.</string>
 		<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
-		<string>VauVau koristi vašu lokaciju tokom šetnje da prikaže vašeg psa na mapi.</string>
+		<string>VauVau prikuplja podatke o lokaciji u pozadini kako bi omogućio praćenje rute šetnje vašeg psa i kada je aplikacija zatvorena ili se ne koristi.</string>
+		<key>NSLocationAlwaysUsageDescription</key>
+		<string>VauVau prikuplja podatke o lokaciji u pozadini kako bi omogućio praćenje rute šetnje vašeg psa i kada je aplikacija zatvorena ili se ne koristi.</string>
 		<key>UIApplicationSceneManifest</key>
 		<dict>
 			<key>UIApplicationSupportsMultipleScenes</key>

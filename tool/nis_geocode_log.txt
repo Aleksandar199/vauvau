@@ -1,0 +1,25 @@
+﻿OK   nis-shop-pet-centar-nemanjica          43.32462  21.908284 Булевар Немањића 11
+OK   nis-shop-pet-centar-medijana          43.313617  21.935206 Булевар Медијана 36
+OK   nis-shop-fido                         43.317436   21.89762 Цара Душана 35
+OK   nis-shop-gallus                        43.31824  21.903636 Цара Душана 81
+OK   nis-shop-muppet                       43.316059  21.887664 Обилићев венац 74
+OK   nis-shop-premium-pet                  43.318782   21.89486 Обреновићева 42
+OK   nis-shop-aki-i-drugari                43.320874  21.907638 Војводе Мишића 48
+OK   nis-shop-cici                         43.321051  21.916915 Париске комуне 1
+MISS nis-vet-dr-beli (Drakčeta Milovanovića 14)
+OK   nis-vet-nova                          43.328493  21.908929 Пантелејска 56
+OK   nis-vet-impuls                        43.317378  21.900444 Јосифа Панчића 4
+OK   nis-vet-drpetgood                     43.322857  21.931734 Византијски булевар 84
+OK   nis-vet-specijalisticki-institut      43.316319   21.84651 Димитрија Туцовића 175
+OK   nis-groom-nis-grooming                43.313225  21.894895 Станка Власотинчанина 8
+MISS nis-groom-pet-star (Janka Veselinovića 2)
+OK   nis-groom-mimi                        43.321699  21.914925 Булевар Немањића 25
+OK   nis-groom-groom-room-018              43.317918  21.901217 Војводе Вука 2
+OK   nis-groom-pinky-paw                   43.321202  21.914203 Булевар Немањића 38
+OK   nis-groom-moni                         43.32456  21.915649 Бранка Крсмановића 3
+OK   nis-groom-baniland                    43.313443  21.928198 Другог српског устанка 23
+OK   nis-groom-frizer-romanijska           43.319161  21.924576 Романијска 19
+OK   nis-cafe-off                          43.321396  21.904137 Тодора Миловановића 13
+OK   nis-cafe-la-vie                       43.375459  21.902854 7. јула 5
+MISS nis-cafe-retro-bar (Trg Svetog Save 15)
+Done: 21 house-level hits -> tool/nis_places_nominatim.json

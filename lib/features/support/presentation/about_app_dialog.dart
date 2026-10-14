@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../legal/presentation/legal_document_screen.dart';
+import '../../legal/presentation/legal_strings.dart';
 import 'support_strings.dart';
 import 'widgets/official_contact_links.dart';
 
@@ -8,8 +10,8 @@ Future<void> showAboutAppDialog(BuildContext context) {
     context: context,
     builder: (dialogContext) {
       return AlertDialog(
-        title: const Text(SupportStrings.aboutTitle),
-        content: const SingleChildScrollView(
+        title: Text(SupportStrings.aboutTitle),
+        content: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -20,7 +22,28 @@ Future<void> showAboutAppDialog(BuildContext context) {
                 SupportStrings.appVersion,
                 style: TextStyle(fontWeight: FontWeight.w700),
               ),
-              SizedBox(height: 16),
+              SizedBox(height: 12),
+              TextButton(
+                onPressed: () {
+                  Navigator.of(dialogContext).pop();
+                  openLegalDocument(
+                    context,
+                    kind: LegalDocumentKind.privacy,
+                  );
+                },
+                child: Text(LegalStrings.privacyPolicy),
+              ),
+              TextButton(
+                onPressed: () {
+                  Navigator.of(dialogContext).pop();
+                  openLegalDocument(
+                    context,
+                    kind: LegalDocumentKind.terms,
+                  );
+                },
+                child: Text(LegalStrings.termsOfService),
+              ),
+              SizedBox(height: 8),
               OfficialContactLinks(),
             ],
           ),
@@ -28,7 +51,7 @@ Future<void> showAboutAppDialog(BuildContext context) {
         actions: [
           FilledButton(
             onPressed: () => Navigator.of(dialogContext).pop(),
-            child: const Text(SupportStrings.ok),
+            child: Text(SupportStrings.ok),
           ),
         ],
       );

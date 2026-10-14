@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import '../../../core/firebase/firestore_auth_guard.dart';
 import '../../map/data/places_repository.dart';
 import '../../map/domain/models/poi_model.dart';
 import '../domain/admin_models.dart';
@@ -22,30 +23,38 @@ class FirestoreAdminRepository implements AdminRepository {
 
   @override
   Stream<List<FeedbackEntry>> watchFeedback() {
-    return _feedback
-        .orderBy('createdAt', descending: true)
-        .snapshots()
-        .map((snapshot) {
-      final entries = snapshot.docs.map(_feedbackFromDoc).toList()
-        ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
-      return entries;
-    });
+    return FirestoreAuthGuard.guardedStream<List<FeedbackEntry>>(
+      label: 'admin.feedback',
+      empty: const [],
+      create: () => _feedback
+          .orderBy('createdAt', descending: true)
+          .snapshots()
+          .map((snapshot) {
+        final entries = snapshot.docs.map(_feedbackFromDoc).toList()
+          ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+        return entries;
+      }),
+    );
   }
 
   @override
   Stream<List<AdminUserEntry>> watchUsers() {
-    return _users.snapshots().map((snapshot) {
-      final users = snapshot.docs.map(_userFromDoc).toList()
-        ..sort((a, b) {
-          final left = a.createdAt;
-          final right = b.createdAt;
-          if (left == null || right == null) {
-            return a.name.toLowerCase().compareTo(b.name.toLowerCase());
-          }
-          return right.compareTo(left);
-        });
-      return users;
-    });
+    return FirestoreAuthGuard.guardedStream<List<AdminUserEntry>>(
+      label: 'admin.users',
+      empty: const [],
+      create: () => _users.snapshots().map((snapshot) {
+        final users = snapshot.docs.map(_userFromDoc).toList()
+          ..sort((a, b) {
+            final left = a.createdAt;
+            final right = b.createdAt;
+            if (left == null || right == null) {
+              return a.name.toLowerCase().compareTo(b.name.toLowerCase());
+            }
+            return right.compareTo(left);
+          });
+        return users;
+      }),
+    );
   }
 
   @override

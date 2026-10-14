@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import '../../../core/firebase/firestore_auth_guard.dart';
 import '../../../core/geo/firestore_geo.dart';
 import '../../../core/geo/geo.dart';
 import '../../discover/data/dog_profile_mapper.dart';
@@ -48,19 +49,30 @@ class FirestoreWalkPresenceRepository implements WalkPresenceRepository {
     );
   }
 
+  /// Caps live walkers to avoid unbounded presence reads.
+  static const int maxLiveWalkers = 50;
+
   @override
   Stream<List<WalkingPresence>> watchWalking({required String excludeUserId}) {
-    return _dogs.where('isWalking', isEqualTo: true).snapshots().map((snapshot) {
-      final items = <WalkingPresence>[];
-      for (final doc in snapshot.docs) {
-        final item = _presenceFrom(doc.id, doc.data());
-        if (item == null || item.profile.ownerId == excludeUserId) {
-          continue;
+    return FirestoreAuthGuard.guardedStream<List<WalkingPresence>>(
+      label: 'map.watchWalking',
+      empty: const [],
+      create: () => _dogs
+          .where('isWalking', isEqualTo: true)
+          .limit(maxLiveWalkers)
+          .snapshots()
+          .map((snapshot) {
+        final items = <WalkingPresence>[];
+        for (final doc in snapshot.docs) {
+          final item = _presenceFrom(doc.id, doc.data());
+          if (item == null || item.profile.ownerId == excludeUserId) {
+            continue;
+          }
+          items.add(item);
         }
-        items.add(item);
-      }
-      return items;
-    });
+        return items;
+      }),
+    );
   }
 
   Future<void> _writePresence({

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../../../../core/constants/app_strings.dart';
+import '../../../../../core/l10n/l10n.dart';
 import '../../../domain/dog_draft.dart';
 import '../../../domain/dog_enums.dart';
 import '../option_chips.dart';
@@ -38,6 +39,7 @@ class PersonalityStep extends StatefulWidget {
 
 class _PersonalityStepState extends State<PersonalityStep> {
   late final TextEditingController _weight;
+  late final TextEditingController _bio;
 
   @override
   void initState() {
@@ -45,11 +47,13 @@ class _PersonalityStepState extends State<PersonalityStep> {
     _weight = TextEditingController(
       text: widget.draft.weightKg?.toStringAsFixed(0) ?? '',
     );
+    _bio = TextEditingController(text: widget.draft.bio);
   }
 
   @override
   void dispose() {
     _weight.dispose();
+    _bio.dispose();
     super.dispose();
   }
 
@@ -61,7 +65,7 @@ class _PersonalityStepState extends State<PersonalityStep> {
       padding: const EdgeInsets.all(24),
       children: [
         Text(AppStrings.stepPersonalityTitle, style: theme.textTheme.titleLarge),
-        const SizedBox(height: 16),
+        SizedBox(height: 16),
         Text(AppStrings.dogSizeLabel, style: theme.textTheme.titleMedium),
         const SizedBox(height: 8),
         OptionChips<DogSize>(
@@ -70,12 +74,12 @@ class _PersonalityStepState extends State<PersonalityStep> {
           isSelected: (value) => draft.size == value,
           onSelected: (value) => widget.onChanged(draft.copyWith(size: value)),
         ),
-        const SizedBox(height: 16),
+        SizedBox(height: 16),
         TextField(
           controller: _weight,
           keyboardType: TextInputType.number,
           inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-          decoration: const InputDecoration(
+          decoration: InputDecoration(
             labelText: AppStrings.dogWeightLabel,
             border: OutlineInputBorder(),
           ),
@@ -86,7 +90,7 @@ class _PersonalityStepState extends State<PersonalityStep> {
             );
           },
         ),
-        const SizedBox(height: 16),
+        SizedBox(height: 16),
         Text(AppStrings.dogTemperamentLabel, style: theme.textTheme.titleMedium),
         const SizedBox(height: 8),
         OptionChips<DogTemperament>(
@@ -97,7 +101,7 @@ class _PersonalityStepState extends State<PersonalityStep> {
         ),
         const SizedBox(height: 16),
         PreferenceChipGroup(
-          title: '🐕 Voli',
+          title: L10n.tr('🐕 Voli', '🐕 Likes'),
           options: DogPreferenceTags.likes,
           selected: draft.likesTags,
           onToggle: widget.onToggleLike,
@@ -106,30 +110,43 @@ class _PersonalityStepState extends State<PersonalityStep> {
         ),
         const SizedBox(height: 16),
         PreferenceChipGroup(
-          title: '❌ Ne voli',
+          title: L10n.tr('❌ Ne voli', '❌ Dislikes'),
           options: DogPreferenceTags.dislikes,
           selected: draft.dislikesTags,
           onToggle: widget.onToggleDislike,
           selectedColor: const Color(0xFFC62828),
           selectedForeground: Colors.white,
         ),
-        const SizedBox(height: 16),
+        SizedBox(height: 16),
+        TextField(
+          controller: _bio,
+          maxLines: 3,
+          textCapitalization: TextCapitalization.sentences,
+          decoration: InputDecoration(
+            labelText: AppStrings.dogBioLabel,
+            hintText: AppStrings.dogBioHint,
+            border: OutlineInputBorder(),
+          ),
+          onChanged: (value) =>
+              widget.onChanged(widget.draft.copyWith(bio: value)),
+        ),
+        SizedBox(height: 16),
         SwitchListTile(
           contentPadding: EdgeInsets.zero,
-          title: const Text(AppStrings.dogVaccinatedLabel),
+          title: Text(AppStrings.dogVaccinatedLabel),
           value: draft.vaccinated,
           onChanged: (value) =>
               widget.onChanged(draft.copyWith(vaccinated: value)),
         ),
         SwitchListTile(
           contentPadding: EdgeInsets.zero,
-          title: const Text(AppStrings.dogChippedLabel),
+          title: Text(AppStrings.dogChippedLabel),
           value: draft.chipped,
           onChanged: (value) => widget.onChanged(draft.copyWith(chipped: value)),
         ),
         SwitchListTile(
           contentPadding: EdgeInsets.zero,
-          title: const Text(AppStrings.dogSterilizedLabel),
+          title: Text(AppStrings.dogSterilizedLabel),
           value: draft.sterilized,
           onChanged: (value) =>
               widget.onChanged(draft.copyWith(sterilized: value)),

@@ -1,0 +1,29 @@
+[
+  {"id": "nis-shop-pet-centar-nemanjica", "name": "Pet Centar", "category": "petShop", "address": "Bulevar Nemanjića 11B, Niš", "query": "Bulevar Nemanjića 11"},
+  {"id": "nis-shop-pet-centar-medijana", "name": "Pet Centar", "category": "petShop", "address": "Bulevar Medijana 36, Niš", "query": "Bulevar Medijana 36"},
+  {"id": "nis-shop-fido", "name": "Pet shop Fido", "category": "petShop", "address": "Cara Dušana 35B, Niš", "query": "Cara Dušana 35"},
+  {"id": "nis-shop-gallus", "name": "Pet Shop Gallus", "category": "petShop", "address": "Cara Dušana 81, Niš", "query": "Cara Dušana 81"},
+  {"id": "nis-shop-muppet", "name": "Muppet Shop", "category": "petShop", "address": "Obilićev venac 74, Niš", "query": "Obilićev venac 74"},
+  {"id": "nis-shop-premium-pet", "name": "Premium Pet", "category": "petShop", "address": "Obrenovićeva 42, Niš", "query": "Obrenovićeva 42"},
+  {"id": "nis-shop-aki-i-drugari", "name": "Pet shop Aki i drugari", "category": "petShop", "address": "Vojvode Mišića 48B, Niš", "query": "Vojvode Mišića 48"},
+  {"id": "nis-shop-cici", "name": "Pet Shop Cici", "category": "petShop", "address": "Pariske komune 1A, Niš", "query": "Pariske komune 1"},
+  {"id": "nis-vet-dr-beli", "name": "Dr Beli Vet", "category": "vet", "address": "Drakčeta Milovanovića 14A, Niš", "query": "Drakčeta Milovanovića 14"},
+
+  {"id": "nis-vet-nova", "name": "Veterinarska ambulanta Nova", "category": "vet", "address": "Pantelejska 56A, Niš", "query": "Pantelejska 56"},
+  {"id": "nis-vet-impuls", "name": "Vet Impuls", "category": "vet", "address": "Josifa Pančića 4, Niš", "query": "Josifa Pančića 4"},
+  {"id": "nis-vet-drpetgood", "name": "DrPetGood", "category": "vet", "address": "Vizantijski bulevar 84, Niš", "query": "Vizantijski bulevar 84"},
+  {"id": "nis-vet-specijalisticki-institut", "name": "Veterinarski specijalistički institut Niš", "category": "vet", "address": "Dimitrija Tucovića 175, Niš", "query": "Dimitrija Tucovića 175"},
+
+  {"id": "nis-groom-nis-grooming", "name": "Salon za pse Niš Grooming", "category": "groomer", "address": "Stanka Vlasotinčanina 8A, Niš", "query": "Stanka Vlasotinčanina 8"},
+  {"id": "nis-groom-pet-star", "name": "Salon za pse Pet Star", "category": "groomer", "address": "Janka Veselinovića 2, Niš", "query": "Janka Veselinovića 2"},
+  {"id": "nis-groom-mimi", "name": "Salon za šišanje pasa Mimi", "category": "groomer", "address": "Bulevar Nemanjića 25, Niš", "query": "Bulevar Nemanjića 25"},
+  {"id": "nis-groom-groom-room-018", "name": "Groom Room 018", "category": "groomer", "address": "Vojvode Vuka 2, Niš", "query": "Vojvode Vuka 2"},
+  {"id": "nis-groom-pinky-paw", "name": "Pinky Paw", "category": "groomer", "address": "Bulevar Nemanjića 38, Niš", "query": "Bulevar Nemanjića 38"},
+  {"id": "nis-groom-moni", "name": "Salon za pse Moni", "category": "groomer", "address": "Branka Krsmanovića 3, Niš", "query": "Branka Krsmanovića 3"},
+  {"id": "nis-groom-baniland", "name": "BaniLand Dog Grooming", "category": "groomer", "address": "Drugi srpski ustanak 23, Niš", "query": "Drugog srpskog ustanka 23"},
+  {"id": "nis-groom-frizer-romanijska", "name": "Frizer za pse", "category": "groomer", "address": "Romanijska 19, Niš", "query": "Romanijska 19"},
+
+  {"id": "nis-cafe-off", "name": "OFF Cafe", "category": "cafe", "address": "Todora Milovanovića 13, Niš", "query": "Todora Milovanovića 13"},
+  {"id": "nis-cafe-la-vie", "name": "La Vie Caffe & Restaurant", "category": "restaurant", "address": "7. Juli 5, Niš", "query": "7. jula 5"},
+  {"id": "nis-cafe-retro-bar", "name": "Retro Bar u Parkiću", "category": "cafe", "address": "Trg Svetog Save 15A, Niš", "query": "Trg Svetog Save 15"}
+]

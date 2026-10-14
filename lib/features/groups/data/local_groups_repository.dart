@@ -100,8 +100,7 @@ class LocalGroupsRepository implements GroupsRepository {
       description: description.trim().isEmpty
           ? SeedBreedGroups.defaultDescription
           : description.trim(),
-      imageUrl:
-          'https://images.unsplash.com/photo-1558788353-f76d92427f16?auto=format&fit=crop&w=400&q=80',
+      imageUrl: '',
       memberIds: currentUserId.isEmpty ? const [] : [currentUserId],
       memberCount: currentUserId.isEmpty ? 1 : 1,
       sortOrder: 999,
@@ -138,6 +137,7 @@ class LocalGroupsRepository implements GroupsRepository {
     required String groupId,
     required String text,
     String imageUrl = '',
+    GroupMessage? replyTo,
   }) async {
     final trimmed = text.trim();
     if (trimmed.isEmpty && imageUrl.trim().isEmpty) {
@@ -152,6 +152,9 @@ class LocalGroupsRepository implements GroupsRepository {
       imageUrl: imageUrl,
       createdAt: DateTime.now(),
       isMine: true,
+      replyToMessageId: replyTo?.id ?? '',
+      replyToText: replyTo == null ? '' : replyTo.preview,
+      replyToSenderName: replyTo?.senderName ?? '',
     );
     _append(groupId, message);
   }
@@ -160,8 +163,104 @@ class LocalGroupsRepository implements GroupsRepository {
   Future<void> sendPhoto({
     required String groupId,
     required String imageUrl,
+    GroupMessage? replyTo,
   }) {
-    return sendMessage(groupId: groupId, text: '', imageUrl: imageUrl);
+    return sendMessage(
+      groupId: groupId,
+      text: '',
+      imageUrl: imageUrl,
+      replyTo: replyTo,
+    );
+  }
+
+  @override
+  Future<void> sendWalkInvite({
+    required String groupId,
+    required DateTime walkTime,
+    required String walkLocationName,
+  }) async {
+    final place = walkLocationName.trim();
+    final preview =
+        place.isEmpty ? 'Poziv na šetnju' : 'Poziv na šetnju: $place';
+    _append(
+      groupId,
+      GroupMessage(
+        id: 'gmsg-${DateTime.now().millisecondsSinceEpoch}',
+        senderId: currentUserId,
+        senderName: senderName,
+        senderAvatarUrl: senderAvatarUrl,
+        text: preview,
+        imageUrl: '',
+        createdAt: DateTime.now(),
+        isMine: true,
+        type: GroupMessageType.walkInvite,
+        status: GroupWalkInviteStatus.pending,
+        walkTime: walkTime,
+        walkLocationName: place,
+      ),
+    );
+  }
+
+  @override
+  Future<void> respondToWalkInvite({
+    required String groupId,
+    required String messageId,
+    required GroupWalkInviteStatus status,
+  }) async {
+    final current = _messages[groupId] ?? const <GroupMessage>[];
+    final next = [
+      for (final message in current)
+        if (message.id == messageId)
+          message.copyWith(
+            status: GroupWalkInviteStatus.pending,
+            acceptedByUserIds: status == GroupWalkInviteStatus.accepted
+                ? {
+                    ...message.acceptedByUserIds,
+                    currentUserId,
+                  }.toList()
+                : [
+                    for (final id in message.acceptedByUserIds)
+                      if (id != currentUserId) id,
+                  ],
+            declinedByUserIds: status == GroupWalkInviteStatus.declined
+                ? {
+                    ...message.declinedByUserIds,
+                    currentUserId,
+                  }.toList()
+                : [
+                    for (final id in message.declinedByUserIds)
+                      if (id != currentUserId) id,
+                  ],
+          )
+        else
+          message,
+    ];
+    _messages[groupId] = next;
+    _messageControllerFor(groupId).add(List<GroupMessage>.from(next));
+  }
+
+  @override
+  Future<void> toggleMessageLike({
+    required String groupId,
+    required String messageId,
+  }) async {
+    final current = _messages[groupId] ?? const <GroupMessage>[];
+    final next = [
+      for (final message in current)
+        if (message.id == messageId)
+          message.copyWith(
+            likes: message.isLikedBy(currentUserId)
+                ? [
+                    for (final id in message.likes)
+                      if (id != currentUserId) id,
+                  ]
+                : [...message.likes, currentUserId],
+          )
+        else
+          message,
+    ];
+    _messages[groupId] = next;
+    _messageControllerFor(groupId).add(List<GroupMessage>.from(next));
   }
 
   void seedIncomingMessage({

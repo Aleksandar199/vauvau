@@ -49,6 +49,11 @@ class FakeDogsRepository implements DogsRepository {
       dogs[index] = dog;
     }
   }
+
+  @override
+  Future<void> deleteDog(String dogId, {required String ownerId}) async {
+    dogs.removeWhere((dog) => dog.id == dogId);
+  }
 }
 
 Dog fakeDog({String ownerId = '1'}) {

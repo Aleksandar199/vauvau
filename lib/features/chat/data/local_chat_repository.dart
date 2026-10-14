@@ -11,9 +11,13 @@ class LocalChatRepository implements ChatRepository {
   LocalChatRepository({
     required List<ChatConversation> seed,
     required this.currentUserId,
+    this.currentUserName = 'Ti',
+    this.currentUserAvatarUrl = '',
   }) : _inbox = List<ChatConversation>.from(seed);
 
   final String currentUserId;
+  final String currentUserName;
+  final String currentUserAvatarUrl;
   List<ChatConversation> _inbox;
   int _messageSeq = 0;
   final StreamController<List<ChatConversation>> _inboxController =
@@ -49,12 +53,22 @@ class LocalChatRepository implements ChatRepository {
     return watchInbox().map((conversations) {
       for (final chat in conversations) {
         if (chat.id == roomId) {
-          return chat.messages;
+          final messages = chat.messages;
+          if (messages.length <= 30) {
+            return messages;
+          }
+          return messages.sublist(messages.length - 30);
         }
       }
       return const <ChatMessage>[];
     });
   }
+
+  @override
+  void attachRoom(String roomId) {}
+
+  @override
+  void detachRoom(String roomId) {}
 
   @override
   String openFromMatch({
@@ -105,37 +119,55 @@ class LocalChatRepository implements ChatRepository {
   }
 
   @override
-  void sendMessage(String conversationId, String rawText) {
+  Future<void> sendMessage(
+    String conversationId,
+    String rawText, {
+    ChatMessage? replyTo,
+  }) async {
     final text = rawText.trim();
     if (text.isEmpty) {
       return;
     }
+    final replyName = replyTo == null
+        ? ''
+        : (replyTo.senderName.trim().isNotEmpty
+            ? replyTo.senderName.trim()
+            : (replyTo.isMine ? currentUserName : 'Korisnik'));
     _append(
       conversationId,
       ChatMessage(
         id: _nextId(),
         senderId: currentUserId,
         receiverId: _peer(conversationId),
+        senderName: currentUserName,
+        senderAvatarUrl: currentUserAvatarUrl,
         text: text,
         sentAt: DateTime.now(),
         isMine: true,
         isRead: true,
+        replyToMessageId: replyTo?.id ?? '',
+        replyToText: replyTo == null
+            ? ''
+            : ChatMessage.clipReplyText(replyTo.previewText),
+        replyToSenderName: replyName,
       ),
     );
   }
 
   @override
-  void sendWalkInvite({
+  Future<void> sendWalkInvite({
     required String conversationId,
     required DateTime walkTime,
     required String walkLocationName,
-  }) {
+  }) async {
     _append(
       conversationId,
       ChatMessage(
         id: _nextId(),
         senderId: currentUserId,
         receiverId: _peer(conversationId),
+        senderName: currentUserName,
+        senderAvatarUrl: currentUserAvatarUrl,
         text: 'Poziv na šetnju: $walkLocationName',
         sentAt: DateTime.now(),
         isMine: true,
@@ -149,16 +181,18 @@ class LocalChatRepository implements ChatRepository {
   }
 
   @override
-  void sendLocationPin({
+  Future<void> sendLocationPin({
     required String conversationId,
     required String locationName,
-  }) {
+  }) async {
     _append(
       conversationId,
       ChatMessage(
         id: _nextId(),
         senderId: currentUserId,
         receiverId: _peer(conversationId),
+        senderName: currentUserName,
+        senderAvatarUrl: currentUserAvatarUrl,
         text: locationName,
         sentAt: DateTime.now(),
         isMine: true,
@@ -169,11 +203,47 @@ class LocalChatRepository implements ChatRepository {
   }
 
   @override
-  void respondToWalkInvite({
+  Future<void> sendPhoto({
+    required String conversationId,
+    required String imageUrl,
+    ChatMessage? replyTo,
+  }) async {
+    final url = imageUrl.trim();
+    if (url.isEmpty) {
+      return;
+    }
+    final replyName = replyTo == null
+        ? ''
+        : (replyTo.senderName.trim().isNotEmpty
+            ? replyTo.senderName.trim()
+            : (replyTo.isMine ? currentUserName : 'Korisnik'));
+    _append(
+      conversationId,
+      ChatMessage(
+        id: _nextId(),
+        senderId: currentUserId,
+        receiverId: _peer(conversationId),
+        senderName: currentUserName,
+        senderAvatarUrl: currentUserAvatarUrl,
+        text: '',
+        imageUrl: url,
+        sentAt: DateTime.now(),
+        isMine: true,
+        isRead: true,
+        replyToMessageId: replyTo?.id ?? '',
+        replyToText:
+            replyTo == null ? '' : ChatMessage.clipReplyText(replyTo.previewText),
+        replyToSenderName: replyName,
+      ),
+    );
+  }
+
+  @override
+  Future<void> respondToWalkInvite({
     required String conversationId,
     required String messageId,
     required WalkInviteStatus status,
-  }) {
+  }) async {
     _inbox = [
       for (final chat in _inbox)
         if (chat.id == conversationId)
@@ -182,6 +252,36 @@ class LocalChatRepository implements ChatRepository {
               for (final message in chat.messages)
                 if (message.id == messageId)
                   message.copyWith(status: status)
+                else
+                  message,
+            ],
+          )
+        else
+          chat,
+    ];
+    _emit();
+  }
+
+  @override
+  Future<void> toggleMessageLike({
+    required String conversationId,
+    required String messageId,
+  }) async {
+    _inbox = [
+      for (final chat in _inbox)
+        if (chat.id == conversationId)
+          chat.copyWith(
+            messages: [
+              for (final message in chat.messages)
+                if (message.id == messageId)
+                  message.copyWith(
+                    likes: message.isLikedBy(currentUserId)
+                        ? [
+                            for (final id in message.likes)
+                              if (id != currentUserId) id,
+                          ]
+                        : [...message.likes, currentUserId],
+                  )
                 else
                   message,
             ],

@@ -13,17 +13,27 @@ class WalkInviteCard extends StatelessWidget {
     required this.now,
     this.onAccept,
     this.onDecline,
+    this.acceptedCount,
+    this.viewerAlreadyResponded = false,
   });
 
   final ChatMessage message;
   final DateTime now;
   final VoidCallback? onAccept;
   final VoidCallback? onDecline;
+  /// When set (group chats), shows how many members accepted this invite.
+  final int? acceptedCount;
+  final bool viewerAlreadyResponded;
 
   @override
   Widget build(BuildContext context) {
-    final pending = message.status == WalkInviteStatus.pending;
-    final canRespond = pending && !message.isMine && onAccept != null;
+    // Missing status on older docs still means "awaiting response".
+    final pending = message.status == null ||
+        message.status == WalkInviteStatus.pending;
+    final canRespond = pending &&
+        !message.isMine &&
+        !viewerAlreadyResponded &&
+        onAccept != null;
     return Padding(
       padding: ChatUiTokens.bubbleOuterPadding,
       child: Align(
@@ -46,7 +56,7 @@ class WalkInviteCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(ChatStrings.walkInviteTitle),
+                  Text(ChatStrings.walkInviteTitle),
                   const SizedBox(height: 6),
                   Text(
                     message.walkLocationName ?? message.text,
@@ -66,6 +76,16 @@ class WalkInviteCard extends StatelessWidget {
                               : Theme.of(context).colorScheme.onSurface,
                         ),
                   ),
+                  if (acceptedCount != null) ...[
+                    SizedBox(height: 4),
+                    Text(
+                      ChatStrings.walkAcceptedCount(acceptedCount!),
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color: AppColors.success,
+                            fontWeight: FontWeight.w700,
+                          ),
+                    ),
+                  ],
                   if (canRespond) ...[
                     const SizedBox(height: 10),
                     Row(
@@ -77,17 +97,17 @@ class WalkInviteCard extends StatelessWidget {
                               minimumSize: const Size(0, 40),
                               backgroundColor: AppColors.success,
                             ),
-                            child: const Text(ChatStrings.accept),
+                            child: Text(ChatStrings.accept),
                           ),
                         ),
-                        const SizedBox(width: 8),
+                        SizedBox(width: 8),
                         Expanded(
                           child: OutlinedButton(
                             onPressed: onDecline,
                             style: OutlinedButton.styleFrom(
                               minimumSize: const Size(0, 40),
                             ),
-                            child: const Text(ChatStrings.decline),
+                            child: Text(ChatStrings.decline),
                           ),
                         ),
                       ],

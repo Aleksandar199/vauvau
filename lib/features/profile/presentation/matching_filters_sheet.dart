@@ -59,51 +59,51 @@ class _MatchingFiltersSheetState extends ConsumerState<MatchingFiltersSheet> {
               ProfileStrings.filtersTitle,
               style: Theme.of(context).textTheme.titleLarge,
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             Text(ProfileStrings.sizeFilter),
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
             Wrap(
               spacing: 8,
               children: [
                 FilterChip(
-                  label: const Text(ProfileStrings.sizeSmall),
+                  label: Text(ProfileStrings.sizeSmall),
                   selected: _draft.sizes.contains('mali'),
                   onSelected: (_) => _toggleSize('mali'),
                 ),
                 FilterChip(
-                  label: const Text(ProfileStrings.sizeMedium),
+                  label: Text(ProfileStrings.sizeMedium),
                   selected: _draft.sizes.contains('srednji'),
                   onSelected: (_) => _toggleSize('srednji'),
                 ),
                 FilterChip(
-                  label: const Text(ProfileStrings.sizeLarge),
+                  label: Text(ProfileStrings.sizeLarge),
                   selected: _draft.sizes.contains('veliki'),
                   onSelected: (_) => _toggleSize('veliki'),
                 ),
               ],
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             Text(ProfileStrings.genderFilter),
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
             Wrap(
               spacing: 8,
               children: [
                 ChoiceChip(
-                  label: const Text(ProfileStrings.genderMale),
+                  label: Text(ProfileStrings.genderMale),
                   selected: _draft.gender == FilterGender.male,
                   onSelected: (_) => setState(
                     () => _draft = _draft.copyWith(gender: FilterGender.male),
                   ),
                 ),
                 ChoiceChip(
-                  label: const Text(ProfileStrings.genderFemale),
+                  label: Text(ProfileStrings.genderFemale),
                   selected: _draft.gender == FilterGender.female,
                   onSelected: (_) => setState(
                     () => _draft = _draft.copyWith(gender: FilterGender.female),
                   ),
                 ),
                 ChoiceChip(
-                  label: const Text(ProfileStrings.genderAny),
+                  label: Text(ProfileStrings.genderAny),
                   selected: _draft.gender == FilterGender.any,
                   onSelected: (_) => setState(
                     () => _draft = _draft.copyWith(gender: FilterGender.any),
@@ -111,28 +111,43 @@ class _MatchingFiltersSheetState extends ConsumerState<MatchingFiltersSheet> {
                 ),
               ],
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             Text(ProfileStrings.cityFilter),
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
             Wrap(
               spacing: 8,
               children: [
                 ChoiceChip(
-                  label: const Text(ProfileStrings.cityNoviSad),
+                  label: Text(ProfileStrings.cityNoviSad),
                   selected: _draft.city == FilterCity.noviSad,
                   onSelected: (_) => setState(
                     () => _draft = _draft.copyWith(city: FilterCity.noviSad),
                   ),
                 ),
                 ChoiceChip(
-                  label: const Text(ProfileStrings.cityBeograd),
+                  label: Text(ProfileStrings.cityBeograd),
                   selected: _draft.city == FilterCity.beograd,
                   onSelected: (_) => setState(
                     () => _draft = _draft.copyWith(city: FilterCity.beograd),
                   ),
                 ),
                 ChoiceChip(
-                  label: const Text(ProfileStrings.cityAll),
+                  label: Text(ProfileStrings.cityNis),
+                  selected: _draft.city == FilterCity.nis,
+                  onSelected: (_) => setState(
+                    () => _draft = _draft.copyWith(city: FilterCity.nis),
+                  ),
+                ),
+                ChoiceChip(
+                  label: Text(ProfileStrings.cityKragujevac),
+                  selected: _draft.city == FilterCity.kragujevac,
+                  onSelected: (_) => setState(
+                    () => _draft =
+                        _draft.copyWith(city: FilterCity.kragujevac),
+                  ),
+                ),
+                ChoiceChip(
+                  label: Text(ProfileStrings.cityAll),
                   selected: _draft.city == FilterCity.any,
                   onSelected: (_) => setState(
                     () => _draft = _draft.copyWith(city: FilterCity.any),
@@ -140,7 +155,7 @@ class _MatchingFiltersSheetState extends ConsumerState<MatchingFiltersSheet> {
                 ),
               ],
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             Text(ProfileStrings.radiusFilter),
             Slider(
               min: 1,
@@ -153,7 +168,7 @@ class _MatchingFiltersSheetState extends ConsumerState<MatchingFiltersSheet> {
               },
             ),
             Text(ProfileStrings.radiusValue(_draft.radiusKm)),
-            const SizedBox(height: 24),
+            SizedBox(height: 24),
             SizedBox(
               width: double.infinity,
               child: FilledButton(
@@ -161,7 +176,7 @@ class _MatchingFiltersSheetState extends ConsumerState<MatchingFiltersSheet> {
                   ref.read(matchingFiltersProvider.notifier).apply(_draft);
                   Navigator.of(context).pop();
                 },
-                child: const Text(ProfileStrings.applyFilters),
+                child: Text(ProfileStrings.applyFilters),
               ),
             ),
           ],

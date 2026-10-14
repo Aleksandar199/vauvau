@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/firebase/firebase_status.dart';
 import '../../../core/geo/geo.dart';
+import '../../location/presentation/home_city_provider.dart';
 import '../data/cities_repository.dart';
 import '../data/places_repository.dart';
 import '../domain/city_model.dart';
@@ -32,7 +33,17 @@ class MapRegionSelection {
 
 class MapRegionController extends Notifier<MapRegionSelection> {
   @override
-  MapRegionSelection build() => const MapRegionSelection.myLocation();
+  MapRegionSelection build() {
+    final home = ref.watch(homeCityProvider);
+    if (home == null) {
+      return const MapRegionSelection.myLocation();
+    }
+    final available = ref.read(citiesProvider).asData?.value ?? SeedCities.all;
+    final city = SeedCities.byId(home.mapCityId, available);
+    return city == null
+        ? const MapRegionSelection.myLocation()
+        : MapRegionSelection.city(city);
+  }
 
   void selectMyLocation() {
     state = const MapRegionSelection.myLocation();

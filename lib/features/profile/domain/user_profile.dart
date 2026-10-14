@@ -11,6 +11,7 @@ class UserProfile {
     this.ownerLocation = '',
     this.ownerCityId = '',
     this.ownerNeighborhoodId = '',
+    this.ownerNeighborhoodName = '',
   });
 
   final String ownerName;
@@ -19,10 +20,14 @@ class UserProfile {
   final String ownerLocation;
   final String ownerCityId;
   final String ownerNeighborhoodId;
+  final String ownerNeighborhoodName;
   final List<DiscoverProfile> dogs;
   final String selectedDogId;
 
   DiscoverProfile get dog {
+    if (dogs.isEmpty) {
+      return mockMyDog;
+    }
     for (final item in dogs) {
       if (item.id == selectedDogId) {
         return item;
@@ -40,6 +45,7 @@ class UserProfile {
     String? ownerLocation,
     String? ownerCityId,
     String? ownerNeighborhoodId,
+    String? ownerNeighborhoodName,
     List<DiscoverProfile>? dogs,
     String? selectedDogId,
   }) {
@@ -50,6 +56,8 @@ class UserProfile {
       ownerLocation: ownerLocation ?? this.ownerLocation,
       ownerCityId: ownerCityId ?? this.ownerCityId,
       ownerNeighborhoodId: ownerNeighborhoodId ?? this.ownerNeighborhoodId,
+      ownerNeighborhoodName:
+          ownerNeighborhoodName ?? this.ownerNeighborhoodName,
       dogs: dogs ?? this.dogs,
       selectedDogId: selectedDogId ?? this.selectedDogId,
     );
@@ -63,6 +71,7 @@ final UserProfile mockUserProfile = UserProfile(
   ownerLocation: 'Novi Sad · Liman 3',
   ownerCityId: 'novi_sad',
   ownerNeighborhoodId: 'liman_3',
+  ownerNeighborhoodName: 'Liman 3',
   selectedDogId: mockMyDog.id,
   dogs: const [mockMyDog, mockSecondDog],
 );

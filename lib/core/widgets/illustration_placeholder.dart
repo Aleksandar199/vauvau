@@ -26,7 +26,7 @@ class IllustrationPlaceholder extends StatelessWidget {
             size: 88,
             color: Theme.of(context).colorScheme.primary,
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
           Text(
             AppStrings.illustrationPlaceholder,
             style: Theme.of(context).textTheme.titleMedium?.copyWith(

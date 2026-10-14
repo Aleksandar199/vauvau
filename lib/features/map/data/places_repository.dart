@@ -1,8 +1,8 @@
 import 'dart:async';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter/foundation.dart';
 
+import '../../../core/firebase/firestore_auth_guard.dart';
 import '../domain/map_city.dart';
 import '../domain/map_place.dart';
 import '../domain/map_place_type.dart';
@@ -62,16 +62,16 @@ class FirestorePlacesRepository implements PlacesRepository {
       _firestore.collection('pois');
 
   @override
-  Stream<List<MapPlace>> watchPlaces() async* {
-    try {
-      // Read SoT only — map merge prefers these over `pois` mirrors.
-      await for (final snapshot in _places.snapshots()) {
-        yield snapshot.docs.map(_fromDoc).whereType<MapPlace>().toList();
-      }
-    } catch (error, stack) {
-      debugPrint('places watch failed: $error\n$stack');
-      yield const [];
-    }
+  Stream<List<MapPlace>> watchPlaces() {
+    // Read SoT only — map merge prefers these over `pois` mirrors.
+    return FirestoreAuthGuard.guardedStream<List<MapPlace>>(
+      label: 'places.watch',
+      empty: const [],
+      create: () => _places.snapshots().map(
+            (snapshot) =>
+                snapshot.docs.map(_fromDoc).whereType<MapPlace>().toList(),
+          ),
+    );
   }
 
   @override
@@ -148,6 +148,7 @@ class FirestorePlacesRepository implements PlacesRepository {
       'hasYard': poi.hasYard,
       'pricePerNight': poi.pricePerNight,
       'petFriendly': poi.petFriendly,
+      'isDogPark': poi.isDogPark,
       'isVerified': poi.verificationStatus == PoiVerificationStatus.verified,
       'verificationStatus': poi.verificationStatus.firestoreValue,
       'updatedAt': FieldValue.serverTimestamp(),
@@ -172,6 +173,7 @@ class FirestorePlacesRepository implements PlacesRepository {
       'dogFriendlyIndoor': poi.dogFriendlyIndoor,
       'dogFriendlyOutdoor': poi.dogFriendlyOutdoor,
       'waterAvailable': poi.waterAvailable,
+      'isDogPark': poi.isDogPark,
       'municipality': poi.municipality,
       'description': poi.description,
       'imageUrl': poi.imageUrl,
@@ -237,6 +239,7 @@ class FirestorePlacesRepository implements PlacesRepository {
       longitude: lng,
       phone: data['phone'] as String? ?? '',
       openingHours: data['openingHours'] as String? ?? '',
+      isDogPark: data['isDogPark'] as bool?,
       city: _mapCityFromCityId(cityId),
       cityId: cityId,
       verificationStatus: verified
@@ -301,11 +304,7 @@ class FirestorePlacesRepository implements PlacesRepository {
   }
 
   static MapCity _mapCityFromCityId(String cityId) {
-    return switch (cityId) {
-      'beograd' || 'belgrade' => MapCity.belgrade,
-      'novi-sad' || 'noviSad' => MapCity.noviSad,
-      _ => MapCity.other,
-    };
+    return MapCityX.fromCityId(cityId);
   }
 }
 

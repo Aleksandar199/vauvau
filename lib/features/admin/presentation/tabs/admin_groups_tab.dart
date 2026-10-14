@@ -14,11 +14,11 @@ class AdminGroupsTab extends ConsumerWidget {
     final pendingAsync = ref.watch(pendingGroupsProvider);
     return pendingAsync.when(
       loading: () => const Center(child: CircularProgressIndicator()),
-      error: (_, _) => const Center(child: Text(AdminStrings.loadError)),
+      error: (_, _) => Center(child: Text(AdminStrings.loadError)),
       data: (pending) {
         final groups = List<BreedGroup>.from(pending.whereType<BreedGroup>());
         if (groups.isEmpty) {
-          return const Center(child: Text(AdminStrings.emptyPendingGroups));
+          return Center(child: Text(AdminStrings.emptyPendingGroups));
         }
         return ListView.separated(
           padding: const EdgeInsets.all(16),
@@ -68,7 +68,7 @@ class _PendingGroupCard extends ConsumerWidget {
               color: Colors.grey.shade700,
             ),
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           Text(
             AdminStrings.groupCreatedBy(group.createdBy),
             style: TextStyle(
@@ -76,7 +76,7 @@ class _PendingGroupCard extends ConsumerWidget {
               color: Colors.grey.shade600,
             ),
           ),
-          const SizedBox(height: 2),
+          SizedBox(height: 2),
           Text(
             AdminStrings.groupCreatedAt(group.createdAt),
             style: TextStyle(
@@ -97,7 +97,7 @@ class _PendingGroupCard extends ConsumerWidget {
                         .approveGroup(group.id);
                     if (context.mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
+                        SnackBar(
                           content: Text(AdminStrings.groupApproved),
                         ),
                       );
@@ -105,7 +105,7 @@ class _PendingGroupCard extends ConsumerWidget {
                   } catch (_) {
                     if (context.mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
+                        SnackBar(
                           content: Text(AdminStrings.actionFailed),
                         ),
                       );
@@ -113,7 +113,7 @@ class _PendingGroupCard extends ConsumerWidget {
                   }
                 },
                 icon: const Icon(Icons.check_circle_outline, size: 18),
-                label: const Text(AdminStrings.approveGroup),
+                label: Text(AdminStrings.approveGroup),
               ),
               OutlinedButton.icon(
                 onPressed: () async {
@@ -123,7 +123,7 @@ class _PendingGroupCard extends ConsumerWidget {
                         .deleteGroup(group.id);
                     if (context.mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
+                        SnackBar(
                           content: Text(AdminStrings.groupDeleted),
                         ),
                       );
@@ -131,7 +131,7 @@ class _PendingGroupCard extends ConsumerWidget {
                   } catch (_) {
                     if (context.mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
+                        SnackBar(
                           content: Text(AdminStrings.actionFailed),
                         ),
                       );
@@ -139,7 +139,7 @@ class _PendingGroupCard extends ConsumerWidget {
                   }
                 },
                 icon: const Icon(Icons.delete_outline, size: 18),
-                label: const Text(AdminStrings.rejectGroup),
+                label: Text(AdminStrings.rejectGroup),
               ),
             ],
           ),

@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import '../../../core/firebase/firestore_auth_guard.dart';
 import '../domain/map_city.dart';
 import '../domain/models/poi_model.dart';
 import '../domain/poi_repository.dart';
@@ -14,9 +15,13 @@ class FirestorePoiRepository implements PoiRepository {
 
   @override
   Stream<List<PoiModel>> watchAll() {
-    return _pois.snapshots().map(
-          (snapshot) => snapshot.docs.map(_fromDoc).toList(),
-        );
+    return FirestoreAuthGuard.guardedStream<List<PoiModel>>(
+      label: 'pois.watch',
+      empty: const [],
+      create: () => _pois.snapshots().map(
+            (snapshot) => snapshot.docs.map(_fromDoc).toList(),
+          ),
+    );
   }
 
   @override
@@ -47,6 +52,7 @@ class FirestorePoiRepository implements PoiRepository {
       dogFriendlyIndoor: data['dogFriendlyIndoor'] as bool?,
       dogFriendlyOutdoor: data['dogFriendlyOutdoor'] as bool?,
       waterAvailable: data['waterAvailable'] as bool?,
+      isDogPark: data['isDogPark'] as bool?,
       municipality: data['municipality'] as String? ?? '',
       description: data['description'] as String? ?? '',
       imageUrl: data['imageUrl'] as String?,
@@ -90,6 +96,7 @@ class FirestorePoiRepository implements PoiRepository {
       'dogFriendlyIndoor': poi.dogFriendlyIndoor,
       'dogFriendlyOutdoor': poi.dogFriendlyOutdoor,
       'waterAvailable': poi.waterAvailable,
+      'isDogPark': poi.isDogPark,
       'municipality': poi.municipality,
       'description': poi.description,
       'imageUrl': poi.imageUrl,

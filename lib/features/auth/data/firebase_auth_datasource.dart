@@ -52,8 +52,7 @@ class FirebaseAuthDatasource {
     try {
       final account = await _googleSignIn.signIn();
       if (account == null) {
-        throw const AuthException(
-          AuthErrorCode.cancelled,
+        throw AuthException(AuthErrorCode.cancelled,
           AppStrings.authCancelled,
         );
       }
@@ -67,8 +66,7 @@ class FirebaseAuthDatasource {
       rethrow;
     } on PlatformException catch (error) {
       if (_isCancelled(error.code)) {
-        throw const AuthException(
-          AuthErrorCode.cancelled,
+        throw AuthException(AuthErrorCode.cancelled,
           AppStrings.authCancelled,
         );
       }
@@ -103,7 +101,7 @@ class FirebaseAuthDatasource {
   Future<void> deleteCurrentUser() async {
     final user = _auth.currentUser;
     if (user == null) {
-      throw const AuthException(AuthErrorCode.unknown);
+      throw AuthException(AuthErrorCode.unknown);
     }
     await user.delete();
   }

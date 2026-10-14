@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../../../core/firebase/firestore_auth_guard.dart';
 import '../../../core/images/image_upload_service.dart';
 import '../../../core/utils/content_validation_service.dart';
 import '../../dogs/domain/dogs_exception.dart';
@@ -21,26 +22,34 @@ class FirestoreLostDogRepository implements LostDogRepository {
   Stream<List<LostDog>> watchLostDogs() {
     // Sort client-side so missing createdAt / index issues don't blank the feed.
     // Cap the snapshot size so the list stays responsive as the catalog grows.
-    return _col.limit(40).snapshots().map((snapshot) {
-      final dogs = <LostDog>[];
-      for (final doc in snapshot.docs) {
-        try {
-          dogs.add(_fromDoc(doc));
-        } catch (error) {
-          debugPrint('Lost dog parse skipped (${doc.id}): $error');
+    return FirestoreAuthGuard.guardedStream<List<LostDog>>(
+      label: 'lostDogs.watch',
+      empty: const [],
+      create: () => _col.limit(40).snapshots().map((snapshot) {
+        final dogs = <LostDog>[];
+        for (final doc in snapshot.docs) {
+          try {
+            dogs.add(_fromDoc(doc));
+          } catch (error) {
+            debugPrint('Lost dog parse skipped (${doc.id}): $error');
+          }
         }
-      }
-      dogs.sort((a, b) => b.createdAt.compareTo(a.createdAt));
-      return dogs;
-    });
+        dogs.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+        return dogs;
+      }),
+    );
   }
 
   @override
   Stream<List<LostDogComment>> watchComments(String dogId) {
-    return _col.doc(dogId).snapshots().map((snapshot) {
-      final data = snapshot.data() ?? const <String, dynamic>{};
-      return _commentsFromData(data);
-    });
+    return FirestoreAuthGuard.guardedStream<List<LostDogComment>>(
+      label: 'lostDogs.comments',
+      empty: const [],
+      create: () => _col.doc(dogId).snapshots().map((snapshot) {
+        final data = snapshot.data() ?? const <String, dynamic>{};
+        return _commentsFromData(data);
+      }),
+    );
   }
 
   @override
@@ -55,7 +64,10 @@ class FirestoreLostDogRepository implements LostDogRepository {
       if (error != null) {
         throw DogsException(error);
       }
-      imageUrl = await ImageUploadService.upload(await photo.readAsBytes());
+      imageUrl = await ImageUploadService.uploadFile(
+        photo,
+        folderName: 'lost_dogs',
+      );
     }
     final eventDate = dog.eventDate;
     await _col.add({
@@ -77,6 +89,7 @@ class FirestoreLostDogRepository implements LostDogRepository {
       'uploaderUserId': user.uid,
       'status': LostDogStatus.active,
       'comments': <Map<String, dynamic>>[],
+      'commentLikes': <String, List<String>>{},
       'commentsCount': 0,
       'createdAt': FieldValue.serverTimestamp(),
     });
@@ -110,6 +123,7 @@ class FirestoreLostDogRepository implements LostDogRepository {
       'authorUserId': user.uid,
       'authorName': name,
       'text': trimmed,
+      'likes': <String>[],
       'createdAt': Timestamp.fromDate(now),
     };
     try {
@@ -121,6 +135,48 @@ class FirestoreLostDogRepository implements LostDogRepository {
       });
     } catch (error, stack) {
       debugPrint('Lost dog comment update failed: $error');
+      debugPrint('$stack');
+      rethrow;
+    }
+  }
+
+  @override
+  Future<void> toggleCommentLike(String dogId, String commentId) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      throw StateError('Morate biti prijavljeni.');
+    }
+    final uid = user.uid;
+    final trimmedId = commentId.trim();
+    if (trimmedId.isEmpty) {
+      return;
+    }
+    final ref = _col.doc(dogId);
+    try {
+      // Store likes in commentLikes map so we don't rewrite the comments array
+      // (array rewrites are fragile with Timestamps and often hit rule denials).
+      await firestore.runTransaction((tx) async {
+        final snap = await tx.get(ref);
+        if (!snap.exists) {
+          return;
+        }
+        final data = snap.data() ?? const <String, dynamic>{};
+        final likesByComment = _commentLikesFromData(data);
+        final current = [...(likesByComment[trimmedId] ?? const <String>[])];
+        if (current.contains(uid)) {
+          current.remove(uid);
+        } else {
+          current.add(uid);
+        }
+        likesByComment[trimmedId] = current;
+        tx.update(ref, {
+          'commentLikes': {
+            for (final entry in likesByComment.entries) entry.key: entry.value,
+          },
+        });
+      });
+    } catch (error, stack) {
+      debugPrint('Lost dog comment like failed: $error');
       debugPrint('$stack');
       rethrow;
     }
@@ -167,16 +223,49 @@ class FirestoreLostDogRepository implements LostDogRepository {
     );
   }
 
-  LostDogComment _commentFromMap(Map<String, dynamic> data, String fallbackId) {
+  LostDogComment _commentFromMap(
+    Map<String, dynamic> data,
+    String fallbackId, {
+    List<String>? likesOverride,
+  }) {
+    final id = (data['id'] as String?)?.trim().isNotEmpty == true
+        ? data['id'] as String
+        : fallbackId;
+    final embedded = [
+      for (final value in data['likes'] as List? ?? const [])
+        if (value is String) value,
+    ];
     return LostDogComment(
-      id: (data['id'] as String?)?.trim().isNotEmpty == true
-          ? data['id'] as String
-          : fallbackId,
+      id: id,
       authorUserId: data['authorUserId'] as String? ?? '',
       authorName: data['authorName'] as String? ?? 'Korisnik',
       text: data['text'] as String? ?? '',
       createdAt: _date(data['createdAt']),
+      likes: likesOverride ?? embedded,
     );
+  }
+
+  Map<String, List<String>> _commentLikesFromData(Map<String, dynamic> data) {
+    final raw = data['commentLikes'];
+    if (raw is! Map) {
+      return <String, List<String>>{};
+    }
+    final out = <String, List<String>>{};
+    for (final entry in raw.entries) {
+      final key = entry.key.toString().trim();
+      if (key.isEmpty) {
+        continue;
+      }
+      final value = entry.value;
+      if (value is! List) {
+        continue;
+      }
+      out[key] = [
+        for (final item in value)
+          if (item is String && item.isNotEmpty) item,
+      ];
+    }
+    return out;
   }
 
   List<LostDogComment> _commentsFromData(Map<String, dynamic> data) {
@@ -184,16 +273,33 @@ class FirestoreLostDogRepository implements LostDogRepository {
     if (raw is! List) {
       return const [];
     }
+    final likesByComment = _commentLikesFromData(data);
     final comments = <LostDogComment>[];
     for (var i = 0; i < raw.length; i++) {
       final item = raw[i];
-      if (item is Map<String, dynamic>) {
-        comments.add(_commentFromMap(item, 'c-$i'));
-      } else if (item is Map) {
-        comments.add(
-          _commentFromMap(Map<String, dynamic>.from(item), 'c-$i'),
-        );
+      final map = item is Map<String, dynamic>
+          ? item
+          : item is Map
+              ? Map<String, dynamic>.from(item)
+              : null;
+      if (map == null) {
+        continue;
       }
+      final fallbackId = 'c-$i';
+      final id = (map['id'] as String?)?.trim().isNotEmpty == true
+          ? map['id'] as String
+          : fallbackId;
+      final embeddedLikes = [
+        for (final value in map['likes'] as List? ?? const [])
+          if (value is String) value,
+      ];
+      comments.add(
+        _commentFromMap(
+          map,
+          fallbackId,
+          likesOverride: likesByComment[id] ?? embeddedLikes,
+        ),
+      );
     }
     comments.sort((a, b) => a.createdAt.compareTo(b.createdAt));
     return comments;

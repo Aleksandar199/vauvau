@@ -72,13 +72,13 @@ class AdoptionDetailScreen extends ConsumerWidget {
                           fontWeight: FontWeight.w800,
                         ),
                       ),
-                      const SizedBox(height: 8),
+                      SizedBox(height: 8),
                       CardLocationRow(label: dog.location),
-                      const SizedBox(height: 4),
+                      SizedBox(height: 4),
                       CardTimeLabel(
                         label: AdoptionStrings.timeAgo(dog.createdAt),
                       ),
-                      const SizedBox(height: 12),
+                      SizedBox(height: 12),
                       Wrap(
                         spacing: 8,
                         runSpacing: 8,
@@ -96,18 +96,18 @@ class AdoptionDetailScreen extends ConsumerWidget {
                             value: AdoptionStrings.sizeLabel(dog.size),
                           ),
                           if (dog.isVaccinated)
-                            const _InfoChip(
+                            _InfoChip(
                               label: AdoptionStrings.vaccinated,
                               value: AdoptionStrings.yes,
                             ),
                           if (dog.isSterilized)
-                            const _InfoChip(
+                            _InfoChip(
                               label: AdoptionStrings.sterilized,
                               value: AdoptionStrings.yes,
                             ),
                         ],
                       ),
-                      const SizedBox(height: 20),
+                      SizedBox(height: 20),
                       Text(
                         AdoptionStrings.story,
                         style: theme.textTheme.titleMedium?.copyWith(
@@ -124,8 +124,8 @@ class AdoptionDetailScreen extends ConsumerWidget {
                         ),
                         child: ListTile(
                           leading:
-                              const CircleAvatar(child: Icon(Icons.person)),
-                          title: const Text(
+                              CircleAvatar(child: Icon(Icons.person)),
+                          title: Text(
                             AdoptionStrings.owner,
                             style:
                                 TextStyle(color: Colors.white70, fontSize: 12),
@@ -162,7 +162,7 @@ class AdoptionDetailScreen extends ConsumerWidget {
                   ),
                   onPressed: () => _markAdopted(context, ref),
                   icon: const Icon(Icons.home_outlined),
-                  label: const Text(AdoptionStrings.markAdopted),
+                  label: Text(AdoptionStrings.markAdopted),
                 ),
               ),
             ),
@@ -183,7 +183,7 @@ class AdoptionDetailScreen extends ConsumerWidget {
                         onPressed: () => _openChat(context, ref),
                       ),
                     ),
-                    const SizedBox(width: 10),
+                    SizedBox(width: 10),
                     Expanded(
                       child: DetailPrimaryButton(
                         label: AdoptionStrings.callOwner,
@@ -208,16 +208,16 @@ class AdoptionDetailScreen extends ConsumerWidget {
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
-          title: const Text(AdoptionStrings.adoptedConfirmTitle),
-          content: const Text(AdoptionStrings.adoptedConfirmBody),
+          title: Text(AdoptionStrings.adoptedConfirmTitle),
+          content: Text(AdoptionStrings.adoptedConfirmBody),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(dialogContext).pop(false),
-              child: const Text(AdoptionStrings.cancel),
+              child: Text(AdoptionStrings.cancel),
             ),
             FilledButton(
               onPressed: () => Navigator.of(dialogContext).pop(true),
-              child: const Text(AdoptionStrings.markAdopted),
+              child: Text(AdoptionStrings.markAdopted),
             ),
           ],
         );
@@ -231,7 +231,7 @@ class AdoptionDetailScreen extends ConsumerWidget {
       return;
     }
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text(AdoptionStrings.adoptedDone)),
+      SnackBar(content: Text(AdoptionStrings.adoptedDone)),
     );
     Navigator.of(context).pop();
   }
@@ -263,7 +263,7 @@ class AdoptionDetailScreen extends ConsumerWidget {
         await ref.read(phoneLauncherProvider).call(dog.contactPhone);
     if (!launched && context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text(AdoptionStrings.callUnavailable)),
+        SnackBar(content: Text(AdoptionStrings.callUnavailable)),
       );
     }
   }

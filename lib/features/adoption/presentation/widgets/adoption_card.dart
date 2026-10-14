@@ -44,7 +44,7 @@ class AdoptionCard extends StatelessWidget {
                         borderRadius: AppCardTokens.imageBorderRadius,
                         child: buildDogImage(url, seed: dog.id),
                       ),
-                      const Positioned(
+                      Positioned(
                         top: 8,
                         left: 8,
                         child: StatusBadge(
@@ -73,9 +73,9 @@ class AdoptionCard extends StatelessWidget {
                         color: Colors.grey.shade700,
                       ),
                     ),
-                    const SizedBox(height: 4),
+                    SizedBox(height: 4),
                     CardLocationRow(label: dog.location),
-                    const SizedBox(height: 2),
+                    SizedBox(height: 2),
                     CardTimeLabel(label: AdoptionStrings.timeAgo(dog.createdAt)),
                   ],
                 ),

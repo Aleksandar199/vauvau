@@ -1,0 +1,170 @@
+{
+  "version": 0.6,
+  "generator": "Overpass API 0.7.62.11 87bfad18",
+  "osm3s": {
+    "timestamp_osm_base": "2026-10-14T10:13:39Z",
+    "copyright": "The data included in this document is from www.openstreetmap.org. The data is made available under ODbL."
+  },
+  "elements": [
+
+{
+  "type": "way",
+  "id": 38375847,
+  "center": {
+    "lat": 43.3181313,
+    "lon": 21.8909639
+  },
+  "tags": {
+    "int_name": "Trg kralja Aleksandra Ujedinitelja",
+    "leisure": "park",
+    "name": "Трг краља Александра Ујединитеља",
+    "name:etymology:wikidata": "Q207384",
+    "name:sr": "Трг краља Александра Ујединитеља",
+    "name:sr-Latn": "Trg kralja Aleksandra Ujedinitelja",
+    "wikidata": "Q7839647",
+    "wikipedia": "sr:Трг Краља Александра Ујединитеља"
+  }
+},
+{
+  "type": "way",
+  "id": 87494511,
+  "center": {
+    "lat": 43.3157732,
+    "lon": 21.8832671
+  },
+  "tags": {
+    "int_name": "Trg Mije Stanimirovica",
+    "leisure": "park",
+    "name": "Трг Мије Станимировића",
+    "name:sr": "Трг Мије Станимировића",
+    "name:sr-Latn": "Trg Mije Stanimirovića"
+  }
+},
+{
+  "type": "way",
+  "id": 135704130,
+  "center": {
+    "lat": 43.3207314,
+    "lon": 21.9190849
+  },
+  "tags": {
+    "int_name": "Park Svetog Save",
+    "leisure": "park",
+    "name": "Парк Светог Саве",
+    "name:sr": "Парк Светог Саве",
+    "name:sr-Latn": "Park Svetog Save"
+  }
+},
+{
+  "type": "way",
+  "id": 135704138,
+  "center": {
+    "lat": 43.3336020,
+    "lon": 21.9101700
+  },
+  "tags": {
+    "int_name": "Sveti Pantelejmon",
+    "leisure": "park",
+    "name": "Свети Пантелејмон",
+    "name:sr": "Свети Пантелејмон",
+    "name:sr-Latn": "Sveti Pantelejmon"
+  }
+},
+{
+  "type": "way",
+  "id": 422184755,
+  "center": {
+    "lat": 43.3148263,
+    "lon": 21.9067922
+  },
+  "tags": {
+    "barrier": "fence",
+    "fence_type": "wire",
+    "leisure": "dog_park"
+  }
+},
+{
+  "type": "way",
+  "id": 469255782,
+  "center": {
+    "lat": 43.3126535,
+    "lon": 21.8866064
+  },
+  "tags": {
+    "int_name": "Botanicka basta",
+    "leisure": "park",
+    "name": "Ботаничка башта"
+  }
+},
+{
+  "type": "way",
+  "id": 620289039,
+  "center": {
+    "lat": 43.3258287,
+    "lon": 21.9111581
+  },
+  "tags": {
+    "leisure": "park",
+    "name": "Fitness park"
+  }
+},
+{
+  "type": "way",
+  "id": 700539529,
+  "center": {
+    "lat": 43.3285286,
+    "lon": 21.9382116
+  },
+  "tags": {
+    "leisure": "park",
+    "name": "Igralište iza zgrade"
+  }
+},
+{
+  "type": "way",
+  "id": 945407753,
+  "center": {
+    "lat": 43.3232013,
+    "lon": 21.9119309
+  },
+  "tags": {
+    "int_name": "Park kod Delte",
+    "leisure": "park",
+    "name": "Парк код Делте"
+  }
+},
+{
+  "type": "relation",
+  "id": 12890686,
+  "center": {
+    "lat": 43.3150022,
+    "lon": 21.9050759
+  },
+  "tags": {
+    "int_name": "Park Cair",
+    "leisure": "park",
+    "name": "Парк Чаир",
+    "name:sr": "Парк Чаир",
+    "name:sr-Latn": "Park Čair",
+    "type": "multipolygon"
+  }
+},
+{
+  "type": "relation",
+  "id": 19425035,
+  "center": {
+    "lat": 43.3209123,
+    "lon": 21.9002904
+  },
+  "tags": {
+    "int_name": "Sindjelicev trg",
+    "leisure": "park",
+    "name": "Синђелићев трг",
+    "name:sr": "Синђелићев трг",
+    "name:sr-Latn": "Sinđelićev trg",
+    "type": "multipolygon"
+  }
+}
+
+  ]
+}

@@ -6,12 +6,19 @@ import '../data/geolocator_location_client.dart';
 import '../domain/location_access.dart';
 import '../domain/location_client.dart';
 import '../domain/user_location.dart';
+import 'home_city_provider.dart';
 
 class LocationController extends Notifier<UserLocation> {
+  /// Without GPS we stand in the center of the user's registered city.
+  GeoCoord _fallbackCoord = UserLocation.noviSadFallback.coord;
+
   @override
   UserLocation build() {
+    _fallbackCoord =
+        ref.watch(homeCityProvider)?.coord ??
+        UserLocation.noviSadFallback.coord;
     Future<void>.microtask(() => refresh(requestPermission: false));
-    return UserLocation.noviSadFallback;
+    return UserLocation.noviSadFallback.copyWith(coord: _fallbackCoord);
   }
 
   LocationClient get _client => ref.read(locationClientProvider);
@@ -22,7 +29,7 @@ class LocationController extends Notifier<UserLocation> {
         : await _client.checkPermission();
     if (!access.canTrack) {
       state = UserLocation(
-        coord: UserLocation.noviSadFallback.coord,
+        coord: _fallbackCoord,
         access: access,
         isFallback: true,
       );
@@ -31,7 +38,7 @@ class LocationController extends Notifier<UserLocation> {
     final coord = await _client.currentPosition();
     if (coord == null) {
       state = UserLocation(
-        coord: UserLocation.noviSadFallback.coord,
+        coord: _fallbackCoord,
         access: access,
         isFallback: true,
       );

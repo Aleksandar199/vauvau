@@ -4,7 +4,9 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/images/dog_image.dart';
 import '../../../core/theme/app_cards.dart';
+import '../../../core/widgets/comment_like_button.dart';
 import '../../adoption/presentation/phone_launcher.dart';
+import '../../auth/presentation/auth_providers.dart';
 import '../domain/lost_dog.dart';
 import 'lost_dog_strings.dart';
 import 'lost_dogs_controller.dart';
@@ -32,11 +34,11 @@ Future<void> showLostDogSightingSheet({
                     : LostDogStrings.sightingTitle,
                 style: Theme.of(context).textTheme.titleLarge,
               ),
-              const SizedBox(height: 8),
+              SizedBox(height: 8),
               Text(
                 found ? LostDogStrings.finderBody : LostDogStrings.sightingBody,
               ),
-              const SizedBox(height: 16),
+              SizedBox(height: 16),
               DetailPrimaryButton(
                 label: found
                     ? LostDogStrings.callFinder
@@ -47,7 +49,7 @@ Future<void> showLostDogSightingSheet({
                   await _callOwner(context, ref, dog.contactPhone);
                 },
               ),
-              const SizedBox(height: 8),
+              SizedBox(height: 8),
               DetailPrimaryButton(
                 label: LostDogStrings.sendSms,
                 icon: Icons.chat_bubble_outline,
@@ -75,7 +77,7 @@ Future<void> showLostDogEmergencyDialog({
     barrierDismissible: false,
     builder: (dialogContext) {
       return AlertDialog(
-        title: const Text(LostDogStrings.emergencyTitle),
+        title: Text(LostDogStrings.emergencyTitle),
         content: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -93,13 +95,13 @@ Future<void> showLostDogEmergencyDialog({
                   ],
                 ),
               ),
-              const SizedBox(height: 12),
+              SizedBox(height: 12),
               Text(
                 '${dog.dogName}, ${dog.placeLabel}',
                 textAlign: TextAlign.center,
                 style: Theme.of(context).textTheme.titleMedium,
               ),
-              const SizedBox(height: 6),
+              SizedBox(height: 6),
               Text(LostDogStrings.lostOn(LostDogStrings.formatDate(dog.lostDate))),
             ],
           ),
@@ -107,7 +109,7 @@ Future<void> showLostDogEmergencyDialog({
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(),
-            child: const Text(LostDogStrings.understand),
+            child: Text(LostDogStrings.understand),
           ),
           TextButton(
             onPressed: () async {
@@ -118,14 +120,14 @@ Future<void> showLostDogEmergencyDialog({
                 dog: dog,
               );
             },
-            child: const Text(LostDogStrings.sighting),
+            child: Text(LostDogStrings.sighting),
           ),
           FilledButton(
             onPressed: () async {
               Navigator.of(dialogContext).pop();
               await _callOwner(context, ref, dog.contactPhone);
             },
-            child: const Text(LostDogStrings.callOwner),
+            child: Text(LostDogStrings.callOwner),
           ),
         ],
       );
@@ -164,27 +166,27 @@ Future<void> showLostDogProfileSheet({
                   ],
                 ),
               ),
-              const SizedBox(height: 12),
+              SizedBox(height: 12),
               CardTitleText(
                 text: LostDogStrings.missingHeadline(dog.dogName),
               ),
-              const SizedBox(height: 6),
+              SizedBox(height: 6),
               Text(LostDogStrings.breedLine(dog.breed)),
-              const SizedBox(height: 4),
+              SizedBox(height: 4),
               CardLocationRow(
                 label: LostDogStrings.place(dog.city, dog.neighborhood),
               ),
-              const SizedBox(height: 4),
+              SizedBox(height: 4),
               CardTimeLabel(
                 label: LostDogStrings.lostOn(
                   LostDogStrings.formatDate(dog.eventDate),
                 ),
               ),
               if (dog.description.isNotEmpty) ...[
-                const SizedBox(height: 8),
+                SizedBox(height: 8),
                 Text(dog.description),
               ],
-              const SizedBox(height: 16),
+              SizedBox(height: 16),
               DetailPrimaryButton(
                 label: LostDogStrings.sighting,
                 icon: Icons.visibility,
@@ -197,7 +199,7 @@ Future<void> showLostDogProfileSheet({
                   );
                 },
               ),
-              const SizedBox(height: 8),
+              SizedBox(height: 8),
               DetailPrimaryButton(
                 label: LostDogStrings.leaveComment,
                 icon: Icons.chat_bubble_outline,
@@ -213,7 +215,7 @@ Future<void> showLostDogProfileSheet({
               ),
               TextButton(
                 onPressed: () => Navigator.of(sheetContext).pop(),
-                child: const Text(LostDogStrings.close),
+                child: Text(LostDogStrings.close),
               ),
             ],
           ),
@@ -267,6 +269,7 @@ class _LostDogCommentsSheetState extends ConsumerState<_LostDogCommentsSheet> {
   Widget build(BuildContext context) {
     final comments =
         ref.watch(lostDogCommentsProvider(widget.dog.id)).value ?? const [];
+    final uid = ref.watch(authStateProvider).asData?.value?.uid ?? '';
     return SafeArea(
       child: SizedBox(
         height: 440,
@@ -284,19 +287,49 @@ class _LostDogCommentsSheetState extends ConsumerState<_LostDogCommentsSheet> {
             ),
             Expanded(
               child: comments.isEmpty
-                  ? const Center(child: Text(LostDogStrings.commentEmpty))
+                  ? Center(child: Text(LostDogStrings.commentEmpty))
                   : ListView.builder(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
                       itemCount: comments.length,
                       itemBuilder: (context, index) {
                         final comment = comments[index];
-                        return ListTile(
-                          contentPadding: EdgeInsets.zero,
-                          title: Text(comment.authorName),
-                          subtitle: Text(comment.text),
-                          trailing: Text(
-                            LostDogStrings.timeAgo(comment.createdAt),
-                            style: Theme.of(context).textTheme.bodySmall,
+                        return Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 8),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      comment.authorName,
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .titleSmall
+                                          ?.copyWith(
+                                            fontWeight: FontWeight.w700,
+                                          ),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(comment.text),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      LostDogStrings.timeAgo(comment.createdAt),
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .bodySmall,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              CommentLikeButton(
+                                liked: comment.isLikedBy(uid),
+                                count: comment.likeCount,
+                                tooltip: LostDogStrings.likeComment,
+                                onPressed: () => _toggleLike(comment.id),
+                              ),
+                            ],
                           ),
                         );
                       },
@@ -310,7 +343,7 @@ class _LostDogCommentsSheetState extends ConsumerState<_LostDogCommentsSheet> {
                     child: TextField(
                       controller: _input,
                       enabled: !_sending,
-                      decoration: const InputDecoration(
+                      decoration: InputDecoration(
                         hintText: LostDogStrings.commentHint,
                       ),
                       onSubmitted: (_) => _send(),
@@ -335,6 +368,26 @@ class _LostDogCommentsSheetState extends ConsumerState<_LostDogCommentsSheet> {
     );
   }
 
+  Future<void> _toggleLike(String commentId) async {
+    try {
+      await ref
+          .read(lostDogsControllerProvider.notifier)
+          .toggleCommentLike(widget.dog.id, commentId);
+    } catch (error) {
+      debugPrint('Lost dog comment like UI error: $error');
+      if (!mounted) {
+        return;
+      }
+      final details = error.toString();
+      final message = details.contains('permission-denied')
+          ? LostDogStrings.commentPermissionDenied
+          : LostDogStrings.likeFailed;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(message)),
+      );
+    }
+  }
+
   Future<void> _send() async {
     final text = _input.text.trim();
     if (text.isEmpty || _sending) {
@@ -350,7 +403,7 @@ class _LostDogCommentsSheetState extends ConsumerState<_LostDogCommentsSheet> {
       }
       _input.clear();
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text(LostDogStrings.commentSent)),
+        SnackBar(content: Text(LostDogStrings.commentSent)),
       );
     } catch (error) {
       debugPrint('Lost dog comment UI error: $error');
@@ -379,7 +432,7 @@ Future<void> _callOwner(
   final ok = await ref.read(phoneLauncherProvider).call(phone);
   if (!ok && context.mounted) {
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text(LostDogStrings.callUnavailable)),
+      SnackBar(content: Text(LostDogStrings.callUnavailable)),
     );
   }
 }
@@ -389,7 +442,7 @@ Future<void> _smsOwner(BuildContext context, LostDog dog) async {
   if (compact.isEmpty) {
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text(LostDogStrings.callUnavailable)),
+        SnackBar(content: Text(LostDogStrings.callUnavailable)),
       );
     }
     return;
@@ -406,7 +459,7 @@ Future<void> _smsOwner(BuildContext context, LostDog dog) async {
   if (!await canLaunchUrl(uri) || !await launchUrl(uri)) {
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text(LostDogStrings.callUnavailable)),
+        SnackBar(content: Text(LostDogStrings.callUnavailable)),
       );
     }
   }

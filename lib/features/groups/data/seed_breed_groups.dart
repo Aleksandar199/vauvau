@@ -1,4 +1,4 @@
-import '../domain/groups_models.dart';
+﻿import '../domain/groups_models.dart';
 
 abstract final class SeedBreedGroups {
   static const String defaultDescription =
@@ -15,8 +15,7 @@ abstract final class SeedBreedGroups {
       id: 'aktivne-setnje-playdate',
       title: '🏃‍♂️ Aktivne šetnje & Playdate',
       description: 'Dogovorite šetnje, trčanje i igru u parku.',
-      imageUrl:
-          'https://images.unsplash.com/photo-1558788353-f76d92427f16?auto=format&fit=crop&w=400&q=80',
+      imageUrl: '',
       memberIds: [],
       memberCount: 45,
       sortOrder: 1,
@@ -26,8 +25,7 @@ abstract final class SeedBreedGroups {
       id: 'kej-zezeljev-most',
       title: '🌊 Kej / Žeželjev most',
       description: parkDescription,
-      imageUrl:
-          'https://images.unsplash.com/photo-1548199973-03cce0bbc87b?auto=format&fit=crop&w=400&q=80',
+      imageUrl: '',
       memberIds: [],
       memberCount: 42,
       sortOrder: 2,
@@ -37,8 +35,7 @@ abstract final class SeedBreedGroups {
       id: 'labradori-novi-sad',
       title: '🦮 Labradori Novi Sad',
       description: defaultDescription,
-      imageUrl:
-          'https://images.unsplash.com/photo-1543466835-00a7907e9de1?auto=format&fit=crop&w=400&q=80',
+      imageUrl: '',
       memberIds: [],
       memberCount: 41,
       sortOrder: 3,
@@ -48,8 +45,7 @@ abstract final class SeedBreedGroups {
       id: 'limanski-park',
       title: '🌳 Limanski park',
       description: parkDescription,
-      imageUrl:
-          'https://images.unsplash.com/photo-1601758228041-f3b2795255f1?auto=format&fit=crop&w=400&q=80',
+      imageUrl: '',
       memberIds: [],
       memberCount: 38,
       sortOrder: 4,
@@ -59,8 +55,7 @@ abstract final class SeedBreedGroups {
       id: 'pomeranci-novi-sad',
       title: '🐕 Pomeranci Novi Sad',
       description: defaultDescription,
-      imageUrl:
-          'https://images.unsplash.com/photo-1537151608828-ea2b11777ee8?auto=format&fit=crop&w=400&q=80',
+      imageUrl: '',
       memberIds: [],
       memberCount: 34,
       sortOrder: 5,
@@ -70,8 +65,7 @@ abstract final class SeedBreedGroups {
       id: 'petrovaradinska-tvrdjava',
       title: '🏰 Petrovaradinska tvrđava',
       description: parkDescription,
-      imageUrl:
-          'https://images.unsplash.com/photo-1587300003388-59208cc962cb?auto=format&fit=crop&w=400&q=80',
+      imageUrl: '',
       memberIds: [],
       memberCount: 31,
       sortOrder: 6,
@@ -81,8 +75,7 @@ abstract final class SeedBreedGroups {
       id: 'futoski-park',
       title: '🍃 Futoški park',
       description: parkDescription,
-      imageUrl:
-          'https://images.unsplash.com/photo-1477884213360-7e9d7dcc1e48?auto=format&fit=crop&w=400&q=80',
+      imageUrl: '',
       memberIds: [],
       memberCount: 29,
       sortOrder: 7,
@@ -92,8 +85,7 @@ abstract final class SeedBreedGroups {
       id: 'francuski-buldozi-novi-sad',
       title: '🐩 Francuski buldozi Novi Sad',
       description: defaultDescription,
-      imageUrl:
-          'https://images.unsplash.com/photo-1583511655857-d19b40a7a54e?auto=format&fit=crop&w=400&q=80',
+      imageUrl: '',
       memberIds: [],
       memberCount: 28,
       sortOrder: 8,
@@ -103,8 +95,7 @@ abstract final class SeedBreedGroups {
       id: 'kamenicki-park',
       title: '🌲 Kamenički park',
       description: parkDescription,
-      imageUrl:
-          'https://images.unsplash.com/photo-1561037404-61cd46aa615b?auto=format&fit=crop&w=400&q=80',
+      imageUrl: '',
       memberIds: [],
       memberCount: 22,
       sortOrder: 9,

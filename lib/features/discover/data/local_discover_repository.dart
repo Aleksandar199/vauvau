@@ -16,9 +16,49 @@ class LocalDiscoverRepository implements DiscoverRepository {
   Stream<List<DiscoverProfile>> watchProfiles({
     required String excludeOwnerId,
     GeoQuery? geo,
+    int limit = 15,
   }) {
-    final filtered = List<DiscoverProfile>.from(_profiles);
-    return Stream.value(geo == null ? filtered : geo.apply(filtered));
+    final filtered = _page(_profiles, excludeOwnerId, geo, limit: limit);
+    return Stream.value(filtered);
+  }
+
+  @override
+  Future<DiscoverPage> fetchProfilesPage({
+    required String excludeOwnerId,
+    GeoQuery? geo,
+    Object? cursor,
+    int limit = 15,
+  }) async {
+    final all = _page(_profiles, excludeOwnerId, geo);
+    final start = cursor is int ? cursor : 0;
+    final end = (start + limit).clamp(0, all.length);
+    final items = all.sublist(start.clamp(0, all.length), end);
+    final next = end < all.length ? end : null;
+    return DiscoverPage(
+      items: items,
+      nextCursor: next,
+      hasMore: next != null,
+    );
+  }
+
+  List<DiscoverProfile> _page(
+    List<DiscoverProfile> source,
+    String excludeOwnerId,
+    GeoQuery? geo, {
+    int? limit,
+  }) {
+    var list = [
+      for (final profile in source)
+        if (excludeOwnerId.isEmpty || profile.ownerId != excludeOwnerId) profile,
+    ];
+    if (geo != null) {
+      list = geo.apply(list);
+    }
+    list.sort(DiscoverProfile.compareFeedOrder);
+    if (limit != null && list.length > limit) {
+      return list.sublist(0, limit);
+    }
+    return list;
   }
 
   @override

@@ -84,11 +84,11 @@ class _AddPoiSheetState extends ConsumerState<AddPoiSheet> {
               MapStrings.addPlace,
               style: Theme.of(context).textTheme.titleLarge,
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             TextFormField(
               controller: _name,
               textCapitalization: TextCapitalization.sentences,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: MapStrings.placeName,
                 border: OutlineInputBorder(),
               ),
@@ -99,10 +99,10 @@ class _AddPoiSheetState extends ConsumerState<AddPoiSheet> {
                 return ContentValidationService.validateTitle(value);
               },
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
             DropdownButtonFormField<PoiCategory>(
               initialValue: _category,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: MapStrings.placeCategory,
                 border: OutlineInputBorder(),
               ),
@@ -119,10 +119,10 @@ class _AddPoiSheetState extends ConsumerState<AddPoiSheet> {
                 }
               },
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
             DropdownButtonFormField<MapCity>(
               initialValue: _city,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: MapStrings.placeCity,
                 border: OutlineInputBorder(),
               ),
@@ -139,11 +139,11 @@ class _AddPoiSheetState extends ConsumerState<AddPoiSheet> {
                 }
               },
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
             TextFormField(
               controller: _address,
               textCapitalization: TextCapitalization.sentences,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: MapStrings.placeAddress,
                 border: OutlineInputBorder(),
               ),
@@ -154,59 +154,59 @@ class _AddPoiSheetState extends ConsumerState<AddPoiSheet> {
                 return ContentValidationService.validateText(value);
               },
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
             TextFormField(
               controller: _phone,
               keyboardType: TextInputType.phone,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: MapStrings.placePhone,
                 border: OutlineInputBorder(),
               ),
             ),
             SwitchListTile(
               contentPadding: EdgeInsets.zero,
-              title: const Text(MapStrings.toggle24h),
+              title: Text(MapStrings.toggle24h),
               value: _is24_7,
               onChanged: (value) => setState(() => _is24_7 = value),
             ),
             SwitchListTile(
               contentPadding: EdgeInsets.zero,
-              title: const Text(MapStrings.toggleEmergency),
+              title: Text(MapStrings.toggleEmergency),
               value: _emergency,
               onChanged: (value) => setState(() => _emergency = value),
             ),
             SwitchListTile(
               contentPadding: EdgeInsets.zero,
-              title: const Text(MapStrings.toggleOvernight),
+              title: Text(MapStrings.toggleOvernight),
               value: _overnight,
               onChanged: (value) => setState(() => _overnight = value),
             ),
             SwitchListTile(
               contentPadding: EdgeInsets.zero,
-              title: const Text(MapStrings.toggleDayCare),
+              title: Text(MapStrings.toggleDayCare),
               value: _dayCare,
               onChanged: (value) => setState(() => _dayCare = value),
             ),
             SwitchListTile(
               contentPadding: EdgeInsets.zero,
-              title: const Text(MapStrings.toggleYard),
+              title: Text(MapStrings.toggleYard),
               value: _hasYard,
               onChanged: (value) => setState(() => _hasYard = value),
             ),
             TextFormField(
               controller: _price,
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: MapStrings.pricePerNight,
                 border: OutlineInputBorder(),
               ),
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             SizedBox(
               width: double.infinity,
               child: FilledButton(
                 onPressed: _submit,
-                child: const Text(MapStrings.submitPlace),
+                child: Text(MapStrings.submitPlace),
               ),
             ),
           ],
@@ -221,16 +221,9 @@ class _AddPoiSheetState extends ConsumerState<AddPoiSheet> {
     }
     final location = ref.read(userLocationProvider);
     final parsedPrice = double.tryParse(_price.text.trim().replaceAll(',', '.'));
-    final latitude = switch (_city) {
-      MapCity.noviSad => MapCityCameras.noviSad.latitude,
-      MapCity.belgrade => MapCityCameras.belgrade.latitude,
-      MapCity.other => location.latitude,
-    };
-    final longitude = switch (_city) {
-      MapCity.noviSad => MapCityCameras.noviSad.longitude,
-      MapCity.belgrade => MapCityCameras.belgrade.longitude,
-      MapCity.other => location.longitude,
-    };
+    final camera = _city.camera;
+    final latitude = camera?.latitude ?? location.latitude;
+    final longitude = camera?.longitude ?? location.longitude;
     ref.read(userPoiSubmissionsProvider.notifier).add(
           PoiModel(
             id: 'user-${DateTime.now().millisecondsSinceEpoch}',
@@ -254,7 +247,7 @@ class _AddPoiSheetState extends ConsumerState<AddPoiSheet> {
         );
     Navigator.of(context).pop();
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text(MapStrings.placeAdded)),
+      SnackBar(content: Text(MapStrings.placeAdded)),
     );
   }
 }

@@ -170,7 +170,7 @@ class _OwnerBadge extends StatelessWidget {
         color: Colors.white.withValues(alpha: 0.85),
         borderRadius: BorderRadius.circular(8),
       ),
-      child: const Text(
+      child: Text(
         DiscoverStrings.yourPet,
         style: TextStyle(
           color: Color(0xFF1F1F2A),

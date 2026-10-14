@@ -63,5 +63,46 @@ abstract final class SeedCities {
     sortOrder: 2,
   );
 
-  static const List<CityModel> all = [noviSad, belgrade];
+  static const nis = CityModel(
+    id: 'nis',
+    name: 'Niš',
+    latitude: 43.3209,
+    longitude: 21.8958,
+    radiusKm: 15,
+    sortOrder: 3,
+  );
+
+  static const kragujevac = CityModel(
+    id: 'kragujevac',
+    name: 'Kragujevac',
+    latitude: 44.0128,
+    longitude: 20.9114,
+    radiusKm: 15,
+    sortOrder: 4,
+  );
+
+  static const List<CityModel> all = [noviSad, belgrade, nis, kragujevac];
+
+  /// City with [id] from [available] (Firestore), else the built-in one.
+  static CityModel? byId(String id, [List<CityModel> available = const []]) {
+    for (final city in [...available, ...all]) {
+      if (city.id == id) {
+        return city;
+      }
+    }
+    return null;
+  }
+
+  /// Firestore list plus any built-in city it does not define yet.
+  static List<CityModel> mergeWith(List<CityModel> remote) {
+    if (remote.isEmpty) {
+      return all;
+    }
+    final ids = {for (final city in remote) city.id};
+    return [
+      ...remote,
+      for (final seed in all)
+        if (!ids.contains(seed.id)) seed,
+    ]..sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
+  }
 }

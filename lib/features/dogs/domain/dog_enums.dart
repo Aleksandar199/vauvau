@@ -28,8 +28,7 @@ enum DogTemperament {
   playful,
   calm,
   shy,
-  protective,
-  social;
+  protective;
 
   String get firestoreValue => name;
 }

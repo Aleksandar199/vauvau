@@ -10,7 +10,6 @@ import '../../../auth/presentation/auth_providers.dart';
 import '../../../chat/presentation/chat_inbox.dart';
 import '../../../chat/presentation/chat_screen.dart';
 import '../../../moderation/domain/content_report.dart';
-import '../../../moderation/presentation/report_sheet.dart';
 import '../../../moderation/presentation/safety_menu.dart';
 import '../../../moments/presentation/widgets/story_widgets.dart';
 import '../../domain/discover_profile.dart';
@@ -324,16 +323,16 @@ class _DetailBody extends StatelessWidget {
             ],
           ),
         ],
-        const SizedBox(height: 16),
+        SizedBox(height: 16),
         Row(
           children: [
             MetricStatChip(value: profile.ageLabel, label: DiscoverStrings.age),
-            const SizedBox(width: 8),
+            SizedBox(width: 8),
             MetricStatChip(
               value: profile.sizeLabel,
               label: DiscoverStrings.size,
             ),
-            const SizedBox(width: 8),
+            SizedBox(width: 8),
             MetricStatChip(
               value: profile.genderLabel,
               label: DiscoverStrings.gender,
@@ -347,7 +346,7 @@ class _DetailBody extends StatelessWidget {
             children: [
               Expanded(flex: 2, child: _EnergyTile(level: profile.energyLevel)),
               if (profile.weightKg > 0) ...[
-                const SizedBox(width: 8),
+                SizedBox(width: 8),
                 MetricStatChip(
                   value: DiscoverStrings.weightValue(profile.weightKg),
                   label: DiscoverStrings.weight,
@@ -356,7 +355,7 @@ class _DetailBody extends StatelessWidget {
             ],
           ),
         ),
-        const SizedBox(height: 16),
+        SizedBox(height: 16),
         CompatibilityCard(other: profile),
         if (profile.bio.trim().isNotEmpty)
           _DetailSection(
@@ -395,17 +394,17 @@ class _DetailBody extends StatelessWidget {
             title: DiscoverStrings.getsAlong,
             child: _BadgeWrap(labels: profile.getsAlongLabels),
           ),
-        if (profile.likesTags.isNotEmpty)
+        if (profile.likeLabels.isNotEmpty)
           _DetailSection(
             title: DiscoverStrings.likes,
             icon: Icons.favorite_border_rounded,
-            child: _BadgeWrap(labels: profile.likesTags),
+            child: _BadgeWrap(labels: profile.likeLabels),
           ),
-        if (profile.dislikesTags.isNotEmpty)
+        if (profile.dislikeLabels.isNotEmpty)
           _DetailSection(
             title: DiscoverStrings.dislikes,
             icon: Icons.do_not_disturb_alt_rounded,
-            child: _BadgeWrap(labels: profile.dislikesTags),
+            child: _BadgeWrap(labels: profile.dislikeLabels),
           ),
         _DetailSection(
           title: DiscoverStrings.owner,
@@ -429,11 +428,15 @@ class _StatusPill extends StatelessWidget {
     final label = profile.statusBadge;
     final lower = label.toLowerCase();
     final Color color;
-    if (lower.contains('tražim')) {
+    if (lower.contains('tražim') ||
+        lower.contains('looking') ||
+        lower.contains('play')) {
       color = const Color(0xFFB45309);
-    } else if (lower.contains('odmar')) {
+    } else if (lower.contains('odmar') || lower.contains('rest')) {
       color = const Color(0xFF475569);
-    } else if (profile.walking || lower.contains('šetnj')) {
+    } else if (profile.walking ||
+        lower.contains('šetnj') ||
+        lower.contains('walk')) {
       color = const Color(0xFF15803D);
     } else {
       color = const Color(0xFF64748B);
@@ -478,10 +481,10 @@ class _EnergyTile extends StatelessWidget {
   }
 
   String get _label => switch (_filled) {
-    3 => 'Visoka',
-    1 => 'Niska',
-    _ => 'Umerena',
-  };
+        3 => DiscoverStrings.energyHigh,
+        1 => DiscoverStrings.energyLow,
+        _ => DiscoverStrings.energyMid,
+      };
 
   @override
   Widget build(BuildContext context) {
@@ -515,7 +518,7 @@ class _EnergyTile extends StatelessWidget {
                   height: 1.2,
                 ),
               ),
-              const Spacer(),
+              Spacer(),
               Text(
                 DiscoverStrings.energyShort,
                 style: TextStyle(
@@ -690,13 +693,13 @@ class _ProfileActionBar extends ConsumerWidget {
 
     if (_isOwnProfile(ref) || (uid.isNotEmpty && ownerId == uid)) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text(DiscoverStrings.ownProfileMessage)),
+        SnackBar(content: Text(DiscoverStrings.ownProfileMessage)),
       );
       return;
     }
     if (ownerId.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text(DiscoverStrings.messageUnavailable)),
+        SnackBar(content: Text(DiscoverStrings.messageUnavailable)),
       );
       return;
     }
@@ -708,22 +711,6 @@ class _ProfileActionBar extends ConsumerWidget {
       MaterialPageRoute<void>(
         builder: (_) => ChatScreen(conversationId: chatId),
       ),
-    );
-  }
-
-  Future<void> _handleReport(BuildContext context, WidgetRef ref) async {
-    if (_isOwnProfile(ref)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text(DiscoverStrings.ownProfileMessage)),
-      );
-      return;
-    }
-    await showContentReportSheet(
-      context: context,
-      ref: ref,
-      targetType: ReportContentType.dog,
-      targetId: profile.id,
-      reportedUserId: profile.ownerId,
     );
   }
 
@@ -755,15 +742,15 @@ class _ProfileActionBar extends ConsumerWidget {
                 ),
                 const SizedBox(width: 8),
                 _LikeButton(profile: profile),
-                const SizedBox(width: 4),
+                SizedBox(width: 4),
                 _SuperLikeButton(profile: profile),
-                const SizedBox(width: 8),
+                SizedBox(width: 8),
                 Expanded(
                   child: FilledButton.icon(
                     // Always non-null — own-profile/missing-owner handled in tap.
                     onPressed: () => _handleMessage(context, ref),
                     icon: const Icon(Icons.chat_bubble_outline_rounded),
-                    label: const Text(DiscoverStrings.sendMessage),
+                    label: Text(DiscoverStrings.sendMessage),
                     style: FilledButton.styleFrom(
                       minimumSize: const Size.fromHeight(48),
                       shape: RoundedRectangleBorder(
@@ -771,12 +758,6 @@ class _ProfileActionBar extends ConsumerWidget {
                       ),
                     ),
                   ),
-                ),
-                const SizedBox(width: 8),
-                IconButton(
-                  tooltip: DiscoverStrings.reportProfile,
-                  onPressed: () => _handleReport(context, ref),
-                  icon: Icon(Icons.flag_outlined, color: Colors.red.shade400),
                 ),
               ],
             ),
@@ -944,7 +925,7 @@ class _LikeButtonState extends ConsumerState<_LikeButton> {
           return;
         }
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text(DiscoverStrings.unlikedToast)),
+          SnackBar(content: Text(DiscoverStrings.unlikedToast)),
         );
       } else {
         final isMatch = await ref
@@ -962,7 +943,7 @@ class _LikeButtonState extends ConsumerState<_LikeButton> {
           );
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text(DiscoverStrings.likedToast)),
+            SnackBar(content: Text(DiscoverStrings.likedToast)),
           );
         }
       }
@@ -977,7 +958,7 @@ class _LikeButtonState extends ConsumerState<_LikeButton> {
           _committed = wasLiked;
         });
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text(DiscoverStrings.likeFailed)),
+          SnackBar(content: Text(DiscoverStrings.likeFailed)),
         );
       }
     } finally {
@@ -1039,12 +1020,12 @@ class _SuperLikeButtonState extends ConsumerState<_SuperLikeButton> {
     return showDialog<void>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text(DiscoverStrings.superLikeDailyLimitTitle),
-        content: const Text(DiscoverStrings.superLikeDailyLimitBody),
+        title: Text(DiscoverStrings.superLikeDailyLimitTitle),
+        content: Text(DiscoverStrings.superLikeDailyLimitBody),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(),
-            child: const Text(DiscoverStrings.close),
+            child: Text(DiscoverStrings.close),
           ),
         ],
       ),
@@ -1070,21 +1051,21 @@ class _SuperLikeButtonState extends ConsumerState<_SuperLikeButton> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Icons.star, color: Colors.amber, size: 48),
-                const SizedBox(height: 12),
+                Icon(Icons.star, color: Colors.amber, size: 48),
+                SizedBox(height: 12),
                 Text(
                   DiscoverStrings.superLikeSuccessTitle,
                   textAlign: TextAlign.center,
                   style: Theme.of(dialogContext).textTheme.titleMedium
                       ?.copyWith(fontWeight: FontWeight.w700),
                 ),
-                const SizedBox(height: 8),
+                SizedBox(height: 8),
                 Text(
                   DiscoverStrings.superLikedDog(widget.profile.name),
                   textAlign: TextAlign.center,
                   style: Theme.of(dialogContext).textTheme.bodyMedium,
                 ),
-                const SizedBox(height: 8),
+                SizedBox(height: 8),
                 Text(
                   DiscoverStrings.superLikeSuccessHint,
                   textAlign: TextAlign.center,
@@ -1132,7 +1113,7 @@ class _SuperLikeButtonState extends ConsumerState<_SuperLikeButton> {
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text(DiscoverStrings.superLikeFailed)),
+          SnackBar(content: Text(DiscoverStrings.superLikeFailed)),
         );
       }
     } finally {

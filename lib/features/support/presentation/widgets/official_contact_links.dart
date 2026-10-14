@@ -111,13 +111,13 @@ Future<void> openOfficialContact(
     final opened = await ref.read(externalLinkLauncherProvider).open(link.uri);
     if (!opened && context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text(SupportStrings.linkError)),
+        SnackBar(content: Text(SupportStrings.linkError)),
       );
     }
   } catch (_) {
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text(SupportStrings.linkError)),
+        SnackBar(content: Text(SupportStrings.linkError)),
       );
     }
   }

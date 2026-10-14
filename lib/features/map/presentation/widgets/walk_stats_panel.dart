@@ -2,19 +2,18 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/theme/app_cards.dart';
-import '../../domain/walk_session.dart';
 import '../map_strings.dart';
 import '../walk_controller.dart';
 import 'walk_history_sheet.dart';
 
 class WalkStatsPanel extends ConsumerWidget {
-  const WalkStatsPanel({super.key, required this.walk});
-
-  final WalkSession walk;
+  const WalkStatsPanel({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final distance = walk.distanceKm.toStringAsFixed(2);
+    final walk = ref.watch(walkControllerProvider);
+    final distanceKm = walk.distanceKm;
+    final distance = distanceKm.toStringAsFixed(2);
     return Material(
       color: Colors.transparent,
       child: Container(
@@ -37,7 +36,7 @@ class WalkStatsPanel extends ConsumerWidget {
                   borderRadius: BorderRadius.circular(8),
                 ),
               ),
-              const SizedBox(height: 12),
+              SizedBox(height: 12),
               Row(
                 children: [
                   Expanded(
@@ -63,7 +62,7 @@ class WalkStatsPanel extends ConsumerWidget {
                 alignment: Alignment.centerRight,
                 child: TextButton(
                   onPressed: () => showWalkHistorySheet(context),
-                  child: const Text(MapStrings.walkHistory),
+                  child: Text(MapStrings.walkHistory),
                 ),
               ),
               Row(
@@ -119,7 +118,7 @@ class WalkStatsPanel extends ConsumerWidget {
                         ),
                         onPressed: () => _confirmEnd(context, ref),
                         icon: const Icon(Icons.stop),
-                        label: const Text(MapStrings.endWalk),
+                        label: Text(MapStrings.endWalk),
                       ),
                     ),
                   ),
@@ -140,8 +139,8 @@ class WalkStatsPanel extends ConsumerWidget {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
-          title: const Text(MapStrings.endWalkTitle),
-          content: const Text(MapStrings.endWalkBody),
+          title: Text(MapStrings.endWalkTitle),
+          content: Text(MapStrings.endWalkBody),
           actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
           actions: [
             SizedBox(
@@ -159,7 +158,7 @@ class WalkStatsPanel extends ConsumerWidget {
                         ),
                       ),
                       onPressed: () => Navigator.of(dialogContext).pop(true),
-                      child: const Text(MapStrings.endWalk),
+                      child: Text(MapStrings.endWalk),
                     ),
                   ),
                   const SizedBox(height: 8),
@@ -173,7 +172,7 @@ class WalkStatsPanel extends ConsumerWidget {
                         ),
                       ),
                       onPressed: () => Navigator.of(dialogContext).pop(false),
-                      child: const Text(MapStrings.cancel),
+                      child: Text(MapStrings.cancel),
                     ),
                   ),
                 ],
@@ -184,8 +183,9 @@ class WalkStatsPanel extends ConsumerWidget {
       },
     );
     if (ok == true) {
-      final distance = walk.distanceKm.toStringAsFixed(2);
-      final duration = walk.elapsedLabel;
+      final session = ref.read(walkControllerProvider);
+      final distance = session.distanceKm.toStringAsFixed(2);
+      final duration = session.elapsedLabel;
       ref.read(walkControllerProvider.notifier).end();
       if (!context.mounted) return;
       final messenger = ScaffoldMessenger.of(context);
@@ -232,7 +232,7 @@ class WalkGpsBanner extends StatelessWidget {
               size: 16,
               color: isPaused ? Colors.amber : const Color(0xFF4ADE80),
             ),
-            const SizedBox(width: 8),
+            SizedBox(width: 8),
             Expanded(
               child: Text(
                 isPaused

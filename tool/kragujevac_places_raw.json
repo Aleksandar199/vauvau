@@ -1,0 +1,41 @@
+[
+  {"id": "kg-park-veliki-park", "name": "Veliki park", "category": "park", "address": "Veliki park, Kragujevac", "query": "Veliki park, Kragujevac"},
+  {"id": "kg-park-sumarice", "name": "Spomen-park Šumarice", "category": "park", "address": "Spomen-park Kragujevački oktobar, Šumarice, Kragujevac", "query": "Spomen-park Kragujevački oktobar, Kragujevac"},
+  {"id": "kg-route-kej-lepenice", "name": "Kej uz Lepenicu", "category": "park", "address": "Kej uz Lepenicu, Kragujevac", "query": "Lepenica, Kragujevac"},
+  {"id": "kg-trg-radomira-putnika", "name": "Trg Radomira Putnika", "category": "other", "address": "Trg Radomira Putnika, Kragujevac", "query": "Trg Radomira Putnika, Kragujevac"},
+  {"id": "kg-dogpark-gradska-uprava", "name": "Pet park iza Gradske uprave", "category": "park", "address": "Trg slobode 3, Kragujevac (iza zgrade Gradske uprave)", "query": "Trg slobode 3, Kragujevac", "sourceUrl": "https://rtk.co.rs/kragujevac-dobio-prvi-park-za-pse/"},
+  {"id": "kg-dogpark-veliki-park", "name": "Pet park u Velikom parku", "category": "park", "address": "Veliki park, pored skejt parka, Kragujevac", "query": "skate park, Kragujevac", "sourceUrl": "https://www.kragujevac.ls.gov.rs/vest/69138/u-velikom-parku-prostor-za-kucne-ljubimce.php"},
+  {"id": "kg-dogpark-metino-brdo", "name": "Poligon za pse Metino brdo", "category": "park", "address": "Metino brdo, Kragujevac", "query": "Metino brdo, Kragujevac", "sourceUrl": "https://www.infokg.rs/info/na-metinom-brdu-poligon-za-pse-a-nema-decjeg-igralista-evo-sta-kazu-u-gradskoj-upravi-foto.html"},
+
+  {"id": "kg-shop-pawz-sapice", "name": "Pawz Šapice Pet Shop", "category": "petShop", "address": "Kneza Mihaila 33B, Kragujevac", "query": "Kneza Mihaila 33, Kragujevac"},
+  {"id": "kg-shop-pet-centar-save-kovacevica", "name": "Pet Centar Save Kovačevića", "category": "petShop", "address": "Save Kovačevića bb, Kragujevac", "query": "Save Kovačevića, Kragujevac", "website": "https://www.pet-centar.rs"},
+  {"id": "kg-shop-flokica", "name": "Pet Shop Flokica", "category": "petShop", "address": "Dr Jovana Ristića 103, Kragujevac", "query": "Doktora Jovana Ristića 103, Kragujevac"},
+  {"id": "kg-shop-zoo-centar", "name": "Zoo Centar", "category": "petShop", "address": "Darinke Plave Pavlović 1, Kragujevac", "query": "Darinke Plave Pavlović 1, Kragujevac"},
+  {"id": "kg-shop-premium-pet", "name": "Premium Pet", "category": "petShop", "address": "Save Kovačevića 48A, Kragujevac", "query": "Save Kovačevića 48, Kragujevac"},
+  {"id": "kg-shop-scooby-doo", "name": "Pet Shop Scooby Doo", "category": "petShop", "address": "Kralja Aleksandra I Karađorđevića 70, Kragujevac", "query": "Kralja Aleksandra I Karađorđevića 70, Kragujevac"},
+  {"id": "kg-shop-pet-centar-big", "name": "Pet Centar Kragujevac BIG", "category": "petShop", "address": "Dimitrija Tucovića 23 (BIG), Kragujevac", "query": "Dimitrija Tucovića 23, Kragujevac", "website": "https://www.pet-centar.rs"},
+  {"id": "kg-wash-snoopy", "name": "Samouslužna perionica za pse Snoopy", "category": "selfWash", "address": "Ljube Vučkovića 2, lokal 4, Kragujevac", "query": "Ljube Vučkovića 2, Kragujevac"},
+
+  {"id": "kg-vet-kragujvet", "name": "KragujVet", "category": "vet", "address": "Kneza Miloša 1, Kragujevac", "query": "Kneza Miloša 1, Kragujevac"},
+  {"id": "kg-vet-kragujvet-pet", "name": "KragujVet Pet", "category": "vet", "address": "Luja Pastera 12, Kragujevac", "query": "Luja Pastera 12, Kragujevac"},
+  {"id": "kg-vet-radicevic", "name": "Veterinarska ambulanta Radičević", "category": "vet", "address": "Kralja Aleksandra I Karađorđevića 124, Kragujevac", "query": "Kralja Aleksandra I Karađorđevića 124, Kragujevac"},
+  {"id": "kg-vet-daca-vet", "name": "Dača Vet", "category": "vet", "address": "Sinđelićeva 8, Kragujevac", "query": "Sinđelićeva 8, Kragujevac"},
+  {"id": "kg-vet-dog-ma", "name": "Dog-Ma Vet", "category": "vet", "address": "Braće Poljakovića 27, Kragujevac", "query": "Braće Poljakovića 27, Kragujevac"},
+  {"id": "kg-vet-dr-karic", "name": "Veterinarska ambulanta Dr Karić", "category": "vet", "address": "Daničićeva 64, Kragujevac", "query": "Daničićeva 64, Kragujevac"},
+  {"id": "kg-vet-fortuna", "name": "Fortuna Vet", "category": "vet", "address": "Gružanska 1, Kragujevac", "query": "Gružanska 1, Kragujevac"},
+  {"id": "kg-vet-lav-vet", "name": "Lav Vet", "category": "vet", "address": "Cetinjska 3A, Kragujevac", "query": "Cetinjska 3, Kragujevac"},
+  {"id": "kg-vet-medicus", "name": "Medicus Vet", "category": "vet", "address": "Bregalnička 8, Kragujevac", "query": "Bregalnička 8, Kragujevac"},
+  {"id": "kg-vet-medikavet", "name": "Medikavet", "category": "vet", "address": "Hadži Milentijeva 3, Kragujevac", "query": "Hadži Milentijeva 3, Kragujevac"},
+  {"id": "kg-vet-milvet", "name": "Milvet", "category": "vet", "address": "Janka Veselinovića 10, Kragujevac", "query": "Janka Veselinovića 10, Kragujevac"},
+  {"id": "kg-vet-vetland", "name": "Vetland", "category": "vet", "address": "Slobodana Perovića 7, Kragujevac", "query": "Slobodana Perovića 7, Kragujevac"},
+
+  {"id": "kg-groom-mona", "name": "Salon za pse Mona", "category": "groomer", "address": "Dr Ilije Kolovića 5, Kragujevac", "query": "Doktora Ilije Kolovića 5, Kragujevac"},
+  {"id": "kg-groom-molly", "name": "Molly Groom Salon", "category": "groomer", "address": "Kralja Aleksandra I Karađorđevića 136, Kragujevac", "query": "Kralja Aleksandra I Karađorđevića 136, Kragujevac"},
+  {"id": "kg-groom-grooming", "name": "Salon za šišanje i negu pasa Grooming", "category": "groomer", "address": "Kneza Mihaila 144, Kragujevac", "query": "Kneza Mihaila 144, Kragujevac"},
+  {"id": "kg-groom-laika", "name": "Salon za šišanje pasa Laika", "category": "groomer", "address": "Starine Novaka 8a/1, Kragujevac", "query": "Starine Novaka 8, Kragujevac"},
+
+  {"id": "kg-cafe-kafemat-27", "name": "Kafemat 27", "category": "cafe", "address": "Karađorđeva 19, Kragujevac", "query": "Karađorđeva 19, Kragujevac", "phone": "061 286 4827", "sourceUrl": "https://www.planplus.rs/kafemat-27/118959"},
+  {"id": "kg-cafe-coffee-dream-cetinjska", "name": "Coffee Dream Cetinjska", "category": "cafe", "address": "Cetinjska 14, Kragujevac", "query": "Cetinjska 14, Kragujevac", "phone": "034 209 611", "website": "https://coffeedream.rs/"},
+  {"id": "kg-cafe-coffee-dream-big", "name": "Coffee Dream BIG", "category": "cafe", "address": "Dimitrija Tucovića (BIG), Kragujevac", "query": "Dimitrija Tucovića 23, Kragujevac", "phone": "063 196 5015", "website": "https://coffeedream.rs/"},
+  {"id": "kg-cafe-nase-mesto", "name": "Naše mesto cafe bar", "category": "cafe", "address": "Kosovska 5, Kragujevac", "query": "Kosovska 5, Kragujevac", "phone": "065 234 9090"}
+]

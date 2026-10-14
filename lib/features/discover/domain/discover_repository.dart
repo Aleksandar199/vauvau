@@ -9,10 +9,32 @@ class SuperLikeDailyLimitException implements Exception {
   String toString() => 'SuperLikeDailyLimitException';
 }
 
+class DiscoverPage {
+  const DiscoverPage({
+    required this.items,
+    this.nextCursor,
+    this.hasMore = false,
+  });
+
+  final List<DiscoverProfile> items;
+  final Object? nextCursor;
+  final bool hasMore;
+}
+
 abstract class DiscoverRepository {
+  /// Live first page of the Discover feed (newest first).
   Stream<List<DiscoverProfile>> watchProfiles({
     required String excludeOwnerId,
     GeoQuery? geo,
+    int limit = 15,
+  });
+
+  /// One-shot page for infinite scroll. [cursor] is a Firestore document.
+  Future<DiscoverPage> fetchProfilesPage({
+    required String excludeOwnerId,
+    GeoQuery? geo,
+    Object? cursor,
+    int limit = 15,
   });
 
   Future<bool> swipe({

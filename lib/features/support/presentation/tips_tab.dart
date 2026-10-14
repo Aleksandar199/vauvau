@@ -28,7 +28,7 @@ class TipsTab extends ConsumerWidget {
             color: titleColor,
           ),
         ),
-        const SizedBox(height: 6),
+        SizedBox(height: 6),
         Text(
           SupportStrings.tipsIntro,
           style: TextStyle(
@@ -38,7 +38,7 @@ class TipsTab extends ConsumerWidget {
             fontWeight: FontWeight.w500,
           ),
         ),
-        const SizedBox(height: 10),
+        SizedBox(height: 10),
         Text(
           SupportStrings.tipsDisclaimer,
           style: TextStyle(
@@ -48,32 +48,32 @@ class TipsTab extends ConsumerWidget {
             fontStyle: FontStyle.italic,
           ),
         ),
-        const SizedBox(height: 16),
+        SizedBox(height: 16),
         _QuickCheckCard(
           onFindVet: () => _openSosTab(context),
         ),
-        const SizedBox(height: 20),
+        SizedBox(height: 20),
         _CategoryBlock(
           label: SupportStrings.tipsCategoryUrgent,
           accent: TipsContent.urgentAccent,
           articles: TipsContent.byCategory(TipCategory.urgent),
           onCta: (kind) => _handleCta(context, ref, kind),
         ),
-        const SizedBox(height: 18),
+        SizedBox(height: 18),
         _CategoryBlock(
           label: SupportStrings.tipsCategoryPrevention,
           accent: TipsContent.preventionAccent,
           articles: TipsContent.byCategory(TipCategory.prevention),
           onCta: (kind) => _handleCta(context, ref, kind),
         ),
-        const SizedBox(height: 18),
+        SizedBox(height: 18),
         _CategoryBlock(
           label: SupportStrings.tipsCategoryDaily,
           accent: TipsContent.dailyAccent,
           articles: TipsContent.byCategory(TipCategory.daily),
           onCta: (kind) => _handleCta(context, ref, kind),
         ),
-        const SizedBox(height: 20),
+        SizedBox(height: 20),
         Text(
           SupportStrings.tipsSourcesNote,
           style: TextStyle(
@@ -133,8 +133,8 @@ class _QuickCheckCard extends StatelessWidget {
               fontWeight: FontWeight.w800,
             ),
           ),
-          const SizedBox(height: 8),
-          const Text(
+          SizedBox(height: 8),
+          Text(
             SupportStrings.tipsQuickCheckBody,
             style: TextStyle(
               color: Color(0xFFFEE2E2),
@@ -156,7 +156,7 @@ class _QuickCheckCard extends StatelessWidget {
                 ),
               ),
               onPressed: onFindVet,
-              child: const Text(
+              child: Text(
                 SupportStrings.tipsFindVetCta,
                 style: TextStyle(fontWeight: FontWeight.w800),
               ),

@@ -40,7 +40,7 @@ class SafetyMenuButton extends ConsumerWidget {
           child: Row(
             children: [
               Icon(Icons.flag_outlined, size: 18, color: Colors.red.shade700),
-              const SizedBox(width: 10),
+              SizedBox(width: 10),
               Text(
                 ModerationStrings.reportUser,
                 style: TextStyle(
@@ -51,7 +51,7 @@ class SafetyMenuButton extends ConsumerWidget {
             ],
           ),
         ),
-        const PopupMenuItem(
+        PopupMenuItem(
           value: SafetyAction.block,
           child: Row(
             children: [
@@ -102,7 +102,7 @@ Future<bool> confirmAndBlockUser({
 }) async {
   if (userId.trim().isEmpty) {
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text(ModerationStrings.blockUnavailable)),
+      SnackBar(content: Text(ModerationStrings.blockUnavailable)),
     );
     return false;
   }
@@ -111,8 +111,8 @@ Future<bool> confirmAndBlockUser({
     builder: (dialogContext) {
       return AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text(ModerationStrings.blockTitle),
-        content: const Text(ModerationStrings.blockBody),
+        title: Text(ModerationStrings.blockTitle),
+        content: Text(ModerationStrings.blockBody),
         actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
         actions: [
           SizedBox(
@@ -130,7 +130,7 @@ Future<bool> confirmAndBlockUser({
                       ),
                     ),
                     onPressed: () => Navigator.of(dialogContext).pop(true),
-                    child: const Text(ModerationStrings.blockConfirm),
+                    child: Text(ModerationStrings.blockConfirm),
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -144,7 +144,7 @@ Future<bool> confirmAndBlockUser({
                       ),
                     ),
                     onPressed: () => Navigator.of(dialogContext).pop(false),
-                    child: const Text(ModerationStrings.cancel),
+                    child: Text(ModerationStrings.cancel),
                   ),
                 ),
               ],
@@ -162,14 +162,14 @@ Future<bool> confirmAndBlockUser({
   } catch (_) {
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text(ModerationStrings.blockFailed)),
+        SnackBar(content: Text(ModerationStrings.blockFailed)),
       );
     }
     return false;
   }
   if (context.mounted) {
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text(ModerationStrings.blockDone)),
+      SnackBar(content: Text(ModerationStrings.blockDone)),
     );
   }
   return true;

@@ -11,8 +11,7 @@ abstract final class SeedMoments {
       dogId: 'bobi',
       dogName: 'Bobi',
       dogBreed: 'Zlatni retriver',
-      dogPhotoUrl:
-          'https://images.unsplash.com/photo-1633722715463-d30f4f325e24?auto=format&fit=crop&w=800&q=80',
+      dogPhotoUrl: '',
       momentPhotoUrl: kFallbackDogPhotoUrl,
       caption: 'Danas smo upoznali 3 nova druga u parku! 🐾',
       locationName: EventVenues.names.first,
@@ -27,10 +26,8 @@ abstract final class SeedMoments {
       dogId: 'lola',
       dogName: 'Lola',
       dogBreed: 'Labrador',
-      dogPhotoUrl:
-          'https://images.unsplash.com/photo-1518717758536-85ae29035b6d?auto=format&fit=crop&w=800&q=80',
-      momentPhotoUrl:
-          'https://images.unsplash.com/photo-1530281700549-e82e7bf110d6?auto=format&fit=crop&w=800&q=80',
+      dogPhotoUrl: '',
+      momentPhotoUrl: '',
       caption: 'Jutarnja kafa i mirna šetnja. Preporuka! ☕',
       locationName: 'Kamenički park',
       likes: const ['seed-4'],
@@ -44,10 +41,8 @@ abstract final class SeedMoments {
       dogId: 'kiki',
       dogName: 'Kiki',
       dogBreed: 'Haski',
-      dogPhotoUrl:
-          'https://images.unsplash.com/photo-1605568427561-40dd23c2acea?auto=format&fit=crop&w=800&q=80',
-      momentPhotoUrl:
-          'https://images.unsplash.com/photo-1548199973-03cce0bbc87b?auto=format&fit=crop&w=800&q=80',
+      dogPhotoUrl: '',
+      momentPhotoUrl: '',
       caption: 'Pogled sa Tvrđave i puno trčanja. 🌅',
       locationName: 'Petrovaradinska tvrđava',
       likes: const ['seed-5', 'seed-6'],

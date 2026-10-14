@@ -6,6 +6,10 @@ import '../../auth/presentation/auth_controller.dart';
 import 'profile_strings.dart';
 
 Future<void> confirmAndSignOut(BuildContext context, WidgetRef ref) async {
+  // Capture notifiers / messenger before any await — Settings may dispose
+  // while the confirm dialog or sign-out is in flight.
+  final auth = ref.read(authControllerProvider.notifier);
+
   final confirmed = await showDialog<bool>(
     context: context,
     barrierDismissible: true,
@@ -32,7 +36,7 @@ Future<void> confirmAndSignOut(BuildContext context, WidgetRef ref) async {
                   size: 30,
                 ),
               ),
-              const SizedBox(height: 18),
+              SizedBox(height: 18),
               Text(
                 ProfileStrings.signOutTitle,
                 textAlign: TextAlign.center,
@@ -40,7 +44,7 @@ Future<void> confirmAndSignOut(BuildContext context, WidgetRef ref) async {
                   dialogContext,
                 ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
               ),
-              const SizedBox(height: 8),
+              SizedBox(height: 8),
               Text(
                 ProfileStrings.signOutBody,
                 textAlign: TextAlign.center,
@@ -63,7 +67,7 @@ Future<void> confirmAndSignOut(BuildContext context, WidgetRef ref) async {
                           borderRadius: BorderRadius.circular(14),
                         ),
                       ),
-                      child: const Text(ProfileStrings.cancel),
+                      child: Text(ProfileStrings.cancel),
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -78,7 +82,7 @@ Future<void> confirmAndSignOut(BuildContext context, WidgetRef ref) async {
                           borderRadius: BorderRadius.circular(14),
                         ),
                       ),
-                      child: const Text(ProfileStrings.signOut),
+                      child: Text(ProfileStrings.signOut),
                     ),
                   ),
                 ],
@@ -90,22 +94,29 @@ Future<void> confirmAndSignOut(BuildContext context, WidgetRef ref) async {
     },
   );
 
-  if (confirmed != true || !context.mounted) {
+  if (confirmed != true) {
     return;
   }
 
-  // Capture before route pops — Settings dispose would otherwise kill `ref`.
-  final auth = ref.read(authControllerProvider.notifier);
+  if (!context.mounted) {
+    // Still attempt sign-out so the session does not linger.
+    await auth.signOut();
+    return;
+  }
+
   final navigator = Navigator.of(context, rootNavigator: true);
   final messenger = ScaffoldMessenger.maybeOf(context);
 
-  final success = await auth.signOut();
-  final error = ref.read(authControllerProvider).error;
-  navigator.popUntil((route) => route.isFirst);
+  final result = await auth.signOut();
+  // Do not touch WidgetRef after the await — the calling route may be gone.
 
-  if (!success) {
-    final message = error is AuthException
-        ? error.message
+  try {
+    navigator.popUntil((route) => route.isFirst);
+  } catch (_) {}
+
+  if (!result.success && context.mounted) {
+    final message = result.error is AuthException
+        ? (result.error! as AuthException).message
         : ProfileStrings.signOutFailed;
     messenger?.showSnackBar(SnackBar(content: Text(message)));
   }

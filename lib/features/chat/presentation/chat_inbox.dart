@@ -2,13 +2,19 @@ import 'dart:async';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../../../core/firebase/firebase_status.dart';
+import '../../../core/firebase/firestore_auth_guard.dart';
+import '../../../core/images/image_upload_service.dart';
+import '../../../core/utils/content_validation_service.dart';
 import '../../auth/presentation/auth_providers.dart';
 import '../../discover/domain/discover_profile.dart';
+import '../../dogs/domain/dogs_exception.dart';
 import '../../events/presentation/events_controller.dart';
 import '../../groups/presentation/groups_controller.dart';
 import '../../moderation/presentation/block_controller.dart';
+import '../../notifications/presentation/notification_controller.dart';
 import '../../notifications/presentation/push_controller.dart';
 import '../../profile/presentation/profile_controller.dart';
 import '../data/firestore_chat_repository.dart';
@@ -61,19 +67,40 @@ class ChatInboxController extends Notifier<List<ChatConversation>> {
   void markRead(String conversationId) {
     _repo.markRead(conversationId);
     state = _repo.currentInbox;
+    final chat = byId(conversationId);
+    ref.read(notificationControllerProvider.notifier).markChatMessagesRead(
+          conversationId: conversationId,
+          peerUserId: chat?.peerUserId,
+        );
   }
 
-  void sendMessage(String conversationId, String rawText) {
-    _repo.sendMessage(conversationId, rawText);
+  void attachRoom(String conversationId) {
+    _repo.attachRoom(conversationId);
+    state = _repo.currentInbox;
+  }
+
+  void detachRoom(String conversationId) {
+    _repo.detachRoom(conversationId);
+    state = _repo.currentInbox;
+  }
+
+  Future<void> sendMessage(
+    String conversationId,
+    String rawText, {
+    ChatMessage? replyTo,
+  }) async {
+    await _repo.sendMessage(conversationId, rawText, replyTo: replyTo);
     state = _repo.currentInbox;
     final chat = byId(conversationId);
     final preview = rawText.trim();
     if (chat == null || preview.isEmpty) {
       return;
     }
+    final senderName = ref.read(authStateProvider).asData?.value?.displayName ??
+        chat.ownerName;
     unawaited(
       ref.read(pushControllerProvider.notifier).notifyMessage(
-            senderName: chat.ownerName,
+            senderName: senderName.trim().isEmpty ? 'Neko' : senderName.trim(),
             preview: preview,
             dogId: chat.dogId,
             peerUserId: chat.peerUserId,
@@ -82,12 +109,15 @@ class ChatInboxController extends Notifier<List<ChatConversation>> {
     );
   }
 
-  void sendWalkInvite({
+  Future<void> sendWalkInvite({
     required String conversationId,
     required DateTime walkTime,
     required String walkLocationName,
-  }) {
-    _repo.sendWalkInvite(
+  }) async {
+    if (!walkTime.isAfter(DateTime.now())) {
+      return;
+    }
+    await _repo.sendWalkInvite(
       conversationId: conversationId,
       walkTime: walkTime,
       walkLocationName: walkLocationName,
@@ -101,31 +131,79 @@ class ChatInboxController extends Notifier<List<ChatConversation>> {
               ownerName: chat.ownerName,
               dogId: chat.dogId,
               peerUserId: chat.peerUserId,
+              conversationId: conversationId,
             ),
       );
     }
   }
 
-  void sendLocationPin({
+  Future<void> sendLocationPin({
     required String conversationId,
     required String locationName,
-  }) {
-    _repo.sendLocationPin(
+  }) async {
+    await _repo.sendLocationPin(
       conversationId: conversationId,
       locationName: locationName,
     );
     state = _repo.currentInbox;
   }
 
-  void respondToWalkInvite({
+  Future<void> sendPhoto(
+    String conversationId,
+    XFile file, {
+    ChatMessage? replyTo,
+  }) async {
+    final error = await ContentValidationService.validateImage(file);
+    if (error != null) {
+      throw DogsException(error);
+    }
+    final url = await ImageUploadService.uploadFile(
+      file,
+      folderName: 'chats',
+    );
+    await _repo.sendPhoto(
+      conversationId: conversationId,
+      imageUrl: url,
+      replyTo: replyTo,
+    );
+    state = _repo.currentInbox;
+    final chat = byId(conversationId);
+    if (chat == null) {
+      return;
+    }
+    final senderName = ref.read(authStateProvider).asData?.value?.displayName ??
+        chat.ownerName;
+    unawaited(
+      ref.read(pushControllerProvider.notifier).notifyMessage(
+            senderName: senderName.trim().isEmpty ? 'Neko' : senderName.trim(),
+            preview: '📷 Fotografija',
+            dogId: chat.dogId,
+            peerUserId: chat.peerUserId,
+            conversationId: conversationId,
+          ),
+    );
+  }
+
+  Future<void> respondToWalkInvite({
     required String conversationId,
     required String messageId,
     required WalkInviteStatus status,
-  }) {
-    _repo.respondToWalkInvite(
+  }) async {
+    await _repo.respondToWalkInvite(
       conversationId: conversationId,
       messageId: messageId,
       status: status,
+    );
+    state = _repo.currentInbox;
+  }
+
+  Future<void> toggleMessageLike({
+    required String conversationId,
+    required String messageId,
+  }) async {
+    await _repo.toggleMessageLike(
+      conversationId: conversationId,
+      messageId: messageId,
     );
     state = _repo.currentInbox;
   }
@@ -141,18 +219,31 @@ final chatUserIdProvider = Provider<String>((ref) {
 });
 
 final chatRepositoryProvider = Provider<ChatRepository>((ref) {
-  if (isFirebaseReady) {
+  final user = ref.watch(authStateProvider).asData?.value;
+  final uid = user?.uid ?? '';
+  final name = (user?.displayName ?? '').trim().isEmpty
+      ? 'Ti'
+      : user!.displayName!.trim();
+  final avatar = user?.ownerAvatarUrl ?? '';
+  // Do not open Firestore chat listeners until Auth has a real user.
+  // (authState still loading → asData null → previously queried as 'local-user')
+  final authReady = ref.watch(firestoreAuthReadyProvider).asData?.value ?? false;
+  if (isFirebaseReady && user != null && uid.isNotEmpty && authReady) {
     final repo = FirestoreChatRepository(
       firestore: FirebaseFirestore.instance,
-      currentUserId: ref.watch(chatUserIdProvider),
+      currentUserId: uid,
+      currentUserName: name,
+      currentUserAvatarUrl: avatar,
     );
     repo.start();
     ref.onDispose(repo.dispose);
     return repo;
   }
   final repo = LocalChatRepository(
-    seed: ref.watch(chatSeedProvider),
-    currentUserId: ref.watch(chatUserIdProvider),
+    seed: isFirebaseReady ? const [] : ref.watch(chatSeedProvider),
+    currentUserId: uid.isEmpty ? 'local-user' : uid,
+    currentUserName: name,
+    currentUserAvatarUrl: avatar,
   );
   ref.onDispose(repo.dispose);
   return repo;
@@ -190,19 +281,32 @@ final visibleConversationsProvider = Provider<List<ChatConversation>>((ref) {
 
 final chatNowProvider = Provider<DateTime>((ref) => DateTime.now());
 
+/// Ticks so scheduled-walk banners drop items once their time has passed.
+final scheduledWalksClockProvider = StreamProvider<DateTime>((ref) async* {
+  yield DateTime.now();
+  yield* Stream.periodic(
+    const Duration(hours: 1),
+    (_) => DateTime.now(),
+  );
+});
+
 final chatMessagesProvider =
     StreamProvider.family<List<ChatMessage>, String>((ref, roomId) {
   return ref.watch(chatRepositoryProvider).watchMessages(roomId);
 });
 
 final scheduledWalksProvider = Provider<List<ScheduledWalk>>((ref) {
+  ref.watch(scheduledWalksClockProvider);
   final inbox = ref.watch(chatInboxProvider);
+  final now = DateTime.now();
   final walks = <ScheduledWalk>[];
   for (final chat in inbox) {
     for (final message in chat.messages) {
+      final walkTime = message.walkTime;
       if (message.isWalkInvite &&
           message.status == WalkInviteStatus.accepted &&
-          message.walkTime != null) {
+          walkTime != null &&
+          walkTime.isAfter(now)) {
         walks.add(
           ScheduledWalk(
             id: message.id,
@@ -210,7 +314,7 @@ final scheduledWalksProvider = Provider<List<ScheduledWalk>>((ref) {
             dogName: chat.dogName,
             ownerName: chat.ownerName,
             locationName: message.walkLocationName ?? chat.location,
-            walkTime: message.walkTime!,
+            walkTime: walkTime,
           ),
         );
       }

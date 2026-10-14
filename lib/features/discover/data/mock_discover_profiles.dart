@@ -20,10 +20,7 @@ const DiscoverProfile mockMyDog = DiscoverProfile(
   distanceKm: 0.4,
   weightKg: 27,
   activityStatus: 'Tražim društvo za igru',
-  photoUrls: [
-    'https://images.unsplash.com/photo-1552053831-71594a27632d?auto=format&fit=crop&w=800&q=80',
-    'https://images.unsplash.com/photo-1530281700549-e82e7bf110d6?auto=format&fit=crop&w=800&q=80',
-  ],
+  photoUrls: [],
 );
 
 const DiscoverProfile mockSecondDog = DiscoverProfile(
@@ -45,10 +42,7 @@ const DiscoverProfile mockSecondDog = DiscoverProfile(
   distanceKm: 0.4,
   weightKg: 16,
   activityStatus: 'Odmaram',
-  photoUrls: [
-    'https://images.unsplash.com/photo-1518717758536-85ae29035b6d?auto=format&fit=crop&w=800&q=80',
-    'https://images.unsplash.com/photo-1548199973-03cce0bbc87b?auto=format&fit=crop&w=800&q=80',
-  ],
+  photoUrls: [],
 );
 
 const List<DiscoverProfile> mockDiscoverProfiles = [
@@ -70,11 +64,7 @@ const List<DiscoverProfile> mockDiscoverProfiles = [
     weightKg: 30,
     walking: true,
     activityStatus: '🟢 U šetnji',
-    photoUrls: [
-      'https://images.unsplash.com/photo-1633722715463-d30f4f325e24?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1558788353-f76d92427f16?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1477884213360-7e9d7dcc1e48?auto=format&fit=crop&w=800&q=80',
-    ],
+    photoUrls: [],
   ),
   DiscoverProfile(
     id: 'lola',
@@ -92,10 +82,7 @@ const List<DiscoverProfile> mockDiscoverProfiles = [
     weightKg: 28,
     walking: true,
     activityStatus: '🟢 U šetnji',
-    photoUrls: [
-      'https://images.unsplash.com/photo-1518717758536-85ae29035b6d?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1548199973-03cce0bbc87b?auto=format&fit=crop&w=800&q=80',
-    ],
+    photoUrls: [],
   ),
   DiscoverProfile(
     id: 'rex',
@@ -113,10 +100,7 @@ const List<DiscoverProfile> mockDiscoverProfiles = [
     weightKg: 34,
     walking: true,
     activityStatus: '🟢 U šetnji',
-    photoUrls: [
-      'https://images.unsplash.com/photo-1568572933382-74d440642117?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1587300003388-59208cc962cb?auto=format&fit=crop&w=800&q=80',
-    ],
+    photoUrls: [],
   ),
   DiscoverProfile(
     id: 'maza',
@@ -134,10 +118,7 @@ const List<DiscoverProfile> mockDiscoverProfiles = [
     weightKg: 14,
     walking: true,
     activityStatus: 'Tražim društvo za igru',
-    photoUrls: [
-      'https://images.unsplash.com/photo-1548199973-03cce0bbc87b?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1583511655857-d19b40a7a54e?auto=format&fit=crop&w=800&q=80',
-    ],
+    photoUrls: [],
   ),
   DiscoverProfile(
     id: 'djole',
@@ -154,10 +135,7 @@ const List<DiscoverProfile> mockDiscoverProfiles = [
     distanceKm: 3.2,
     weightKg: 11,
     activityStatus: 'Odmaram',
-    photoUrls: [
-      'https://images.unsplash.com/photo-1583337130417-3346a1be7dee?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1611003228941-98852ba62227?auto=format&fit=crop&w=800&q=80',
-    ],
+    photoUrls: [],
   ),
   DiscoverProfile(
     id: 'kiki',
@@ -175,9 +153,6 @@ const List<DiscoverProfile> mockDiscoverProfiles = [
     weightKg: 24,
     walking: true,
     activityStatus: '🟢 U šetnji',
-    photoUrls: [
-      'https://images.unsplash.com/photo-1605568427561-40dd23c2acea?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1561037404-61cd46aa615b?auto=format&fit=crop&w=800&q=80',
-    ],
+    photoUrls: [],
   ),
 ];

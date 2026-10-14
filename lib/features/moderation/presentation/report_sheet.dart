@@ -48,7 +48,7 @@ Future<bool> showContentReportSheet({
   messenger.hideCurrentSnackBar();
   if (sent == true) {
     messenger.showSnackBar(
-      const SnackBar(
+      SnackBar(
         content: Text(ModerationStrings.reportThanks),
         behavior: SnackBarBehavior.floating,
         duration: Duration(seconds: 4),
@@ -109,7 +109,7 @@ class _ReportSheetState extends ConsumerState<_ReportSheet> {
               fontWeight: FontWeight.w800,
             ),
           ),
-          const SizedBox(height: 4),
+          SizedBox(height: 4),
           Text(
             ModerationStrings.reportIntro,
             style: theme.textTheme.bodySmall,
@@ -139,7 +139,7 @@ class _ReportSheetState extends ConsumerState<_ReportSheet> {
               ],
             ),
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           TextField(
             controller: _details,
             enabled: !_sending,
@@ -174,17 +174,17 @@ class _ReportSheetState extends ConsumerState<_ReportSheet> {
                       height: 20,
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
-                  : const Text(ModerationStrings.reportConfirm),
+                  : Text(ModerationStrings.reportConfirm),
             ),
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           SizedBox(
             height: 48,
             child: OutlinedButton(
               style: OutlinedButton.styleFrom(shape: buttonShape),
               onPressed:
                   _sending ? null : () => Navigator.of(context).pop(false),
-              child: const Text(ModerationStrings.cancel),
+              child: Text(ModerationStrings.cancel),
             ),
           ),
         ],

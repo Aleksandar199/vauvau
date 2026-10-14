@@ -91,6 +91,33 @@ class LocalMomentsRepository implements MomentsRepository {
   }
 
   @override
+  Future<void> toggleCommentLike(String momentId, String commentId) async {
+    if (currentUserId.isEmpty) {
+      return;
+    }
+    final comments = _comments[momentId];
+    if (comments == null) {
+      return;
+    }
+    final next = [
+      for (final comment in comments)
+        if (comment.id == commentId)
+          comment.copyWith(
+            likes: comment.isLikedBy(currentUserId)
+                ? [
+                    for (final id in comment.likes)
+                      if (id != currentUserId) id,
+                  ]
+                : [...comment.likes, currentUserId],
+          )
+        else
+          comment,
+    ];
+    _comments[momentId] = next;
+    _commentController(momentId).add(List<MomentComment>.from(next));
+  }
+
+  @override
   Future<void> addComment(String momentId, String text) async {
     final trimmed = text.trim();
     if (trimmed.isEmpty || currentUserId.isEmpty) {

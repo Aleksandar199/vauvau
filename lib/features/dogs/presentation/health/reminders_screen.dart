@@ -53,7 +53,7 @@ class _RemindersScreenState extends ConsumerState<RemindersScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text(ReminderStrings.remindersTitle),
+        title: Text(ReminderStrings.remindersTitle),
         actions: [
           TextButton(
             onPressed: () => showAddReminderTypeSheet(
@@ -61,7 +61,7 @@ class _RemindersScreenState extends ConsumerState<RemindersScreen> {
               dogs: widget.dogs,
               preferredDogId: _filterDogId ?? widget.initialDogId,
             ),
-            child: const Text(ReminderStrings.addReminder),
+            child: Text(ReminderStrings.addReminder),
           ),
         ],
       ),
@@ -109,7 +109,7 @@ class _RemindersScreenState extends ConsumerState<RemindersScreen> {
                             ),
                             textAlign: TextAlign.center,
                           ),
-                          const SizedBox(height: 8),
+                          SizedBox(height: 8),
                           Text(
                             ReminderStrings.emptyBody,
                             style: theme.textTheme.bodyMedium?.copyWith(
@@ -118,7 +118,7 @@ class _RemindersScreenState extends ConsumerState<RemindersScreen> {
                             ),
                             textAlign: TextAlign.center,
                           ),
-                          const SizedBox(height: 16),
+                          SizedBox(height: 16),
                           FilledButton(
                             onPressed: () => showAddReminderTypeSheet(
                               context: context,
@@ -126,7 +126,7 @@ class _RemindersScreenState extends ConsumerState<RemindersScreen> {
                               preferredDogId:
                                   _filterDogId ?? widget.initialDogId,
                             ),
-                            child: const Text(ReminderStrings.addFirst),
+                            child: Text(ReminderStrings.addFirst),
                           ),
                         ],
                       ),
@@ -145,7 +145,7 @@ class _RemindersScreenState extends ConsumerState<RemindersScreen> {
                             showDogName: widget.dogs.length > 1,
                             dogs: widget.dogs,
                           ),
-                        const SizedBox(height: 8),
+                        SizedBox(height: 8),
                       ],
                       if (soon.isNotEmpty) ...[
                         _GroupHeader(ReminderStrings.groupSoon),
@@ -157,7 +157,7 @@ class _RemindersScreenState extends ConsumerState<RemindersScreen> {
                             showDogName: widget.dogs.length > 1,
                             dogs: widget.dogs,
                           ),
-                        const SizedBox(height: 8),
+                        SizedBox(height: 8),
                       ],
                       if (later.isNotEmpty) ...[
                         _GroupHeader(ReminderStrings.groupLater),
@@ -276,7 +276,7 @@ class _ReminderTile extends ConsumerWidget {
                           ),
                         ),
                       ],
-                      const SizedBox(height: 2),
+                      SizedBox(height: 2),
                       Text(
                         ReminderStrings.date(reminder.date),
                         style: theme.textTheme.bodySmall,
@@ -284,7 +284,7 @@ class _ReminderTile extends ConsumerWidget {
                     ],
                   ),
                 ),
-                const SizedBox(width: 8),
+                SizedBox(width: 8),
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
@@ -296,7 +296,7 @@ class _ReminderTile extends ConsumerWidget {
                         fontSize: 12,
                       ),
                     ),
-                    const SizedBox(height: 4),
+                    SizedBox(height: 4),
                     Text(
                       ReminderStrings.daysUntil(reminder.date, now),
                       style: theme.textTheme.bodySmall?.copyWith(
@@ -332,12 +332,12 @@ class _ReminderTile extends ConsumerWidget {
                       fontWeight: FontWeight.w800,
                     ),
               ),
-              const SizedBox(height: 12),
+              SizedBox(height: 12),
               Text(
                 ReminderStrings.typeLabel(reminder.type),
                 style: const TextStyle(fontWeight: FontWeight.w700),
               ),
-              const SizedBox(height: 6),
+              SizedBox(height: 6),
               Text(reminder.title),
               Text(dogName),
               Text(ReminderStrings.date(reminder.date)),
@@ -365,25 +365,25 @@ class _ReminderTile extends ConsumerWidget {
                     preferredDogId: reminder.dogId,
                   );
                 },
-                child: const Text(ReminderStrings.edit),
+                child: Text(ReminderStrings.edit),
               ),
               TextButton(
                 onPressed: () async {
                   final confirmed = await showDialog<bool>(
                     context: sheetContext,
                     builder: (dialogContext) => AlertDialog(
-                      title: const Text(ReminderStrings.delete),
-                      content: const Text(ReminderStrings.deleteConfirm),
+                      title: Text(ReminderStrings.delete),
+                      content: Text(ReminderStrings.deleteConfirm),
                       actions: [
                         TextButton(
                           onPressed: () =>
                               Navigator.of(dialogContext).pop(false),
-                          child: const Text(ReminderStrings.cancel),
+                          child: Text(ReminderStrings.cancel),
                         ),
                         FilledButton(
                           onPressed: () =>
                               Navigator.of(dialogContext).pop(true),
-                          child: const Text(ReminderStrings.delete),
+                          child: Text(ReminderStrings.delete),
                         ),
                       ],
                     ),
@@ -396,7 +396,7 @@ class _ReminderTile extends ConsumerWidget {
                     Navigator.of(sheetContext).pop();
                   }
                 },
-                child: const Text(ReminderStrings.delete),
+                child: Text(ReminderStrings.delete),
               ),
             ],
           ),

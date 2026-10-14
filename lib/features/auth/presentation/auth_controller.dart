@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../map/presentation/walk_controller.dart';
 import '../domain/auth_exception.dart';
 import 'auth_providers.dart';
 
@@ -69,18 +70,33 @@ class AuthController extends Notifier<AsyncValue<void>> {
     );
   }
 
-  Future<bool> signOut() async {
-    ref.read(sessionSignedOutProvider.notifier).setSignedOut(true);
+  /// Returns success + captured error so UI need not read [ref] after await
+  /// (Settings may already be disposed).
+  Future<({bool success, Object? error})> signOut() async {
+    // Capture dependencies before any await — callers may dispose their
+    // WidgetRef while sign-out is in flight; Notifier.ref stays valid.
+    final walk = ref.read(walkControllerProvider.notifier);
+    final session = ref.read(sessionSignedOutProvider.notifier);
+    final repo = ref.read(authRepositoryProvider);
+
+    // Clear walk GPS + Firestore presence while this uid is still valid,
+    // otherwise the next account can still see the previous walker on the map.
+    try {
+      await walk.stopForSignOut();
+    } catch (_) {}
+    session.setSignedOut(true);
     final ok = await _run(
       AuthBusy.email,
-      () => ref.read(authRepositoryProvider).signOut(),
+      () => repo.signOut(),
     );
     if (!ok) {
-      ref.read(sessionSignedOutProvider.notifier).setSignedOut(false);
-    } else {
-      ref.invalidate(authStateProvider);
+      session.setSignedOut(false);
+      return (success: false, error: state.error);
     }
-    return ok;
+    ref.invalidate(authStateProvider);
+    ref.invalidate(walkControllerProvider);
+    ref.invalidate(liveWalkingDogsProvider);
+    return (success: true, error: null);
   }
 
   Future<bool> sendPasswordResetEmail(String email) {
@@ -90,14 +106,21 @@ class AuthController extends Notifier<AsyncValue<void>> {
     );
   }
 
-  Future<bool> deleteAccount() {
-    return _run(
+  Future<({bool success, Object? error})> deleteAccount() async {
+    try {
+      await ref.read(walkControllerProvider.notifier).stopForSignOut();
+    } catch (_) {}
+    final ok = await _run(
       AuthBusy.email,
       () async {
         await ref.read(authRepositoryProvider).deleteAccount();
         ref.read(sessionSignedOutProvider.notifier).setSignedOut(true);
       },
     );
+    if (!ok) {
+      return (success: false, error: state.error);
+    }
+    return (success: true, error: null);
   }
 
   Future<bool> _run(AuthBusy busy, Future<void> Function() action) async {

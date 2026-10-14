@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 
+import '../../../core/firebase/firestore_auth_guard.dart';
 import '../domain/content_report.dart';
 
 class FirestoreReportRepository implements ReportRepository {
@@ -21,11 +22,21 @@ class FirestoreReportRepository implements ReportRepository {
 
   @override
   Stream<List<ContentReport>> watchAll() {
-    return Stream.multi((controller) {
+    return Stream.multi((controller) async {
+      final user = await FirestoreAuthGuard.ensureReady();
+      if (user == null) {
+        controller.add(const []);
+        await controller.close();
+        return;
+      }
+
       var fromReports = <ContentReport>[];
       var fromUsers = <ContentReport>[];
 
       void emit() {
+        if (controller.isClosed) {
+          return;
+        }
         final byId = <String, ContentReport>{};
         for (final report in [...fromUsers, ...fromReports]) {
           byId[report.id] = report;
@@ -41,16 +52,25 @@ class FirestoreReportRepository implements ReportRepository {
         controller.add(list);
       }
 
+      void onWatchError(Object error, StackTrace stack, String label) {
+        if (FirestoreAuthGuard.isPermissionDenied(error)) {
+          FirestoreAuthGuard.logPermissionDenied(error, stack, label: label);
+        } else {
+          debugPrint('$label watch failed: $error\n$stack');
+        }
+      }
+
       final reportsSub = _reports.snapshots().listen(
         (snapshot) {
           fromReports = snapshot.docs.map(_fromDoc).toList();
           emit();
         },
         onError: (Object error, StackTrace stack) {
-          debugPrint('reports watch failed: $error\n$stack');
+          onWatchError(error, stack, 'reports');
           fromReports = [];
           emit();
         },
+        cancelOnError: false,
       );
 
       final usersSub = _users.snapshots().listen(
@@ -59,10 +79,11 @@ class FirestoreReportRepository implements ReportRepository {
           emit();
         },
         onError: (Object error, StackTrace stack) {
-          debugPrint('users watch failed: $error\n$stack');
+          onWatchError(error, stack, 'reports.users');
           fromUsers = [];
           emit();
         },
+        cancelOnError: false,
       );
 
       final overrideSub = _overrideTick.stream.listen((_) => emit());

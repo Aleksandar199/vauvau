@@ -33,18 +33,16 @@ class LocalAdoptionRepository implements AdoptionRepository {
     String city = '',
     String neighborhood = '',
   }) async {
-    final urls = List<String>.from(dog.imageUrls);
-    if (urls.isEmpty) {
-      urls.add(
-        'https://images.unsplash.com/photo-1548199973-03cce0bbc87b?auto=format&fit=crop&w=800&q=80',
-      );
-    }
     final id = dog.id.isEmpty
         ? 'adopt-${DateTime.now().millisecondsSinceEpoch}'
         : dog.id;
     _dogs.insert(
       0,
-      dog.copyWith(id: id, imageUrls: urls, createdAt: DateTime.now()),
+      dog.copyWith(
+        id: id,
+        imageUrls: List<String>.from(dog.imageUrls),
+        createdAt: DateTime.now(),
+      ),
     );
     _controller.add(List<AdoptionDog>.from(_dogs));
   }

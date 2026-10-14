@@ -40,24 +40,24 @@ class _WalkHistorySheet extends ConsumerWidget {
                   fontWeight: FontWeight.w800,
                 ),
               ),
-              const SizedBox(height: 4),
+              SizedBox(height: 4),
               Text(
                 MapStrings.walkHistoryLastDays,
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant,
                 ),
               ),
-              const SizedBox(height: 12),
+              SizedBox(height: 12),
               Expanded(
                 child: async.when(
                   loading: () =>
-                      const Center(child: CircularProgressIndicator()),
-                  error: (_, _) => const Center(
+                      Center(child: CircularProgressIndicator()),
+                  error: (_, _) => Center(
                     child: Text(MapStrings.walkHistoryEmpty),
                   ),
                   data: (walks) {
                     if (walks.isEmpty) {
-                      return const Center(
+                      return Center(
                         child: Text(MapStrings.walkHistoryEmpty),
                       );
                     }

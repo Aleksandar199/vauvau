@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../domain/dog_preference_tags.dart';
+
 class PreferenceChipGroup extends StatelessWidget {
   const PreferenceChipGroup({
     super.key,
@@ -31,7 +33,7 @@ class PreferenceChipGroup extends StatelessWidget {
           children: [
             for (final tag in options)
               FilterChip(
-                label: Text(tag),
+                label: Text(DogPreferenceTags.localize(tag)),
                 selected: selected.contains(tag),
                 onSelected: (_) => onToggle(tag),
                 selectedColor: selectedColor,

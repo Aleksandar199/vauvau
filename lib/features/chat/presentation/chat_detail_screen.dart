@@ -1,11 +1,14 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image_picker/image_picker.dart';
 
-import '../../../core/theme/app_colors.dart';
+import '../../../core/network/network_failure.dart';
+import '../../auth/presentation/auth_providers.dart';
 import '../../discover/data/load_discover_profile.dart';
 import '../../discover/domain/discover_profile.dart';
 import '../../discover/presentation/widgets/swipe_dog_card.dart';
-// import '../../../core/utils/content_validation_service.dart';
 import '../../moderation/domain/content_report.dart';
 import '../../moderation/presentation/report_sheet.dart';
 import '../../moderation/presentation/safety_menu.dart';
@@ -19,6 +22,7 @@ import 'widgets/dog_avatar.dart';
 import 'widgets/location_picker_sheet.dart';
 import 'widgets/location_pin_bubble.dart';
 import 'widgets/message_bubble.dart';
+import 'widgets/message_reply.dart';
 import 'widgets/walk_invite_card.dart';
 
 class ChatDetailScreen extends ConsumerStatefulWidget {
@@ -34,53 +38,266 @@ class _ChatDetailScreenState extends ConsumerState<ChatDetailScreen> {
   final _input = TextEditingController();
   final _scroll = ScrollController();
   final _focusNode = FocusNode();
+  final _unreadAnchorKey = GlobalKey();
+  ChatMessage? _replyTo;
+  var _sendingPhoto = false;
+  ChatInboxController? _inbox;
+  var _roomAttached = false;
+  /// Unread count captured before [markRead] clears it.
+  var _openUnreadCount = 0;
+  var _initialScrollDone = false;
+  var _initialScrollScheduled = false;
+  int? _unreadAnchorIndex;
+  var _lastKnownMessageCount = 0;
+  /// Hydrated from the peer dog doc when the room is missing breed/location.
+  String? _peerBreed;
+  String? _peerLocation;
+  var _peerWalking = false;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.read(chatInboxProvider.notifier).markRead(widget.conversationId);
-      _scrollToEnd();
+      if (!mounted) {
+        return;
+      }
+      _inbox = ref.read(chatInboxProvider.notifier);
+      final chat = _conversationFromInbox();
+      _openUnreadCount = chat?.unreadCount ?? 0;
+      _inbox!.attachRoom(widget.conversationId);
+      _roomAttached = true;
+      // Defer markRead until after the first scroll so unreadCount is usable.
+      unawaited(_hydratePeerSubtitle(chat));
     });
+  }
+
+  Future<void> _hydratePeerSubtitle(ChatConversation? chat) async {
+    if (chat == null) {
+      return;
+    }
+    final profile = await loadDiscoverProfile(
+      dogId: chat.dogId,
+      ownerId: chat.peerUserId,
+    );
+    if (!mounted || profile == null) {
+      return;
+    }
+    setState(() {
+      _peerBreed = profile.breed.trim().isEmpty ? null : profile.breed.trim();
+      _peerLocation =
+          profile.location.trim().isEmpty ? null : profile.location.trim();
+      _peerWalking = profile.walking;
+    });
+  }
+
+  ChatConversation? _conversationFromInbox() {
+    final conversations = ref.read(chatInboxProvider);
+    for (final item in conversations) {
+      if (item.id == widget.conversationId) {
+        return item;
+      }
+    }
+    return null;
   }
 
   @override
   void dispose() {
+    // Do not use [ref] here (unsafe after unmount). Detach via cached notifier.
+    if (_roomAttached) {
+      _inbox?.detachRoom(widget.conversationId);
+      _roomAttached = false;
+    }
     _input.dispose();
     _scroll.dispose();
     _focusNode.dispose();
     super.dispose();
   }
 
-  void _scrollToEnd() {
+  bool get _isNearBottom {
+    if (!_scroll.hasClients) {
+      return true;
+    }
+    final position = _scroll.position;
+    return position.maxScrollExtent - position.pixels <= 120;
+  }
+
+  void _scrollToEnd({bool animate = true}) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (_scroll.hasClients) {
+      if (!mounted || !_scroll.hasClients) {
+        return;
+      }
+      final target = _scroll.position.maxScrollExtent;
+      if (animate) {
         _scroll.animateTo(
-          _scroll.position.maxScrollExtent,
+          target,
           duration: const Duration(milliseconds: 200),
           curve: Curves.easeOut,
         );
+      } else {
+        _scroll.jumpTo(target);
       }
     });
   }
 
-  void _send() {
+  /// First open: jump to first unread, or to bottom when everything is read.
+  void _maybePerformInitialScroll(List<ChatMessage> messages) {
+    if (_initialScrollDone || _initialScrollScheduled || messages.isEmpty) {
+      return;
+    }
+    _initialScrollScheduled = true;
+    final unread = _openUnreadCount.clamp(0, messages.length);
+    if (unread > 0) {
+      final index = (messages.length - unread).clamp(0, messages.length - 1);
+      setState(() => _unreadAnchorIndex = index);
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) {
+          return;
+        }
+        final ctx = _unreadAnchorKey.currentContext;
+        if (ctx != null) {
+          Scrollable.ensureVisible(
+            ctx,
+            alignment: 0.08,
+            duration: const Duration(milliseconds: 220),
+            curve: Curves.easeOut,
+          );
+        } else {
+          _jumpToEndWithRetry();
+        }
+        _finishInitialScroll(messages.length);
+      });
+      return;
+    }
+
+    // All read → bottom (retry until layout reports a real extent).
+    _jumpToEndWithRetry(then: () => _finishInitialScroll(messages.length));
+  }
+
+  void _jumpToEndWithRetry({VoidCallback? then, int attemptsLeft = 3}) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) {
+        return;
+      }
+      if (_scroll.hasClients) {
+        _scroll.jumpTo(_scroll.position.maxScrollExtent);
+      }
+      if (attemptsLeft > 1 &&
+          _scroll.hasClients &&
+          _scroll.position.maxScrollExtent <= 0) {
+        _jumpToEndWithRetry(then: then, attemptsLeft: attemptsLeft - 1);
+        return;
+      }
+      // One more frame after content lays out with non-zero extent.
+      if (attemptsLeft > 1) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) {
+            return;
+          }
+          if (_scroll.hasClients) {
+            _scroll.jumpTo(_scroll.position.maxScrollExtent);
+          }
+          then?.call();
+        });
+        return;
+      }
+      then?.call();
+    });
+  }
+
+  void _finishInitialScroll(int messageCount) {
+    if (_initialScrollDone || !mounted) {
+      return;
+    }
+    _initialScrollDone = true;
+    _unreadAnchorIndex = null;
+    _lastKnownMessageCount = messageCount;
+    _inbox?.markRead(widget.conversationId);
+  }
+
+  void _onMessagesUpdated(List<ChatMessage> messages) {
+    if (!_initialScrollDone) {
+      _maybePerformInitialScroll(messages);
+      return;
+    }
+    final previous = _lastKnownMessageCount;
+    _lastKnownMessageCount = messages.length;
+    if (messages.length <= previous) {
+      return;
+    }
+    // New messages while viewing: only stick to bottom if already near it.
+    if (_isNearBottom) {
+      _scrollToEnd();
+    }
+  }
+
+  Future<void> _send() async {
     final text = _input.text;
     if (text.trim().isEmpty) {
       return;
     }
-    ref.read(chatInboxProvider.notifier).sendMessage(
-          widget.conversationId,
-          text,
-        );
+    final reply = _replyTo;
     _input.clear();
+    setState(() => _replyTo = null);
     _focusNode.requestFocus();
     _scrollToEnd();
+    try {
+      await ref.read(chatInboxProvider.notifier).sendMessage(
+            widget.conversationId,
+            text,
+            replyTo: reply,
+          );
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+      _input.text = text;
+      _input.selection = TextSelection.collapsed(offset: text.length);
+      setState(() => _replyTo = reply);
+      showNetworkErrorSnackBar(
+        context,
+        error,
+        fallback: ChatStrings.sendFailed,
+      );
+    }
+  }
+
+  Future<void> _onMessageLongPress(
+    ChatMessage message,
+    ChatConversation chat,
+  ) async {
+    final action = await showMessageActionsSheet(
+      context,
+      canReport: !message.isMine,
+    );
+    if (!mounted || action == null) {
+      return;
+    }
+    if (action == MessageAction.reply) {
+      setState(() => _replyTo = message);
+      _focusNode.requestFocus();
+      return;
+    }
+    if (action == MessageAction.report) {
+      await showContentReportSheet(
+        context: context,
+        ref: ref,
+        targetType: ReportContentType.message,
+        targetId: message.id,
+        reportedUserId: chat.peerUserId,
+      );
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    ref.listen(chatInboxProvider, (previous, next) => _scrollToEnd());
+    ref.listen<List<ChatConversation>>(chatInboxProvider, (previous, next) {
+      for (final item in next) {
+        if (item.id == widget.conversationId) {
+          _onMessagesUpdated(item.messages);
+          return;
+        }
+      }
+    });
 
     final conversations = ref.watch(chatInboxProvider);
     ChatConversation? found;
@@ -94,12 +311,26 @@ class _ChatDetailScreenState extends ConsumerState<ChatDetailScreen> {
     if (found == null) {
       return Scaffold(
         appBar: AppBar(),
-        body: const Center(child: Text(ChatStrings.missingChat)),
+        body: Center(child: Text(ChatStrings.missingChat)),
       );
     }
 
     final open = found;
+    // First paint may already have messages cached before listen fires.
+    if (!_initialScrollDone && open.messages.isNotEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          _onMessagesUpdated(open.messages);
+        }
+      });
+    }
+
     final now = ref.watch(chatNowProvider);
+    final me = ref.watch(authStateProvider).asData?.value;
+    final myAvatar = me?.ownerAvatarUrl ?? '';
+    final myName = (me?.displayName ?? '').trim().isEmpty
+        ? 'Ti'
+        : me!.displayName!.trim();
 
     return Scaffold(
       appBar: AppBar(
@@ -120,11 +351,20 @@ class _ChatDetailScreenState extends ConsumerState<ChatDetailScreen> {
                       style: Theme.of(context).textTheme.titleMedium,
                     ),
                     Text(
-                      ChatStrings.online,
+                      ChatStrings.peerSubtitle(
+                        breed: (_peerBreed ?? open.breed).trim(),
+                        location: (_peerLocation ?? open.location).trim(),
+                        walking: _peerWalking,
+                        isNewMatch: open.isNewMatch,
+                      ),
                       overflow: TextOverflow.ellipsis,
                       style:
                           Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                color: AppColors.success,
+                                color: _peerWalking
+                                    ? const Color(0xFF16A34A)
+                                    : Theme.of(context)
+                                        .colorScheme
+                                        .onSurfaceVariant,
                               ),
                     ),
                   ],
@@ -155,8 +395,9 @@ class _ChatDetailScreenState extends ConsumerState<ChatDetailScreen> {
               itemCount: open.messages.length,
               itemBuilder: (context, index) {
                 final message = open.messages[index];
+                Widget child;
                 if (message.isWalkInvite) {
-                  return WalkInviteCard(
+                  child = WalkInviteCard(
                     message: message,
                     now: now,
                     onAccept: () => _respond(
@@ -168,29 +409,54 @@ class _ChatDetailScreenState extends ConsumerState<ChatDetailScreen> {
                       WalkInviteStatus.declined,
                     ),
                   );
+                } else if (message.isLocationPin) {
+                  child = LocationPinBubble(
+                    message: message,
+                    now: now,
+                    currentUserId: me?.uid ?? '',
+                    onToggleLike: message.isMine
+                        ? null
+                        : () => _toggleLike(message.id),
+                  );
+                } else {
+                  child = MessageBubble(
+                    message: message,
+                    now: now,
+                    currentUserId: me?.uid ?? '',
+                    fallbackAvatarUrl: message.isMine ? myAvatar : '',
+                    fallbackSenderName:
+                        message.isMine ? myName : open.ownerName,
+                    onTap: message.isMine
+                        ? null
+                        : () => _openSenderProfile(context, open),
+                    onLongPress: () => _onMessageLongPress(message, open),
+                    onToggleLike: message.isMine
+                        ? null
+                        : () => _toggleLike(message.id),
+                  );
                 }
-                if (message.isLocationPin) {
-                  return LocationPinBubble(message: message, now: now);
+                if (index == _unreadAnchorIndex) {
+                  return KeyedSubtree(key: _unreadAnchorKey, child: child);
                 }
-                return MessageBubble(
-                  message: message,
-                  now: now,
-                  onTap: message.isMine
-                      ? null
-                      : () => _openSenderProfile(context, open),
-                  onReport: message.isMine
-                      ? null
-                      : () => showContentReportSheet(
-                            context: context,
-                            ref: ref,
-                            targetType: ReportContentType.message,
-                            targetId: message.id,
-                            reportedUserId: open.peerUserId,
-                          ),
-                );
+                return child;
               },
             ),
           ),
+          if (_replyTo != null)
+            ReplyComposeBanner(
+              senderName: _replyTo!.isMine
+                  ? myName
+                  : (_replyTo!.senderName.trim().isNotEmpty
+                      ? _replyTo!.senderName
+                      : open.ownerName),
+              text: _replyTo!.previewText,
+              onCancel: () => setState(() => _replyTo = null),
+            ),
+          if (_sendingPhoto)
+            const Padding(
+              padding: EdgeInsets.fromLTRB(16, 0, 16, 8),
+              child: LinearProgressIndicator(minHeight: 2),
+            ),
           ChatInputBar(
             controller: _input,
             focusNode: _focusNode,
@@ -199,18 +465,44 @@ class _ChatDetailScreenState extends ConsumerState<ChatDetailScreen> {
             attachTooltip: ChatStrings.attach,
             hintText: ChatStrings.composeHint,
             sendTooltip: ChatStrings.send,
+            enabled: !_sendingPhoto,
           ),
         ],
       ),
     );
   }
 
-  void _respond(String messageId, WalkInviteStatus status) {
-    ref.read(chatInboxProvider.notifier).respondToWalkInvite(
-          conversationId: widget.conversationId,
-          messageId: messageId,
-          status: status,
-        );
+  Future<void> _toggleLike(String messageId) async {
+    try {
+      await ref.read(chatInboxProvider.notifier).toggleMessageLike(
+            conversationId: widget.conversationId,
+            messageId: messageId,
+          );
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+      showNetworkErrorSnackBar(context, error);
+    }
+  }
+
+  Future<void> _respond(String messageId, WalkInviteStatus status) async {
+    try {
+      await ref.read(chatInboxProvider.notifier).respondToWalkInvite(
+            conversationId: widget.conversationId,
+            messageId: messageId,
+            status: status,
+          );
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+      showNetworkErrorSnackBar(
+        context,
+        error,
+        fallback: ChatStrings.walkRespondFailed,
+      );
+    }
   }
 
   Future<void> _openSenderProfile(
@@ -259,65 +551,164 @@ class _ChatDetailScreenState extends ConsumerState<ChatDetailScreen> {
   }
 
   Future<void> _openLocationPicker(BuildContext context) async {
-    await Future<void>.delayed(Duration.zero);
-    if (!context.mounted) {
-      return;
-    }
     final location = await showLocationPickerSheet(context);
     if (location == null || location.isEmpty || !context.mounted) {
       return;
     }
-    ref.read(chatInboxProvider.notifier).sendLocationPin(
-          conversationId: widget.conversationId,
-          locationName: location,
-        );
+    try {
+      await ref.read(chatInboxProvider.notifier).sendLocationPin(
+            conversationId: widget.conversationId,
+            locationName: location,
+          );
+    } catch (error) {
+      if (!context.mounted) {
+        return;
+      }
+      showNetworkErrorSnackBar(
+        context,
+        error,
+        fallback: ChatStrings.locationFailed,
+      );
+    }
   }
 
   Future<void> _openSchedule(BuildContext context) async {
-    await Future<void>.delayed(Duration.zero);
-    if (!context.mounted) {
-      return;
-    }
     await showScheduleWalkSheet(
       context: context,
-      onSend: (walkTime, location) {
-        ref.read(chatInboxProvider.notifier).sendWalkInvite(
-              conversationId: widget.conversationId,
-              walkTime: walkTime,
-              walkLocationName: location,
-            );
+      onSend: (walkTime, location) async {
+        try {
+          await ref.read(chatInboxProvider.notifier).sendWalkInvite(
+                conversationId: widget.conversationId,
+                walkTime: walkTime,
+                walkLocationName: location,
+              );
+        } catch (error) {
+          if (!context.mounted) {
+            return;
+          }
+          showNetworkErrorSnackBar(
+            context,
+            error,
+            fallback: ChatStrings.walkInviteFailed,
+          );
+        }
       },
     );
   }
 
-  Future<void> _openAttachMenu(BuildContext context) {
-    return showModalBottomSheet<void>(
+  Future<void> _openAttachMenu(BuildContext context) async {
+    // Await the attach sheet fully before opening the next sheet — popping and
+    // immediately showing another modal fails on many mobile devices.
+    final action = await showModalBottomSheet<_ChatAttachAction>(
       context: context,
+      showDragHandle: true,
       builder: (sheetContext) {
         return SafeArea(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               ListTile(
+                leading: const Icon(Icons.photo_outlined),
+                title: Text(ChatStrings.addPhoto),
+                onTap: () => Navigator.of(sheetContext).pop(
+                      _ChatAttachAction.photo,
+                    ),
+              ),
+              ListTile(
                 leading: const Icon(Icons.pets),
-                title: const Text(ChatStrings.scheduleWalk),
-                onTap: () {
-                  Navigator.of(sheetContext).pop();
-                  _openSchedule(context);
-                },
+                title: Text(ChatStrings.scheduleWalk),
+                onTap: () => Navigator.of(sheetContext).pop(
+                      _ChatAttachAction.scheduleWalk,
+                    ),
               ),
               ListTile(
                 leading: const Icon(Icons.location_on_outlined),
-                title: const Text(ChatStrings.sendLocation),
-                onTap: () {
-                  Navigator.of(sheetContext).pop();
-                  _openLocationPicker(context);
-                },
+                title: Text(ChatStrings.sendLocation),
+                onTap: () => Navigator.of(sheetContext).pop(
+                      _ChatAttachAction.sendLocation,
+                    ),
               ),
             ],
           ),
         );
       },
     );
+    if (!context.mounted || action == null) {
+      return;
+    }
+    switch (action) {
+      case _ChatAttachAction.photo:
+        await _pickPhoto();
+      case _ChatAttachAction.scheduleWalk:
+        await _openSchedule(context);
+      case _ChatAttachAction.sendLocation:
+        await _openLocationPicker(context);
+    }
+  }
+
+  Future<void> _pickPhoto() async {
+    final source = await showModalBottomSheet<ImageSource>(
+      context: context,
+      showDragHandle: true,
+      builder: (sheetContext) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.photo_library_outlined),
+                title: Text(ChatStrings.gallery),
+                onTap: () => Navigator.pop(sheetContext, ImageSource.gallery),
+              ),
+              ListTile(
+                leading: const Icon(Icons.photo_camera_outlined),
+                title: Text(ChatStrings.camera),
+                onTap: () => Navigator.pop(sheetContext, ImageSource.camera),
+              ),
+              ListTile(
+                leading: const Icon(Icons.close),
+                title: Text(ChatStrings.cancel),
+                onTap: () => Navigator.pop(sheetContext),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+    if (source == null || !mounted) {
+      return;
+    }
+    final file =
+        await ImagePicker().pickImage(source: source, imageQuality: 72);
+    if (file == null || !mounted) {
+      return;
+    }
+    final reply = _replyTo;
+    setState(() {
+      _sendingPhoto = true;
+      _replyTo = null;
+    });
+    try {
+      await ref.read(chatInboxProvider.notifier).sendPhoto(
+            widget.conversationId,
+            file,
+            replyTo: reply,
+          );
+      _scrollToEnd();
+    } catch (error) {
+      if (mounted) {
+        showNetworkErrorSnackBar(
+          context,
+          error,
+          fallback: ChatStrings.photoFailed,
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _sendingPhoto = false);
+      }
+    }
   }
 }
+
+enum _ChatAttachAction { photo, scheduleWalk, sendLocation }

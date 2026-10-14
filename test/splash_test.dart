@@ -3,7 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:vauvau/features/splash/presentation/screens/splash_screen.dart';
 
 void main() {
-  testWidgets('shows branded splash copy in Serbian', (tester) async {
+  testWidgets('shows only the branded splash image', (tester) async {
     await tester.pumpWidget(const MaterialApp(home: SplashScreen()));
     await tester.pump();
 
@@ -11,7 +11,7 @@ void main() {
       find.image(const AssetImage(SplashScreen.logoAsset)),
       findsOneWidget,
     );
-    expect(find.text('VauVau'), findsOneWidget);
-    expect(find.text(SplashScreen.tagline), findsOneWidget);
+    // Title/tagline live inside the PNG — no duplicate Flutter text.
+    expect(find.text(SplashScreen.tagline), findsNothing);
   });
 }

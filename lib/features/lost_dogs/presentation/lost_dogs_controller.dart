@@ -79,6 +79,12 @@ class LostDogsController extends Notifier<AsyncValue<List<LostDog>>> {
         );
   }
 
+  Future<void> toggleCommentLike(String dogId, String commentId) {
+    return ref
+        .read(lostDogRepositoryProvider)
+        .toggleCommentLike(dogId, commentId);
+  }
+
   Future<void> markFound(String id) {
     return ref.read(lostDogRepositoryProvider).markFound(id);
   }

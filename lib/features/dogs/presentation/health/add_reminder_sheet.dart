@@ -63,7 +63,7 @@ class _AddReminderTypeSheet extends StatelessWidget {
                   letterSpacing: 0.6,
                 ),
               ),
-              const SizedBox(height: 8),
+              SizedBox(height: 8),
               for (final type in ReminderStrings.typesFor(category))
                 Padding(
                   padding: const EdgeInsets.only(bottom: 6),

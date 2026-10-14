@@ -28,25 +28,36 @@ class PhotosStep extends StatelessWidget {
           AppStrings.stepPhotosTitle,
           style: Theme.of(context).textTheme.titleLarge,
         ),
-        const SizedBox(height: 8),
+        SizedBox(height: 8),
         Text(
           AppStrings.stepPhotosHint,
           style: Theme.of(context).textTheme.bodyMedium,
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 4),
+        Text(
+          AppStrings.photoCountLabel(photos.length),
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+        ),
+        SizedBox(height: 16),
         Wrap(
           spacing: 8,
           runSpacing: 8,
           children: [
             OutlinedButton.icon(
-              onPressed: uploading || photos.length >= 5 ? null : onAddGallery,
+              onPressed: uploading || photos.length >= AppStrings.maxDogPhotos
+                  ? null
+                  : onAddGallery,
               icon: const Icon(Icons.photo_library_outlined),
-              label: const Text(AppStrings.addFromGallery),
+              label: Text(AppStrings.addFromGallery),
             ),
             OutlinedButton.icon(
-              onPressed: uploading || photos.length >= 5 ? null : onAddCamera,
+              onPressed: uploading || photos.length >= AppStrings.maxDogPhotos
+                  ? null
+                  : onAddCamera,
               icon: const Icon(Icons.photo_camera_outlined),
-              label: const Text(AppStrings.addFromCamera),
+              label: Text(AppStrings.addFromCamera),
             ),
             if (uploading)
               const Padding(

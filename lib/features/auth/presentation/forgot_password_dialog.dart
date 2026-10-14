@@ -92,7 +92,7 @@ class _ForgotPasswordDialogState extends State<ForgotPasswordDialog> {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
-          title: const Row(
+          title: Row(
             children: [
               Icon(Icons.mark_email_read_outlined, color: Colors.green),
               SizedBox(width: 8),
@@ -109,7 +109,7 @@ class _ForgotPasswordDialogState extends State<ForgotPasswordDialog> {
                 Navigator.of(ctx).pop();
                 Navigator.of(context).pop();
               },
-              child: const Text(AppStrings.ok),
+              child: Text(AppStrings.ok),
             ),
           ],
         ),
@@ -137,7 +137,7 @@ class _ForgotPasswordDialogState extends State<ForgotPasswordDialog> {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
-          title: const Row(
+          title: Row(
             children: [
               Icon(Icons.error_outline, color: Colors.red),
               SizedBox(width: 8),
@@ -148,7 +148,7 @@ class _ForgotPasswordDialogState extends State<ForgotPasswordDialog> {
           actions: [
             TextButton(
               onPressed: () => Navigator.of(ctx).pop(),
-              child: const Text(AppStrings.close),
+              child: Text(AppStrings.close),
             ),
           ],
         ),
@@ -167,12 +167,12 @@ class _ForgotPasswordDialogState extends State<ForgotPasswordDialog> {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
-          title: const Text(AppStrings.errorTitle),
+          title: Text(AppStrings.errorTitle),
           content: Text('${AppStrings.resetPasswordFailedDetail}$e'),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(ctx).pop(),
-              child: const Text(AppStrings.close),
+              child: Text(AppStrings.close),
             ),
           ],
         ),
@@ -184,7 +184,7 @@ class _ForgotPasswordDialogState extends State<ForgotPasswordDialog> {
   Widget build(BuildContext context) {
     return AlertDialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      title: const Text(AppStrings.forgotPasswordTitle),
+      title: Text(AppStrings.forgotPasswordTitle),
       content: Form(
         key: _formKey,
         child: Column(
@@ -200,7 +200,7 @@ class _ForgotPasswordDialogState extends State<ForgotPasswordDialog> {
                         .withValues(alpha: 0.7),
                   ),
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             AuthTextField(
               controller: _emailController,
               label: AppStrings.emailLabel,
@@ -217,7 +217,7 @@ class _ForgotPasswordDialogState extends State<ForgotPasswordDialog> {
       actions: [
         TextButton(
           onPressed: _isLoading ? null : () => Navigator.of(context).pop(),
-          child: const Text(AppStrings.cancel),
+          child: Text(AppStrings.cancel),
         ),
         FilledButton(
           onPressed: _isLoading ? null : _submit,
@@ -227,7 +227,7 @@ class _ForgotPasswordDialogState extends State<ForgotPasswordDialog> {
                   height: 18,
                   child: CircularProgressIndicator(strokeWidth: 2),
                 )
-              : const Text(AppStrings.sendResetLink),
+              : Text(AppStrings.sendResetLink),
         ),
       ],
     );

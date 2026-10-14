@@ -9,16 +9,16 @@ Future<bool> confirmAdminDelete(
   final confirmed = await showDialog<bool>(
     context: context,
     builder: (dialogContext) => AlertDialog(
-      title: const Text(AdminStrings.confirmDeleteTitle),
+      title: Text(AdminStrings.confirmDeleteTitle),
       content: Text(message),
       actions: [
         TextButton(
           onPressed: () => Navigator.of(dialogContext).pop(false),
-          child: const Text(AdminStrings.cancel),
+          child: Text(AdminStrings.cancel),
         ),
         FilledButton(
           onPressed: () => Navigator.of(dialogContext).pop(true),
-          child: const Text(AdminStrings.confirm),
+          child: Text(AdminStrings.confirm),
         ),
       ],
     ),

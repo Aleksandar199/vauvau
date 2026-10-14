@@ -40,7 +40,7 @@ class GoogleSignInButton extends StatelessWidget {
                       child: CircularProgressIndicator(strokeWidth: 2),
                     ),
                   )
-                : const Row(
+                : Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       _GoogleLogo(size: 20),

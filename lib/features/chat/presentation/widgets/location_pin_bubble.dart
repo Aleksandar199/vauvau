@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/widgets/comment_like_button.dart';
 import '../../domain/chat_message.dart';
 import '../../domain/chat_time.dart';
 import '../chat_strings.dart';
@@ -11,10 +12,14 @@ class LocationPinBubble extends StatelessWidget {
     super.key,
     required this.message,
     required this.now,
+    this.currentUserId = '',
+    this.onToggleLike,
   });
 
   final ChatMessage message;
   final DateTime now;
+  final String currentUserId;
+  final VoidCallback? onToggleLike;
 
   @override
   Widget build(BuildContext context) {
@@ -27,6 +32,8 @@ class LocationPinBubble extends StatelessWidget {
             message.walkLocationName!.trim().isNotEmpty)
         ? message.walkLocationName!.trim()
         : message.text;
+    final liked = message.isLikedBy(currentUserId);
+    final showLike = !isMine || message.likeCount > 0;
 
     return Padding(
       padding: ChatUiTokens.bubbleOuterPadding,
@@ -72,12 +79,25 @@ class LocationPinBubble extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 4),
-                Text(
-                  formatChatTimestamp(message.sentAt, now),
-                  style: TextStyle(
-                    color: foreground.withValues(alpha: 0.65),
-                    fontSize: 10,
-                  ),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      formatChatTimestamp(message.sentAt, now),
+                      style: TextStyle(
+                        color: foreground.withValues(alpha: 0.65),
+                        fontSize: 10,
+                      ),
+                    ),
+                    if (showLike) ...[
+                      const SizedBox(width: 8),
+                      CommentLikeButton(
+                        liked: liked,
+                        count: message.likeCount,
+                        onPressed: isMine ? null : onToggleLike,
+                      ),
+                    ],
+                  ],
                 ),
               ],
             ),

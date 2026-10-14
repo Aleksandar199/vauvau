@@ -20,14 +20,14 @@ class AdoptionScreen extends ConsumerWidget {
       final saved = await showAddAdoptionDogSheet(context);
       if (saved == true && context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text(AdoptionStrings.published)),
+          SnackBar(content: Text(AdoptionStrings.published)),
         );
       }
     }
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text(AdoptionStrings.title),
+        title: Text(AdoptionStrings.title),
         actions: [
           IconButton(
             tooltip: AdoptionStrings.addCta,
@@ -48,7 +48,7 @@ class AdoptionScreen extends ConsumerWidget {
               ),
             ),
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
           Expanded(
             child: dogsAsync.when(
               loading: () => const FeedShimmerGrid(),
@@ -65,7 +65,7 @@ class AdoptionScreen extends ConsumerWidget {
                     if (!dog.isAdopted) dog,
                 ];
                 if (dogs.isEmpty) {
-                  return const FeedStateView(
+                  return FeedStateView(
                     icon: Icons.home_outlined,
                     title: AdoptionStrings.empty,
                     subtitle: AdoptionStrings.emptySubtitle,

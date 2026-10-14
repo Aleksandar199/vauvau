@@ -8,11 +8,12 @@ import '../../../core/theme/app_colors.dart';
 import '../../adoption/presentation/phone_launcher.dart';
 import '../../chat/presentation/chat_inbox.dart';
 import '../../chat/presentation/chat_screen.dart';
-import '../../chat/presentation/widgets/scheduled_walks_banner.dart';
 import '../../home/presentation/home_tab.dart';
 import '../../discover/presentation/widgets/discover_filter_chip.dart';
 import '../../location/domain/location_access.dart';
 import '../../location/presentation/location_controller.dart';
+import '../../location/presentation/home_city_provider.dart';
+import '../../location/presentation/location_disclosure.dart';
 import '../../auth/presentation/auth_providers.dart';
 import '../../moderation/domain/content_report.dart';
 import '../../moderation/presentation/report_sheet.dart';
@@ -44,6 +45,13 @@ class MapScreen extends ConsumerStatefulWidget {
 }
 
 class _MapScreenState extends ConsumerState<MapScreen> {
+  static final Set<String> _quickCityIds = {
+    SeedCities.noviSad.id,
+    SeedCities.belgrade.id,
+    SeedCities.nis.id,
+    SeedCities.kragujevac.id,
+  };
+
   final MapController _mapController = MapController();
   final TextEditingController _search = TextEditingController();
   final Set<MapLayerFilter> _filters = {MapLayerFilter.all};
@@ -96,24 +104,43 @@ class _MapScreenState extends ConsumerState<MapScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final walk = ref.watch(walkControllerProvider);
-    final scheduledWalks = ref.watch(scheduledWalksProvider);
-    final location = ref.watch(userLocationProvider);
+    final walkActive = ref.watch(
+      walkControllerProvider.select((session) => session.isActive),
+    );
+    final walkPaused = ref.watch(
+      walkControllerProvider.select((session) => session.isPaused),
+    );
+    final walkPath = ref.watch(
+      walkControllerProvider.select((session) => session.path),
+    );
+    final userCoord = ref.watch(
+      userLocationProvider.select((location) => location.coord),
+    );
+    final locationFallback = ref.watch(
+      userLocationProvider.select((location) => location.isFallback),
+    );
     final region = ref.watch(mapRegionProvider);
     final places = _visiblePlaces(ref.watch(mapPlacesProvider), region);
     final walkers = _visibleWalkers(ref.watch(walkingDogsProvider), region);
 
     final walkRoute = [
-      for (final point in walk.path) LatLng(point.latitude, point.longitude),
+      for (final point in walkPath) LatLng(point.latitude, point.longitude),
     ];
-    final walkStart = walk.path.isNotEmpty ? walk.path.first : null;
+    final walkStart = walkPath.isNotEmpty ? walkPath.first : null;
 
     return Stack(
       children: [
         Positioned.fill(
           child: VauInteractiveMap(
             controller: _mapController,
-            routePoints: walk.isActive ? walkRoute : const [],
+            initialCenter: region.isMyLocation
+                ? null
+                : () {
+                    final center = mapRegionCenter(region, userCoord);
+                    return LatLng(center.latitude, center.longitude);
+                  }(),
+            initialZoom: region.isMyLocation ? null : region.zoom,
+            routePoints: walkActive ? walkRoute : const [],
             routeColor: Theme.of(context).colorScheme.primary,
             placeMarkers: [
               for (final place in places)
@@ -130,7 +157,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                 ),
             ],
             overlayMarkers: [
-              if (walk.isActive && walkStart != null)
+              if (walkActive && walkStart != null)
                 Marker(
                   point: LatLng(walkStart.latitude, walkStart.longitude),
                   width: 36,
@@ -139,11 +166,11 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                   child: const _WalkStartMarker(),
                 ),
               Marker(
-                point: LatLng(location.latitude, location.longitude),
-                width: walk.isActive ? 36 : 28,
-                height: walk.isActive ? 36 : 28,
+                point: LatLng(userCoord.latitude, userCoord.longitude),
+                width: walkActive ? 36 : 28,
+                height: walkActive ? 36 : 28,
                 alignment: Alignment.center,
-                child: walk.isActive
+                child: walkActive
                     ? const _WalkCurrentMarker()
                     : const _UserDot(),
               ),
@@ -211,13 +238,13 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                       ),
                     ),
                   ),
-                  if (location.isFallback) ...[
+                  if (locationFallback) ...[
                     const SizedBox(width: 8),
                     _LocationAlertButton(onPressed: _goToMyLocation),
                   ],
                 ],
               ),
-              const SizedBox(height: 8),
+              SizedBox(height: 8),
               SizedBox(
                 height: 36,
                 child: ListView(
@@ -228,23 +255,33 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                       selected: region.cityId == SeedCities.noviSad.id,
                       onTap: () => _selectQuickCity(SeedCities.noviSad),
                     ),
-                    const SizedBox(width: 8),
+                    SizedBox(width: 8),
                     DiscoverFilterChip(
                       label: MapStrings.cityBelgrade,
                       selected: region.cityId == SeedCities.belgrade.id,
                       onTap: () => _selectQuickCity(SeedCities.belgrade),
                     ),
-                    const SizedBox(width: 8),
+                    SizedBox(width: 8),
+                    DiscoverFilterChip(
+                      label: MapStrings.cityNis,
+                      selected: region.cityId == SeedCities.nis.id,
+                      onTap: () => _selectQuickCity(SeedCities.nis),
+                    ),
+                    SizedBox(width: 8),
+                    DiscoverFilterChip(
+                      label: MapStrings.cityKragujevac,
+                      selected: region.cityId == SeedCities.kragujevac.id,
+                      onTap: () => _selectQuickCity(SeedCities.kragujevac),
+                    ),
+                    SizedBox(width: 8),
                     _CityPickerButton(
                       label: region.isMyLocation ||
-                              region.cityId == SeedCities.noviSad.id ||
-                              region.cityId == SeedCities.belgrade.id
+                              _quickCityIds.contains(region.cityId)
                           ? MapStrings.chooseCity
                           : region.label,
                       selected: region.isMyLocation ||
                           (region.cityId != null &&
-                              region.cityId != SeedCities.noviSad.id &&
-                              region.cityId != SeedCities.belgrade.id),
+                              !_quickCityIds.contains(region.cityId)),
                       onTap: () =>
                           showCityPickerSheet(context: context, ref: ref),
                     ),
@@ -276,7 +313,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                               selected: _filters.any((f) => f.isExtraPlaceFilter),
                               onTap: _openMoreFilters,
                             ),
-                            const SizedBox(width: 8),
+                            SizedBox(width: 8),
                             _MapViewModeChip(
                               label: _showList
                                   ? MapStrings.showMap
@@ -329,7 +366,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                   color: const Color(0xFF2A2A38),
                   borderRadius: BorderRadius.circular(14),
                   elevation: 2,
-                  child: const Padding(
+                  child: Padding(
                     padding: EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -351,13 +388,9 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                   ),
                 ),
               ],
-              if (walk.isActive) ...[
+              if (walkActive) ...[
                 const SizedBox(height: 8),
-                WalkGpsBanner(isPaused: walk.isPaused),
-              ],
-              if (scheduledWalks.isNotEmpty) ...[
-                const SizedBox(height: 8),
-                ScheduledWalksBanner(walks: scheduledWalks),
+                WalkGpsBanner(isPaused: walkPaused),
               ],
             ],
           ),
@@ -367,17 +400,17 @@ class _MapScreenState extends ConsumerState<MapScreen> {
             left: 12,
             right: 12,
             top: 210,
-            bottom: walk.isActive ? 220 : 88,
+            bottom: walkActive ? 220 : 88,
             child: _PlacesListPanel(
               places: places,
-              userCoord: location.coord,
+              userCoord: userCoord,
               onOpen: _selectPlace,
               onDirections: _openDirections,
             ),
           ),
         Positioned(
           right: 12,
-          bottom: walk.isActive ? 220 : 88,
+          bottom: walkActive ? 220 : 88,
           child: Column(
             children: [
               _MapFab(
@@ -385,13 +418,13 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                 icon: Icons.add,
                 onPressed: () => _zoomBy(1),
               ),
-              const SizedBox(height: 8),
+              SizedBox(height: 8),
               _MapFab(
                 tooltip: MapStrings.zoomOut,
                 icon: Icons.remove,
                 onPressed: () => _zoomBy(-1),
               ),
-              const SizedBox(height: 8),
+              SizedBox(height: 8),
               _MapFab(
                 tooltip: MapStrings.myLocation,
                 icon: Icons.my_location,
@@ -400,12 +433,12 @@ class _MapScreenState extends ConsumerState<MapScreen> {
             ],
           ),
         ),
-        if (walk.isActive)
-          Positioned(
+        if (walkActive)
+          const Positioned(
             left: 0,
             right: 0,
             bottom: 0,
-            child: WalkStatsPanel(walk: walk),
+            child: WalkStatsPanel(),
           )
         else
           Positioned(
@@ -432,11 +465,11 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                       ),
                       onPressed: () => _startWalkFlow(context),
                       icon: const Icon(Icons.directions_walk),
-                      label: const Text(MapStrings.startWalk),
+                      label: Text(MapStrings.startWalk),
                     ),
                   ),
                 ),
-                const SizedBox(width: 8),
+                SizedBox(width: 8),
                 Material(
                   elevation: 8,
                   shadowColor: Colors.black38,
@@ -537,8 +570,9 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     final cityId = region.cityId;
     if (cityId != null && cityId.isNotEmpty) {
       if (place.cityId == cityId) return true;
-      if (cityId == 'novi-sad' && place.city == MapCity.noviSad) return true;
-      if (cityId == 'beograd' && place.city == MapCity.belgrade) return true;
+      if (place.city != MapCity.other && place.city.cityId == cityId) {
+        return true;
+      }
     }
     final distance = haversineKm(
       center,
@@ -654,17 +688,17 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                   MapStrings.filterMore,
                   style: Theme.of(sheetContext).textTheme.titleLarge,
                 ),
-                const SizedBox(height: 12),
+                SizedBox(height: 12),
                 ListTile(
                   leading: const Icon(Icons.add_location_alt_outlined),
-                  title: const Text(MapStrings.addPlace),
+                  title: Text(MapStrings.addPlace),
                   onTap: () =>
                       Navigator.of(sheetContext).pop(communityPlaceToken),
                 ),
                 if (ref.read(isAdminProvider))
                   ListTile(
                     leading: const Icon(Icons.admin_panel_settings_outlined),
-                    title: const Text(MapStrings.addPlaceAdminTitle),
+                    title: Text(MapStrings.addPlaceAdminTitle),
                     onTap: () =>
                         Navigator.of(sheetContext).pop(adminPlaceToken),
                   ),
@@ -690,9 +724,10 @@ class _MapScreenState extends ConsumerState<MapScreen> {
       await showAddPoiSheet(
         context,
         ref,
-        initialCity: region.cityId == SeedCities.belgrade.id
-            ? MapCity.belgrade
-            : MapCity.noviSad,
+        initialCity: switch (MapCityX.fromCityId(region.cityId ?? '')) {
+          MapCity.other => MapCity.noviSad,
+          final city => city,
+        },
       );
       return;
     }
@@ -721,8 +756,10 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   }
 
   Future<void> _goToMyLocation() async {
-    final access =
-        await ref.read(userLocationProvider.notifier).requestPermission();
+    final access = await requestLocationPermissionWithDisclosure(
+      context: context,
+      ref: ref,
+    );
     if (!mounted) {
       return;
     }
@@ -743,8 +780,10 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     if (current == LocationAccess.denied ||
         current == LocationAccess.permanentlyDenied ||
         current == LocationAccess.servicesDisabled) {
-      final access =
-          await ref.read(userLocationProvider.notifier).requestPermission();
+      final access = await requestLocationPermissionWithDisclosure(
+        context: context,
+        ref: ref,
+      );
       if (!context.mounted) {
         return;
       }
@@ -764,10 +803,12 @@ class _MapScreenState extends ConsumerState<MapScreen> {
       LocationAccess.servicesDisabled => MapStrings.locationDisabledTitle,
       _ => MapStrings.locationDeniedTitle,
     };
+    final homeCity = ref.read(homeCityProvider)?.name ?? MapStrings.cityNoviSad;
     final body = switch (access) {
       LocationAccess.permanentlyDenied => MapStrings.locationPermanentBody,
-      LocationAccess.servicesDisabled => MapStrings.locationDisabledBody,
-      _ => MapStrings.locationDeniedBody,
+      LocationAccess.servicesDisabled =>
+        MapStrings.locationDisabledBody(homeCity),
+      _ => MapStrings.locationDeniedBody(homeCity),
     };
     await showDialog<void>(
       context: context,
@@ -778,7 +819,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
           actions: [
             TextButton(
               onPressed: () => Navigator.of(dialogContext).pop(),
-              child: const Text(MapStrings.useDefaultCity),
+              child: Text(MapStrings.useDefaultCity(homeCity)),
             ),
             if (access == LocationAccess.permanentlyDenied)
               FilledButton(
@@ -786,15 +827,21 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                   Navigator.of(dialogContext).pop();
                   ref.read(locationClientProvider).openAppSettings();
                 },
-                child: const Text(MapStrings.openSettings),
+                child: Text(MapStrings.openSettings),
               )
             else if (access == LocationAccess.denied)
               FilledButton(
-                onPressed: () {
+                onPressed: () async {
                   Navigator.of(dialogContext).pop();
-                  ref.read(userLocationProvider.notifier).requestPermission();
+                  if (!mounted) {
+                    return;
+                  }
+                  await requestLocationPermissionWithDisclosure(
+                    context: context,
+                    ref: ref,
+                  );
                 },
-                child: const Text(MapStrings.allowLocation),
+                child: Text(MapStrings.allowLocation),
               ),
           ],
         );
@@ -835,7 +882,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     final opened = await ref.read(phoneLauncherProvider).call(place.phone);
     if (!opened && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text(MapStrings.callFailed)),
+        SnackBar(content: Text(MapStrings.callFailed)),
       );
     }
   }
@@ -848,7 +895,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
         );
     if (!opened && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text(MapStrings.navigationFailed)),
+        SnackBar(content: Text(MapStrings.navigationFailed)),
       );
     }
   }
@@ -869,7 +916,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
               peerUserId: pin.profile.ownerId,
             );
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text(MapStrings.walkRequestSent)),
+          SnackBar(content: Text(MapStrings.walkRequestSent)),
         );
         _openWalkerChat(pin);
       },
@@ -924,7 +971,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
             }
 
             return AlertDialog(
-              title: const Text(MapStrings.startWalk),
+              title: Text(MapStrings.startWalk),
               content: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -935,12 +982,12 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                     onChanged: (value) {
                       setLocalState(() => selected = value.trim());
                     },
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       labelText: MapStrings.statusLabel,
                       hintText: MapStrings.statusHint,
                     ),
                   ),
-                  const SizedBox(height: 12),
+                  SizedBox(height: 12),
                   Wrap(
                     spacing: 8,
                     runSpacing: 8,
@@ -955,12 +1002,12 @@ class _MapScreenState extends ConsumerState<MapScreen> {
               actions: [
                 TextButton(
                   onPressed: () => Navigator.of(dialogContext).pop(),
-                  child: const Text(MapStrings.cancel),
+                  child: Text(MapStrings.cancel),
                 ),
                 FilledButton(
                   onPressed: () =>
                       Navigator.of(dialogContext).pop(controller.text.trim()),
-                  child: const Text(MapStrings.confirm),
+                  child: Text(MapStrings.confirm),
                 ),
               ],
             );
@@ -1042,7 +1089,7 @@ class _PlacesListPanel extends StatelessWidget {
         color: _bg,
         elevation: 6,
         borderRadius: BorderRadius.circular(16),
-        child: const Padding(
+        child: Padding(
           padding: EdgeInsets.all(20),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -1081,7 +1128,7 @@ class _PlacesListPanel extends StatelessWidget {
         child: ListView(
           padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
           children: [
-            const Text(
+            Text(
               MapStrings.placesListTitle,
               style: TextStyle(
                 fontWeight: FontWeight.w800,

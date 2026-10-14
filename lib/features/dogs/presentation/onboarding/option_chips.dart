@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
+import '../../../../core/l10n/l10n.dart';
 import '../../../discover/domain/discover_profile.dart';
+import '../../../discover/presentation/discover_strings.dart';
 import '../../domain/dog_enums.dart';
 
 class OptionChips<T> extends StatelessWidget {
@@ -46,23 +48,23 @@ class OptionChips<T> extends StatelessWidget {
 String genderLabel(DogGender gender) {
   switch (gender) {
     case DogGender.female:
-      return 'Ženka';
+      return DiscoverStrings.genderFemale;
     case DogGender.male:
-      return 'Mužjak';
+      return DiscoverStrings.genderMale;
     case DogGender.unknown:
-      return 'Nije navedeno';
+      return L10n.tr('Nije navedeno', 'Not specified');
   }
 }
 
 String sizeLabel(DogSize size) {
   switch (size) {
     case DogSize.small:
-      return 'Mali';
+      return DiscoverStrings.sizeSmall;
     case DogSize.medium:
-      return 'Srednji';
+      return DiscoverStrings.sizeMid;
     case DogSize.large:
     case DogSize.xlarge:
-      return 'Veliki';
+      return DiscoverStrings.sizeBig;
   }
 }
 

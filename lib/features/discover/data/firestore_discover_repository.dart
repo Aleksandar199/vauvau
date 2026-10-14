@@ -1,9 +1,7 @@
-import 'dart:async';
-
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 
-import '../../../core/geo/geo.dart';
+import '../../../core/firebase/firestore_auth_guard.dart';
 import '../../../core/images/dog_photo_urls.dart';
 import '../domain/discover_profile.dart';
 import '../domain/discover_repository.dart';
@@ -31,79 +29,103 @@ class FirestoreDiscoverRepository implements DiscoverRepository {
   Stream<List<DiscoverProfile>> watchProfiles({
     required String excludeOwnerId,
     GeoQuery? geo,
+    int limit = 15,
   }) {
-    if (geo == null) {
-      return _dogs.snapshots().map((snapshot) => _fromDocs(snapshot.docs, geo));
-    }
-    final prefixes = GeoHash.coveragePrefixes(
-      latitude: geo.origin.latitude,
-      longitude: geo.origin.longitude,
-      radiusKm: geo.radiusKm,
+    return FirestoreAuthGuard.guardedStream<List<DiscoverProfile>>(
+      label: 'discover.watchProfiles',
+      empty: const [],
+      create: () => _dogs
+          .orderBy('createdAt', descending: true)
+          .limit(limit)
+          .snapshots()
+          .map(
+            (snapshot) => _filterProfiles(
+              snapshot.docs,
+              excludeOwnerId: excludeOwnerId,
+              geo: geo,
+            ),
+          ),
     );
-    return _mergeGeohashQueries(prefixes, geo);
   }
 
-  Stream<List<DiscoverProfile>> _mergeGeohashQueries(
-    List<String> prefixes,
-    GeoQuery geo,
-  ) {
-    final controller = StreamController<List<DiscoverProfile>>.broadcast();
-    final latest =
-        List<List<QueryDocumentSnapshot<Map<String, dynamic>>>?>.filled(
-          prefixes.length,
-          null,
-        );
-    final subs = <StreamSubscription<QuerySnapshot<Map<String, dynamic>>>>[];
-
-    void emit() {
-      final byId = <String, QueryDocumentSnapshot<Map<String, dynamic>>>{};
-      for (final docs in latest) {
-        if (docs == null) {
-          continue;
-        }
-        for (final doc in docs) {
-          byId[doc.id] = doc;
-        }
-      }
-      if (!controller.isClosed) {
-        controller.add(_fromDocs(byId.values, geo));
-      }
-    }
-
-    for (var i = 0; i < prefixes.length; i++) {
-      final prefix = prefixes[i];
-      subs.add(
-        _dogs
-            .orderBy('geohash')
-            .startAt([prefix])
-            .endAt(['$prefix\uf8ff'])
-            .snapshots()
-            .listen((snapshot) {
-              latest[i] = snapshot.docs;
-              emit();
-            }),
-      );
-    }
-
-    controller.onCancel = () {
-      for (final sub in subs) {
-        sub.cancel();
-      }
-    };
-    return controller.stream;
-  }
-
-  List<DiscoverProfile> _fromDocs(
-    Iterable<QueryDocumentSnapshot<Map<String, dynamic>>> docs,
+  @override
+  Future<DiscoverPage> fetchProfilesPage({
+    required String excludeOwnerId,
     GeoQuery? geo,
-  ) {
+    Object? cursor,
+    int limit = 15,
+  }) {
+    return FirestoreAuthGuard.run(
+      label: 'discover.fetchProfilesPage',
+      fallback: const DiscoverPage(items: [], hasMore: false),
+      action: () async {
+        // Oversample when geo-filtering so a page still yields nearby dogs.
+        final fetchSize = geo == null ? limit : limit * 3;
+        var collected = <DiscoverProfile>[];
+        Object? next = cursor;
+        var rawExhausted = false;
+        // Cap fan-out: at most a few round-trips per loadMore call.
+        for (var attempt = 0;
+            attempt < 3 && collected.length < limit;
+            attempt++) {
+          Query<Map<String, dynamic>> query =
+              _dogs.orderBy('createdAt', descending: true).limit(fetchSize);
+          final start = next;
+          if (start is DocumentSnapshot<Map<String, dynamic>>) {
+            query = query.startAfterDocument(start);
+          } else if (start is QueryDocumentSnapshot<Map<String, dynamic>>) {
+            query = query.startAfterDocument(start);
+          }
+          final snapshot = await query.get();
+          if (snapshot.docs.isEmpty) {
+            rawExhausted = true;
+            next = null;
+            break;
+          }
+          next = snapshot.docs.last;
+          rawExhausted = snapshot.docs.length < fetchSize;
+          collected = [
+            ...collected,
+            ..._filterProfiles(
+              snapshot.docs,
+              excludeOwnerId: excludeOwnerId,
+              geo: geo,
+            ),
+          ];
+          final seen = <String>{};
+          collected = [
+            for (final profile in collected)
+              if (seen.add(profile.id)) profile,
+          ];
+          if (rawExhausted) {
+            break;
+          }
+        }
+        final page = collected.take(limit).toList();
+        return DiscoverPage(
+          items: page,
+          nextCursor: rawExhausted && page.length < limit ? null : next,
+          hasMore: !rawExhausted || collected.length > limit,
+        );
+      },
+    );
+  }
+
+  List<DiscoverProfile> _filterProfiles(
+    Iterable<QueryDocumentSnapshot<Map<String, dynamic>>> docs, {
+    required String excludeOwnerId,
+    GeoQuery? geo,
+  }) {
     final profiles = <DiscoverProfile>[];
     for (final doc in docs) {
-      final data = doc.data();
-      final profile = discoverProfileFromMap(doc.id, data);
+      final profile = discoverProfileFromMap(doc.id, doc.data());
+      if (excludeOwnerId.isNotEmpty && profile.ownerId == excludeOwnerId) {
+        continue;
+      }
       profiles.add(profile);
     }
-    return geo == null ? profiles : geo.apply(profiles);
+    final filtered = geo == null ? profiles : geo.apply(profiles);
+    return filtered..sort(DiscoverProfile.compareFeedOrder);
   }
 
   @override

@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../../../core/constants/serbia_locations.dart';
+import '../../../core/firebase/firestore_auth_guard.dart';
 import '../../../core/geo/firestore_geo.dart';
 import '../../../core/geo/geo.dart';
 import '../../../core/images/dog_photo_urls.dart';
@@ -27,11 +28,21 @@ class DogsRepositoryImpl implements DogsRepository {
 
   @override
   Stream<List<Dog>> watchByOwner(String ownerId) {
-    return _dogs
-        .where('ownerId', isEqualTo: ownerId)
-        .snapshots(includeMetadataChanges: true)
-        .where((snapshot) => !snapshot.metadata.isFromCache || snapshot.docs.isNotEmpty)
-        .map((snapshot) => snapshot.docs.map(_dogFromDoc).toList());
+    if (ownerId.isEmpty) {
+      return Stream.value(const []);
+    }
+    return FirestoreAuthGuard.guardedStream<List<Dog>>(
+      label: 'dogs.watchByOwner',
+      empty: const [],
+      create: () => _dogs
+          .where('ownerId', isEqualTo: ownerId)
+          .snapshots(includeMetadataChanges: true)
+          .where(
+            (snapshot) =>
+                !snapshot.metadata.isFromCache || snapshot.docs.isNotEmpty,
+          )
+          .map((snapshot) => snapshot.docs.map(_dogFromDoc).toList()),
+    );
   }
 
   @override
@@ -46,9 +57,7 @@ class DogsRepositoryImpl implements DogsRepository {
       final location = area == null
           ? ''
           : '${area.cityName} - ${area.neighborhoodName}';
-      final coord = area?.cityId == 'beograd'
-          ? GeoCoord.belgrade
-          : GeoCoord.noviSad;
+      final coord = GeoCoord.forCityId(area?.cityId ?? '');
       final photoUrls = uniquePhotoUrls(draft.photos);
       final photos = firestorePhotoFields(photoUrls);
       final energy = draft.energyLevel ?? DogEnergyLevel.moderate;
@@ -61,7 +70,7 @@ class DogsRepositoryImpl implements DogsRepository {
         'age': draft.ageYears,
         'ageYears': draft.ageYears,
         'size': draft.size!.firestoreValue,
-        'bio': '',
+        'bio': draft.bio.trim(),
         'isVaccinated': draft.vaccinated,
         'isMicrochipped': draft.chipped,
         'isSterilized': draft.sterilized,
@@ -86,9 +95,7 @@ class DogsRepositoryImpl implements DogsRepository {
         'primaryPhotoUrl': photos['photoUrl'],
       };
 
-      try {
-        await dogRef.set(dogPayload).timeout(const Duration(seconds: 4));
-      } catch (_) {}
+      await dogRef.set(dogPayload);
       unawaited(
         _users.doc(owner.uid).set(
           {
@@ -109,7 +116,7 @@ class DogsRepositoryImpl implements DogsRepository {
               'breed': draft.breed.trim(),
               'age': draft.ageYears,
               'gender': draft.gender!.firestoreValue,
-              'bio': '',
+              'bio': draft.bio.trim(),
               'size': draft.size!.firestoreValue,
               'temperament':
                   draft.temperament.map((tag) => tag.firestoreValue).toList(),
@@ -141,6 +148,7 @@ class DogsRepositoryImpl implements DogsRepository {
               neighborhoodName: owner.neighborhoodName,
             ),
         photoUrls: List<String>.from(photos['photoUrls'] as List),
+        bio: draft.bio.trim(),
         vaccinated: draft.vaccinated,
         chipped: draft.chipped,
         sterilized: draft.sterilized,
@@ -150,7 +158,7 @@ class DogsRepositoryImpl implements DogsRepository {
     } on DogsException {
       rethrow;
     } catch (error) {
-      throw const DogsException();
+      throw DogsException();
     }
   }
 
@@ -166,7 +174,7 @@ class DogsRepositoryImpl implements DogsRepository {
         'gender': dog.gender.firestoreValue,
         'age': dog.ageYears,
         'ageYears': dog.ageYears,
-        'ageMonths': ageMonths,
+        'ageMonths': ageMonths > 0 ? ageMonths : dog.ageMonths,
         'size': dog.size.firestoreValue,
         'bio': dog.bio,
         'weightKg': dog.weightKg,
@@ -197,30 +205,22 @@ class DogsRepositoryImpl implements DogsRepository {
     final areaMap = data['area'] as Map<String, dynamic>? ?? {};
     final temperamentRaw = data['temperament'] as List<dynamic>? ?? [];
     return Dog(
-      id: data['id'] as String? ?? doc.id,
+      id: doc.id,
       ownerId: data['ownerId'] as String? ?? '',
       name: data['name'] as String? ?? '',
       breed: data['breed'] as String? ?? '',
-      gender: _enumByName(DogGender.values, data['gender'], DogGender.unknown),
+      gender: _parseGender(data['gender']),
       ageYears: (data['ageYears'] as num?)?.toInt() ??
           (data['age'] as num?)?.toInt() ??
           0,
-      size: _enumByName(DogSize.values, data['size'], DogSize.medium),
+      ageMonths: (data['ageMonths'] as num?)?.toInt() ?? 0,
+      size: _parseSize(data['size']),
       weightKg: (data['weightKg'] as num?)?.toDouble(),
-      energyLevel: _enumByName(
-        DogEnergyLevel.values,
-        data['energyLevel'],
-        DogEnergyLevel.moderate,
-      ),
-      temperament: temperamentRaw
-          .map(
-            (value) => _enumByName(
-              DogTemperament.values,
-              value,
-              DogTemperament.friendly,
-            ),
-          )
-          .toList(),
+      energyLevel: _parseEnergy(data['energyLevel']),
+      temperament: [
+        for (final value in temperamentRaw)
+          _parseTemperament(value) ?? DogTemperament.friendly,
+      ],
       area: DogArea.fromMap(areaMap).cityId.isEmpty &&
               (data['cityId'] as String? ?? '').isNotEmpty
           ? DogArea(
@@ -273,36 +273,127 @@ class DogsRepositoryImpl implements DogsRepository {
     return null;
   }
 
+  @override
+  Future<void> deleteDog(String dogId, {required String ownerId}) async {
+    final trimmed = dogId.trim();
+    if (trimmed.isEmpty || ownerId.isEmpty) {
+      return;
+    }
+    // Rules reject deletes of missing docs, and legacy docs may carry an `id`
+    // field that differs from the document ID — so delete only docs we own.
+    final owned = await _dogs.where('ownerId', isEqualTo: ownerId).get();
+    final targets = [
+      for (final doc in owned.docs)
+        if (doc.id == trimmed || doc.data()['id'] == trimmed) doc.reference,
+    ];
+    if (targets.isEmpty) {
+      return;
+    }
+    final batch = _firestore.batch();
+    for (final ref in targets) {
+      batch.delete(ref);
+    }
+    await batch.commit();
+  }
+
   DogArea _resolveArea(DogDraft draft) {
     final city = SerbiaLocations.cityById(draft.cityId ?? '');
     if (city == null) {
-      throw const DogsException('Izaberite grad i naselje.');
+      throw DogsException('Izaberite grad i naselje.');
     }
-    Neighborhood? neighborhood;
-    for (final item in city.neighborhoods) {
-      if (item.id == draft.neighborhoodId) {
-        neighborhood = item;
-        break;
-      }
+    final neighborhoodId = draft.neighborhoodId;
+    if (neighborhoodId == null || neighborhoodId.isEmpty) {
+      throw DogsException('Izaberite grad i naselje.');
     }
-    if (neighborhood == null) {
-      throw const DogsException('Izaberite grad i naselje.');
+    final name = SerbiaLocations.resolveNeighborhoodName(
+      cityId: city.id,
+      neighborhoodId: neighborhoodId,
+      customName: draft.customNeighborhoodName,
+    );
+    if (name.isEmpty) {
+      throw DogsException('Izaberite grad i naselje.');
     }
+    final storedId = SerbiaLocations.usesCustomNeighborhood(
+          city.id,
+          neighborhoodId,
+        )
+        ? SerbiaLocations.customNeighborhoodId
+        : neighborhoodId;
     return DogArea(
       cityId: city.id,
       cityName: city.name,
-      neighborhoodId: neighborhood.id,
-      neighborhoodName: neighborhood.name,
+      neighborhoodId: storedId,
+      neighborhoodName: name,
     );
   }
 
-  T _enumByName<T extends Enum>(List<T> values, Object? raw, T fallback) {
-    final name = raw?.toString();
-    for (final value in values) {
-      if (value.name == name) {
+  DogGender _parseGender(Object? raw) {
+    switch (raw?.toString().trim().toLowerCase()) {
+      case 'male':
+      case 'mužjak':
+      case 'muzjak':
+        return DogGender.male;
+      case 'female':
+      case 'ženka':
+      case 'zenka':
+        return DogGender.female;
+      default:
+        return DogGender.unknown;
+    }
+  }
+
+  DogSize _parseSize(Object? raw) {
+    switch (raw?.toString().trim().toLowerCase()) {
+      case 'small':
+      case 'mali':
+        return DogSize.small;
+      case 'medium':
+      case 'srednji':
+        return DogSize.medium;
+      case 'large':
+      case 'xlarge':
+      case 'veliki':
+        return DogSize.large;
+      default:
+        return DogSize.medium;
+    }
+  }
+
+  DogEnergyLevel _parseEnergy(Object? raw) {
+    switch (raw?.toString().trim().toLowerCase()) {
+      case 'low':
+      case 'niska':
+      case 'nizak':
+        return DogEnergyLevel.low;
+      case 'high':
+      case 'visoka':
+      case 'visok':
+        return DogEnergyLevel.high;
+      default:
+        return DogEnergyLevel.moderate;
+    }
+  }
+
+  DogTemperament? _parseTemperament(Object? raw) {
+    final key = raw?.toString().trim().toLowerCase() ?? '';
+    for (final value in DogTemperament.values) {
+      if (value.name == key || value.firestoreValue == key) {
         return value;
       }
     }
-    return fallback;
+    return switch (key) {
+      // Legacy "social" was a duplicate of friendly (both showed as Društven).
+      'druželjubiv' ||
+      'društven' ||
+      'drustven' ||
+      'social' =>
+        DogTemperament.friendly,
+      'razigran' || 'igračka' || 'igracka' || 'voli loptice' || 'voli lopticu' =>
+        DogTemperament.playful,
+      'miran' || 'mirna' => DogTemperament.calm,
+      'sramežljiv' || 'sramezljiv' => DogTemperament.shy,
+      'zaštitnički' || 'zastitnicki' => DogTemperament.protective,
+      _ => null,
+    };
   }
 }

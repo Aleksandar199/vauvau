@@ -74,7 +74,9 @@ class StoryRing extends StatelessWidget {
                           ),
                         ),
                       )
-                    : DogImage(url: url, seed: seed),
+                    : SizedBox.expand(
+                        child: DogImage(url: url, seed: seed),
+                      ),
               ),
             ),
           ),
@@ -260,7 +262,7 @@ class StoryHighlightsRow extends ConsumerWidget {
                 TextButton.icon(
                   onPressed: () => showArrangeHighlightsSheet(context, dogId),
                   icon: const Icon(Icons.swap_horiz, size: 18),
-                  label: const Text(MomentsStrings.arrangeHighlights),
+                  label: Text(MomentsStrings.arrangeHighlights),
                 ),
             ],
           ),
@@ -344,11 +346,11 @@ class StoryHighlightsRow extends ConsumerWidget {
           children: [
             SimpleDialogOption(
               onPressed: () => Navigator.of(dialogContext).pop('edit'),
-              child: const Text(MomentsStrings.editHighlightTitle),
+              child: Text(MomentsStrings.editHighlightTitle),
             ),
             SimpleDialogOption(
               onPressed: () => Navigator.of(dialogContext).pop('delete'),
-              child: const Text(
+              child: Text(
                 MomentsStrings.highlightDelete,
                 style: TextStyle(color: Color(0xFFB91C1C)),
               ),

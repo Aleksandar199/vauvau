@@ -5,9 +5,11 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/firebase/firebase_status.dart';
+import '../../../core/firebase/firestore_auth_guard.dart';
 import '../../../core/geo/geo.dart';
 import '../../auth/presentation/auth_providers.dart';
 import '../../discover/domain/geo_query.dart';
+import '../../home/presentation/home_tab.dart';
 import '../../location/presentation/location_controller.dart';
 import '../../moderation/presentation/report_controller.dart';
 import '../../profile/presentation/profile_controller.dart';
@@ -73,11 +75,10 @@ class WalkController extends Notifier<WalkSession> {
       distanceKm: 0,
     );
     _timer = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (!state.isPaused) {
-        state = state.copyWith(now: DateTime.now());
-      } else {
-        state = state.copyWith(now: DateTime.now());
+      if (!state.isActive) {
+        return;
       }
+      state = state.copyWith(now: DateTime.now());
     });
     // Always publish walk + status to dog/user docs so Discover cards
     // show "U šetnji / Odmaram / Tražim društvo". Map pin sharing stays
@@ -93,18 +94,22 @@ class WalkController extends Notifier<WalkSession> {
     );
     _positionSub =
         ref.read(locationClientProvider).watchWalkPosition().listen((coord) {
-      ref.read(userLocationProvider.notifier).setCoord(coord);
-      _appendPoint(coord);
+      final accepted = _appendPoint(coord);
+      if (accepted) {
+        ref.read(userLocationProvider.notifier).setCoord(coord);
+      }
       if (!_shareLocation) {
         return;
       }
-      unawaited(
-        ref.read(walkPresenceRepositoryProvider).updateLocation(
-              userId: _userId,
-              dogId: _dogId,
-              location: coord,
-            ),
-      );
+      if (accepted) {
+        unawaited(
+          ref.read(walkPresenceRepositoryProvider).updateLocation(
+                userId: _userId,
+                dogId: _dogId,
+                location: coord,
+              ),
+        );
+      }
     }, onError: (_) {});
   }
 
@@ -134,6 +139,31 @@ class WalkController extends Notifier<WalkSession> {
       clearPausedAt: true,
       now: DateTime.now(),
     );
+  }
+
+  /// Stops GPS + clears Firestore `isWalking` before Auth sign-out.
+  /// Must run while the current uid is still available.
+  Future<void> stopForSignOut() async {
+    final userId = _userId;
+    final dogId = _dogId;
+    _timer?.cancel();
+    _timer = null;
+    _positionSub?.cancel();
+    _positionSub = null;
+    state = WalkSession(isActive: false, now: DateTime.now());
+    if (userId.isEmpty || userId == 'local-user') {
+      return;
+    }
+    try {
+      await ref.read(walkPresenceRepositoryProvider).setWalking(
+            userId: userId,
+            dogId: dogId,
+            isWalking: false,
+            location: ref.read(userLocationProvider).coord,
+          );
+    } catch (error) {
+      debugPrint('stopForSignOut presence clear failed: $error');
+    }
   }
 
   void end() {
@@ -190,9 +220,10 @@ class WalkController extends Notifier<WalkSession> {
     }
   }
 
-  void _appendPoint(GeoCoord coord) {
+  /// Returns true when the point was added to the route (and distance updated).
+  bool _appendPoint(GeoCoord coord) {
     if (!state.isActive || state.isPaused) {
-      return;
+      return false;
     }
     final path = [...state.path];
     var distance = state.distanceKm;
@@ -201,7 +232,7 @@ class WalkController extends Notifier<WalkSession> {
       final step = haversineKm(last, coord);
       // Ignore GPS jitter under ~4 meters.
       if (step < 0.004) {
-        return;
+        return false;
       }
       distance += step;
     }
@@ -211,6 +242,7 @@ class WalkController extends Notifier<WalkSession> {
       distanceKm: distance,
       now: DateTime.now(),
     );
+    return true;
   }
 
   String get _userId =>
@@ -246,21 +278,20 @@ final mapPlacesProvider = Provider<List<MapPlace>>((ref) {
   }
 
   // Merge by id. Priority (last wins): seed < community pois < places (SoT).
-  // When Firebase is live, skip seed so we don't show duplicate pins that
-  // already exist under different Firestore ids in `places` / `pois`.
+  // Seed stays as catalog baseline until Firestore is fully populated; live
+  // docs with the same id overwrite seed entries without leaving the map empty.
   final byId = <String, MapPlace>{};
   void put(MapPlace place) {
     if (place.verificationStatus == PoiVerificationStatus.rejected ||
-        hidden.contains(place.id)) {
+        hidden.contains(place.id) ||
+        !place.hasValidCoordinates) {
       return;
     }
     byId[place.id] = place;
   }
 
-  if (!isFirebaseReady) {
-    for (final place in mockMapPlaces.map(applyCommunityFlags)) {
-      put(place);
-    }
+  for (final place in mockMapPlaces.map(applyCommunityFlags)) {
+    put(place);
   }
   for (final place in submitted.map(MapPlace.fromPoi).map(applyCommunityFlags)) {
     put(place);
@@ -278,7 +309,15 @@ final walkPresenceRepositoryProvider = Provider<WalkPresenceRepository>((ref) {
   return const LocalWalkPresenceRepository();
 });
 
-final liveWalkingDogsProvider = StreamProvider<List<WalkingDogPin>>((ref) {
+final liveWalkingDogsProvider =
+    StreamProvider.autoDispose<List<WalkingDogPin>>((ref) {
+  // IndexedStack keeps MapScreen mounted — only subscribe on the Map tab.
+  final onMapTab = ref.watch(homeTabIndexProvider) == 1;
+  final authReady =
+      ref.watch(firestoreAuthReadyProvider).asData?.value ?? false;
+  if (!onMapTab || !authReady) {
+    return const Stream<List<WalkingDogPin>>.empty();
+  }
   return ref
       .watch(walkPresenceRepositoryProvider)
       .watchWalking(

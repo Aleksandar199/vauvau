@@ -31,7 +31,7 @@ class BrandMark extends StatelessWidget {
           ),
           child: const Icon(Icons.pets, color: Colors.white, size: 24),
         ),
-        const SizedBox(width: 10),
+        SizedBox(width: 10),
         Text(
           AppStrings.appName,
           style: theme.textTheme.headlineLarge?.copyWith(

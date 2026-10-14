@@ -1,3 +1,4 @@
+import '../../../core/l10n/l10n.dart';
 import 'discover_profile.dart';
 
 class CompatibilityInsight {
@@ -32,15 +33,27 @@ CompatibilityInsight describeCompatibility({
 String _headline(String a, String b, List<String> shared, bool similarEnergy) {
   final likes = _joinLikes(shared);
   if (similarEnergy && likes.isNotEmpty) {
-    return '✨ $a i $b imaju sličan nivo energije i oboje vole $likes!';
+    return L10n.tr(
+      '✨ $a i $b imaju sličan nivo energije i oboje vole $likes!',
+      '✨ $a and $b have a similar energy level and both love $likes!',
+    );
   }
   if (likes.isNotEmpty) {
-    return '✨ $a i $b oboje vole $likes!';
+    return L10n.tr(
+      '✨ $a i $b oboje vole $likes!',
+      '✨ $a and $b both love $likes!',
+    );
   }
   if (similarEnergy) {
-    return '✨ $a i $b imaju sličan nivo energije!';
+    return L10n.tr(
+      '✨ $a i $b imaju sličan nivo energije!',
+      '✨ $a and $b have a similar energy level!',
+    );
   }
-  return '✨ $a i $b mogu da se dopune — upoznajte se u šetnji!';
+  return L10n.tr(
+    '✨ $a i $b mogu da se dopune — upoznajte se u šetnji!',
+    '✨ $a and $b could complement each other — meet on a walk!',
+  );
 }
 
 String _joinLikes(List<String> tags) {
@@ -48,29 +61,30 @@ String _joinLikes(List<String> tags) {
     return '';
   }
   final phrases = [for (final tag in tags) _likePhrase(tag)];
+  final andWord = L10n.tr('i', 'and');
   if (phrases.length == 1) {
     return phrases.first;
   }
   if (phrases.length == 2) {
-    return '${phrases[0]} i ${phrases[1]}';
+    return '${phrases[0]} $andWord ${phrases[1]}';
   }
-  return '${phrases.sublist(0, phrases.length - 1).join(', ')} i ${phrases.last}';
+  return '${phrases.sublist(0, phrases.length - 1).join(', ')} $andWord ${phrases.last}';
 }
 
 String _likePhrase(String tag) {
   switch (tag) {
     case 'Šetnje':
-      return 'duge šetnje';
+      return L10n.tr('duge šetnje', 'long walks');
     case 'Trčanje':
-      return 'trčanje';
+      return L10n.tr('trčanje', 'running');
     case 'Igru':
-      return 'igru';
+      return L10n.tr('igru', 'play');
     case 'Male pse':
-      return 'male pse';
+      return L10n.tr('male pse', 'small dogs');
     case 'Velike pse':
-      return 'velike pse';
+      return L10n.tr('velike pse', 'large dogs');
     case 'Mirne pse':
-      return 'mirne pse';
+      return L10n.tr('mirne pse', 'calm dogs');
     default:
       return tag.toLowerCase();
   }

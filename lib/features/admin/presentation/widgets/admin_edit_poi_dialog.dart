@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/utils/content_validation_service.dart';
+import '../../../map/data/poi_seed_data.dart';
+import '../../../map/domain/map_place.dart';
 import '../../../map/domain/models/poi_model.dart';
 import '../../../map/presentation/user_poi_controller.dart';
 import '../admin_strings.dart';
@@ -72,6 +74,7 @@ class _AdminEditPoiSheetState extends ConsumerState<_AdminEditPoiSheet> {
   late bool _dayCare;
   late bool _hasYard;
   late bool _petFriendly;
+  late bool _dogPark;
   late PoiVerificationStatus _status;
   var _saving = false;
 
@@ -95,6 +98,7 @@ class _AdminEditPoiSheetState extends ConsumerState<_AdminEditPoiSheet> {
     _dayCare = poi.dayCare;
     _hasYard = poi.hasYard;
     _petFriendly = poi.petFriendly;
+    _dogPark = MapPlace.fromPoi(poi).isOfficialDogPark;
     _status = poi.verificationStatus;
   }
 
@@ -168,62 +172,62 @@ class _AdminEditPoiSheetState extends ConsumerState<_AdminEditPoiSheet> {
                 ),
               ),
             ],
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             TextField(
               controller: _name,
               enabled: !_saving,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: AdminStrings.name,
                 border: OutlineInputBorder(),
               ),
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
             TextField(
               controller: _address,
               enabled: !_saving,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: AdminStrings.address,
                 border: OutlineInputBorder(),
               ),
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
             TextField(
               controller: _hours,
               enabled: !_saving,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: AdminStrings.openingHours,
                 hintText: AdminStrings.openingHoursHint,
                 border: OutlineInputBorder(),
               ),
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
             TextField(
               controller: _price,
               enabled: !_saving,
               keyboardType:
-                  const TextInputType.numberWithOptions(decimal: true),
-              decoration: const InputDecoration(
+                  TextInputType.numberWithOptions(decimal: true),
+              decoration: InputDecoration(
                 labelText: AdminStrings.pricePerNight,
                 hintText: AdminStrings.pricePerNightHint,
                 border: OutlineInputBorder(),
               ),
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
             TextField(
               controller: _phone,
               enabled: !_saving,
               keyboardType: TextInputType.phone,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: AdminStrings.phone,
                 border: OutlineInputBorder(),
               ),
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
             TextField(
               controller: _website,
               enabled: !_saving,
               keyboardType: TextInputType.url,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: AdminStrings.website,
                 border: OutlineInputBorder(),
               ),
@@ -239,7 +243,7 @@ class _AdminEditPoiSheetState extends ConsumerState<_AdminEditPoiSheet> {
                       decimal: true,
                       signed: true,
                     ),
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       labelText: AdminStrings.latitude,
                       border: OutlineInputBorder(),
                     ),
@@ -254,7 +258,7 @@ class _AdminEditPoiSheetState extends ConsumerState<_AdminEditPoiSheet> {
                       decimal: true,
                       signed: true,
                     ),
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       labelText: AdminStrings.longitude,
                       border: OutlineInputBorder(),
                     ),
@@ -262,10 +266,10 @@ class _AdminEditPoiSheetState extends ConsumerState<_AdminEditPoiSheet> {
                 ),
               ],
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
             DropdownButtonFormField<PoiVerificationStatus>(
               initialValue: _status,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: AdminStrings.verificationStatus,
                 border: OutlineInputBorder(),
               ),
@@ -282,49 +286,57 @@ class _AdminEditPoiSheetState extends ConsumerState<_AdminEditPoiSheet> {
                       if (value != null) setState(() => _status = value);
                     },
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
             SwitchListTile(
               contentPadding: EdgeInsets.zero,
-              title: const Text(AdminStrings.flag24h),
+              title: Text(AdminStrings.flag24h),
               value: _is24_7,
               onChanged:
                   _saving ? null : (v) => setState(() => _is24_7 = v),
             ),
             SwitchListTile(
               contentPadding: EdgeInsets.zero,
-              title: const Text(AdminStrings.flagEmergency),
+              title: Text(AdminStrings.flagEmergency),
               value: _emergency,
               onChanged:
                   _saving ? null : (v) => setState(() => _emergency = v),
             ),
             SwitchListTile(
               contentPadding: EdgeInsets.zero,
-              title: const Text(AdminStrings.flagOvernight),
+              title: Text(AdminStrings.flagOvernight),
               value: _overnight,
               onChanged:
                   _saving ? null : (v) => setState(() => _overnight = v),
             ),
             SwitchListTile(
               contentPadding: EdgeInsets.zero,
-              title: const Text(AdminStrings.flagDayCare),
+              title: Text(AdminStrings.flagDayCare),
               value: _dayCare,
               onChanged:
                   _saving ? null : (v) => setState(() => _dayCare = v),
             ),
             SwitchListTile(
               contentPadding: EdgeInsets.zero,
-              title: const Text(AdminStrings.flagYard),
+              title: Text(AdminStrings.flagYard),
               value: _hasYard,
               onChanged:
                   _saving ? null : (v) => setState(() => _hasYard = v),
             ),
             SwitchListTile(
               contentPadding: EdgeInsets.zero,
-              title: const Text(AdminStrings.flagPetFriendly),
+              title: Text(AdminStrings.flagPetFriendly),
               value: _petFriendly,
               onChanged:
                   _saving ? null : (v) => setState(() => _petFriendly = v),
             ),
+            if (widget.poi.category == PoiCategory.park)
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                title: Text(AdminStrings.flagDogPark),
+                value: _dogPark,
+                onChanged:
+                    _saving ? null : (v) => setState(() => _dogPark = v),
+              ),
             const SizedBox(height: 16),
             if (widget.offerResolve)
               FilledButton(
@@ -337,21 +349,21 @@ class _AdminEditPoiSheetState extends ConsumerState<_AdminEditPoiSheet> {
                         height: 20,
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
-                    : const Text(AdminStrings.saveAndResolve),
+                    : Text(AdminStrings.saveAndResolve),
               ),
             if (widget.offerResolve) const SizedBox(height: 8),
             FilledButton.tonal(
               onPressed:
                   _saving ? null : () => _save(AdminEditPoiResult.saved),
-              child: const Text(AdminStrings.saveOnly),
+              child: Text(AdminStrings.saveOnly),
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
             OutlinedButton(
               onPressed: _saving
                   ? null
                   : () => Navigator.of(context)
                       .pop(AdminEditPoiResult.cancelled),
-              child: const Text(AdminStrings.cancel),
+              child: Text(AdminStrings.cancel),
             ),
           ],
         ),
@@ -371,9 +383,13 @@ class _AdminEditPoiSheetState extends ConsumerState<_AdminEditPoiSheet> {
 
     final lat = double.tryParse(_lat.text.trim().replaceAll(',', '.'));
     final lng = double.tryParse(_lng.text.trim().replaceAll(',', '.'));
-    if (lat == null || lng == null) {
+    if (lat == null ||
+        lng == null ||
+        !PoiSeedData.hasValidCoordinates(
+          widget.poi.copyWith(latitude: lat, longitude: lng),
+        )) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text(AdminStrings.invalidCoords)),
+        SnackBar(content: Text(AdminStrings.invalidCoords)),
       );
       return;
     }
@@ -383,7 +399,7 @@ class _AdminEditPoiSheetState extends ConsumerState<_AdminEditPoiSheet> {
     final price = clearPrice ? null : double.tryParse(priceRaw);
     if (!clearPrice && price == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text(AdminStrings.invalidPrice)),
+        SnackBar(content: Text(AdminStrings.invalidPrice)),
       );
       return;
     }
@@ -408,6 +424,7 @@ class _AdminEditPoiSheetState extends ConsumerState<_AdminEditPoiSheet> {
         dayCare: _dayCare,
         hasYard: _hasYard,
         petFriendly: _petFriendly,
+        isDogPark: widget.poi.category == PoiCategory.park ? _dogPark : null,
         verificationStatus: _status,
         lastVerified: _status == PoiVerificationStatus.verified
             ? DateTime.now()
@@ -422,7 +439,7 @@ class _AdminEditPoiSheetState extends ConsumerState<_AdminEditPoiSheet> {
       if (!mounted) return;
       setState(() => _saving = false);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text(AdminStrings.actionFailed)),
+        SnackBar(content: Text(AdminStrings.actionFailed)),
       );
     }
   }

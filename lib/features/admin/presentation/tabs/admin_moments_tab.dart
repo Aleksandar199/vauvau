@@ -16,10 +16,10 @@ class AdminMomentsTab extends ConsumerWidget {
     return ref.watch(momentsControllerProvider).when(
           loading: () => const Center(child: CircularProgressIndicator()),
           error: (error, stack) =>
-              const Center(child: Text(AdminStrings.loadError)),
+              Center(child: Text(AdminStrings.loadError)),
           data: (moments) {
             if (moments.isEmpty) {
-              return const Center(child: Text(AdminStrings.emptyMoments));
+              return Center(child: Text(AdminStrings.emptyMoments));
             }
             return ListView.separated(
               padding: const EdgeInsets.all(16),
@@ -67,15 +67,15 @@ class _ModerationCard extends ConsumerWidget {
                   '${AdminStrings.timestamp(moment.createdAt)}',
                   style: theme.textTheme.bodySmall,
                 ),
-                const SizedBox(height: 8),
+                SizedBox(height: 8),
                 Text(moment.caption),
-                const SizedBox(height: 10),
+                SizedBox(height: 10),
                 Align(
                   alignment: Alignment.centerLeft,
                   child: TextButton.icon(
                     onPressed: () => _delete(context, ref),
                     icon: const Icon(Icons.delete_outline),
-                    label: const Text(AdminStrings.deleteMoment),
+                    label: Text(AdminStrings.deleteMoment),
                   ),
                 ),
               ],
@@ -98,13 +98,13 @@ class _ModerationCard extends ConsumerWidget {
       await ref.read(momentsControllerProvider.notifier).delete(moment.id);
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text(AdminStrings.momentDeleted)),
+          SnackBar(content: Text(AdminStrings.momentDeleted)),
         );
       }
     } catch (_) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text(AdminStrings.actionFailed)),
+          SnackBar(content: Text(AdminStrings.actionFailed)),
         );
       }
     }

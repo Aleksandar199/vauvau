@@ -1,4 +1,7 @@
 import '../../../core/geo/geo.dart';
+import '../../../core/l10n/l10n.dart';
+import '../../dogs/domain/dog_preference_tags.dart';
+import '../presentation/discover_strings.dart';
 
 class DiscoverProfile {
   const DiscoverProfile({
@@ -30,6 +33,7 @@ class DiscoverProfile {
     this.goodWithKids = false,
     this.likesTags = const [],
     this.dislikesTags = const [],
+    this.createdAt,
   });
 
   final String id;
@@ -60,6 +64,19 @@ class DiscoverProfile {
   final bool goodWithKids;
   final List<String> likesTags;
   final List<String> dislikesTags;
+  /// When the dog profile was created (Firestore `createdAt`).
+  final DateTime? createdAt;
+
+  /// Default Discover order: newest first, then closer by distance.
+  static int compareFeedOrder(DiscoverProfile a, DiscoverProfile b) {
+    final aMs = a.createdAt?.millisecondsSinceEpoch ?? 0;
+    final bMs = b.createdAt?.millisecondsSinceEpoch ?? 0;
+    final byCreated = bMs.compareTo(aMs);
+    if (byCreated != 0) {
+      return byCreated;
+    }
+    return a.distanceKm.compareTo(b.distanceKm);
+  }
 
   String get imageUrl => photoUrls.isEmpty ? '' : photoUrls.first;
 
@@ -102,7 +119,9 @@ class DiscoverProfile {
     if (raw.isNotEmpty) {
       return decorateWalkStatus(raw);
     }
-    return walking ? '🟢 U šetnji' : 'Odmaram';
+    return walking
+        ? DiscoverStrings.walkingBadge
+        : DiscoverStrings.restingBadge;
   }
 
   /// Normalizes walk/status labels for Discover cards.
@@ -110,35 +129,47 @@ class DiscoverProfile {
     final value = raw.trim();
     if (value.isEmpty) return value;
     final lower = value.toLowerCase();
-    if (lower.contains('šetnj') && !value.contains('🟢')) {
-      return '🟢 $value';
+    final walking = lower.contains('šetnj') || lower.contains('walk');
+    final looking = lower.contains('tražim') ||
+        lower.contains('looking') ||
+        lower.contains('play');
+    final resting = lower.contains('odmar') || lower.contains('rest');
+    if (walking) {
+      return DiscoverStrings.walkingBadge;
     }
-    if (lower.contains('tražim') && !value.contains('🎾')) {
-      return '🎾 $value';
+    if (looking) {
+      return DiscoverStrings.lookingForPlayBadge;
     }
-    if (lower.contains('odmar') && !value.contains('😴')) {
-      return '😴 $value';
+    if (resting) {
+      return DiscoverStrings.restingBadge;
     }
     return value;
   }
 
   String get ageLabel {
     if (ageYears <= 0 && ageMonths > 0) {
-      return _count(ageMonths, 'mesec', 'meseca', 'meseci');
+      return L10n.isEnglish
+          ? _countEn(ageMonths, 'month', 'months')
+          : _count(ageMonths, 'mesec', 'meseca', 'meseci');
     }
-    return _count(ageYears <= 0 ? 1 : ageYears, 'godina', 'godine', 'godina');
+    final years = ageYears <= 0 ? 1 : ageYears;
+    return L10n.isEnglish
+        ? _countEn(years, 'year', 'years')
+        : _count(years, 'godina', 'godine', 'godina');
   }
 
   String get genderLabel {
     switch (gender) {
       case 'male':
       case 'mužjak':
-        return 'Mužjak';
+        return DiscoverStrings.genderMale;
       case 'female':
       case 'ženka':
-        return 'Ženka';
+        return DiscoverStrings.genderFemale;
       default:
-        return gender.isEmpty ? 'Nije navedeno' : gender;
+        return gender.isEmpty
+            ? L10n.tr('Nije navedeno', 'Not specified')
+            : gender;
     }
   }
 
@@ -146,16 +177,16 @@ class DiscoverProfile {
     switch (size) {
       case 'small':
       case 'mali':
-        return 'Mali';
+        return DiscoverStrings.sizeSmall;
       case 'medium':
       case 'srednji':
-        return 'Srednji';
+        return DiscoverStrings.sizeMid;
       case 'large':
       case 'xlarge':
       case 'veliki':
-        return 'Veliki';
+        return DiscoverStrings.sizeBig;
       default:
-        return size.isEmpty ? 'Srednji' : size;
+        return size.isEmpty ? DiscoverStrings.sizeMid : size;
     }
   }
 
@@ -163,50 +194,84 @@ class DiscoverProfile {
     switch (energyLevel) {
       case 'visoka':
       case 'high':
-        return 'Visok';
+        return DiscoverStrings.energyHigh;
       case 'niska':
       case 'low':
-        return 'Nizak';
+        return DiscoverStrings.energyLow;
       default:
-        return 'Umeren';
+        return DiscoverStrings.energyMid;
     }
   }
 
   List<String> get traitLabels => [
-    for (final tag in traits) localizeTrait(tag),
-  ];
+        for (final tag in traits) localizeTrait(tag),
+      ];
 
   List<String> get getsAlongLabels => [
-    if (goodWithDogs) 'Psi 🐕',
-    if (goodWithCats) 'Mačke 🐈',
-    if (goodWithKids) 'Deca 👶',
-  ];
+        if (goodWithDogs) L10n.tr('Psi 🐕', 'Dogs 🐕'),
+        if (goodWithCats) L10n.tr('Mačke 🐈', 'Cats 🐈'),
+        if (goodWithKids) L10n.tr('Deca 👶', 'Kids 👶'),
+      ];
+
+  List<String> get likeLabels => [
+        for (final tag in likesTags) DogPreferenceTags.localize(tag),
+      ];
+
+  List<String> get dislikeLabels => [
+        for (final tag in dislikesTags) DogPreferenceTags.localize(tag),
+      ];
 
   static String localizeTrait(String raw) {
     switch (raw.trim().toLowerCase()) {
       case 'friendly':
       case 'druželjubiv':
-        return 'Društven';
+      case 'social': // legacy duplicate of friendly
+      case 'društven':
+        return L10n.tr('Društven', 'Friendly');
       case 'playful':
       case 'igračka':
       case 'razigran':
-        return 'Razigran';
+      case 'voli loptice':
+      case 'voli lopticu':
+        return L10n.tr('Razigran', 'Playful');
       case 'energetic':
       case 'energičan':
-        return 'Energičan';
+        return L10n.tr('Energičan', 'Energetic');
       case 'calm':
       case 'miran':
       case 'mirna':
-        return 'Miran';
+        return L10n.tr('Miran', 'Calm');
       case 'shy':
       case 'sramežljiv':
-        return 'Sramežljiv';
+        return L10n.tr('Sramežljiv', 'Shy');
+      case 'radoznala':
+      case 'radoznao':
+      case 'curious':
+        return L10n.tr('Radoznao', 'Curious');
       case 'protective':
       case 'zaštitnički':
-        return 'Zaštitnički';
-      case 'social':
-      case 'društven':
-        return 'Društven';
+        return L10n.tr('Zaštitnički', 'Protective');
+      case 'poslušan':
+      case 'obedient':
+        return L10n.tr('Poslušan', 'Obedient');
+      case 'nežna':
+      case 'nežan':
+      case 'gentle':
+        return L10n.tr('Nežan', 'Gentle');
+      case 'plivač':
+      case 'swimmer':
+        return L10n.tr('Plivač', 'Swimmer');
+      case 'mazna':
+      case 'mazan':
+      case 'cuddly':
+        return L10n.tr('Mazan', 'Cuddly');
+      case 'avanturista':
+      case 'adventurous':
+        return L10n.tr('Avanturista', 'Adventurous');
+      case 'kafićar':
+        return L10n.tr('Kafićar', 'Café buddy');
+      case 'voli grickalice':
+        return L10n.tr('Voli grickalice', 'Loves treats');
       default:
         return raw;
     }
@@ -223,6 +288,11 @@ class DiscoverProfile {
       return '$n $few';
     }
     return '$n $many';
+  }
+
+  static String _countEn(int value, String one, String many) {
+    final n = value.abs();
+    return n == 1 ? '$n $one' : '$n $many';
   }
 
   GeoCoord? get coord {
@@ -263,6 +333,7 @@ class DiscoverProfile {
     bool? goodWithKids,
     List<String>? likesTags,
     List<String>? dislikesTags,
+    DateTime? createdAt,
   }) {
     return DiscoverProfile(
       id: id ?? this.id,
@@ -293,6 +364,7 @@ class DiscoverProfile {
       goodWithKids: goodWithKids ?? this.goodWithKids,
       likesTags: likesTags ?? this.likesTags,
       dislikesTags: dislikesTags ?? this.dislikesTags,
+      createdAt: createdAt ?? this.createdAt,
     );
   }
 }

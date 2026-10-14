@@ -2,7 +2,9 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 
+import '../../../core/firebase/firestore_auth_guard.dart';
 import '../../../core/images/dog_photo_urls.dart';
+import '../../../services/storage_service.dart';
 import '../domain/moment_model.dart';
 import '../domain/moments_repository.dart';
 
@@ -47,59 +49,73 @@ class FirestoreMomentsRepository implements MomentsRepository {
 
   @override
   Stream<List<MomentModel>> watchMoments({int limit = 20}) {
-    return _col
-        .orderBy('createdAt', descending: true)
-        .limit(limit)
-        .snapshots()
-        .map(_fromSnapshot);
+    return FirestoreAuthGuard.guardedStream<List<MomentModel>>(
+      label: 'moments.watchMoments',
+      empty: const [],
+      create: () => _col
+          .orderBy('createdAt', descending: true)
+          .limit(limit)
+          .snapshots()
+          .map(_fromSnapshot),
+    );
   }
 
   @override
   Future<MomentsPage> fetchMomentsPage({
     Object? cursor,
     int limit = 20,
-  }) async {
-    Query<Map<String, dynamic>> query =
-        _col.orderBy('createdAt', descending: true).limit(limit);
+  }) {
+    return FirestoreAuthGuard.run(
+      label: 'moments.fetchMomentsPage',
+      fallback: const MomentsPage(items: [], hasMore: false),
+      action: () async {
+        Query<Map<String, dynamic>> query =
+            _col.orderBy('createdAt', descending: true).limit(limit);
 
-    if (cursor is DocumentSnapshot<Map<String, dynamic>>) {
-      query = query.startAfterDocument(cursor);
-    } else {
-      // First "load more": skip the live window (newest [limit] docs).
-      final head = await _col
-          .orderBy('createdAt', descending: true)
-          .limit(limit)
-          .get();
-      if (head.docs.isEmpty) {
-        return const MomentsPage(items: [], hasMore: false);
-      }
-      query = _col
-          .orderBy('createdAt', descending: true)
-          .startAfterDocument(head.docs.last)
-          .limit(limit);
-    }
+        if (cursor is DocumentSnapshot<Map<String, dynamic>>) {
+          query = query.startAfterDocument(cursor);
+        } else {
+          // First "load more": skip the live window (newest [limit] docs).
+          final head = await _col
+              .orderBy('createdAt', descending: true)
+              .limit(limit)
+              .get();
+          if (head.docs.isEmpty) {
+            return const MomentsPage(items: [], hasMore: false);
+          }
+          query = _col
+              .orderBy('createdAt', descending: true)
+              .startAfterDocument(head.docs.last)
+              .limit(limit);
+        }
 
-    final snapshot = await query.get();
-    final items = [
-      for (final doc in snapshot.docs)
-        _fromDoc(doc, pending: doc.metadata.hasPendingWrites),
-    ];
-    final last = snapshot.docs.isEmpty ? null : snapshot.docs.last;
-    return MomentsPage(
-      items: items,
-      nextCursor: last,
-      hasMore: snapshot.docs.length >= limit,
+        final snapshot = await query.get();
+        final items = [
+          for (final doc in snapshot.docs)
+            _fromDoc(doc, pending: doc.metadata.hasPendingWrites),
+        ];
+        final last = snapshot.docs.isEmpty ? null : snapshot.docs.last;
+        return MomentsPage(
+          items: items,
+          nextCursor: last,
+          hasMore: snapshot.docs.length >= limit,
+        );
+      },
     );
   }
 
   @override
   Stream<List<MomentComment>> watchComments(String momentId) {
-    return _col
-        .doc(momentId)
-        .collection('comments')
-        .orderBy('createdAt')
-        .snapshots()
-        .map((snapshot) => snapshot.docs.map(_commentFromDoc).toList());
+    return FirestoreAuthGuard.guardedStream<List<MomentComment>>(
+      label: 'moments.watchComments',
+      empty: const [],
+      create: () => _col
+          .doc(momentId)
+          .collection('comments')
+          .orderBy('createdAt')
+          .snapshots()
+          .map((snapshot) => snapshot.docs.map(_commentFromDoc).toList()),
+    );
   }
 
   @override
@@ -125,6 +141,31 @@ class FirestoreMomentsRepository implements MomentsRepository {
   }
 
   @override
+  Future<void> toggleCommentLike(String momentId, String commentId) async {
+    final uid = _uid;
+    if (uid.isEmpty) {
+      throw StateError('Morate biti prijavljeni.');
+    }
+    final ref = _col.doc(momentId).collection('comments').doc(commentId);
+    await firestore.runTransaction((tx) async {
+      final snap = await tx.get(ref);
+      if (!snap.exists) {
+        return;
+      }
+      final ids = [
+        for (final value in snap.data()?['likes'] as List? ?? const [])
+          if (value is String) value,
+      ];
+      if (ids.contains(uid)) {
+        ids.remove(uid);
+      } else {
+        ids.add(uid);
+      }
+      tx.update(ref, {'likes': ids});
+    });
+  }
+
+  @override
   Future<void> addComment(String momentId, String text) async {
     final trimmed = text.trim();
     final uid = _uid;
@@ -136,6 +177,7 @@ class FirestoreMomentsRepository implements MomentsRepository {
       'authorUserId': uid,
       'authorName': _resolveAuthorName(''),
       'text': trimmed,
+      'likes': <String>[],
       'createdAt': FieldValue.serverTimestamp(),
     });
     await firestore.runTransaction((tx) async {
@@ -152,7 +194,18 @@ class FirestoreMomentsRepository implements MomentsRepository {
       throw StateError('Morate biti prijavljeni.');
     }
     try {
-      final photo = moment.momentPhotoUrl.trim();
+      var photo = moment.momentPhotoUrl.trim();
+      if (photo.isEmpty) {
+        throw StateError('Fotografija momenta nije otpremljena.');
+      }
+      // Legacy rows / bad uploads may store gs:// — convert before write.
+      if (StorageService.isGsUri(photo)) {
+        photo = await StorageService().resolveDownloadUrl(photo);
+      }
+      if (!(photo.startsWith('https://') || photo.startsWith('http://'))) {
+        throw StateError('Fotografija momenta nije otpremljena.');
+      }
+      debugPrint('Moment create momentPhotoUrl=$photo');
       final dogPhoto = moment.dogPhotoUrl.trim();
       final location = moment.locationName.trim();
       final dogName = moment.dogName.trim();
@@ -163,7 +216,7 @@ class FirestoreMomentsRepository implements MomentsRepository {
         'dogName': dogName.isEmpty ? 'Pas' : dogName,
         'dogBreed': moment.dogBreed.trim(),
         'dogPhotoUrl': dogPhoto.isEmpty ? kFallbackDogPhotoUrl : dogPhoto,
-        'momentPhotoUrl': photo.isEmpty ? kFallbackDogPhotoUrl : photo,
+        'momentPhotoUrl': photo,
         'caption': moment.caption.trim(),
         'locationName': location.isEmpty ? 'Novi Sad' : location,
         'likes': <String>[],
@@ -248,6 +301,10 @@ class FirestoreMomentsRepository implements MomentsRepository {
       createdAt: doc.metadata.hasPendingWrites
           ? DateTime.now()
           : _date(data['createdAt']),
+      likes: [
+        for (final value in data['likes'] as List? ?? const [])
+          if (value is String) value,
+      ],
     );
   }
 

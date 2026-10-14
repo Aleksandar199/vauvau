@@ -3,16 +3,19 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../../core/constants/app_strings.dart';
+import '../../../core/constants/dog_breeds.dart';
 import '../../../core/images/dog_image.dart';
 import '../../../core/images/dog_photo_urls.dart';
-import '../../../core/images/image_upload_service.dart';
 import '../../../core/network/network_failure.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/content_validation_service.dart';
+import '../../../core/widgets/breed_field.dart';
+import '../../../services/storage_service.dart';
 import '../../discover/data/dog_profile_mapper.dart';
 import '../../discover/domain/discover_profile.dart';
 import '../../dogs/domain/dog_enums.dart';
 import '../../dogs/domain/dog_preference_tags.dart';
+import '../../dogs/presentation/dog_providers.dart';
 import '../../dogs/presentation/onboarding/option_chips.dart';
 import '../../dogs/presentation/widgets/preference_chip_group.dart';
 import 'profile_controller.dart';
@@ -30,11 +33,12 @@ class EditProfileScreen extends ConsumerStatefulWidget {
 class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _dogName;
-  late final TextEditingController _breed;
+  late final TextEditingController _customBreed;
   late final TextEditingController _ageYears;
   late final TextEditingController _ageMonths;
   late final TextEditingController _weight;
   late final TextEditingController _dogBio;
+  late String _breed;
   late List<DogTemperament> _tags;
   late List<String> _likes;
   late List<String> _dislikes;
@@ -46,22 +50,17 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   late bool _sterilized;
   var _uploadingPhoto = false;
   var _missing = false;
+  final _storage = StorageService();
 
   @override
   void initState() {
     super.initState();
-    final profile = ref.read(profileControllerProvider);
-    DiscoverProfile? dog;
-    for (final item in profile.dogs) {
-      if (item.id == widget.dogId) {
-        dog = item;
-        break;
-      }
-    }
+    final dog = _resolveDog();
     if (dog == null) {
       _missing = true;
       _dogName = TextEditingController();
-      _breed = TextEditingController();
+      _breed = '';
+      _customBreed = TextEditingController();
       _ageYears = TextEditingController();
       _ageMonths = TextEditingController();
       _weight = TextEditingController();
@@ -70,7 +69,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
       _likes = [];
       _dislikes = [];
       _photos = [];
-      _gender = 'mužjak';
+      _gender = '';
       _size = 'srednji';
       _vaccinated = false;
       _chipped = false;
@@ -78,8 +77,12 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
       return;
     }
     _dogName = TextEditingController(text: dog.name);
-    _breed = TextEditingController(text: dog.breed);
-    _ageYears = TextEditingController(text: '${dog.ageYears}');
+    _breed = dog.breed;
+    final isCustom = DogBreeds.dropdownValue(_breed) == DogBreeds.customId;
+    _customBreed = TextEditingController(text: isCustom ? _breed : '');
+    _ageYears = TextEditingController(
+      text: dog.ageYears > 0 ? '${dog.ageYears}' : '',
+    );
     _ageMonths = TextEditingController(
       text: dog.ageMonths > 0 ? '${dog.ageMonths}' : '',
     );
@@ -91,17 +94,38 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     _likes = List<String>.from(dog.likesTags);
     _dislikes = List<String>.from(dog.dislikesTags);
     _photos = List<String>.from(dog.photoUrls);
-    _gender = dog.gender;
-    _size = dog.size;
+    // Normalize EN/SR stored values so chips match registration data.
+    _gender = normalizeDogGender(dog.gender);
+    _size = normalizeDogSize(dog.size);
+    if (_size.isEmpty) {
+      _size = 'srednji';
+    }
     _vaccinated = dog.vaccinated;
     _chipped = dog.chipped;
     _sterilized = dog.sterilized;
   }
 
+  DiscoverProfile? _resolveDog() {
+    final profile = ref.read(profileControllerProvider);
+    for (final item in profile.dogs) {
+      if (item.id == widget.dogId) {
+        return item;
+      }
+    }
+    final ownerDogs = ref.read(ownerDogsProvider).asData?.value ?? const [];
+    for (final dog in ownerDogs) {
+      if (dog.id == widget.dogId) {
+        final ownerName = profile.ownerName;
+        return discoverProfileFromDog(dog, ownerName: ownerName);
+      }
+    }
+    return null;
+  }
+
   @override
   void dispose() {
     _dogName.dispose();
-    _breed.dispose();
+    _customBreed.dispose();
     _ageYears.dispose();
     _ageMonths.dispose();
     _weight.dispose();
@@ -111,11 +135,11 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
 
   void _save() {
     final name = _dogName.text.trim();
-    final breed = _breed.text.trim();
+    final breed = _breed.trim();
     if (name.isEmpty || breed.isEmpty) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text(ProfileStrings.validation)));
+      ).showSnackBar(SnackBar(content: Text(ProfileStrings.validation)));
       return;
     }
     final invalid =
@@ -139,14 +163,21 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     if (existing == null) {
       return;
     }
+    final gender = normalizeDogGender(_gender);
+    if (gender.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(ProfileStrings.genderRequired)),
+      );
+      return;
+    }
     final weight = double.tryParse(_weight.text.trim());
     final dog = existing.copyWith(
       name: name,
       breed: breed,
       ageYears: int.tryParse(_ageYears.text.trim()) ?? existing.ageYears,
       ageMonths: int.tryParse(_ageMonths.text.trim()) ?? 0,
-      gender: _gender,
-      size: _size,
+      gender: gender,
+      size: normalizeDogSize(_size),
       weightKg: weight ?? 0,
       vaccinated: _vaccinated,
       chipped: _chipped,
@@ -154,36 +185,64 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
       bio: _dogBio.text.trim(),
       photoUrls: uniquePhotoUrls(_photos),
       traits: [for (final tag in _tags) tag.firestoreValue],
-      likesTags: _likes,
-      dislikesTags: _dislikes,
+      likesTags: List<String>.from(_likes),
+      dislikesTags: List<String>.from(_dislikes),
     );
     ref.read(profileControllerProvider.notifier).saveDog(dog);
-    Navigator.of(context).pop(true);
+    if (mounted) {
+      Navigator.of(context).pop(true);
+    }
   }
 
   Future<void> _addPhoto(ImageSource source) async {
     if (_uploadingPhoto) {
       return;
     }
-    final picked = await ImagePicker().pickImage(source: source);
-    if (picked == null || !mounted) {
-      return;
-    }
-    final invalid = await ContentValidationService.validateImage(picked);
-    if (invalid != null) {
-      if (!mounted) {
-        return;
-      }
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(invalid)));
+    final remaining = AppStrings.maxDogPhotos - _photos.length;
+    if (remaining <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(AppStrings.photoLimitReached)),
+      );
       return;
     }
     setState(() => _uploadingPhoto = true);
-    var url = '';
     try {
-      final bytes = await picked.readAsBytes();
-      url = await ImageUploadService.upload(bytes);
+      if (source == ImageSource.camera) {
+        final url = await _storage.uploadImageFromCamera(folderName: 'pets');
+        if (!mounted) {
+          return;
+        }
+        if (url == null) {
+          return;
+        }
+        if (!(url.startsWith('https://') || url.startsWith('http://'))) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(AppStrings.photoUploadFailed)),
+          );
+          return;
+        }
+        final next = [..._photos, url];
+        setState(() => _photos = next);
+        await _persistPhotos(next);
+        return;
+      }
+
+      final urls = await _storage.uploadImagesFromGallery(
+        folderName: 'pets',
+        limit: remaining,
+      );
+      if (!mounted) {
+        return;
+      }
+      if (urls.isEmpty) {
+        return;
+      }
+      final next = uniquePhotoUrls([..._photos, ...urls])
+          .take(AppStrings.maxDogPhotos)
+          .toList();
+      setState(() => _photos = next);
+      // Persist downloadUrl to Firestore immediately (not only on Save).
+      await _persistPhotos(next);
     } catch (error) {
       if (mounted) {
         showNetworkErrorSnackBar(
@@ -192,35 +251,51 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
           fallback: AppStrings.photoUploadFailed,
         );
       }
+    } finally {
       if (mounted) {
         setState(() => _uploadingPhoto = false);
       }
+    }
+  }
+
+  Future<void> _removePhotoAt(int index) async {
+    if (index < 0 || index >= _photos.length || _uploadingPhoto) {
       return;
     }
-    if (!mounted) {
+    final removed = _photos[index];
+    final next = [..._photos]..removeAt(index);
+    setState(() => _photos = next);
+    await _persistPhotos(next);
+    await _storage.tryDeleteImageByUrl(removed);
+  }
+
+  Future<void> _persistPhotos(List<String> photos) async {
+    final current = ref.read(profileControllerProvider);
+    DiscoverProfile? existing;
+    for (final item in current.dogs) {
+      if (item.id == widget.dogId) {
+        existing = item;
+        break;
+      }
+    }
+    if (existing == null) {
       return;
     }
-    setState(() => _uploadingPhoto = false);
-    if (!(url.startsWith('https://') || url.startsWith('http://'))) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text(AppStrings.photoUploadFailed)),
-      );
-      return;
-    }
-    setState(() => _photos = [..._photos, url]);
+    final updated = existing.copyWith(photoUrls: uniquePhotoUrls(photos));
+    ref.read(profileControllerProvider.notifier).saveDog(updated);
   }
 
   @override
   Widget build(BuildContext context) {
     if (_missing) {
       return Scaffold(
-        appBar: AppBar(title: const Text(ProfileStrings.editDog)),
-        body: const Center(child: Text(ProfileStrings.addDogHint)),
+        appBar: AppBar(title: Text(ProfileStrings.editDog)),
+        body: Center(child: Text(ProfileStrings.addDogHint)),
       );
     }
 
     return Scaffold(
-      appBar: AppBar(title: const Text(ProfileStrings.editDog)),
+      appBar: AppBar(title: Text(ProfileStrings.editDog)),
       body: Form(
         key: _formKey,
         child: SingleChildScrollView(
@@ -230,40 +305,48 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
             children: [
               TextFormField(
                 controller: _dogName,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   labelText: ProfileStrings.dogName,
                   hintText: ProfileStrings.dogNameHint,
                   border: OutlineInputBorder(),
                 ),
               ),
-              const SizedBox(height: 16),
+              SizedBox(height: 16),
+              BreedField(
+                breed: _breed,
+                customBreedController: _customBreed,
+                onBreedChanged: (value) => setState(() => _breed = value),
+              ),
+              SizedBox(height: 16),
               TextFormField(
-                controller: _breed,
-                decoration: const InputDecoration(
-                  labelText: ProfileStrings.breed,
-                  hintText: ProfileStrings.breedHint,
+                controller: _dogBio,
+                maxLines: 3,
+                textCapitalization: TextCapitalization.sentences,
+                decoration: InputDecoration(
+                  labelText: ProfileStrings.bio,
+                  hintText: ProfileStrings.bioHint,
                   border: OutlineInputBorder(),
                 ),
               ),
-              const SizedBox(height: 16),
+              SizedBox(height: 16),
               Row(
                 children: [
                   Expanded(
                     child: TextFormField(
                       controller: _ageYears,
                       keyboardType: TextInputType.number,
-                      decoration: const InputDecoration(
+                      decoration: InputDecoration(
                         labelText: ProfileStrings.ageYears,
                         border: OutlineInputBorder(),
                       ),
                     ),
                   ),
-                  const SizedBox(width: 12),
+                  SizedBox(width: 12),
                   Expanded(
                     child: TextFormField(
                       controller: _ageMonths,
                       keyboardType: TextInputType.number,
-                      decoration: const InputDecoration(
+                      decoration: InputDecoration(
                         labelText: ProfileStrings.ageMonths,
                         border: OutlineInputBorder(),
                       ),
@@ -271,71 +354,71 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                   ),
                 ],
               ),
-              const SizedBox(height: 16),
+              SizedBox(height: 16),
               Text(ProfileStrings.gender),
-              const SizedBox(height: 8),
+              SizedBox(height: 8),
               Wrap(
                 spacing: 8,
                 children: [
                   ChoiceChip(
-                    label: const Text(ProfileStrings.genderMale),
+                    label: Text(ProfileStrings.genderMale),
                     selected: _gender == 'mužjak',
                     onSelected: (_) => setState(() => _gender = 'mužjak'),
                   ),
                   ChoiceChip(
-                    label: const Text(ProfileStrings.genderFemale),
+                    label: Text(ProfileStrings.genderFemale),
                     selected: _gender == 'ženka',
                     onSelected: (_) => setState(() => _gender = 'ženka'),
                   ),
                 ],
               ),
-              const SizedBox(height: 16),
+              SizedBox(height: 16),
               Text(ProfileStrings.sizeLabel),
-              const SizedBox(height: 8),
+              SizedBox(height: 8),
               Wrap(
                 spacing: 8,
                 children: [
                   ChoiceChip(
-                    label: const Text(ProfileStrings.sizeSmall),
+                    label: Text(ProfileStrings.sizeSmall),
                     selected: _size == 'mali',
                     onSelected: (_) => setState(() => _size = 'mali'),
                   ),
                   ChoiceChip(
-                    label: const Text(ProfileStrings.sizeMedium),
+                    label: Text(ProfileStrings.sizeMedium),
                     selected: _size == 'srednji',
                     onSelected: (_) => setState(() => _size = 'srednji'),
                   ),
                   ChoiceChip(
-                    label: const Text(ProfileStrings.sizeLarge),
+                    label: Text(ProfileStrings.sizeLarge),
                     selected: _size == 'veliki',
                     onSelected: (_) => setState(() => _size = 'veliki'),
                   ),
                 ],
               ),
-              const SizedBox(height: 16),
+              SizedBox(height: 16),
               TextFormField(
                 controller: _weight,
                 keyboardType: TextInputType.number,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   labelText: ProfileStrings.weight,
                   border: OutlineInputBorder(),
                 ),
               ),
               SwitchListTile(
                 contentPadding: EdgeInsets.zero,
-                title: const Text(ProfileStrings.vaccines),
+                title: Text(ProfileStrings.vaccines),
                 value: _vaccinated,
                 onChanged: (value) => setState(() => _vaccinated = value),
               ),
               SwitchListTile(
                 contentPadding: EdgeInsets.zero,
-                title: const Text(ProfileStrings.chipStatus),
+                title: Text(ProfileStrings.chipStatus),
                 value: _chipped,
                 onChanged: (value) => setState(() => _chipped = value),
               ),
               SwitchListTile(
                 contentPadding: EdgeInsets.zero,
-                title: const Text(ProfileStrings.sterilized),
+                title: Text(ProfileStrings.sterilized),
                 value: _sterilized,
                 onChanged: (value) => setState(() => _sterilized = value),
               ),
@@ -363,7 +446,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
               ),
               const SizedBox(height: 16),
               PreferenceChipGroup(
-                title: '🐕 Voli',
+                title: ProfileStrings.likesTitle,
                 options: DogPreferenceTags.likes,
                 selected: _likes,
                 onToggle: (tag) =>
@@ -373,7 +456,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
               ),
               const SizedBox(height: 16),
               PreferenceChipGroup(
-                title: '❌ Ne voli',
+                title: ProfileStrings.dislikesTitle,
                 options: DogPreferenceTags.dislikes,
                 selected: _dislikes,
                 onToggle: (tag) => setState(
@@ -382,20 +465,17 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                 selectedColor: const Color(0xFFC62828),
                 selectedForeground: Colors.white,
               ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _dogBio,
-                maxLines: 3,
-                decoration: const InputDecoration(
-                  labelText: ProfileStrings.bio,
-                  hintText: ProfileStrings.bioHint,
-                  border: OutlineInputBorder(),
-                ),
-              ),
-              const SizedBox(height: 24),
+              SizedBox(height: 24),
               Text(
                 AppStrings.stepPhotosTitle,
                 style: Theme.of(context).textTheme.titleMedium,
+              ),
+              const SizedBox(height: 4),
+              Text(
+                AppStrings.photoCountLabel(_photos.length),
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
               ),
               const SizedBox(height: 8),
               Wrap(
@@ -407,9 +487,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                       url: _photos[i],
                       onRemove: _uploadingPhoto
                           ? null
-                          : () {
-                              setState(() => _photos.removeAt(i));
-                            },
+                          : () => _removePhotoAt(i),
                     ),
                   if (_uploadingPhoto)
                     const SizedBox(
@@ -417,20 +495,22 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                       height: 88,
                       child: Center(child: CircularProgressIndicator()),
                     ),
-                  OutlinedButton.icon(
-                    onPressed: _uploadingPhoto
-                        ? null
-                        : () => _addPhoto(ImageSource.gallery),
-                    icon: const Icon(Icons.photo_library_outlined),
-                    label: const Text(AppStrings.addFromGallery),
-                  ),
-                  OutlinedButton.icon(
-                    onPressed: _uploadingPhoto
-                        ? null
-                        : () => _addPhoto(ImageSource.camera),
-                    icon: const Icon(Icons.photo_camera_outlined),
-                    label: const Text(AppStrings.addFromCamera),
-                  ),
+                  if (_photos.length < AppStrings.maxDogPhotos) ...[
+                    OutlinedButton.icon(
+                      onPressed: _uploadingPhoto
+                          ? null
+                          : () => _addPhoto(ImageSource.gallery),
+                      icon: const Icon(Icons.photo_library_outlined),
+                      label: Text(AppStrings.addFromGallery),
+                    ),
+                    OutlinedButton.icon(
+                      onPressed: _uploadingPhoto
+                          ? null
+                          : () => _addPhoto(ImageSource.camera),
+                      icon: const Icon(Icons.photo_camera_outlined),
+                      label: Text(AppStrings.addFromCamera),
+                    ),
+                  ],
                 ],
               ),
             ],
@@ -442,7 +522,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
           padding: const EdgeInsets.fromLTRB(24, 8, 24, 16),
           child: FilledButton(
             onPressed: _save,
-            child: const Text(ProfileStrings.saveChanges),
+            child: Text(ProfileStrings.saveChanges),
           ),
         ),
       ),

@@ -45,7 +45,7 @@ class HomeDrawer extends ConsumerWidget {
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
                 children: [
-                  const _SectionHeader(AppDrawerCatalog.communitySection),
+                  _SectionHeader(AppDrawerCatalog.communitySection),
                   for (final item in AppDrawerCatalog.communityItems)
                     _DrawerTile(
                       item: item,
@@ -53,8 +53,8 @@ class HomeDrawer extends ConsumerWidget {
                           item.tabIndex != null && item.tabIndex == tabIndex,
                       onTap: () => _onItemTap(context, ref, item),
                     ),
-                  const SizedBox(height: 10),
-                  const _SectionHeader(AppDrawerCatalog.helpDogsSection),
+                  SizedBox(height: 10),
+                  _SectionHeader(AppDrawerCatalog.helpDogsSection),
                   for (final item in AppDrawerCatalog.helpDogsItems)
                     _DrawerTile(
                       item: item,
@@ -62,8 +62,8 @@ class HomeDrawer extends ConsumerWidget {
                           item.tabIndex != null && item.tabIndex == tabIndex,
                       onTap: () => _onItemTap(context, ref, item),
                     ),
-                  const SizedBox(height: 8),
-                  const Padding(
+                  SizedBox(height: 8),
+                  Padding(
                     padding: EdgeInsets.symmetric(horizontal: 8),
                     child: Divider(color: Color(0x33FFFFFF), height: 20),
                   ),
@@ -84,15 +84,15 @@ class HomeDrawer extends ConsumerWidget {
                         AppDrawerCatalog.adminItem,
                       ),
                     ),
-                  const SizedBox(height: 8),
-                  const OfficialContactLinks(compact: true, dark: true),
+                  SizedBox(height: 8),
+                  OfficialContactLinks(compact: true, dark: true),
                   TextButton(
                     style: TextButton.styleFrom(
                       visualDensity: VisualDensity.compact,
                       foregroundColor: Colors.white70,
                     ),
                     onPressed: () => showAboutAppDialog(context),
-                    child: const Text(AppDrawerCatalog.about),
+                    child: Text(AppDrawerCatalog.about),
                   ),
                 ],
               ),
@@ -320,7 +320,7 @@ class _DrawerTile extends StatelessWidget {
                         color: const Color(0xFFF59E0B).withValues(alpha: 0.25),
                         borderRadius: BorderRadius.circular(999),
                       ),
-                      child: const Text(
+                      child: Text(
                         AppDrawerCatalog.hitnoBadge,
                         style: TextStyle(
                           color: Color(0xFFFBBF24),

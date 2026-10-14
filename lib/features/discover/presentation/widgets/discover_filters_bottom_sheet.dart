@@ -61,9 +61,9 @@ class _DiscoverFiltersBottomSheetState
               DiscoverStrings.filters,
               style: Theme.of(context).textTheme.titleLarge,
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             Text(DiscoverStrings.genderTitle),
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
             Wrap(
               spacing: 8,
               runSpacing: 8,
@@ -91,9 +91,9 @@ class _DiscoverFiltersBottomSheetState
                 ),
               ],
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             Text(DiscoverStrings.sizeTitle),
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
             Wrap(
               spacing: 8,
               runSpacing: 8,
@@ -115,9 +115,9 @@ class _DiscoverFiltersBottomSheetState
                 ),
               ],
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             Text(DiscoverStrings.energyTitle),
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
             Wrap(
               spacing: 8,
               runSpacing: 8,
@@ -152,7 +152,7 @@ class _DiscoverFiltersBottomSheetState
                 ),
               ],
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             Text(DiscoverStrings.distanceTitle),
             Slider(
               min: 1,
@@ -165,7 +165,7 @@ class _DiscoverFiltersBottomSheetState
               },
             ),
             Text('${_draft.radiusKm.round()} km'),
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
             Text(DiscoverStrings.ageTitle),
             RangeSlider(
               min: 0,
@@ -188,7 +188,7 @@ class _DiscoverFiltersBottomSheetState
             Text('${_draft.minAge.round()} – ${_draft.maxAge.round()} god.'),
             SwitchListTile(
               contentPadding: EdgeInsets.zero,
-              title: const Text(DiscoverStrings.vaccinatedOnly),
+              title: Text(DiscoverStrings.vaccinatedOnly),
               value: _draft.vaccinatedOnly,
               onChanged: (value) {
                 setState(() => _draft = _draft.copyWith(vaccinatedOnly: value));
@@ -196,20 +196,20 @@ class _DiscoverFiltersBottomSheetState
             ),
             SwitchListTile(
               contentPadding: EdgeInsets.zero,
-              title: const Text(DiscoverStrings.sterilizedOnly),
+              title: Text(DiscoverStrings.sterilizedOnly),
               value: _draft.sterilizedOnly,
               onChanged: (value) {
                 setState(() => _draft = _draft.copyWith(sterilizedOnly: value));
               },
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
             Row(
               children: [
                 TextButton(
                   onPressed: () {
                     setState(() => _draft = const MatchingFilters());
                   },
-                  child: const Text(DiscoverStrings.reset),
+                  child: Text(DiscoverStrings.reset),
                 ),
                 const SizedBox(width: 8),
                 Expanded(
@@ -221,7 +221,7 @@ class _DiscoverFiltersBottomSheetState
                       ref.read(matchingFiltersProvider.notifier).apply(_draft);
                       Navigator.of(context).pop();
                     },
-                    child: const Text(DiscoverStrings.applyFilters),
+                    child: Text(DiscoverStrings.applyFilters),
                   ),
                 ),
               ],

@@ -257,19 +257,19 @@ class _StoryGroupViewState extends ConsumerState<StoryGroupView>
       () => showDialog<bool>(
         context: context,
         builder: (dialogContext) => AlertDialog(
-          title: const Text(MomentsStrings.deleteStory),
-          content: const Text(MomentsStrings.deleteStoryBody),
+          title: Text(MomentsStrings.deleteStory),
+          content: Text(MomentsStrings.deleteStoryBody),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(dialogContext).pop(false),
-              child: const Text(MomentsStrings.cancel),
+              child: Text(MomentsStrings.cancel),
             ),
             FilledButton(
               style: FilledButton.styleFrom(
                 backgroundColor: const Color(0xFFB91C1C),
               ),
               onPressed: () => Navigator.of(dialogContext).pop(true),
-              child: const Text(MomentsStrings.delete),
+              child: Text(MomentsStrings.delete),
             ),
           ],
         ),
@@ -540,7 +540,7 @@ class _StoryGroupViewState extends ConsumerState<StoryGroupView>
                           () => showMomentCommentsSheet(context, moment.id),
                         ),
                       ),
-                      const Spacer(),
+                      Spacer(),
                       if (isMine)
                         _StoryAction(
                           icon: Icons.bookmark_add_outlined,

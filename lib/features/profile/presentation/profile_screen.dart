@@ -4,11 +4,11 @@ import 'package:image_picker/image_picker.dart';
 
 import '../../../core/constants/serbia_locations.dart';
 import '../../../core/images/dog_image.dart';
-import '../../../core/images/image_upload_service.dart';
 import '../../../core/network/network_failure.dart';
 import '../../../core/theme/app_cards.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/ui_bits.dart';
+import '../../../services/storage_service.dart';
 import '../../auth/presentation/auth_providers.dart';
 import '../../discover/domain/discover_profile.dart';
 import '../../dogs/presentation/health/dog_health_tab.dart';
@@ -39,12 +39,12 @@ class ProfileScreen extends ConsumerWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 _OwnerHeader(profile: profile),
-                const SizedBox(height: 20),
+                SizedBox(height: 20),
                 Text(
                   ProfileStrings.myDogs,
                   style: Theme.of(context).textTheme.titleMedium,
                 ),
-                const SizedBox(height: 8),
+                SizedBox(height: 8),
                 if (!hasDogs)
                   Text(
                     ProfileStrings.addDogHint,
@@ -70,7 +70,14 @@ class ProfileScreen extends ConsumerWidget {
                     location: profile.ownerLocation.isNotEmpty
                         ? profile.ownerLocation
                         : SerbiaLocations.displayPlace(profile.dog.location),
+                    canDelete: profile.dogs.length > 1,
                     onEdit: () => _openDogEditor(context, profile.dog.id),
+                    onDelete: () => _confirmDeleteDog(
+                      context,
+                      ref,
+                      profile.dog.id,
+                      profile.dog.name,
+                    ),
                     onOpenPhoto: (index) =>
                         _openGallery(context, profile.dog.photoUrls, index),
                   ),
@@ -117,7 +124,7 @@ class ProfileScreen extends ConsumerWidget {
                         );
                       },
                       icon: const Icon(Icons.add, size: 20),
-                      label: const Text(ProfileStrings.addDog),
+                      label: Text(ProfileStrings.addDog),
                     ),
                   ),
                 ),
@@ -157,12 +164,12 @@ class ProfileScreen extends ConsumerWidget {
                         );
                         if (saved == true && context.mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text(ProfileStrings.saved)),
+                            SnackBar(content: Text(ProfileStrings.saved)),
                           );
                         }
                       },
                       icon: const Icon(Icons.edit_outlined, size: 18),
-                      label: const Text(ProfileStrings.editProfile),
+                      label: Text(ProfileStrings.editProfile),
                     ),
                   ),
                 ),
@@ -181,7 +188,56 @@ class ProfileScreen extends ConsumerWidget {
     if (saved == true && context.mounted) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text(ProfileStrings.saved)));
+      ).showSnackBar(SnackBar(content: Text(ProfileStrings.saved)));
+    }
+  }
+
+  Future<void> _confirmDeleteDog(
+    BuildContext context,
+    WidgetRef ref,
+    String dogId,
+    String dogName,
+  ) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: Text(ProfileStrings.deleteDogTitle),
+          content: Text('${ProfileStrings.deleteDogBody}\n\n$dogName'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: Text(ProfileStrings.cancel),
+            ),
+            FilledButton(
+              style: FilledButton.styleFrom(
+                backgroundColor: const Color(0xFFB91C1C),
+              ),
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: Text(ProfileStrings.deleteDog),
+            ),
+          ],
+        );
+      },
+    );
+    if (ok != true || !context.mounted) {
+      return;
+    }
+    try {
+      await ref.read(profileControllerProvider.notifier).deleteDog(dogId);
+      if (!context.mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(ProfileStrings.dogDeleted)),
+      );
+    } catch (_) {
+      if (!context.mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(ProfileStrings.deleteDogFailed)),
+      );
     }
   }
 
@@ -196,7 +252,7 @@ class ProfileScreen extends ConsumerWidget {
         return Dialog.fullscreen(
           child: Scaffold(
             appBar: AppBar(
-              title: const Text(ProfileStrings.photos),
+              title: Text(ProfileStrings.photos),
               leading: IconButton(
                 tooltip: ProfileStrings.closePhoto,
                 onPressed: () => Navigator.of(dialogContext).pop(),
@@ -231,12 +287,16 @@ class _DogCard extends StatelessWidget {
     required this.location,
     required this.onEdit,
     required this.onOpenPhoto,
+    this.canDelete = false,
+    this.onDelete,
   });
 
   final DiscoverProfile dog;
   final String location;
   final VoidCallback onEdit;
   final ValueChanged<int> onOpenPhoto;
+  final bool canDelete;
+  final VoidCallback? onDelete;
 
   @override
   Widget build(BuildContext context) {
@@ -266,7 +326,7 @@ class _DogCard extends StatelessWidget {
               style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
             ),
           ),
-          const SizedBox(height: 4),
+          SizedBox(height: 4),
           Center(
             child: Text(
               '${dog.breed} · ${ProfileStrings.ageLabel(dog.ageYears, dog.ageMonths)}',
@@ -274,26 +334,26 @@ class _DogCard extends StatelessWidget {
               style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
             ),
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
           Row(
             children: [
               MetricStatChip(
                 value: ProfileStrings.ageLabel(dog.ageYears, dog.ageMonths),
                 label: ProfileStrings.metricAge,
               ),
-              const SizedBox(width: 8),
+              SizedBox(width: 8),
               MetricStatChip(
                 value: ProfileStrings.sizeBadge(dog.size),
                 label: ProfileStrings.sizeLabel,
               ),
-              const SizedBox(width: 8),
+              SizedBox(width: 8),
               MetricStatChip(
                 value: ProfileStrings.genderValue(dog.gender),
                 label: ProfileStrings.gender,
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
           Wrap(
             spacing: 8,
             runSpacing: 8,
@@ -301,26 +361,26 @@ class _DogCard extends StatelessWidget {
               DetailPillChip(label: dog.breed),
               DetailPillChip(label: ProfileStrings.genderValue(dog.gender)),
               if (dog.chipped)
-                const DetailPillChip(label: ProfileStrings.badgeChipped),
+                DetailPillChip(label: ProfileStrings.badgeChipped),
               if (dog.vaccinated)
-                const DetailPillChip(label: ProfileStrings.badgeVaccinated),
+                DetailPillChip(label: ProfileStrings.badgeVaccinated),
               if (dog.sterilized)
-                const DetailPillChip(label: ProfileStrings.badgeSterilized),
+                DetailPillChip(label: ProfileStrings.badgeSterilized),
             ],
           ),
           if (location.isNotEmpty) ...[
-            const SizedBox(height: 10),
+            SizedBox(height: 10),
             Text(
               location,
               style: TextStyle(fontSize: 13, color: Colors.grey.shade700),
             ),
           ],
           if (dog.weightKg > 0) ...[
-            const SizedBox(height: 4),
+            SizedBox(height: 4),
             Text(ProfileStrings.kg(dog.weightKg)),
           ],
           if (dog.bio.trim().isNotEmpty) ...[
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
             Text(
               ProfileStrings.bio,
               style: Theme.of(context).textTheme.titleMedium,
@@ -332,7 +392,7 @@ class _DogCard extends StatelessWidget {
             ),
           ],
           if (traits.isNotEmpty) ...[
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
             Text(
               ProfileStrings.personality,
               style: Theme.of(context).textTheme.titleMedium,
@@ -375,12 +435,22 @@ class _DogCard extends StatelessWidget {
             ),
           ],
           const SizedBox(height: 8),
-          Align(
-            alignment: Alignment.centerRight,
-            child: TextButton(
-              onPressed: onEdit,
-              child: const Text(ProfileStrings.editDog),
-            ),
+          Row(
+            children: [
+              if (canDelete && onDelete != null)
+                TextButton(
+                  onPressed: onDelete,
+                  style: TextButton.styleFrom(
+                    foregroundColor: const Color(0xFFB91C1C),
+                  ),
+                  child: Text(ProfileStrings.deleteDog),
+                ),
+              Spacer(),
+              TextButton(
+                onPressed: onEdit,
+                child: Text(ProfileStrings.editDog),
+              ),
+            ],
           ),
         ],
       ),
@@ -431,7 +501,7 @@ class _OwnerHeaderState extends ConsumerState<_OwnerHeader> {
               ),
               ListTile(
                 leading: const Icon(Icons.photo_camera_outlined),
-                title: const Text(ProfileStrings.ownerPhotoCamera),
+                title: Text(ProfileStrings.ownerPhotoCamera),
                 onTap: () {
                   Navigator.of(sheetContext).pop();
                   _pickAndUpload(ImageSource.camera);
@@ -439,7 +509,7 @@ class _OwnerHeaderState extends ConsumerState<_OwnerHeader> {
               ),
               ListTile(
                 leading: const Icon(Icons.close),
-                title: const Text(ProfileStrings.cancel),
+                title: Text(ProfileStrings.cancel),
                 onTap: () => Navigator.of(sheetContext).pop(),
               ),
             ],
@@ -453,20 +523,24 @@ class _OwnerHeaderState extends ConsumerState<_OwnerHeader> {
     if (_uploading) {
       return;
     }
-    final picked = await ImagePicker().pickImage(source: source);
-    if (picked == null || !mounted) {
-      return;
-    }
     setState(() => _uploading = true);
     try {
-      final bytes = await picked.readAsBytes();
-      final url = await ImageUploadService.upload(bytes);
+      final storage = StorageService();
+      final previous =
+          ref.read(authStateProvider).asData?.value?.ownerAvatarUrl ?? '';
+      final url = source == ImageSource.camera
+          ? await storage.uploadImageFromCamera(folderName: 'users')
+          : await storage.uploadImageFromGallery(folderName: 'users');
+      if (url == null) {
+        return;
+      }
       if (!url.startsWith('https://') && !url.startsWith('http://')) {
         throw StateError(ProfileStrings.ownerPhotoUploadFailed);
       }
       await ref
           .read(profileControllerProvider.notifier)
           .saveOwnerCustomPhoto(url);
+      await storage.tryDeleteImageByUrl(previous);
     } catch (error) {
       if (mounted) {
         showNetworkErrorSnackBar(
@@ -564,19 +638,19 @@ class _OwnerHeaderState extends ConsumerState<_OwnerHeader> {
               style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
             ),
           ],
-          const SizedBox(height: 14),
+          SizedBox(height: 14),
           Row(
             children: [
               MetricStatChip(
                 value: '$dogCount',
                 label: ProfileStrings.metricDogs,
               ),
-              const SizedBox(width: 8),
+              SizedBox(width: 8),
               MetricStatChip(
                 value: '$momentCount',
                 label: ProfileStrings.metricMoments,
               ),
-              const SizedBox(width: 8),
+              SizedBox(width: 8),
               MetricStatChip(value: breedLabel, label: ProfileStrings.breed),
             ],
           ),

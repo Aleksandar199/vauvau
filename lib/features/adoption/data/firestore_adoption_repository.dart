@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../../../core/firebase/firestore_auth_guard.dart';
 import '../../../core/images/dog_photo_urls.dart';
 import '../../../core/images/image_upload_service.dart';
 import '../../../core/utils/content_validation_service.dart';
@@ -20,11 +21,15 @@ class FirestoreAdoptionRepository implements AdoptionRepository {
 
   @override
   Stream<List<AdoptionDog>> watchAdoptionDogs() {
-    return _col
-        .orderBy('createdAt', descending: true)
-        .limit(20)
-        .snapshots()
-        .map((snapshot) => snapshot.docs.map(_fromDoc).toList());
+    return FirestoreAuthGuard.guardedStream<List<AdoptionDog>>(
+      label: 'adoption.watch',
+      empty: const [],
+      create: () => _col
+          .orderBy('createdAt', descending: true)
+          .limit(20)
+          .snapshots()
+          .map((snapshot) => snapshot.docs.map(_fromDoc).toList()),
+    );
   }
 
   @override
@@ -87,7 +92,7 @@ class FirestoreAdoptionRepository implements AdoptionRepository {
     if (error != null) {
       throw DogsException(error);
     }
-    return ImageUploadService.upload(await file.readAsBytes());
+    return ImageUploadService.uploadFile(file, folderName: 'adoption');
   }
 
   AdoptionDog _fromDoc(QueryDocumentSnapshot<Map<String, dynamic>> doc) {

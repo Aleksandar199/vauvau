@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/widgets/comment_like_button.dart';
+import '../../../auth/presentation/auth_providers.dart';
 import '../moments_controller.dart';
 import '../moments_strings.dart';
 import '../pointer_safe.dart';
@@ -48,6 +50,7 @@ class _CommentsSheetState extends ConsumerState<_CommentsSheet> {
   Widget build(BuildContext context) {
     final comments =
         ref.watch(momentCommentsProvider(widget.momentId)).value ?? const [];
+    final uid = ref.watch(authStateProvider).asData?.value?.uid ?? '';
     return SafeArea(
       child: SizedBox(
         height: 420,
@@ -73,6 +76,14 @@ class _CommentsSheetState extends ConsumerState<_CommentsSheet> {
                     contentPadding: EdgeInsets.zero,
                     title: Text(comment.authorName),
                     subtitle: Text(comment.text),
+                    trailing: CommentLikeButton(
+                      liked: comment.isLikedBy(uid),
+                      count: comment.likeCount,
+                      tooltip: MomentsStrings.like,
+                      onPressed: () => ref
+                          .read(momentsControllerProvider.notifier)
+                          .toggleCommentLike(widget.momentId, comment.id),
+                    ),
                   );
                 },
               ),
@@ -84,7 +95,7 @@ class _CommentsSheetState extends ConsumerState<_CommentsSheet> {
                   Expanded(
                     child: TextField(
                       controller: _input,
-                      decoration: const InputDecoration(
+                      decoration: InputDecoration(
                         hintText: MomentsStrings.commentHint,
                       ),
                       onSubmitted: (_) => _send(),

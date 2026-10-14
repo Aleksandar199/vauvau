@@ -15,6 +15,8 @@ abstract class MomentsRepository {
 
   Future<void> toggleLike(String momentId);
 
+  Future<void> toggleCommentLike(String momentId, String commentId);
+
   Future<void> addComment(String momentId, String text);
 
   Future<String> createMoment(MomentModel moment);

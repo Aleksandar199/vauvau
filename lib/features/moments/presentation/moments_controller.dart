@@ -5,18 +5,19 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../../core/firebase/firebase_status.dart';
-import '../../../core/images/dog_photo_urls.dart';
-import '../../../core/images/image_upload_service.dart';
+import '../../../core/firebase/firestore_auth_guard.dart';
 import '../../../core/utils/content_validation_service.dart';
+import '../../../services/storage_service.dart';
 import '../../auth/presentation/auth_providers.dart';
 import '../../moderation/presentation/block_controller.dart';
 import '../data/firestore_moments_repository.dart';
 import '../data/local_moments_repository.dart';
 import '../domain/moment_model.dart';
 import '../domain/moments_repository.dart';
+import 'moments_strings.dart';
 
 class MomentsController extends Notifier<AsyncValue<List<MomentModel>>> {
-  static const int pageSize = 20;
+  static const int pageSize = 15;
 
   var _hasMore = true;
   var _loadingMore = false;
@@ -30,6 +31,13 @@ class MomentsController extends Notifier<AsyncValue<List<MomentModel>>> {
 
   @override
   AsyncValue<List<MomentModel>> build() {
+    final authReady =
+        ref.watch(firestoreAuthReadyProvider).asData?.value ?? false;
+    if (!authReady) {
+      return _cached != null
+          ? AsyncValue.data(_cached!)
+          : const AsyncValue.data([]);
+    }
     final repo = ref.watch(momentsRepositoryProvider);
     final sub = repo.watchMoments(limit: pageSize).listen(
       (moments) {
@@ -42,6 +50,17 @@ class MomentsController extends Notifier<AsyncValue<List<MomentModel>>> {
         state = AsyncValue.data(merged);
       },
       onError: (Object error, StackTrace stack) {
+        if (FirestoreAuthGuard.isPermissionDenied(error)) {
+          FirestoreAuthGuard.logPermissionDenied(
+            error,
+            stack,
+            label: 'moments.feed',
+          );
+          _live = const [];
+          _cached = const [];
+          state = const AsyncValue.data([]);
+          return;
+        }
         debugPrint('Moments stream: $error');
         if (_cached == null) {
           state = AsyncValue.error(error, stack);
@@ -114,6 +133,12 @@ class MomentsController extends Notifier<AsyncValue<List<MomentModel>>> {
     return ref.read(momentsRepositoryProvider).toggleLike(momentId);
   }
 
+  Future<void> toggleCommentLike(String momentId, String commentId) {
+    return ref
+        .read(momentsRepositoryProvider)
+        .toggleCommentLike(momentId, commentId);
+  }
+
   Future<void> addComment(String momentId, String text) {
     return ref.read(momentsRepositoryProvider).addComment(momentId, text);
   }
@@ -125,18 +150,27 @@ class MomentsController extends Notifier<AsyncValue<List<MomentModel>>> {
   Future<String> create({required MomentModel draft, XFile? photo}) async {
     var imageUrl = draft.momentPhotoUrl.trim();
     if (photo != null) {
-      try {
-        final error = await ContentValidationService.validateImage(photo);
-        if (error == null) {
-          imageUrl = await ImageUploadService.upload(await photo.readAsBytes());
-        }
-      } catch (error, stack) {
-        debugPrint('Moment photo upload failed: $error');
-        debugPrint('$stack');
+      final error = await ContentValidationService.validateImage(photo);
+      if (error != null) {
+        throw StateError(error);
+      }
+      imageUrl = await StorageService().uploadXFile(
+        file: photo,
+        folderName: 'moments',
+      ) ??
+          '';
+      if (imageUrl.isEmpty) {
+        throw StateError(MomentsStrings.publishError);
+      }
+      if (StorageService.isGsUri(imageUrl)) {
+        imageUrl = await StorageService().resolveDownloadUrl(imageUrl);
+      }
+      if (!StorageService.isHttpsDownloadUrl(imageUrl)) {
+        throw StateError(MomentsStrings.publishError);
       }
     }
     if (imageUrl.isEmpty) {
-      imageUrl = kFallbackDogPhotoUrl;
+      throw StateError(MomentsStrings.photoRequired);
     }
     return ref
         .read(momentsRepositoryProvider)
@@ -185,7 +219,8 @@ final momentsRepositoryProvider = Provider<MomentsRepository>((ref) {
     ),
   );
   final name = displayName.isEmpty ? 'Korisnik' : displayName;
-  if (isFirebaseReady) {
+  final authReady = ref.watch(firestoreAuthReadyProvider).asData?.value ?? false;
+  if (isFirebaseReady && resolvedUid.isNotEmpty && authReady) {
     return FirestoreMomentsRepository(
       firestore: FirebaseFirestore.instance,
       currentUserId: resolvedUid,

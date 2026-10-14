@@ -12,9 +12,13 @@ class EventModel {
     required this.createdAt,
     this.lastMessage = '',
     this.lastMessageAt,
+    this.cityId = '',
   });
 
   final String id;
+  /// [SerbiaLocations] id (`novi_sad`, `beograd`, `nis`, `kragujevac`).
+  /// Empty on events created before city support.
+  final String cityId;
   final String title;
   final String locationName;
   final DateTime dateTime;
@@ -32,6 +36,15 @@ class EventModel {
   bool isJoined(String uid) =>
       uid.isNotEmpty && participantUserIds.contains(uid);
 
+  /// Keep listing for a few hours after start so late joiners still see it.
+  static const Duration listGrace = Duration(hours: 6);
+
+  /// Whether this event should appear in the Events & walks list.
+  bool isListed([DateTime? now]) {
+    final reference = now ?? DateTime.now();
+    return dateTime.add(listGrace).isAfter(reference);
+  }
+
   EventModel copyWith({
     String? title,
     String? locationName,
@@ -41,9 +54,11 @@ class EventModel {
     List<String>? participantUserIds,
     String? lastMessage,
     DateTime? lastMessageAt,
+    String? cityId,
   }) {
     return EventModel(
       id: id,
+      cityId: cityId ?? this.cityId,
       title: title ?? this.title,
       locationName: locationName ?? this.locationName,
       dateTime: dateTime ?? this.dateTime,

@@ -49,8 +49,8 @@ class _CityPickerSheet extends ConsumerWidget {
                     ? theme.colorScheme.primary
                     : null,
               ),
-              title: const Text(MapStrings.cityMyLocation),
-              subtitle: const Text(MapStrings.cityMyLocationSubtitle),
+              title: Text(MapStrings.cityMyLocation),
+              subtitle: Text(MapStrings.cityMyLocationSubtitle),
               trailing: selected.isMyLocation
                   ? Icon(Icons.check, color: theme.colorScheme.primary)
                   : null,

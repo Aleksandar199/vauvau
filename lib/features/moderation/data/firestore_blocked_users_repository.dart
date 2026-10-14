@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import '../../../core/firebase/firestore_auth_guard.dart';
 import '../domain/blocked_users_repository.dart';
 
 class FirestoreBlockedUsersRepository implements BlockedUsersRepository {
@@ -18,9 +19,13 @@ class FirestoreBlockedUsersRepository implements BlockedUsersRepository {
     if (_currentUserId.isEmpty) {
       return Stream.value(const <String>{});
     }
-    return _blocked.snapshots().map(
-          (snapshot) => {for (final doc in snapshot.docs) doc.id},
-        );
+    return FirestoreAuthGuard.guardedStream<Set<String>>(
+      label: 'blocked.watch',
+      empty: const <String>{},
+      create: () => _blocked.snapshots().map(
+            (snapshot) => {for (final doc in snapshot.docs) doc.id},
+          ),
+    );
   }
 
   @override

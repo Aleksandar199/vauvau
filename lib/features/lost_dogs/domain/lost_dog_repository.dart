@@ -11,6 +11,8 @@ abstract class LostDogRepository {
 
   Future<void> addComment(String dogId, String text, {String authorName = ''});
 
+  Future<void> toggleCommentLike(String dogId, String commentId);
+
   Future<void> markFound(String id);
 
   Future<void> deleteLostDog(String id);

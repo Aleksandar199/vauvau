@@ -4,8 +4,9 @@ import 'package:flutter_map_marker_cluster/flutter_map_marker_cluster.dart';
 import 'package:latlong2/latlong.dart';
 
 import '../../data/mock_map_data.dart';
+import 'osm_tile_layer.dart';
 
-class VauInteractiveMap extends StatelessWidget {
+class VauInteractiveMap extends StatefulWidget {
   const VauInteractiveMap({
     super.key,
     required this.controller,
@@ -13,25 +14,35 @@ class VauInteractiveMap extends StatelessWidget {
     required this.overlayMarkers,
     this.routePoints = const [],
     this.routeColor = const Color(0xFFEA580C),
+    this.initialCenter,
+    this.initialZoom,
   });
 
   final MapController controller;
+  /// Start camera (e.g. user's home city). Null keeps the Novi Sad fit.
+  final LatLng? initialCenter;
+  final double? initialZoom;
   final List<Marker> placeMarkers;
   final List<Marker> overlayMarkers;
   final List<LatLng> routePoints;
   final Color routeColor;
 
   @override
-  Widget build(BuildContext context) {
-    return SizedBox.expand(
-      child: FlutterMap(
-        mapController: controller,
-        options: MapOptions(
-          initialCenter: const LatLng(mapCenterLat, mapCenterLng),
-          initialZoom: defaultMapZoom,
-          minZoom: 10,
-          maxZoom: 19,
-          initialCameraFit: CameraFit.coordinates(
+  State<VauInteractiveMap> createState() => _VauInteractiveMapState();
+}
+
+class _VauInteractiveMapState extends State<VauInteractiveMap> {
+  /// Stable [MapOptions] — recreating options on every parent rebuild resets
+  /// the camera and makes tiles/markers flicker during an active walk.
+  late final MapOptions _mapOptions = MapOptions(
+    initialCenter:
+        widget.initialCenter ?? const LatLng(mapCenterLat, mapCenterLng),
+    initialZoom: widget.initialZoom ?? defaultMapZoom,
+    minZoom: 10,
+    maxZoom: 19,
+    initialCameraFit: widget.initialCenter != null
+        ? null
+        : CameraFit.coordinates(
             coordinates: const [
               LatLng(noviSadLat, noviSadLng),
               LatLng(limanLat, limanLng),
@@ -41,72 +52,75 @@ class VauInteractiveMap extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(28, 150, 28, 110),
             maxZoom: defaultMapZoom,
           ),
-          interactionOptions: const InteractionOptions(
-            flags: InteractiveFlag.all & ~InteractiveFlag.rotate,
-          ),
-        ),
-        children: [
-          TileLayer(
-            urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-            userAgentPackageName: 'com.example.vauvau',
-            tileProvider: NetworkTileProvider(),
-            maxZoom: 19,
-            maxNativeZoom: 19,
-          ),
-          if (routePoints.length >= 2)
-            PolylineLayer(
-              polylines: [
-                Polyline(
-                  points: routePoints,
-                  color: routeColor,
-                  strokeWidth: 5,
-                  strokeCap: StrokeCap.round,
-                  strokeJoin: StrokeJoin.round,
-                  borderStrokeWidth: 0,
-                ),
-              ],
-            ),
-          if (placeMarkers.isNotEmpty)
-            MarkerClusterLayerWidget(
-              options: MarkerClusterLayerOptions(
-                markers: placeMarkers,
-                maxClusterRadius: 72,
-                disableClusteringAtZoom: 12,
-                size: const Size(40, 40),
-                alignment: Alignment.center,
-                padding: const EdgeInsets.all(8),
-                maxZoom: 17,
-                builder: (context, markers) {
-                  return Container(
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF2A2D3E),
-                      shape: BoxShape.circle,
-                      border: Border.all(color: Colors.white, width: 2),
-                      boxShadow: const [
-                        BoxShadow(color: Colors.black26, blurRadius: 8),
-                      ],
-                    ),
-                    child: Center(
-                      child: Text(
-                        '${markers.length}',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w800,
+    interactionOptions: const InteractionOptions(
+      flags: InteractiveFlag.all & ~InteractiveFlag.rotate,
+    ),
+  );
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox.expand(
+      child: RepaintBoundary(
+        child: FlutterMap(
+          mapController: widget.controller,
+          options: _mapOptions,
+          children: [
+            buildOsmTileLayer(),
+            if (widget.routePoints.length >= 2)
+              PolylineLayer(
+                polylines: [
+                  Polyline(
+                    points: widget.routePoints,
+                    color: widget.routeColor,
+                    strokeWidth: 5,
+                    strokeCap: StrokeCap.round,
+                    strokeJoin: StrokeJoin.round,
+                    borderStrokeWidth: 0,
+                  ),
+                ],
+              ),
+            if (widget.placeMarkers.isNotEmpty)
+              MarkerClusterLayerWidget(
+                options: MarkerClusterLayerOptions(
+                  markers: widget.placeMarkers,
+                  maxClusterRadius: 72,
+                  disableClusteringAtZoom: 12,
+                  size: const Size(40, 40),
+                  alignment: Alignment.center,
+                  padding: const EdgeInsets.all(8),
+                  maxZoom: 17,
+                  builder: (context, markers) {
+                    return Container(
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF2A2D3E),
+                        shape: BoxShape.circle,
+                        border: Border.all(color: Colors.white, width: 2),
+                        boxShadow: const [
+                          BoxShadow(color: Colors.black26, blurRadius: 8),
+                        ],
+                      ),
+                      child: Center(
+                        child: Text(
+                          '${markers.length}',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w800,
+                          ),
                         ),
                       ),
-                    ),
-                  );
-                },
+                    );
+                  },
+                ),
               ),
+            _UnculledMarkerLayer(markers: widget.overlayMarkers),
+            const RichAttributionWidget(
+              alignment: AttributionAlignment.bottomLeft,
+              attributions: [
+                TextSourceAttribution('OpenStreetMap'),
+              ],
             ),
-          _UnculledMarkerLayer(markers: overlayMarkers),
-          const RichAttributionWidget(
-            alignment: AttributionAlignment.bottomLeft,
-            attributions: [
-              TextSourceAttribution('OpenStreetMap'),
-            ],
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

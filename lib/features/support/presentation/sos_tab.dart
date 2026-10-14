@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../adoption/presentation/phone_launcher.dart';
+import '../../location/presentation/home_city_provider.dart';
 import 'support_strings.dart';
 
 class SosTab extends ConsumerWidget {
@@ -62,6 +63,13 @@ class SosTab extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
+    final homeName = ref.watch(homeCityProvider)?.name;
+    final contacts = [
+      for (final c in _contacts)
+        if (c.city == homeName) c,
+      for (final c in _contacts)
+        if (c.city != homeName) c,
+    ];
     return ColoredBox(
       color: theme.scaffoldBackgroundColor,
       child: SingleChildScrollView(
@@ -73,20 +81,20 @@ class SosTab extends ConsumerWidget {
           children: [
             const _SosHeader(),
             const SizedBox(height: 18),
-            for (var i = 0; i < _contacts.length; i++) ...[
-              if (i == 0 || _contacts[i].city != _contacts[i - 1].city)
+            for (var i = 0; i < contacts.length; i++) ...[
+              if (i == 0 || contacts[i].city != contacts[i - 1].city)
                 Padding(
                   padding: EdgeInsets.only(top: i == 0 ? 0 : 10, bottom: 8),
                   child: Text(
-                    _contacts[i].city,
+                    contacts[i].city,
                     style: theme.textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.w800,
                     ),
                   ),
                 ),
               _SosEmergencyCard(
-                contact: _contacts[i],
-                onCall: () => _call(context, ref, _contacts[i].phone),
+                contact: contacts[i],
+                onCall: () => _call(context, ref, contacts[i].phone),
               ),
             ],
           ],
@@ -103,7 +111,7 @@ class SosTab extends ConsumerWidget {
     final ok = await ref.read(phoneLauncherProvider).call(phone);
     if (!ok && context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text(SupportStrings.callUnavailable)),
+        SnackBar(content: Text(SupportStrings.callUnavailable)),
       );
     }
   }
@@ -166,7 +174,7 @@ class _SosHeader extends StatelessWidget {
             ),
           ),
         ),
-        const SizedBox(height: 8),
+        SizedBox(height: 8),
         Text(
           SupportStrings.sosSubtitle,
           style: TextStyle(
@@ -175,7 +183,7 @@ class _SosHeader extends StatelessWidget {
             fontWeight: FontWeight.w500,
           ),
         ),
-        const SizedBox(height: 4),
+        SizedBox(height: 4),
         Text(
           SupportStrings.sosIntro,
           style: TextStyle(

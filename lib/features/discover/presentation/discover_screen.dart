@@ -12,24 +12,42 @@ import 'widgets/discover_empty_state.dart';
 import 'widgets/discover_filter_chip.dart';
 import 'widgets/swipe_dog_card.dart';
 
-class DiscoverScreen extends ConsumerWidget {
+class DiscoverScreen extends ConsumerStatefulWidget {
   const DiscoverScreen({super.key});
 
-  static const _chips = [
-    (DiscoverCategory.all, DiscoverStrings.chipAll),
-    (DiscoverCategory.walking, DiscoverStrings.chipWalking),
-    (DiscoverCategory.small, DiscoverStrings.chipSmall),
-    (DiscoverCategory.medium, DiscoverStrings.chipMedium),
-    (DiscoverCategory.large, DiscoverStrings.chipLarge),
-  ];
+  @override
+  ConsumerState<DiscoverScreen> createState() => _DiscoverScreenState();
+}
+
+class _DiscoverScreenState extends ConsumerState<DiscoverScreen> {
+  static List<(DiscoverCategory, String)> get _chips => [
+        (DiscoverCategory.all, DiscoverStrings.chipAll),
+        (DiscoverCategory.walking, DiscoverStrings.chipWalking),
+        (DiscoverCategory.small, DiscoverStrings.chipSmall),
+        (DiscoverCategory.medium, DiscoverStrings.chipMedium),
+        (DiscoverCategory.large, DiscoverStrings.chipLarge),
+      ];
+
+  bool _onScroll(ScrollNotification notification) {
+    if (notification.metrics.extentAfter > 400) {
+      return false;
+    }
+    final feed = ref.read(discoverFeedControllerProvider.notifier);
+    if (feed.hasMore && !feed.isLoadingMore) {
+      feed.loadMore();
+    }
+    return false;
+  }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final state = ref.watch(discoverControllerProvider);
     final filters = ref.watch(matchingFiltersProvider);
     final controller = ref.read(discoverControllerProvider.notifier);
+    final feedController = ref.watch(discoverFeedControllerProvider.notifier);
     final dogs = state.visible;
     final theme = Theme.of(context);
+    final showFooter = feedController.hasMore || feedController.isLoadingMore;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -95,33 +113,48 @@ class DiscoverScreen extends ConsumerWidget {
         Expanded(
           child: dogs.isEmpty
               ? const DiscoverEmptyState()
-              : GridView.builder(
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 2,
-                    mainAxisSpacing: 12,
-                    crossAxisSpacing: 12,
-                    childAspectRatio: 0.68,
+              : NotificationListener<ScrollNotification>(
+                  onNotification: _onScroll,
+                  child: GridView.builder(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                    gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 2,
+                      mainAxisSpacing: 12,
+                      crossAxisSpacing: 12,
+                      childAspectRatio: 0.68,
+                    ),
+                    itemCount: dogs.length + (showFooter ? 1 : 0),
+                    itemBuilder: (context, index) {
+                      if (index >= dogs.length) {
+                        return const Padding(
+                          padding: EdgeInsets.all(16),
+                          child: Center(
+                            child: SizedBox(
+                              width: 24,
+                              height: 24,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            ),
+                          ),
+                        );
+                      }
+                      final dog = dogs[index];
+                      return DiscoverGridCard(
+                        profile: dog,
+                        isMine: dog.id == state.myDog.id ||
+                            (dog.ownerId.isNotEmpty &&
+                                dog.ownerId == state.myDog.ownerId),
+                        onTap: () => _openDetails(context, ref, dog),
+                        onLongPress: () => showContentReportSheet(
+                          context: context,
+                          ref: ref,
+                          targetType: ReportContentType.dog,
+                          targetId: dog.id,
+                          reportedUserId: dog.ownerId,
+                        ),
+                      );
+                    },
                   ),
-                  itemCount: dogs.length,
-                  itemBuilder: (context, index) {
-                    final dog = dogs[index];
-                    return DiscoverGridCard(
-                      profile: dog,
-                      isMine:
-                          dog.id == state.myDog.id ||
-                          (dog.ownerId.isNotEmpty &&
-                              dog.ownerId == state.myDog.ownerId),
-                      onTap: () => _openDetails(context, ref, dog),
-                      onLongPress: () => showContentReportSheet(
-                        context: context,
-                        ref: ref,
-                        targetType: ReportContentType.dog,
-                        targetId: dog.id,
-                        reportedUserId: dog.ownerId,
-                      ),
-                    );
-                  },
                 ),
         ),
       ],

@@ -1,4 +1,3 @@
-import '../../discover/data/mock_discover_profiles.dart';
 import '../domain/map_place.dart';
 import '../domain/map_place_type.dart';
 import '../domain/models/poi_model.dart';
@@ -119,29 +118,5 @@ List<MapPlace> get mockMapPlaces => [
       ...catalogServicePlaces,
     ];
 
-final List<WalkingDogPin> mockWalkingDogs = [
-  WalkingDogPin(
-    profile: mockDiscoverProfiles[0],
-    latitude: 45.2408,
-    longitude: 19.8418,
-    status: 'Bobi trči u Limanskom parku.',
-  ),
-  WalkingDogPin(
-    profile: mockDiscoverProfiles[3],
-    latitude: 45.2387,
-    longitude: 19.8384,
-    status: 'Maza šeta stazom uz istrčavalište.',
-  ),
-  WalkingDogPin(
-    profile: mockDiscoverProfiles[1],
-    latitude: 45.2562,
-    longitude: 19.8498,
-    status: 'Lola šeta kroz Dunavski park.',
-  ),
-  WalkingDogPin(
-    profile: mockDiscoverProfiles[5],
-    latitude: 45.2551,
-    longitude: 19.8511,
-    status: 'Kiki je kod Dunavskog parka još 15 min.',
-  ),
-];
+/// No fake walkers — map pins come only from live presence.
+const List<WalkingDogPin> mockWalkingDogs = [];

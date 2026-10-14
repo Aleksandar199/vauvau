@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../data/walk_locations.dart';
 import '../domain/chat_time.dart';
 import 'chat_strings.dart';
+import 'widgets/location_choice_chip.dart';
 
 Future<void> showScheduleWalkSheet({
   required BuildContext context,
@@ -56,6 +57,19 @@ class _ScheduleWalkBottomSheetState extends State<ScheduleWalkBottomSheet> {
         _time.minute,
       );
 
+  bool get _isInFuture => _combined.isAfter(DateTime.now());
+
+  DateTime get _today {
+    final now = DateTime.now();
+    return DateTime(now.year, now.month, now.day);
+  }
+
+  void _showPastError() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(ChatStrings.walkTimeInPast)),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final media = MediaQuery.of(context);
@@ -95,27 +109,27 @@ class _ScheduleWalkBottomSheetState extends State<ScheduleWalkBottomSheet> {
                         children: [
                           ListTile(
                             contentPadding: EdgeInsets.zero,
-                            title: const Text(ChatStrings.walkDate),
+                            title: Text(ChatStrings.walkDate),
                             subtitle: Text(
                               formatWalkStamp(_combined).split(' ').first,
                             ),
                             trailing: TextButton(
                               onPressed: _pickDate,
-                              child: const Text(ChatStrings.pickDate),
+                              child: Text(ChatStrings.pickDate),
                             ),
                           ),
                           ListTile(
                             contentPadding: EdgeInsets.zero,
-                            title: const Text(ChatStrings.walkTime),
+                            title: Text(ChatStrings.walkTime),
                             subtitle: Text(
                               '${_time.hour.toString().padLeft(2, '0')}:${_time.minute.toString().padLeft(2, '0')}',
                             ),
                             trailing: TextButton(
                               onPressed: _pickTime,
-                              child: const Text(ChatStrings.pickTime),
+                              child: Text(ChatStrings.pickTime),
                             ),
                           ),
-                          const SizedBox(height: 8),
+                          SizedBox(height: 8),
                           Text(
                             ChatStrings.walkLocation,
                             style: Theme.of(context).textTheme.titleMedium,
@@ -126,15 +140,20 @@ class _ScheduleWalkBottomSheetState extends State<ScheduleWalkBottomSheet> {
                             runSpacing: 8,
                             children: [
                               for (final place in scheduledWalkLocations)
-                                ChoiceChip(
-                                  label: Text(place),
-                                  selected: _location == place,
-                                  onSelected: (_) =>
-                                      setState(() => _location = place),
+                                LocationChoiceChip(
+                                  label: place,
+                                  selected: _location == place &&
+                                      _customLocationController.text
+                                          .trim()
+                                          .isEmpty,
+                                  onSelected: (_) => setState(() {
+                                    _location = place;
+                                    _customLocationController.clear();
+                                  }),
                                 ),
                             ],
                           ),
-                          const SizedBox(height: 12),
+                          SizedBox(height: 12),
                           TextField(
                             controller: _customLocationController,
                             decoration: InputDecoration(
@@ -163,16 +182,13 @@ class _ScheduleWalkBottomSheetState extends State<ScheduleWalkBottomSheet> {
                       children: [
                         TextButton(
                           onPressed: () => Navigator.of(context).pop(),
-                          child: const Text(ChatStrings.cancel),
+                          child: Text(ChatStrings.cancel),
                         ),
-                        const SizedBox(width: 12),
+                        SizedBox(width: 12),
                         Expanded(
                           child: FilledButton(
-                            onPressed: () {
-                              widget.onSend(_combined, _location);
-                              Navigator.of(context).pop();
-                            },
-                            child: const Text(ChatStrings.sendInvite),
+                            onPressed: _send,
+                            child: Text(ChatStrings.sendInvite),
                           ),
                         ),
                       ],
@@ -187,16 +203,43 @@ class _ScheduleWalkBottomSheetState extends State<ScheduleWalkBottomSheet> {
     );
   }
 
+  void _send() {
+    if (!_isInFuture) {
+      _showPastError();
+      return;
+    }
+    widget.onSend(_combined, _location);
+    Navigator.of(context).pop();
+  }
+
   Future<void> _pickDate() async {
     final picked = await showDatePicker(
       context: context,
-      initialDate: _date,
-      firstDate: DateTime.now(),
+      initialDate: _date.isBefore(_today) ? _today : _date,
+      firstDate: _today,
       lastDate: DateTime.now().add(const Duration(days: 60)),
     );
-    if (picked != null) {
-      setState(() => _date = picked);
+    if (picked == null || !mounted) {
+      return;
     }
+    final next = DateTime(
+      picked.year,
+      picked.month,
+      picked.day,
+      _time.hour,
+      _time.minute,
+    );
+    if (!next.isAfter(DateTime.now())) {
+      _showPastError();
+      // Keep the date, but bump time to the next full hour so the form stays valid.
+      final bump = DateTime.now().add(const Duration(hours: 1));
+      setState(() {
+        _date = DateTime(picked.year, picked.month, picked.day);
+        _time = TimeOfDay(hour: bump.hour, minute: 0);
+      });
+      return;
+    }
+    setState(() => _date = DateTime(picked.year, picked.month, picked.day));
   }
 
   Future<void> _pickTime() async {
@@ -204,8 +247,20 @@ class _ScheduleWalkBottomSheetState extends State<ScheduleWalkBottomSheet> {
       context: context,
       initialTime: _time,
     );
-    if (picked != null) {
-      setState(() => _time = picked);
+    if (picked == null || !mounted) {
+      return;
     }
+    final next = DateTime(
+      _date.year,
+      _date.month,
+      _date.day,
+      picked.hour,
+      picked.minute,
+    );
+    if (!next.isAfter(DateTime.now())) {
+      _showPastError();
+      return;
+    }
+    setState(() => _time = picked);
   }
 }

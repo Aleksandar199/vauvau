@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -16,6 +17,8 @@ abstract class PushNotificationGateway {
   Future<void> initialize();
 
   Future<bool> requestPermission();
+
+  Future<bool> hasPermission();
 
   Future<void> syncToken(String uid);
 
@@ -36,6 +39,9 @@ class NoopPushNotificationGateway implements PushNotificationGateway {
 
   @override
   Future<bool> requestPermission() async => false;
+
+  @override
+  Future<bool> hasPermission() async => false;
 
   @override
   Future<void> syncToken(String uid) async {}
@@ -106,6 +112,21 @@ class FcmPushNotificationGateway implements PushNotificationGateway {
   }
 
   @override
+  Future<bool> hasPermission() async {
+    if (!isFirebaseReady || !isPushPlatform) {
+      return false;
+    }
+    try {
+      final settings =
+          await FirebaseMessaging.instance.getNotificationSettings();
+      return settings.authorizationStatus == AuthorizationStatus.authorized ||
+          settings.authorizationStatus == AuthorizationStatus.provisional;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  @override
   Future<void> syncToken(String uid) async {
     if (uid.isEmpty || !isFirebaseReady || !isPushPlatform) {
       return;
@@ -148,20 +169,37 @@ class FcmPushNotificationGateway implements PushNotificationGateway {
     if (userId.isEmpty || !isFirebaseReady) {
       return;
     }
+    // peerUserId on the payload is the recipient; fromUserId is the sender.
+    final senderId = FirebaseAuth.instance.currentUser?.uid ?? '';
+    final doc = <String, dynamic>{
+      'type': payload.typeName,
+      'title': payload.title,
+      'body': payload.body,
+      'dogId': payload.dogId,
+      'fromUserId': senderId.isEmpty ? null : senderId,
+      'senderUserId': senderId.isEmpty ? null : senderId,
+      'conversationId': payload.conversationId,
+      'groupId': payload.groupId,
+      'eventId': payload.eventId,
+      'toUserId': userId,
+      'isRead': false,
+      'createdAt': FieldValue.serverTimestamp(),
+      'data': {
+        ...payload.data,
+        if (senderId.isNotEmpty) 'fromUserId': senderId,
+        'toUserId': userId,
+      },
+    };
     try {
       await _firestore
           .collection('users')
           .doc(userId)
           .collection('fcmInbox')
-          .add({
-        'type': payload.typeName,
-        'title': payload.title,
-        'body': payload.body,
-        'dogId': payload.dogId,
-        'conversationId': payload.conversationId,
-        'createdAt': FieldValue.serverTimestamp(),
-        'data': payload.data,
-      });
+          .add(doc);
+    } catch (_) {}
+    try {
+      // In-app notifications inbox (taps route using these IDs).
+      await _firestore.collection('notifications').add(doc);
     } catch (_) {}
   }
 

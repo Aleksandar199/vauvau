@@ -84,17 +84,17 @@ Future<bool> confirmDeleteHighlight(
   final confirmed = await showDialog<bool>(
     context: context,
     builder: (dialogContext) => AlertDialog(
-      title: const Text(MomentsStrings.highlightDelete),
-      content: const Text(MomentsStrings.highlightDeleteBody),
+      title: Text(MomentsStrings.highlightDelete),
+      content: Text(MomentsStrings.highlightDeleteBody),
       actions: [
         TextButton(
           onPressed: () => Navigator.of(dialogContext).pop(false),
-          child: const Text(MomentsStrings.cancel),
+          child: Text(MomentsStrings.cancel),
         ),
         FilledButton(
           style: FilledButton.styleFrom(backgroundColor: _danger),
           onPressed: () => Navigator.of(dialogContext).pop(true),
-          child: const Text(MomentsStrings.delete),
+          child: Text(MomentsStrings.delete),
         ),
       ],
     ),
@@ -149,7 +149,7 @@ class _AddToHighlightPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text(MomentsStrings.addToHighlight)),
+      appBar: AppBar(title: Text(MomentsStrings.addToHighlight)),
       body: _AddToHighlightSheet(
         moment: moment,
         onCreateNew: () {
@@ -188,7 +188,7 @@ class _AddToHighlightSheet extends ConsumerWidget {
             backgroundColor: AppColors.primarySoft,
             child: Icon(Icons.add, color: AppColors.primaryDeep),
           ),
-          title: const Text(MomentsStrings.newHighlightTitle),
+          title: Text(MomentsStrings.newHighlightTitle),
           onTap: onCreateNew,
         ),
         for (final highlight in highlights)
@@ -295,7 +295,7 @@ class _ArrangeHighlightsPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text(MomentsStrings.arrangeTitle)),
+      appBar: AppBar(title: Text(MomentsStrings.arrangeTitle)),
       body: _ArrangeHighlightsSheet(dogId: dogId),
     );
   }
@@ -462,7 +462,7 @@ class _HighlightEditorState extends ConsumerState<_HighlightEditor> {
                         dimension: 18,
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
-                    : const Text(MomentsStrings.highlightSave),
+                    : Text(MomentsStrings.highlightSave),
               ),
             ],
           ),
@@ -473,7 +473,7 @@ class _HighlightEditorState extends ConsumerState<_HighlightEditor> {
             controller: _title,
             maxLength: StoryHighlight.maxTitleLength,
             textCapitalization: TextCapitalization.sentences,
-            decoration: const InputDecoration(
+            decoration: InputDecoration(
               labelText: MomentsStrings.highlightName,
             ),
             onChanged: (_) {
@@ -595,7 +595,7 @@ class _HighlightEditorState extends ConsumerState<_HighlightEditor> {
               style: TextButton.styleFrom(foregroundColor: _danger),
               onPressed: _saving ? null : _delete,
               icon: const Icon(Icons.delete_outline),
-              label: const Text(MomentsStrings.highlightDelete),
+              label: Text(MomentsStrings.highlightDelete),
             ),
           ),
       ],

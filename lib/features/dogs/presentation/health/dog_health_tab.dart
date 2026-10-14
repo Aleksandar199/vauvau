@@ -105,10 +105,10 @@ class DogHealthTab extends ConsumerWidget {
                   fontWeight: FontWeight.w700,
                 ),
               ),
-              const SizedBox(height: 8),
+              SizedBox(height: 8),
               for (final item in upcoming)
                 _CompactReminderRow(reminder: item, now: now),
-              const SizedBox(height: 6),
+              SizedBox(height: 6),
               Text(
                 ReminderStrings.activeCount(reminders.length),
                 style: theme.textTheme.bodySmall?.copyWith(
@@ -125,14 +125,14 @@ class DogHealthTab extends ConsumerWidget {
                         dogs: _dogOptions,
                         preferredDogId: dogId,
                       ),
-                      child: const Text(ReminderStrings.addReminder),
+                      child: Text(ReminderStrings.addReminder),
                     ),
                   ),
-                  const SizedBox(width: 8),
+                  SizedBox(width: 8),
                   Expanded(
                     child: FilledButton(
                       onPressed: () => _openReminders(context),
-                      child: const Text(ReminderStrings.showAll),
+                      child: Text(ReminderStrings.showAll),
                     ),
                   ),
                 ],
@@ -233,7 +233,7 @@ class _HealthSummaryBlock extends StatelessWidget {
             fontWeight: FontWeight.w800,
           ),
         ),
-        const SizedBox(height: 8),
+        SizedBox(height: 8),
         if (!hasHealth) ...[
           Text(
             ReminderStrings.healthCardEmpty,
@@ -241,12 +241,12 @@ class _HealthSummaryBlock extends StatelessWidget {
               color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
             ),
           ),
-          const SizedBox(height: 10),
+          SizedBox(height: 10),
           Align(
             alignment: Alignment.centerLeft,
             child: TextButton(
               onPressed: onAdd,
-              child: const Text(ReminderStrings.addHealthRecord),
+              child: Text(ReminderStrings.addHealthRecord),
             ),
           ),
         ] else ...[
@@ -269,12 +269,12 @@ class _HealthSummaryBlock extends StatelessWidget {
                 ),
             ],
           ),
-          const SizedBox(height: 10),
+          SizedBox(height: 10),
           Align(
             alignment: Alignment.centerLeft,
             child: TextButton(
               onPressed: onOpen,
-              child: const Text(ReminderStrings.openHealthCard),
+              child: Text(ReminderStrings.openHealthCard),
             ),
           ),
         ],
@@ -330,7 +330,7 @@ class _EmptyRemindersBlock extends StatelessWidget {
           ),
           textAlign: TextAlign.center,
         ),
-        const SizedBox(height: 6),
+        SizedBox(height: 6),
         Text(
           ReminderStrings.emptyBody,
           style: theme.textTheme.bodySmall?.copyWith(
@@ -338,10 +338,10 @@ class _EmptyRemindersBlock extends StatelessWidget {
           ),
           textAlign: TextAlign.center,
         ),
-        const SizedBox(height: 14),
+        SizedBox(height: 14),
         FilledButton(
           onPressed: onAdd,
-          child: const Text(ReminderStrings.addFirst),
+          child: Text(ReminderStrings.addFirst),
         ),
       ],
     );

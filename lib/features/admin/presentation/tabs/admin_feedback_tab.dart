@@ -14,10 +14,10 @@ class AdminFeedbackTab extends ConsumerWidget {
     return ref.watch(adminFeedbackProvider).when(
           loading: () => const Center(child: CircularProgressIndicator()),
           error: (error, stack) =>
-              const Center(child: Text(AdminStrings.loadError)),
+              Center(child: Text(AdminStrings.loadError)),
           data: (entries) {
             if (entries.isEmpty) {
-              return const Center(child: Text(AdminStrings.emptyFeedback));
+              return Center(child: Text(AdminStrings.emptyFeedback));
             }
             return ListView.separated(
               padding: const EdgeInsets.all(16),
@@ -91,18 +91,18 @@ class _FeedbackCard extends ConsumerWidget {
             ),
             const SizedBox(height: 4),
             Text(entry.message),
-            const SizedBox(height: 10),
+            SizedBox(height: 10),
             Wrap(
               spacing: 8,
               children: [
                 if (!entry.isResolved)
                   FilledButton.tonal(
                     onPressed: () => _resolve(context, ref),
-                    child: const Text(AdminStrings.resolve),
+                    child: Text(AdminStrings.resolve),
                   ),
                 TextButton(
                   onPressed: () => _delete(context, ref),
-                  child: const Text(AdminStrings.delete),
+                  child: Text(AdminStrings.delete),
                 ),
               ],
             ),

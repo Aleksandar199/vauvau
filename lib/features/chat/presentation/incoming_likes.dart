@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/firebase/firebase_status.dart';
+import '../../../core/firebase/firestore_auth_guard.dart';
 import '../../auth/presentation/auth_providers.dart';
 import '../../discover/data/load_discover_profile.dart';
 import '../../discover/domain/discover_profile.dart';
@@ -28,16 +29,23 @@ final rawIncomingLikesProvider = StreamProvider<List<IncomingLike>>((ref) {
   final uid = ref.watch(
     authStateProvider.select((auth) => auth.asData?.value?.uid ?? ''),
   );
+  final authReady = ref.watch(firestoreAuthReadyProvider).asData?.value ?? false;
   final myDogId = ref.watch(currentDiscoverDogProvider).id;
-  if (uid.isEmpty || myDogId.isEmpty || myDogId == 'local-luna') {
+  if (!authReady ||
+      uid.isEmpty ||
+      myDogId.isEmpty ||
+      myDogId == 'local-luna') {
     return Stream.value(const []);
   }
 
-  return FirebaseFirestore.instance
-      .collection('swipes')
-      .where('toDogId', isEqualTo: myDogId)
-      .snapshots()
-      .asyncMap((snapshot) async {
+  return FirestoreAuthGuard.guardedStream<List<IncomingLike>>(
+    label: 'swipes.incomingLikes',
+    empty: const [],
+    create: () => FirebaseFirestore.instance
+        .collection('swipes')
+        .where('toDogId', isEqualTo: myDogId)
+        .snapshots()
+        .asyncMap((snapshot) async {
     final docs = [
       for (final doc in snapshot.docs)
         if ((doc.data()['type'] as String? ?? 'like') == 'like') doc,
@@ -75,7 +83,8 @@ final rawIncomingLikesProvider = StreamProvider<List<IncomingLike>>((ref) {
       }
     }
     return likes;
-  });
+  }),
+  );
 });
 
 final incomingLikesProvider = Provider<List<IncomingLike>>((ref) {

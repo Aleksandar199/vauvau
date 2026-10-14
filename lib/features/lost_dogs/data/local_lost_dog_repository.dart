@@ -6,9 +6,12 @@ import '../domain/lost_dog.dart';
 import '../domain/lost_dog_repository.dart';
 
 class LocalLostDogRepository implements LostDogRepository {
-  LocalLostDogRepository({List<LostDog>? seed})
-      : _dogs = List<LostDog>.from(seed ?? const []);
+  LocalLostDogRepository({
+    List<LostDog>? seed,
+    this.currentUserId = 'local-user',
+  }) : _dogs = List<LostDog>.from(seed ?? const []);
 
+  final String currentUserId;
   final List<LostDog> _dogs;
   final Map<String, List<LostDogComment>> _comments = {};
   final _controller = StreamController<List<LostDog>>.broadcast();
@@ -43,9 +46,7 @@ class LocalLostDogRepository implements LostDogRepository {
       0,
       dog.copyWith(
         id: id,
-        imageUrl: dog.imageUrl.isEmpty
-            ? 'https://images.unsplash.com/photo-1548199973-03cce0bbc87b?auto=format&fit=crop&w=800&q=80'
-            : dog.imageUrl,
+        imageUrl: dog.imageUrl,
       ),
     );
     _controller.add(List<LostDog>.from(_dogs));
@@ -63,12 +64,39 @@ class LocalLostDogRepository implements LostDogRepository {
     }
     final comment = LostDogComment(
       id: 'c-${DateTime.now().microsecondsSinceEpoch}',
-      authorUserId: 'local-user',
+      authorUserId: currentUserId,
       authorName: authorName.trim().isEmpty ? 'Ti' : authorName.trim(),
       text: trimmed,
       createdAt: DateTime.now(),
     );
     final next = [..._comments[dogId] ?? const <LostDogComment>[], comment];
+    _comments[dogId] = next;
+    _commentController(dogId).add(List<LostDogComment>.from(next));
+  }
+
+  @override
+  Future<void> toggleCommentLike(String dogId, String commentId) async {
+    if (currentUserId.isEmpty) {
+      return;
+    }
+    final comments = _comments[dogId];
+    if (comments == null) {
+      return;
+    }
+    final next = [
+      for (final comment in comments)
+        if (comment.id == commentId)
+          comment.copyWith(
+            likes: comment.isLikedBy(currentUserId)
+                ? [
+                    for (final id in comment.likes)
+                      if (id != currentUserId) id,
+                  ]
+                : [...comment.likes, currentUserId],
+          )
+        else
+          comment,
+    ];
     _comments[dogId] = next;
     _commentController(dogId).add(List<LostDogComment>.from(next));
   }

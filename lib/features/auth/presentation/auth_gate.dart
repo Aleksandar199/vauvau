@@ -5,6 +5,7 @@ import '../../../features/dogs/presentation/dog_providers.dart';
 import '../../../features/dogs/presentation/onboarding/dog_onboarding_controller.dart';
 import '../../../features/dogs/presentation/onboarding/dog_onboarding_screen.dart';
 import '../../../features/home/presentation/home_shell_screen.dart';
+import '../../../features/profile/presentation/profile_controller.dart';
 import 'auth_providers.dart';
 import 'login_screen.dart';
 
@@ -14,6 +15,7 @@ class AuthGate extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final authState = ref.watch(authStateProvider);
+    ref.watch(appSettingsProvider.select((s) => s.language));
     ref.watch(dogOnboardingControllerProvider.notifier);
 
     return authState.when(

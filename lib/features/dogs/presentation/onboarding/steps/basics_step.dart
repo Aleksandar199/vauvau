@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../../../../core/constants/app_strings.dart';
+import '../../../../../core/constants/dog_breeds.dart';
+import '../../../../../core/widgets/breed_field.dart';
 import '../../../domain/dog_draft.dart';
 import '../../../domain/dog_enums.dart';
 import '../option_chips.dart';
@@ -22,14 +24,17 @@ class BasicsStep extends StatefulWidget {
 
 class _BasicsStepState extends State<BasicsStep> {
   late final TextEditingController _name;
-  late final TextEditingController _breed;
+  late final TextEditingController _customBreed;
   late final TextEditingController _age;
+  late String _breed;
 
   @override
   void initState() {
     super.initState();
     _name = TextEditingController(text: widget.draft.name);
-    _breed = TextEditingController(text: widget.draft.breed);
+    _breed = widget.draft.breed;
+    final isCustom = DogBreeds.dropdownValue(_breed) == DogBreeds.customId;
+    _customBreed = TextEditingController(text: isCustom ? _breed : '');
     _age = TextEditingController(
       text: widget.draft.ageYears?.toString() ?? '',
     );
@@ -38,16 +43,19 @@ class _BasicsStepState extends State<BasicsStep> {
   @override
   void dispose() {
     _name.dispose();
-    _breed.dispose();
+    _customBreed.dispose();
     _age.dispose();
     super.dispose();
   }
 
-  void _emit({DogGender? gender}) {
+  void _emit({DogGender? gender, String? breed}) {
+    if (breed != null) {
+      _breed = breed;
+    }
     widget.onChanged(
       widget.draft.copyWith(
         name: _name.text,
-        breed: _breed.text,
+        breed: _breed,
         gender: gender ?? widget.draft.gender,
         ageYears: int.tryParse(_age.text),
       ),
@@ -60,29 +68,27 @@ class _BasicsStepState extends State<BasicsStep> {
       padding: const EdgeInsets.all(24),
       children: [
         Text(AppStrings.stepBasicsTitle, style: Theme.of(context).textTheme.titleLarge),
-        const SizedBox(height: 16),
+        SizedBox(height: 16),
         TextField(
           controller: _name,
           textCapitalization: TextCapitalization.words,
-          decoration: const InputDecoration(
+          decoration: InputDecoration(
             labelText: AppStrings.dogNameLabel,
             hintText: AppStrings.dogNameHint,
             border: OutlineInputBorder(),
           ),
           onChanged: (_) => _emit(),
         ),
-        const SizedBox(height: 16),
-        TextField(
-          controller: _breed,
-          textCapitalization: TextCapitalization.words,
-          decoration: const InputDecoration(
-            labelText: AppStrings.dogBreedLabel,
-            hintText: AppStrings.dogBreedHint,
-            border: OutlineInputBorder(),
-          ),
-          onChanged: (_) => _emit(),
+        SizedBox(height: 16),
+        BreedField(
+          breed: _breed,
+          customBreedController: _customBreed,
+          onBreedChanged: (value) {
+            setState(() => _breed = value);
+            _emit(breed: value);
+          },
         ),
-        const SizedBox(height: 16),
+        SizedBox(height: 16),
         Text(AppStrings.dogGenderLabel, style: Theme.of(context).textTheme.titleMedium),
         const SizedBox(height: 8),
         OptionChips<DogGender>(
@@ -91,12 +97,12 @@ class _BasicsStepState extends State<BasicsStep> {
           isSelected: (value) => widget.draft.gender == value,
           onSelected: (value) => _emit(gender: value),
         ),
-        const SizedBox(height: 16),
+        SizedBox(height: 16),
         TextField(
           controller: _age,
           keyboardType: TextInputType.number,
           inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-          decoration: const InputDecoration(
+          decoration: InputDecoration(
             labelText: AppStrings.dogAgeLabel,
             hintText: AppStrings.dogAgeHint,
             border: OutlineInputBorder(),

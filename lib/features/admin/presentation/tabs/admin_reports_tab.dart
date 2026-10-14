@@ -18,7 +18,7 @@ class AdminReportsTab extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final reports = ref.watch(activeReportsProvider);
     if (reports.isEmpty) {
-      return const Center(child: Text(AdminStrings.emptyReports));
+      return Center(child: Text(AdminStrings.emptyReports));
     }
     return ListView.separated(
       padding: const EdgeInsets.all(16),
@@ -71,7 +71,7 @@ class _ReportCard extends ConsumerWidget {
                         fontWeight: FontWeight.w600,
                       ),
                     ),
-                    const SizedBox(height: 2),
+                    SizedBox(height: 2),
                     Text(
                       AdminStrings.reportedUser(report.reportedUserId),
                       style: TextStyle(
@@ -82,10 +82,10 @@ class _ReportCard extends ConsumerWidget {
                   ],
                 ),
               ),
-              const _StatusBadge(),
+              _StatusBadge(),
             ],
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           Text(
             AdminStrings.timestamp(report.timestamp),
             style: TextStyle(
@@ -151,7 +151,7 @@ class _ReportCard extends ConsumerWidget {
                 ),
                 onPressed: () => _editAndResolve(context, ref),
                 icon: const Icon(Icons.edit_outlined, size: 18),
-                label: const Text(AdminStrings.editAndResolve),
+                label: Text(AdminStrings.editAndResolve),
               ),
             ),
             const SizedBox(height: 8),
@@ -175,7 +175,7 @@ class _ReportCard extends ConsumerWidget {
                       ),
                     ),
                     onPressed: () => _deleteContent(context, ref),
-                    child: const Text(AdminStrings.reportDeleteContent),
+                    child: Text(AdminStrings.reportDeleteContent),
                   ),
                 ),
               ),
@@ -197,7 +197,7 @@ class _ReportCard extends ConsumerWidget {
                       ),
                     ),
                     onPressed: () => _update(context, ref, reviewed: true),
-                    child: const Text(AdminStrings.reportMarkReviewed),
+                    child: Text(AdminStrings.reportMarkReviewed),
                   ),
                 ),
               ),
@@ -217,7 +217,7 @@ class _ReportCard extends ConsumerWidget {
                       ),
                     ),
                     onPressed: () => _update(context, ref, reviewed: false),
-                    child: const Text(AdminStrings.reportDismiss),
+                    child: Text(AdminStrings.reportDismiss),
                   ),
                 ),
               ),
@@ -266,7 +266,7 @@ class _ReportCard extends ConsumerWidget {
           );
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
+          SnackBar(
             content: Text(AdminStrings.poiUpdatedAndResolved),
             behavior: SnackBarBehavior.floating,
             backgroundColor: Color(0xFF166534),
@@ -278,7 +278,7 @@ class _ReportCard extends ConsumerWidget {
 
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
+        SnackBar(
           content: Text(AdminStrings.saved),
           behavior: SnackBarBehavior.floating,
           backgroundColor: Color(0xFF166534),
@@ -318,14 +318,14 @@ class _ReportCard extends ConsumerWidget {
           );
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text(AdminStrings.blocked)),
+          SnackBar(content: Text(AdminStrings.blocked)),
         );
       }
     } catch (error) {
       debugPrint('Admin delete/report action failed: $error');
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text(AdminStrings.actionFailed)),
+          SnackBar(content: Text(AdminStrings.actionFailed)),
         );
       }
     }
@@ -364,7 +364,7 @@ class _ReportCard extends ConsumerWidget {
       debugPrint('Admin report status update failed: $error');
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text(AdminStrings.actionFailed)),
+          SnackBar(content: Text(AdminStrings.actionFailed)),
         );
       }
     }
@@ -382,7 +382,7 @@ class _StatusBadge extends StatelessWidget {
         color: const Color(0xFFF59E0B).withValues(alpha: 0.18),
         borderRadius: BorderRadius.circular(8),
       ),
-      child: const Text(
+      child: Text(
         AdminStrings.reportStatusPending,
         style: TextStyle(
           color: Color(0xFF92400E),

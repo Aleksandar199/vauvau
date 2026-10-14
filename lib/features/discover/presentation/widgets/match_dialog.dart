@@ -19,7 +19,13 @@ Future<void> showMatchDialogIfNeeded({
   if (!isMatch || !context.mounted) {
     return;
   }
+
+  // Capture before any async gap — the Discover card may unmount while the
+  // match dialog is open, which makes later `ref.read` unsafe.
   final myDog = ref.read(discoverControllerProvider).myDog;
+  final chatInbox = ref.read(chatInboxProvider.notifier);
+  final navigator = Navigator.of(context);
+
   await showGeneralDialog<void>(
     context: context,
     barrierDismissible: false,
@@ -29,10 +35,11 @@ Future<void> showMatchDialogIfNeeded({
         matched: matched,
         onSendMessage: () {
           Navigator.of(dialogContext).pop();
-          final chatId = ref
-              .read(chatInboxProvider.notifier)
-              .openFromMatch(matched);
-          Navigator.of(context).push(
+          final chatId = chatInbox.openFromMatch(matched);
+          if (!context.mounted) {
+            return;
+          }
+          navigator.push(
             MaterialPageRoute<void>(
               builder: (_) => ChatScreen(conversationId: chatId),
             ),
@@ -67,9 +74,9 @@ class MatchDialog extends StatelessWidget {
           padding: const EdgeInsets.all(24),
           child: Column(
             children: [
-              const Spacer(),
-              const Icon(Icons.favorite, color: AppColors.primary, size: 48),
-              const SizedBox(height: 12),
+              Spacer(),
+              Icon(Icons.favorite, color: AppColors.primary, size: 48),
+              SizedBox(height: 12),
               Text(
                 DiscoverStrings.newMatch,
                 style: Theme.of(
@@ -92,21 +99,21 @@ class MatchDialog extends StatelessWidget {
                   ],
                 ),
               ),
-              const SizedBox(height: 16),
+              SizedBox(height: 16),
               CompatibilityCard(other: matched, light: true),
-              const Spacer(),
+              Spacer(),
               FilledButton(
                 onPressed: onSendMessage,
-                child: const Text(DiscoverStrings.sendMessage),
+                child: Text(DiscoverStrings.sendMessage),
               ),
-              const SizedBox(height: 12),
+              SizedBox(height: 12),
               OutlinedButton(
                 style: OutlinedButton.styleFrom(
                   foregroundColor: Colors.white,
                   side: const BorderSide(color: Colors.white70),
                 ),
                 onPressed: onKeepSearching,
-                child: const Text(DiscoverStrings.keepSearching),
+                child: Text(DiscoverStrings.keepSearching),
               ),
             ],
           ),

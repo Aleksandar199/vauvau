@@ -1,0 +1,8 @@
+﻿OK   nis-hotel-animal-house                 43.34776  21.885895 Мариборска 7
+OK   nis-hotel-happy-paws                  43.298054  21.904782 Бабички одред 130
+MISS nis-hotel-stevanovic (Visočka 21)
+OK   nis-hotel-oni                         43.320217  21.821423 Винсента Ван Гога 10
+OK   nis-training-dog-guard-team           43.315539   21.89482 Обреновићева 59
+OK   nis-training-baci-pet                  43.33093  21.941079 Ђорђа Стаменковића 11
+MISS nis-vet-dr-beli (Дракчета Миловановића 14)
+Done: 5 house-level hits -> tool/nis_places_nominatim_extra.json

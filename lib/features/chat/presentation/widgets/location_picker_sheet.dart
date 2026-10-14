@@ -2,10 +2,13 @@ import 'package:flutter/material.dart';
 
 import '../../data/walk_locations.dart';
 import '../chat_strings.dart';
+import 'location_choice_chip.dart';
 
 Future<String?> showLocationPickerSheet(BuildContext context) {
   return showModalBottomSheet<String>(
     context: context,
+    isScrollControlled: true,
+    showDragHandle: true,
     builder: (sheetContext) => const LocationPickerSheet(),
   );
 }
@@ -18,8 +21,14 @@ class LocationPickerSheet extends StatefulWidget {
 }
 
 class _LocationPickerSheetState extends State<LocationPickerSheet> {
-  String? _selected;
+  late String _selected;
   final _customController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    _selected = scheduledWalkLocations.first;
+  }
 
   @override
   void dispose() {
@@ -29,11 +38,12 @@ class _LocationPickerSheetState extends State<LocationPickerSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final onSurface = Theme.of(context).colorScheme.onSurface;
     return SafeArea(
       child: Padding(
         padding: EdgeInsets.fromLTRB(
           20,
-          16,
+          8,
           20,
           20 + MediaQuery.viewInsetsOf(context).bottom,
         ),
@@ -43,12 +53,17 @@ class _LocationPickerSheetState extends State<LocationPickerSheet> {
           children: [
             Text(
               ChatStrings.sendLocation,
-              style: Theme.of(context).textTheme.titleLarge,
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    color: onSurface,
+                    fontWeight: FontWeight.w800,
+                  ),
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
             Text(
               ChatStrings.walkLocation,
-              style: Theme.of(context).textTheme.titleMedium,
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    color: onSurface,
+                  ),
             ),
             const SizedBox(height: 8),
             Wrap(
@@ -56,9 +71,10 @@ class _LocationPickerSheetState extends State<LocationPickerSheet> {
               runSpacing: 8,
               children: [
                 for (final place in scheduledWalkLocations)
-                  ChoiceChip(
-                    label: Text(place),
-                    selected: _selected == place,
+                  LocationChoiceChip(
+                    label: place,
+                    selected: _selected == place &&
+                        _customController.text.trim().isEmpty,
                     onSelected: (_) => setState(() {
                       _selected = place;
                       _customController.clear();
@@ -66,9 +82,10 @@ class _LocationPickerSheetState extends State<LocationPickerSheet> {
                   ),
               ],
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
             TextField(
               controller: _customController,
+              style: TextStyle(color: onSurface),
               decoration: InputDecoration(
                 hintText: ChatStrings.walkCustomLocationHint,
                 filled: true,
@@ -80,23 +97,29 @@ class _LocationPickerSheetState extends State<LocationPickerSheet> {
               ),
               onChanged: (value) {
                 final trimmed = value.trim();
-                setState(() => _selected = trimmed.isEmpty ? null : trimmed);
+                setState(() {
+                  if (trimmed.isNotEmpty) {
+                    _selected = trimmed;
+                  } else {
+                    _selected = scheduledWalkLocations.first;
+                  }
+                });
               },
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             Row(
               children: [
                 TextButton(
                   onPressed: () => Navigator.of(context).pop(),
-                  child: const Text(ChatStrings.cancel),
+                  child: Text(ChatStrings.cancel),
                 ),
-                const SizedBox(width: 12),
+                SizedBox(width: 12),
                 Expanded(
                   child: FilledButton(
-                    onPressed: _selected == null || _selected!.isEmpty
+                    onPressed: _selected.trim().isEmpty
                         ? null
-                        : () => Navigator.of(context).pop(_selected),
-                    child: const Text(ChatStrings.send),
+                        : () => Navigator.of(context).pop(_selected.trim()),
+                    child: Text(ChatStrings.send),
                   ),
                 ),
               ],

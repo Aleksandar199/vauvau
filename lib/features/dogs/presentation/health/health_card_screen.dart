@@ -32,7 +32,7 @@ class HealthCardScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text(ReminderStrings.healthCardScreenTitle),
+        title: Text(ReminderStrings.healthCardScreenTitle),
       ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
@@ -43,7 +43,7 @@ class HealthCardScreen extends ConsumerWidget {
               color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
             ),
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           if (categoriesWithData.isEmpty)
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 32),
@@ -56,10 +56,10 @@ class HealthCardScreen extends ConsumerWidget {
                     ),
                     textAlign: TextAlign.center,
                   ),
-                  const SizedBox(height: 16),
+                  SizedBox(height: 16),
                   FilledButton(
                     onPressed: () => _pickCategoryAndAdd(context, latest),
-                    child: const Text(ReminderStrings.addHealthRecord),
+                    child: Text(ReminderStrings.addHealthRecord),
                   ),
                 ],
               ),
@@ -78,11 +78,11 @@ class HealthCardScreen extends ConsumerWidget {
                   existing: latest[category],
                 ),
               ),
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
             OutlinedButton.icon(
               onPressed: () => _pickCategoryAndAdd(context, latest),
               icon: const Icon(Icons.add),
-              label: const Text(ReminderStrings.addHealthRecord),
+              label: Text(ReminderStrings.addHealthRecord),
             ),
           ],
         ],
@@ -118,7 +118,7 @@ class HealthCardScreen extends ConsumerWidget {
                 ListTile(
                   title: Text(HealthStrings.categoryLabel(category)),
                   subtitle: latest.containsKey(category)
-                      ? const Text(HealthStrings.addOrUpdate)
+                      ? Text(HealthStrings.addOrUpdate)
                       : null,
                   onTap: () => Navigator.of(sheetContext).pop(category),
                 ),
@@ -196,7 +196,7 @@ class _HealthRecordTile extends StatelessWidget {
                     ),
                   ],
                 ),
-                const SizedBox(height: 4),
+                SizedBox(height: 4),
                 Text(record.title),
                 Text(
                   '${HealthStrings.lastDate}: '

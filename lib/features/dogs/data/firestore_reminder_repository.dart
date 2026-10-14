@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 
+import '../../../core/firebase/firestore_auth_guard.dart';
 import '../domain/dog_reminder.dart';
 import '../domain/reminder_repository.dart';
 
@@ -18,12 +19,16 @@ class FirestoreReminderRepository implements ReminderRepository {
     if (dogId.isEmpty) {
       return Stream.value(const []);
     }
-    return _col(dogId).snapshots().map((snapshot) {
-      final items = [
-        for (final doc in snapshot.docs) _fromDoc(dogId, doc),
-      ]..sort((a, b) => a.date.compareTo(b.date));
-      return items;
-    });
+    return FirestoreAuthGuard.guardedStream<List<DogReminder>>(
+      label: 'reminders.watch',
+      empty: const [],
+      create: () => _col(dogId).snapshots().map((snapshot) {
+        final items = [
+          for (final doc in snapshot.docs) _fromDoc(dogId, doc),
+        ]..sort((a, b) => a.date.compareTo(b.date));
+        return items;
+      }),
+    );
   }
 
   @override

@@ -68,6 +68,7 @@ class PoiModel {
     this.dogFriendlyIndoor,
     this.dogFriendlyOutdoor,
     this.waterAvailable,
+    this.isDogPark,
     this.municipality = '',
     this.description = '',
     this.imageUrl,
@@ -105,6 +106,9 @@ class PoiModel {
   final bool? dogFriendlyIndoor;
   final bool? dogFriendlyOutdoor;
   final bool? waterAvailable;
+  /// Officially designated (fenced) dog area. Null = not set; legacy docs
+  /// fall back to the "Park za pse" naming convention.
+  final bool? isDogPark;
   final String municipality;
   final String description;
   final String? imageUrl;
@@ -141,11 +145,7 @@ class PoiModel {
 
   String get resolvedCityId {
     if (cityId.isNotEmpty) return cityId;
-    return switch (city) {
-      MapCity.noviSad => 'novi-sad',
-      MapCity.belgrade => 'beograd',
-      MapCity.other => '',
-    };
+    return city.cityId;
   }
 
   PoiModel copyWith({
@@ -179,6 +179,7 @@ class PoiModel {
     bool? dogFriendlyIndoor,
     bool? dogFriendlyOutdoor,
     bool? waterAvailable,
+    bool? isDogPark,
     bool? isSponsored,
     String? sponsorName,
     DateTime? sponsoredUntil,
@@ -206,6 +207,7 @@ class PoiModel {
       dogFriendlyIndoor: dogFriendlyIndoor ?? this.dogFriendlyIndoor,
       dogFriendlyOutdoor: dogFriendlyOutdoor ?? this.dogFriendlyOutdoor,
       waterAvailable: waterAvailable ?? this.waterAvailable,
+      isDogPark: isDogPark ?? this.isDogPark,
       municipality: municipality ?? this.municipality,
       description: description ?? this.description,
       imageUrl: imageUrl ?? this.imageUrl,

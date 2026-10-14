@@ -20,7 +20,7 @@ class MomentsScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text(MomentsStrings.title),
+        title: Text(MomentsStrings.title),
         actions: [
           IconButton(
             tooltip: MomentsStrings.share,
@@ -107,7 +107,7 @@ class _MomentsBodyState extends ConsumerState<_MomentsBody> {
                   size: 18,
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
-                const SizedBox(width: 8),
+                SizedBox(width: 8),
                 Expanded(
                   child: Text(
                     MomentsStrings.storiesHint,
@@ -119,7 +119,7 @@ class _MomentsBodyState extends ConsumerState<_MomentsBody> {
           ),
         ),
         if (groups.isEmpty)
-          const SliverFillRemaining(
+          SliverFillRemaining(
             hasScrollBody: false,
             child: FeedStateView(
               icon: Icons.photo_camera_outlined,
@@ -198,7 +198,9 @@ class _StoryTile extends ConsumerWidget {
           fit: StackFit.expand,
           children: [
             // Aspect locked by the grid cell — prevents layout jump on decode.
-            DogImage(url: group.coverUrl, seed: latest.id),
+            Positioned.fill(
+              child: DogImage(url: group.coverUrl, seed: latest.id),
+            ),
             const DecoratedBox(
               decoration: BoxDecoration(
                 gradient: LinearGradient(
@@ -230,7 +232,7 @@ class _StoryTile extends ConsumerWidget {
                 top: 10,
                 child: Container(
                   padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                   decoration: BoxDecoration(
                     color: Colors.black45,
                     borderRadius: BorderRadius.circular(99),
@@ -273,7 +275,7 @@ class _StoryTile extends ConsumerWidget {
                         height: 1.3,
                       ),
                     ),
-                  const SizedBox(height: 2),
+                  SizedBox(height: 2),
                   Text(
                     MomentsStrings.timeAgo(latest.createdAt, DateTime.now()),
                     style: const TextStyle(

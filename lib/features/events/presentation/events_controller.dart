@@ -11,8 +11,11 @@ import '../../../core/utils/content_validation_service.dart';
 import '../../auth/presentation/auth_providers.dart';
 import '../../dogs/domain/dogs_exception.dart';
 import '../../groups/domain/groups_models.dart';
+import '../../location/presentation/home_city_provider.dart';
+import '../../map/presentation/walk_controller.dart';
 import '../data/firestore_events_repository.dart';
 import '../data/local_events_repository.dart';
+import '../data/seed_events.dart';
 import '../domain/event_model.dart';
 import '../domain/events_repository.dart';
 
@@ -36,22 +39,69 @@ class EventsController extends Notifier<List<EventModel>> {
     return ref.read(eventsRepositoryProvider).markRead(eventId);
   }
 
-  Future<void> sendText(String eventId, String text) {
+  Future<void> sendText(
+    String eventId,
+    String text, {
+    GroupMessage? replyTo,
+  }) {
     return ref.read(eventsRepositoryProvider).sendMessage(
           eventId: eventId,
           text: text,
+          replyTo: replyTo,
         );
   }
 
-  Future<void> sendPhoto(String eventId, XFile file) async {
+  Future<void> sendPhoto(
+    String eventId,
+    XFile file, {
+    GroupMessage? replyTo,
+  }) async {
     final error = await ContentValidationService.validateImage(file);
     if (error != null) {
       throw DogsException(error);
     }
-    final url = await ImageUploadService.upload(await file.readAsBytes());
+    final url = await ImageUploadService.uploadFile(
+      file,
+      folderName: 'events',
+    );
     await ref.read(eventsRepositoryProvider).sendPhoto(
           eventId: eventId,
           imageUrl: url,
+          replyTo: replyTo,
+        );
+  }
+
+  Future<void> sendWalkInvite({
+    required String eventId,
+    required DateTime walkTime,
+    required String walkLocationName,
+  }) {
+    return ref.read(eventsRepositoryProvider).sendWalkInvite(
+          eventId: eventId,
+          walkTime: walkTime,
+          walkLocationName: walkLocationName,
+        );
+  }
+
+  Future<void> respondToWalkInvite({
+    required String eventId,
+    required String messageId,
+    required GroupWalkInviteStatus status,
+  }) {
+    return ref.read(eventsRepositoryProvider).respondToWalkInvite(
+          eventId: eventId,
+          messageId: messageId,
+          status: status,
+        );
+  }
+
+  Future<void> toggleMessageLike({
+    required String eventId,
+    required String messageId,
+  }) {
+    return ref.read(eventsRepositoryProvider).toggleMessageLike(
+          eventId: eventId,
+          messageId: messageId,
         );
   }
 
@@ -60,23 +110,20 @@ class EventsController extends Notifier<List<EventModel>> {
     required String locationName,
     required DateTime dateTime,
     required String description,
+    String cityId = '',
     XFile? photo,
   }) async {
     try {
       var imageUrl = kFallbackDogPhotoUrl;
       if (photo != null) {
-        try {
-          final error = await ContentValidationService.validateImage(photo);
-          if (error != null) {
-            debugPrint('Event photo validation: $error');
-          } else {
-            imageUrl = await ImageUploadService.upload(await photo.readAsBytes());
-          }
-        } catch (error, stack) {
-          debugPrint('Event photo upload failed, using fallback: $error');
-          debugPrint('$stack');
-          imageUrl = kFallbackDogPhotoUrl;
+        final error = await ContentValidationService.validateImage(photo);
+        if (error != null) {
+          throw DogsException(error);
         }
+        imageUrl = await ImageUploadService.uploadFile(
+          photo,
+          folderName: 'events',
+        );
       }
       final user = ref.read(authStateProvider).asData?.value;
       var uid = (user?.uid ?? '').trim();
@@ -106,6 +153,7 @@ class EventsController extends Notifier<List<EventModel>> {
               organizerName: organizerName,
               participantUserIds: uid.isEmpty ? const [] : [uid],
               createdAt: DateTime.now(),
+              cityId: cityId.trim(),
             ),
           );
     } catch (error, stack) {
@@ -142,6 +190,23 @@ final eventsRepositoryProvider = Provider<EventsRepository>((ref) {
 
 final eventsControllerProvider =
     NotifierProvider<EventsController, List<EventModel>>(EventsController.new);
+
+/// City shown on the events screen; `null` means all cities.
+/// Defaults to the user's home city.
+class EventsCityFilter extends Notifier<String?> {
+  @override
+  String? build() => ref.watch(homeCityProvider)?.id;
+
+  void select(String? cityId) => state = cityId;
+}
+
+final eventsCityFilterProvider =
+    NotifierProvider<EventsCityFilter, String?>(EventsCityFilter.new);
+
+/// Walk locations offered in the create form for a [SerbiaLocations] city id.
+final eventVenuesProvider = Provider.family<List<String>, String>((ref, cityId) {
+  return EventVenues.forCity(cityId, ref.watch(mapPlacesProvider));
+});
 
 final eventMessagesProvider =
     StreamProvider.family<List<GroupMessage>, String>((ref, eventId) {

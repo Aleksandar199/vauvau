@@ -7,7 +7,8 @@ import '../constants/app_strings.dart';
 
 /// Thrown when an upload or Firestore write fails due to connectivity.
 class NetworkFailure implements Exception {
-  const NetworkFailure([this.message = AppStrings.networkProblem]);
+  NetworkFailure([String? message])
+      : message = message ?? AppStrings.networkProblem;
 
   final String message;
 
@@ -40,17 +41,43 @@ bool isNetworkFailure(Object error) {
 
 String networkOrFallbackMessage(
   Object error, {
-  String fallback = AppStrings.networkProblem,
+  String? fallback,
 }) {
-  return isNetworkFailure(error) ? AppStrings.networkProblem : fallback;
+  if (isNetworkFailure(error)) {
+    return AppStrings.networkProblem;
+  }
+  if (error is StateError) {
+    final message = error.message.trim();
+    if (message.isNotEmpty) {
+      return message;
+    }
+  }
+  if (error is FirebaseException) {
+    if (error.code == 'permission-denied') {
+      return fallback ?? AppStrings.networkProblem;
+    }
+    final message = (error.message ?? '').trim();
+    if (message.isNotEmpty) {
+      return '${error.code}: $message';
+    }
+    return error.code;
+  }
+  final text = error.toString().replaceFirst('Exception: ', '').trim();
+  if (text.isNotEmpty && text != error.runtimeType.toString()) {
+    return text;
+  }
+  return fallback ?? AppStrings.networkProblem;
 }
 
 void showNetworkErrorSnackBar(
   BuildContext context,
   Object error, {
-  String fallback = AppStrings.networkProblem,
+  String? fallback,
 }) {
   ScaffoldMessenger.of(context).showSnackBar(
-    SnackBar(content: Text(networkOrFallbackMessage(error, fallback: fallback))),
+    SnackBar(
+      content: Text(networkOrFallbackMessage(error, fallback: fallback)),
+      duration: const Duration(seconds: 5),
+    ),
   );
 }

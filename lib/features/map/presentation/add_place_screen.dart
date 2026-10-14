@@ -12,6 +12,7 @@ import '../data/places_repository.dart';
 import '../domain/city_model.dart';
 import 'cities_controller.dart';
 import 'map_strings.dart';
+import 'widgets/osm_tile_layer.dart';
 
 /// Admin-only place creation with address search + pin fine-tuning.
 class AddPlaceScreen extends ConsumerStatefulWidget {
@@ -66,13 +67,13 @@ class _AddPlaceScreenState extends ConsumerState<AddPlaceScreen> {
 
     if (!isAdmin) {
       return Scaffold(
-        appBar: AppBar(title: const Text(MapStrings.addPlaceAdminTitle)),
-        body: const Center(child: Text(MapStrings.adminOnlyPlace)),
+        appBar: AppBar(title: Text(MapStrings.addPlaceAdminTitle)),
+        body: Center(child: Text(MapStrings.adminOnlyPlace)),
       );
     }
 
     return Scaffold(
-      appBar: AppBar(title: const Text(MapStrings.addPlaceAdminTitle)),
+      appBar: AppBar(title: Text(MapStrings.addPlaceAdminTitle)),
       body: Form(
         key: _formKey,
         child: ListView(
@@ -81,7 +82,7 @@ class _AddPlaceScreenState extends ConsumerState<AddPlaceScreen> {
             TextFormField(
               controller: _name,
               textCapitalization: TextCapitalization.sentences,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: MapStrings.placeName,
                 border: OutlineInputBorder(),
               ),
@@ -92,10 +93,10 @@ class _AddPlaceScreenState extends ConsumerState<AddPlaceScreen> {
                 return ContentValidationService.validateTitle(value);
               },
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
             DropdownButtonFormField<String>(
               initialValue: _category,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: MapStrings.placeCategory,
                 border: OutlineInputBorder(),
               ),
@@ -109,10 +110,10 @@ class _AddPlaceScreenState extends ConsumerState<AddPlaceScreen> {
                       if (value != null) setState(() => _category = value);
                     },
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
             DropdownButtonFormField<String>(
               initialValue: city.id,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: MapStrings.placeCity,
                 border: OutlineInputBorder(),
               ),
@@ -135,7 +136,7 @@ class _AddPlaceScreenState extends ConsumerState<AddPlaceScreen> {
               validator: (value) =>
                   value == null ? MapStrings.placeCityRequired : null,
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
             TextFormField(
               controller: _address,
               textCapitalization: TextCapitalization.sentences,
@@ -187,32 +188,32 @@ class _AddPlaceScreenState extends ConsumerState<AddPlaceScreen> {
                 ),
               ),
             ],
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
             TextFormField(
               controller: _hours,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: MapStrings.openingHoursOptional,
                 hintText: MapStrings.openingHoursHint,
                 border: OutlineInputBorder(),
               ),
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
             TextFormField(
               controller: _phone,
               keyboardType: TextInputType.phone,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: MapStrings.placePhone,
                 border: OutlineInputBorder(),
               ),
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             Text(
               MapStrings.fineTuneLocation,
               style: Theme.of(context).textTheme.titleSmall?.copyWith(
                     fontWeight: FontWeight.w700,
                   ),
             ),
-            const SizedBox(height: 4),
+            SizedBox(height: 4),
             Text(
               MapStrings.fineTuneLocationHint,
               style: Theme.of(context).textTheme.bodySmall,
@@ -230,11 +231,7 @@ class _AddPlaceScreenState extends ConsumerState<AddPlaceScreen> {
                     onTap: (_, point) => setState(() => _pin = point),
                   ),
                   children: [
-                    TileLayer(
-                      urlTemplate:
-                          'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                      userAgentPackageName: 'com.vauvau.app',
-                    ),
+                    buildOsmTileLayer(maxZoom: 18, maxNativeZoom: 18),
                     MarkerLayer(
                       markers: [
                         Marker(
@@ -254,7 +251,7 @@ class _AddPlaceScreenState extends ConsumerState<AddPlaceScreen> {
                 ),
               ),
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
             Text(
               '${MapStrings.coordinates}: '
               '${pin.latitude.toStringAsFixed(5)}, '
@@ -280,7 +277,7 @@ class _AddPlaceScreenState extends ConsumerState<AddPlaceScreen> {
                       height: 22,
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
-                  : const Text(MapStrings.submitPlace),
+                  : Text(MapStrings.submitPlace),
             ),
           ],
         ),
@@ -372,7 +369,7 @@ class _AddPlaceScreenState extends ConsumerState<AddPlaceScreen> {
       if (!mounted) return;
       Navigator.of(context).pop(true);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
+        SnackBar(
           content: Text(MapStrings.placeAdded),
           behavior: SnackBarBehavior.floating,
           duration: Duration(seconds: 3),
@@ -397,7 +394,7 @@ Future<bool> openAddPlaceScreen(
 }) async {
   if (!ref.read(isAdminProvider)) {
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text(MapStrings.adminOnlyPlace)),
+      SnackBar(content: Text(MapStrings.adminOnlyPlace)),
     );
     return false;
   }

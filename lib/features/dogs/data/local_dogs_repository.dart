@@ -26,9 +26,7 @@ Dog localDemoDog({String ownerId = 'local-user'}) {
       neighborhoodId: 'liman_1',
       neighborhoodName: 'Liman 1',
     ),
-    photoUrls: const [
-      'https://images.unsplash.com/photo-1552053831-71594a27632d?auto=format&fit=crop&w=800&q=80',
-    ],
+    photoUrls: const [],
     likesTags: const ['Šetnje', 'Igru', 'Velike pse'],
     dislikesTags: const ['Gužvu'],
   );
@@ -67,6 +65,7 @@ class LocalDogsRepository implements DogsRepository {
       temperament: draft.temperament,
       area: _areaFromOwner(owner, draft),
       photoUrls: List<String>.from(photos['photoUrls'] as List),
+      bio: draft.bio.trim(),
       vaccinated: draft.vaccinated,
       chipped: draft.chipped,
       sterilized: draft.sterilized,
@@ -86,6 +85,12 @@ class LocalDogsRepository implements DogsRepository {
     } else {
       _dogs[index] = dog;
     }
+    _controller.add(List<Dog>.from(_dogs));
+  }
+
+  @override
+  Future<void> deleteDog(String dogId, {required String ownerId}) async {
+    _dogs.removeWhere((dog) => dog.id == dogId);
     _controller.add(List<Dog>.from(_dogs));
   }
 
@@ -111,13 +116,25 @@ class LocalDogsRepository implements DogsRepository {
         neighborhoodName: 'Liman 1',
       );
     }
-    for (final hood in city.neighborhoods) {
-      if (hood.id == draft.neighborhoodId) {
+    final neighborhoodId = draft.neighborhoodId;
+    if (neighborhoodId != null && neighborhoodId.isNotEmpty) {
+      final name = SerbiaLocations.resolveNeighborhoodName(
+        cityId: city.id,
+        neighborhoodId: neighborhoodId,
+        customName: draft.customNeighborhoodName,
+      );
+      if (name.isNotEmpty) {
+        final storedId = SerbiaLocations.usesCustomNeighborhood(
+              city.id,
+              neighborhoodId,
+            )
+            ? SerbiaLocations.customNeighborhoodId
+            : neighborhoodId;
         return DogArea(
           cityId: city.id,
           cityName: city.name,
-          neighborhoodId: hood.id,
-          neighborhoodName: hood.name,
+          neighborhoodId: storedId,
+          neighborhoodName: name,
         );
       }
     }

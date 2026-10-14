@@ -6,15 +6,42 @@ class GeoCoord {
   final double latitude;
   final double longitude;
 
+  @override
+  bool operator ==(Object other) {
+    return other is GeoCoord &&
+        other.latitude == latitude &&
+        other.longitude == longitude;
+  }
+
+  @override
+  int get hashCode => Object.hash(latitude, longitude);
+
   static const noviSad = GeoCoord(45.2551, 19.8451);
   static const belgrade = GeoCoord(44.8176, 20.4569);
+  static const nis = GeoCoord(43.3209, 21.8958);
+  static const kragujevac = GeoCoord(44.0128, 20.9114);
 
   static GeoCoord forCityName(String location) {
-    final lower = location.toLowerCase();
+    final lower = location.trim().toLowerCase();
     if (lower.startsWith('beograd')) {
       return belgrade;
     }
+    if (lower.startsWith('niš') || lower.startsWith('nis')) {
+      return nis;
+    }
+    if (lower.startsWith('kragujevac')) {
+      return kragujevac;
+    }
     return noviSad;
+  }
+
+  static GeoCoord forCityId(String cityId) {
+    return switch (cityId.trim().toLowerCase()) {
+      'beograd' || 'belgrade' => belgrade,
+      'nis' || 'niš' => nis,
+      'kragujevac' => kragujevac,
+      _ => noviSad,
+    };
   }
 }
 

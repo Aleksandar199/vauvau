@@ -4,7 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/firebase/firebase_status.dart';
 import '../../profile/presentation/profile_controller.dart';
 import '../data/push_platform.dart';
-import 'notification_strings.dart';
 import 'push_controller.dart';
 
 class PushBootstrap extends ConsumerStatefulWidget {
@@ -22,10 +21,12 @@ class _PushBootstrapState extends ConsumerState<PushBootstrap> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _maybePrompt());
+    WidgetsBinding.instance.addPostFrameCallback((_) => _maybeEnablePush());
   }
 
-  Future<void> _maybePrompt() async {
+  /// First launch only: request OS permission once (no custom dialog).
+  /// Preference is persisted as [AppSettings.pushPrompted] so this never repeats.
+  Future<void> _maybeEnablePush() async {
     if (!mounted || _asked) {
       return;
     }
@@ -33,45 +34,26 @@ class _PushBootstrapState extends ConsumerState<PushBootstrap> {
     if (!isFirebaseReady || !isPushPlatform) {
       return;
     }
+
+    // Wait for SharedPreferences — otherwise pushPrompted is still the default
+    // false and the prompt would fire on every cold start.
+    final settingsCtrl = ref.read(appSettingsProvider.notifier);
+    await settingsCtrl.ensureReady();
+    if (!mounted) {
+      return;
+    }
+
     final settings = ref.read(appSettingsProvider);
     if (settings.pushPrompted) {
       return;
     }
+
     _asked = true;
-    final enable = await showEnableNotificationsDialog(context);
-    if (!mounted) {
-      return;
-    }
-    ref.read(appSettingsProvider.notifier).update(
-          settings.copyWith(pushPrompted: true),
-        );
-    if (enable == true) {
-      await ref.read(pushControllerProvider.notifier).requestPermission();
-    }
+    // Persist immediately so a kill during the OS dialog still counts as asked.
+    settingsCtrl.update(settings.copyWith(pushPrompted: true));
+    await ref.read(pushControllerProvider.notifier).requestPermission();
   }
 
   @override
   Widget build(BuildContext context) => widget.child;
-}
-
-Future<bool?> showEnableNotificationsDialog(BuildContext context) {
-  return showDialog<bool>(
-    context: context,
-    builder: (dialogContext) {
-      return AlertDialog(
-        title: const Text(NotificationStrings.enableTitle),
-        content: const Text(NotificationStrings.enableBody),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text(NotificationStrings.later),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text(NotificationStrings.enableConfirm),
-          ),
-        ],
-      );
-    },
-  );
 }

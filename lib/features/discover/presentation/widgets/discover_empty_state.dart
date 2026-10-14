@@ -21,23 +21,23 @@ class DiscoverEmptyState extends ConsumerWidget {
               size: 88,
               color: theme.colorScheme.primary,
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             Text(
               DiscoverStrings.emptyTitle,
               textAlign: TextAlign.center,
               style: theme.textTheme.titleLarge,
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
             Text(
               DiscoverStrings.emptySubtitle,
               textAlign: TextAlign.center,
               style: theme.textTheme.bodyLarge,
             ),
-            const SizedBox(height: 20),
+            SizedBox(height: 20),
             FilledButton(
               onPressed: () =>
                   ref.read(discoverControllerProvider.notifier).resetFilters(),
-              child: const Text(DiscoverStrings.resetFilters),
+              child: Text(DiscoverStrings.resetFilters),
             ),
           ],
         ),

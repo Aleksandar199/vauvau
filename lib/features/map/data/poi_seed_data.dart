@@ -1,6 +1,8 @@
 import '../domain/map_city.dart';
 import '../domain/models/poi_model.dart';
 import 'belgrade_dog_places_seed.dart';
+import 'kragujevac_dog_places_seed.dart';
+import 'nis_dog_places_seed.dart';
 
 abstract final class PoiSeedData {
   static const String source = 'PetZone / VauVau Baza';
@@ -28,9 +30,25 @@ abstract final class PoiSeedData {
     final byId = <String, PoiModel>{
       for (final poi in verifiedNoviSad) poi.id: poi,
       for (final poi in verifiedBelgrade) poi.id: poi,
+      for (final poi in verifiedNis)
+        if (hasValidCoordinates(poi)) poi.id: poi,
+      for (final poi in KragujevacDogPlacesSeed.all)
+        if (hasValidCoordinates(poi)) poi.id: poi,
     };
     return byId.values.toList();
   }
+
+  /// Rejects 0,0 / out-of-range points so a failed geocode never becomes a
+  /// marker.
+  static bool hasValidCoordinates(PoiModel poi) {
+    final lat = poi.latitude;
+    final lng = poi.longitude;
+    if (lat.isNaN || lng.isNaN) return false;
+    if (lat == 0 && lng == 0) return false;
+    return lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180;
+  }
+
+  static List<PoiModel> get verifiedNis => NisDogPlacesSeed.all;
 
   static List<PoiModel> get verifiedCafes => [
         _cafe(

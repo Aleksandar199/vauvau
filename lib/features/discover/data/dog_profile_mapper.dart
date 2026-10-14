@@ -1,3 +1,5 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 import '../../../core/geo/firestore_geo.dart';
 import '../../../core/geo/geo.dart';
 import '../../../core/images/dog_photo_urls.dart';
@@ -63,7 +65,21 @@ DiscoverProfile discoverProfileFromMap(String id, Map<String, dynamic> data) {
         false,
     likesTags: _stringList(data['likesTags']),
     dislikesTags: _stringList(data['dislikesTags']),
+    createdAt: _date(data['createdAt']),
   );
+}
+
+DateTime? _date(Object? value) {
+  if (value is Timestamp) {
+    return value.toDate();
+  }
+  if (value is DateTime) {
+    return value;
+  }
+  if (value is String) {
+    return DateTime.tryParse(value);
+  }
+  return null;
 }
 
 List<String> _stringList(Object? value) {
@@ -73,21 +89,28 @@ List<String> _stringList(Object? value) {
   return value.map((item) => item.toString()).toList();
 }
 
+String normalizeDogGender(String? raw) => _gender(raw);
+
+String normalizeDogSize(String? raw) => _size(raw);
+
 String _gender(String? raw) {
-  switch (raw) {
+  final key = raw?.trim().toLowerCase() ?? '';
+  switch (key) {
     case 'male':
     case 'mužjak':
+    case 'muzjak':
       return 'mužjak';
     case 'female':
     case 'ženka':
+    case 'zenka':
       return 'ženka';
     default:
-      return raw ?? '';
+      return '';
   }
 }
 
 String _size(String? raw) {
-  switch (raw) {
+  switch (raw?.trim().toLowerCase()) {
     case 'small':
     case 'mali':
       return 'mali';
@@ -101,7 +124,7 @@ String _size(String? raw) {
     case 'veliki':
       return 'veliki';
     default:
-      return raw ?? 'srednji';
+      return 'srednji';
   }
 }
 
@@ -126,6 +149,7 @@ DiscoverProfile discoverProfileFromDog(Dog dog, {String ownerName = ''}) {
     ownerName: ownerName.isEmpty ? dog.ownerId : ownerName,
     breed: dog.breed,
     ageYears: dog.ageYears,
+    ageMonths: dog.ageMonths,
     gender: _gender(dog.gender.firestoreValue),
     size: _size(dog.size.firestoreValue),
     location: dog.location,
@@ -174,6 +198,7 @@ Dog dogFromDiscover(
     breed: profile.breed,
     gender: _genderEnum(profile.gender),
     ageYears: profile.ageYears,
+    ageMonths: profile.ageMonths,
     size: _sizeEnum(profile.size),
     weightKg: profile.weightKg > 0 ? profile.weightKg : null,
     energyLevel: _energyEnum(profile.energyLevel),
@@ -219,12 +244,14 @@ DogTemperament? _temperamentFromLabel(String raw) {
 }
 
 DogGender _genderEnum(String raw) {
-  switch (raw) {
+  switch (raw.trim().toLowerCase()) {
     case 'male':
     case 'mužjak':
+    case 'muzjak':
       return DogGender.male;
     case 'female':
     case 'ženka':
+    case 'zenka':
       return DogGender.female;
     default:
       return DogGender.unknown;

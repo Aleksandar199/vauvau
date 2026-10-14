@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 
+import '../../../core/firebase/firestore_auth_guard.dart';
 import '../domain/health_record.dart';
 import '../domain/health_repository.dart';
 
@@ -18,12 +19,16 @@ class FirestoreHealthRepository implements HealthRepository {
     if (dogId.isEmpty) {
       return Stream.value(const []);
     }
-    return _col(dogId).snapshots().map((snapshot) {
-      final records = [
-        for (final doc in snapshot.docs) _fromDoc(dogId, doc),
-      ]..sort((a, b) => b.administeredDate.compareTo(a.administeredDate));
-      return records;
-    });
+    return FirestoreAuthGuard.guardedStream<List<HealthRecord>>(
+      label: 'health.watch',
+      empty: const [],
+      create: () => _col(dogId).snapshots().map((snapshot) {
+        final records = [
+          for (final doc in snapshot.docs) _fromDoc(dogId, doc),
+        ]..sort((a, b) => b.administeredDate.compareTo(a.administeredDate));
+        return records;
+      }),
+    );
   }
 
   @override

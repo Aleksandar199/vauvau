@@ -25,8 +25,8 @@ class AdminDashboardScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     if (!ref.watch(isAdminProvider)) {
       return Scaffold(
-        appBar: AppBar(title: const Text(AdminStrings.title)),
-        body: const Center(child: Text(AdminStrings.denied)),
+        appBar: AppBar(title: Text(AdminStrings.title)),
+        body: Center(child: Text(AdminStrings.denied)),
       );
     }
 
@@ -35,7 +35,7 @@ class AdminDashboardScreen extends ConsumerWidget {
       length: 5,
       child: Scaffold(
         appBar: AppBar(
-          title: const Text(AdminStrings.title),
+          title: Text(AdminStrings.title),
           bottom: TabBar(
             isScrollable: true,
             tabAlignment: TabAlignment.start,
@@ -44,7 +44,7 @@ class AdminDashboardScreen extends ConsumerWidget {
             unselectedLabelColor: Colors.grey.shade600,
             labelStyle: const TextStyle(fontWeight: FontWeight.bold),
             unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w500),
-            tabs: const [
+            tabs: [
               Tab(text: AdminStrings.statsTab),
               Tab(text: AdminStrings.usersTab),
               Tab(text: AdminStrings.reportsTab),
@@ -217,7 +217,7 @@ class _ContentTab extends StatelessWidget {
             labelColor: Theme.of(context).colorScheme.primary,
             unselectedLabelColor: Colors.grey.shade600,
             labelStyle: const TextStyle(fontWeight: FontWeight.w700),
-            tabs: const [
+            tabs: [
               Tab(text: AdminStrings.contentMoments),
               Tab(text: AdminStrings.contentPending),
             ],
@@ -243,7 +243,7 @@ class _PendingPoisTab extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final pending = ref.watch(pendingPoisProvider);
     if (pending.isEmpty) {
-      return const Center(child: Text(AdminStrings.emptyPending));
+      return Center(child: Text(AdminStrings.emptyPending));
     }
     return ListView.separated(
       padding: const EdgeInsets.all(16),
@@ -276,15 +276,15 @@ class _PendingPoisTab extends ConsumerWidget {
                           .approve(poi.id);
                       if (context.mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text(AdminStrings.approved)),
+                          SnackBar(content: Text(AdminStrings.approved)),
                         );
                       }
                     },
-                    child: const Text(AdminStrings.approve),
+                    child: Text(AdminStrings.approve),
                   ),
                   OutlinedButton(
                     onPressed: () => _editPoi(context, ref, poi),
-                    child: const Text(AdminStrings.edit),
+                    child: Text(AdminStrings.edit),
                   ),
                   TextButton(
                     onPressed: () async {
@@ -293,11 +293,11 @@ class _PendingPoisTab extends ConsumerWidget {
                           .reject(poi.id);
                       if (context.mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text(AdminStrings.rejected)),
+                          SnackBar(content: Text(AdminStrings.rejected)),
                         );
                       }
                     },
-                    child: const Text(AdminStrings.reject),
+                    child: Text(AdminStrings.reject),
                   ),
                 ],
               ),
@@ -320,7 +320,7 @@ class _PendingPoisTab extends ConsumerWidget {
     );
     if (result != AdminEditPoiResult.cancelled && context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text(AdminStrings.saved)),
+        SnackBar(content: Text(AdminStrings.saved)),
       );
     }
   }

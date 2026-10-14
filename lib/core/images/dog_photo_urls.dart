@@ -1,5 +1,5 @@
-const String kFallbackDogPhotoUrl =
-    'https://images.unsplash.com/photo-1543466835-00a7907e9de1?auto=format&fit=crop&w=800&q=80';
+/// Empty on purpose — never persist stock Unsplash (or any CDN) as a dog photo.
+const String kFallbackDogPhotoUrl = '';
 
 List<String> collectPhotoUrls(Map<String, dynamic> data) {
   final urls = <String>[];
@@ -49,8 +49,11 @@ bool isUnusableDogPhotoUrl(String? url) {
   return value.isEmpty ||
       value == 'null' ||
       value.startsWith('blob:') ||
-      value.startsWith('placeholder:');
+      value.startsWith('placeholder:') ||
+      _isStockCdnPhoto(value);
 }
+
+bool isStockCdnPhotoUrl(String? url) => _isStockCdnPhoto(url?.trim() ?? '');
 
 Map<String, dynamic> firestorePhotoFields(List<String> urls) {
   final unique = uniquePhotoUrls(urls);
@@ -91,8 +94,21 @@ bool _isPersistablePhoto(String value) {
       value == 'null' ||
       value.startsWith('blob:') ||
       value.startsWith('placeholder:') ||
-      value.startsWith('data:')) {
+      value.startsWith('data:') ||
+      _isStockCdnPhoto(value)) {
     return false;
   }
   return value.startsWith('http://') || value.startsWith('https://');
+}
+
+bool _isStockCdnPhoto(String value) {
+  if (value.isEmpty) {
+    return false;
+  }
+  final lower = value.toLowerCase();
+  return lower.contains('images.unsplash.com') ||
+      lower.contains('source.unsplash.com') ||
+      lower.contains('picsum.photos') ||
+      lower.contains('placekitten.com') ||
+      lower.contains('loremflickr.com');
 }

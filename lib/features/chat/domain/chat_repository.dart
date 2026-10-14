@@ -18,6 +18,12 @@ abstract class ChatRepository {
 
   Stream<List<ChatMessage>> watchMessages(String roomId);
 
+  /// Starts a limited messages listener for an open conversation.
+  void attachRoom(String roomId);
+
+  /// Cancels the messages listener when leaving the conversation screen.
+  void detachRoom(String roomId);
+
   String openFromMatch({
     required DiscoverProfile profile,
     required String myUserId,
@@ -26,23 +32,38 @@ abstract class ChatRepository {
 
   void markRead(String conversationId);
 
-  void sendMessage(String conversationId, String rawText);
+  Future<void> sendMessage(
+    String conversationId,
+    String rawText, {
+    ChatMessage? replyTo,
+  });
 
-  void sendWalkInvite({
+  Future<void> sendWalkInvite({
     required String conversationId,
     required DateTime walkTime,
     required String walkLocationName,
   });
 
-  void sendLocationPin({
+  Future<void> sendLocationPin({
     required String conversationId,
     required String locationName,
   });
 
-  void respondToWalkInvite({
+  Future<void> sendPhoto({
+    required String conversationId,
+    required String imageUrl,
+    ChatMessage? replyTo,
+  });
+
+  Future<void> respondToWalkInvite({
     required String conversationId,
     required String messageId,
     required WalkInviteStatus status,
+  });
+
+  Future<void> toggleMessageLike({
+    required String conversationId,
+    required String messageId,
   });
 
   void dispose();

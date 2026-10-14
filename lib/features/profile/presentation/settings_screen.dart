@@ -2,10 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/firebase/firebase_status.dart';
+import '../../../core/l10n/app_language.dart';
 import '../../../core/theme/app_cards.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_theme_preference.dart';
+import '../../legal/presentation/legal_document_screen.dart';
+import '../../legal/presentation/legal_strings.dart';
 import '../../notifications/data/push_platform.dart';
-import '../../notifications/presentation/push_bootstrap.dart';
 import '../../notifications/presentation/push_controller.dart';
 import '../domain/app_settings.dart';
 import 'matching_filters_sheet.dart';
@@ -32,11 +35,11 @@ class SettingsScreen extends ConsumerWidget {
     final theme = Theme.of(context);
 
     return Scaffold(
-      appBar: AppBar(title: const Text(ProfileStrings.settings)),
+      appBar: AppBar(title: Text(ProfileStrings.settings)),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 28),
         children: [
-          const _SectionLabel(ProfileStrings.notifications),
+          _SectionLabel(ProfileStrings.notifications),
           _SettingsGroup(
             children: [
               _SettingsTile(
@@ -78,8 +81,128 @@ class SettingsScreen extends ConsumerWidget {
               ),
             ],
           ),
-          const SizedBox(height: 20),
-          const _SectionLabel(ProfileStrings.searchAndMap),
+          SizedBox(height: 20),
+          _SectionLabel(ProfileStrings.appearance),
+          _SettingsGroup(
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        _TileIcon(Icons.palette_outlined),
+                        SizedBox(width: 14),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                ProfileStrings.appearance,
+                                style: theme.textTheme.titleSmall?.copyWith(
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                              SizedBox(height: 2),
+                              Text(
+                                ProfileStrings.appearanceHint,
+                                style: _subtitleStyle(theme),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 12),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        ChoiceChip(
+                          label: Text(ProfileStrings.themeDark),
+                          selected: settings.themePreference ==
+                              AppThemePreference.dark,
+                          onSelected: (_) => ref
+                              .read(appSettingsProvider.notifier)
+                              .setThemePreference(AppThemePreference.dark),
+                        ),
+                        ChoiceChip(
+                          label: Text(ProfileStrings.themeLight),
+                          selected: settings.themePreference ==
+                              AppThemePreference.light,
+                          onSelected: (_) => ref
+                              .read(appSettingsProvider.notifier)
+                              .setThemePreference(AppThemePreference.light),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: 20),
+          _SectionLabel(ProfileStrings.language),
+          _SettingsGroup(
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        _TileIcon(Icons.language_rounded),
+                        SizedBox(width: 14),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                ProfileStrings.language,
+                                style: theme.textTheme.titleSmall?.copyWith(
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                              SizedBox(height: 2),
+                              Text(
+                                ProfileStrings.languageHint,
+                                style: _subtitleStyle(theme),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 12),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        ChoiceChip(
+                          label: Text(ProfileStrings.languageSerbian),
+                          selected: settings.language == AppLanguage.serbian,
+                          onSelected: (_) => ref
+                              .read(appSettingsProvider.notifier)
+                              .setLanguage(AppLanguage.serbian),
+                        ),
+                        ChoiceChip(
+                          label: Text(ProfileStrings.languageEnglish),
+                          selected: settings.language == AppLanguage.english,
+                          onSelected: (_) => ref
+                              .read(appSettingsProvider.notifier)
+                              .setLanguage(AppLanguage.english),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: 20),
+          _SectionLabel(ProfileStrings.searchAndMap),
           _SettingsGroup(
             children: [
               Padding(
@@ -89,8 +212,8 @@ class SettingsScreen extends ConsumerWidget {
                   children: [
                     Row(
                       children: [
-                        const _TileIcon(Icons.radar_rounded),
-                        const SizedBox(width: 14),
+                        _TileIcon(Icons.radar_rounded),
+                        SizedBox(width: 14),
                         Expanded(
                           child: Text(
                             ProfileStrings.radiusFilter,
@@ -153,7 +276,31 @@ class SettingsScreen extends ConsumerWidget {
               ),
             ],
           ),
-          const SizedBox(height: 28),
+          SizedBox(height: 20),
+          _SectionLabel(LegalStrings.sectionTitle),
+          _SettingsGroup(
+            children: [
+              _SettingsTile(
+                icon: Icons.privacy_tip_outlined,
+                title: LegalStrings.privacyPolicy,
+                subtitle: LegalStrings.privacySubtitle,
+                onTap: () => openLegalDocument(
+                  context,
+                  kind: LegalDocumentKind.privacy,
+                ),
+              ),
+              _SettingsTile(
+                icon: Icons.gavel_outlined,
+                title: LegalStrings.termsOfService,
+                subtitle: LegalStrings.termsSubtitle,
+                onTap: () => openLegalDocument(
+                  context,
+                  kind: LegalDocumentKind.terms,
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: 28),
           Center(
             child: Text(
               ProfileStrings.appVersion,
@@ -171,18 +318,14 @@ class SettingsScreen extends ConsumerWidget {
     final messenger = ScaffoldMessenger.of(context);
     if (!isFirebaseReady || !isPushPlatform) {
       messenger.showSnackBar(
-        const SnackBar(content: Text(ProfileStrings.notificationsUnsupported)),
+        SnackBar(content: Text(ProfileStrings.notificationsUnsupported)),
       );
       return;
     }
     if (ref.read(pushControllerProvider)) {
       messenger.showSnackBar(
-        const SnackBar(content: Text(ProfileStrings.notificationsGranted)),
+        SnackBar(content: Text(ProfileStrings.notificationsGranted)),
       );
-      return;
-    }
-    final enable = await showEnableNotificationsDialog(context);
-    if (enable != true || !context.mounted) {
       return;
     }
     final settingsCtrl = ref.read(appSettingsProvider.notifier);
@@ -192,6 +335,9 @@ class SettingsScreen extends ConsumerWidget {
     settingsCtrl.update(
       ref.read(appSettingsProvider).copyWith(pushPrompted: true),
     );
+    if (!context.mounted) {
+      return;
+    }
     messenger.showSnackBar(
       SnackBar(
         content: Text(

@@ -1,6 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter/foundation.dart';
 
+import '../../../core/firebase/firestore_auth_guard.dart';
 import '../domain/city_model.dart';
 
 abstract class CitiesRepository {
@@ -16,20 +16,22 @@ class FirestoreCitiesRepository implements CitiesRepository {
       _firestore.collection('cities');
 
   @override
-  Stream<List<CityModel>> watchActive() async* {
-    try {
-      await for (final snapshot in _cities.snapshots()) {
-        final cities = snapshot.docs
-            .map(_fromDoc)
-            .where((city) => city.isActive)
-            .toList()
-          ..sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
-        yield cities.isEmpty ? SeedCities.all : cities;
-      }
-    } catch (error, stack) {
-      debugPrint('cities watch failed: $error\n$stack');
-      yield SeedCities.all;
-    }
+  Stream<List<CityModel>> watchActive() {
+    return FirestoreAuthGuard.guardedStream<List<CityModel>>(
+      label: 'cities.watch',
+      empty: SeedCities.all,
+      create: () => _cities.snapshots().map((snapshot) {
+        final docs = snapshot.docs.map(_fromDoc).toList();
+        final inactiveIds = {
+          for (final city in docs)
+            if (!city.isActive) city.id,
+        };
+        final active = docs.where((city) => city.isActive).toList();
+        return SeedCities.mergeWith(active)
+            .where((city) => !inactiveIds.contains(city.id))
+            .toList();
+      }),
+    );
   }
 
   CityModel _fromDoc(QueryDocumentSnapshot<Map<String, dynamic>> doc) {

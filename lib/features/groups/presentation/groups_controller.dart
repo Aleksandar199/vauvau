@@ -56,22 +56,69 @@ class GroupsController extends Notifier<List<BreedGroup>> {
     return ref.read(groupsRepositoryProvider).deleteGroup(groupId);
   }
 
-  Future<void> sendText(String groupId, String text) {
+  Future<void> sendText(
+    String groupId,
+    String text, {
+    GroupMessage? replyTo,
+  }) {
     return ref.read(groupsRepositoryProvider).sendMessage(
           groupId: groupId,
           text: text,
+          replyTo: replyTo,
         );
   }
 
-  Future<void> sendPhoto(String groupId, XFile file) async {
+  Future<void> sendPhoto(
+    String groupId,
+    XFile file, {
+    GroupMessage? replyTo,
+  }) async {
     final error = await ContentValidationService.validateImage(file);
     if (error != null) {
       throw DogsException(error);
     }
-    final url = await ImageUploadService.upload(await file.readAsBytes());
+    final url = await ImageUploadService.uploadFile(
+      file,
+      folderName: 'groups',
+    );
     await ref.read(groupsRepositoryProvider).sendPhoto(
           groupId: groupId,
           imageUrl: url,
+          replyTo: replyTo,
+        );
+  }
+
+  Future<void> sendWalkInvite({
+    required String groupId,
+    required DateTime walkTime,
+    required String walkLocationName,
+  }) {
+    return ref.read(groupsRepositoryProvider).sendWalkInvite(
+          groupId: groupId,
+          walkTime: walkTime,
+          walkLocationName: walkLocationName,
+        );
+  }
+
+  Future<void> respondToWalkInvite({
+    required String groupId,
+    required String messageId,
+    required GroupWalkInviteStatus status,
+  }) {
+    return ref.read(groupsRepositoryProvider).respondToWalkInvite(
+          groupId: groupId,
+          messageId: messageId,
+          status: status,
+        );
+  }
+
+  Future<void> toggleMessageLike({
+    required String groupId,
+    required String messageId,
+  }) {
+    return ref.read(groupsRepositoryProvider).toggleMessageLike(
+          groupId: groupId,
+          messageId: messageId,
         );
   }
 }

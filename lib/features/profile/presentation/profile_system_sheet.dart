@@ -23,7 +23,7 @@ Future<void> showProfileSystemSheet(BuildContext context, WidgetRef ref) {
             children: [
               ListTile(
                 leading: const Icon(Icons.settings_outlined),
-                title: const Text(ProfileStrings.settings),
+                title: Text(ProfileStrings.settings),
                 onTap: () {
                   Navigator.of(sheetContext).pop();
                   Navigator.of(context).push(
@@ -41,7 +41,7 @@ Future<void> showProfileSystemSheet(BuildContext context, WidgetRef ref) {
                   ),
                   title: Row(
                     children: [
-                      const Text(ProfileStrings.adminPanel),
+                      Text(ProfileStrings.adminPanel),
                       const SizedBox(width: 8),
                       Container(
                         padding: const EdgeInsets.symmetric(

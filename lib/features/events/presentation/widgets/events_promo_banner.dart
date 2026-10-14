@@ -27,8 +27,8 @@ class EventsPromoBanner extends StatelessWidget {
           ),
           child: Row(
             children: [
-              const Icon(Icons.event_available, color: Colors.white),
-              const SizedBox(width: 10),
+              Icon(Icons.event_available, color: Colors.white),
+              SizedBox(width: 10),
               Expanded(
                 child: Text(
                   compact ? EventsStrings.mapBanner : EventsStrings.banner,

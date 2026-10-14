@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/constants/serbia_locations.dart';
 import '../../groups/presentation/group_chat_screen.dart';
+import '../data/seed_events.dart';
 import '../domain/event_model.dart';
 import 'create_event_screen.dart';
 import 'events_controller.dart';
@@ -24,8 +26,16 @@ class _EventsScreenState extends ConsumerState<EventsScreen> {
   Widget build(BuildContext context) {
     final events = ref.watch(eventsControllerProvider);
     final memberId = ref.watch(eventsMemberIdProvider);
+    final cityId = ref.watch(eventsCityFilterProvider);
     final now = DateTime.now();
     final visible = events.where((event) {
+      // Drop walks a few hours after their scheduled start.
+      if (!event.isListed(now)) {
+        return false;
+      }
+      if (cityId != null && EventVenues.cityIdForEvent(event) != cityId) {
+        return false;
+      }
       return switch (_filter) {
         _EventsFilter.all => true,
         _EventsFilter.upcoming => event.dateTime.isAfter(now),
@@ -35,7 +45,7 @@ class _EventsScreenState extends ConsumerState<EventsScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text(EventsStrings.title),
+        title: Text(EventsStrings.title),
         actions: [
           IconButton(
             tooltip: EventsStrings.organize,
@@ -53,7 +63,33 @@ class _EventsScreenState extends ConsumerState<EventsScreen> {
               context,
             ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
+          SizedBox(
+            height: 36,
+            child: ListView(
+              key: const ValueKey('events-city-filter'),
+              scrollDirection: Axis.horizontal,
+              children: [
+                _FilterChip(
+                  label: EventsStrings.filterAllCities,
+                  selected: cityId == null,
+                  onTap: () =>
+                      ref.read(eventsCityFilterProvider.notifier).select(null),
+                ),
+                for (final city in SerbiaLocations.cities) ...[
+                  SizedBox(width: 8),
+                  _FilterChip(
+                    label: city.name,
+                    selected: cityId == city.id,
+                    onTap: () => ref
+                        .read(eventsCityFilterProvider.notifier)
+                        .select(city.id),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          SizedBox(height: 8),
           SizedBox(
             height: 36,
             child: ListView(
@@ -64,13 +100,13 @@ class _EventsScreenState extends ConsumerState<EventsScreen> {
                   selected: _filter == _EventsFilter.all,
                   onTap: () => setState(() => _filter = _EventsFilter.all),
                 ),
-                const SizedBox(width: 8),
+                SizedBox(width: 8),
                 _FilterChip(
                   label: EventsStrings.filterUpcoming,
                   selected: _filter == _EventsFilter.upcoming,
                   onTap: () => setState(() => _filter = _EventsFilter.upcoming),
                 ),
-                const SizedBox(width: 8),
+                SizedBox(width: 8),
                 _FilterChip(
                   label: EventsStrings.filterJoined,
                   selected: _filter == _EventsFilter.joined,
@@ -95,9 +131,22 @@ class _EventsScreenState extends ConsumerState<EventsScreen> {
                 fontWeight: FontWeight.w600,
               ),
             ),
-            label: const Text(EventsStrings.organize),
+            label: Text(EventsStrings.organize),
           ),
           const SizedBox(height: 16),
+          if (visible.isEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 24),
+              child: Text(
+                cityId == null
+                    ? EventsStrings.emptyAll
+                    : EventsStrings.emptyCity(
+                        SerbiaLocations.cityById(cityId)?.name ?? cityId,
+                      ),
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.grey.shade600),
+              ),
+            ),
           for (final event in visible) ...[
             EventCard(
               event: event,

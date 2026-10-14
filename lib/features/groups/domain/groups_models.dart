@@ -139,6 +139,16 @@ class GroupMessage {
     required this.imageUrl,
     required this.createdAt,
     required this.isMine,
+    this.replyToMessageId = '',
+    this.replyToText = '',
+    this.replyToSenderName = '',
+    this.type = GroupMessageType.text,
+    this.status,
+    this.walkTime,
+    this.walkLocationName,
+    this.acceptedByUserIds = const [],
+    this.declinedByUserIds = const [],
+    this.likes = const [],
   });
 
   final String id;
@@ -149,10 +159,47 @@ class GroupMessage {
   final String imageUrl;
   final DateTime createdAt;
   final bool isMine;
+  final String replyToMessageId;
+  final String replyToText;
+  final String replyToSenderName;
+  final GroupMessageType type;
+  final GroupWalkInviteStatus? status;
+  final DateTime? walkTime;
+  final String? walkLocationName;
+  /// User ids that accepted this group walk invite (updates live on the message).
+  final List<String> acceptedByUserIds;
+  final List<String> declinedByUserIds;
+
+  /// User ids that liked this message.
+  final List<String> likes;
+
+  int get likeCount => likes.length;
+
+  bool isLikedBy(String uid) =>
+      uid.isNotEmpty && likes.contains(uid);
 
   bool get hasImage => imageUrl.trim().isNotEmpty;
 
+  bool get isWalkInvite => type == GroupMessageType.walkInvite;
+
+  int get acceptedCount => acceptedByUserIds.length;
+
+  bool get hasReply =>
+      replyToMessageId.isNotEmpty || replyToText.trim().isNotEmpty;
+
+  bool hasUserResponded(String userId) {
+    if (userId.isEmpty) {
+      return false;
+    }
+    return acceptedByUserIds.contains(userId) ||
+        declinedByUserIds.contains(userId);
+  }
+
   String get preview {
+    if (isWalkInvite) {
+      final place = (walkLocationName ?? '').trim();
+      return place.isEmpty ? 'Poziv na šetnju' : 'Poziv na šetnju: $place';
+    }
     if (text.trim().isNotEmpty) {
       return text.trim();
     }
@@ -161,7 +208,39 @@ class GroupMessage {
     }
     return '';
   }
+
+  GroupMessage copyWith({
+    GroupWalkInviteStatus? status,
+    List<String>? acceptedByUserIds,
+    List<String>? declinedByUserIds,
+    List<String>? likes,
+  }) {
+    return GroupMessage(
+      id: id,
+      senderId: senderId,
+      senderName: senderName,
+      senderAvatarUrl: senderAvatarUrl,
+      text: text,
+      imageUrl: imageUrl,
+      createdAt: createdAt,
+      isMine: isMine,
+      replyToMessageId: replyToMessageId,
+      replyToText: replyToText,
+      replyToSenderName: replyToSenderName,
+      type: type,
+      status: status ?? this.status,
+      walkTime: walkTime,
+      walkLocationName: walkLocationName,
+      acceptedByUserIds: acceptedByUserIds ?? this.acceptedByUserIds,
+      declinedByUserIds: declinedByUserIds ?? this.declinedByUserIds,
+      likes: likes ?? this.likes,
+    );
+  }
 }
+
+enum GroupMessageType { text, walkInvite }
+
+enum GroupWalkInviteStatus { pending, accepted, declined }
 
 class GroupInboxThread {
   const GroupInboxThread({
@@ -227,10 +306,29 @@ abstract class GroupsRepository {
     required String groupId,
     required String text,
     String imageUrl = '',
+    GroupMessage? replyTo,
   });
 
   Future<void> sendPhoto({
     required String groupId,
     required String imageUrl,
+    GroupMessage? replyTo,
+  });
+
+  Future<void> sendWalkInvite({
+    required String groupId,
+    required DateTime walkTime,
+    required String walkLocationName,
+  });
+
+  Future<void> respondToWalkInvite({
+    required String groupId,
+    required String messageId,
+    required GroupWalkInviteStatus status,
+  });
+
+  Future<void> toggleMessageLike({
+    required String groupId,
+    required String messageId,
   });
 }

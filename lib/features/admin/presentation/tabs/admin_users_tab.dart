@@ -12,10 +12,10 @@ class AdminUsersTab extends ConsumerWidget {
     return ref.watch(adminUsersProvider).when(
           loading: () => const Center(child: CircularProgressIndicator()),
           error: (error, stack) =>
-              const Center(child: Text(AdminStrings.loadError)),
+              Center(child: Text(AdminStrings.loadError)),
           data: (users) {
             if (users.isEmpty) {
-              return const Center(child: Text(AdminStrings.emptyUsers));
+              return Center(child: Text(AdminStrings.emptyUsers));
             }
             return Column(
               children: [

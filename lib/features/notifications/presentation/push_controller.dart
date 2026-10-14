@@ -8,8 +8,8 @@ import '../data/push_notification_gateway.dart';
 import '../domain/app_notification.dart';
 import '../domain/push_payload.dart';
 import 'notification_controller.dart';
+import 'notification_routing.dart';
 import 'notification_strings.dart';
-import 'push_navigation.dart';
 
 class PushController extends Notifier<bool> {
   @override
@@ -37,7 +37,15 @@ class PushController extends Notifier<bool> {
     ref.onDispose(opened.cancel);
     ref.onDispose(() => notifications.onNotificationTap = null);
     unawaited(_ingestInitial(gateway));
+    unawaited(_syncPermissionState());
     return false;
+  }
+
+  Future<void> _syncPermissionState() async {
+    final granted = await _gateway.hasPermission();
+    if (ref.mounted) {
+      state = granted;
+    }
   }
 
   PushNotificationGateway get _gateway =>
@@ -58,6 +66,7 @@ class PushController extends Notifier<bool> {
     required String ownerName,
     String? dogId,
     String? peerUserId,
+    String? conversationId,
   }) {
     return _dispatch(
       PushPayload(
@@ -66,7 +75,9 @@ class PushController extends Notifier<bool> {
         body: NotificationStrings.pushMatchBody(dogName, ownerName),
         dogId: dogId,
         peerUserId: peerUserId,
+        conversationId: conversationId,
       ),
+      local: false,
     );
   }
 
@@ -93,12 +104,17 @@ class PushController extends Notifier<bool> {
   Future<void> notifyGroupThread({
     required String groupTitle,
     required int count,
+    String? groupId,
+    String? eventId,
   }) {
+    final isEvent = eventId != null && eventId.trim().isNotEmpty;
     return _dispatch(
       PushPayload(
-        kind: PushKind.message,
+        kind: isEvent ? PushKind.event : PushKind.group,
         title: groupTitle,
         body: NotificationStrings.pushGroupAlert(groupTitle, count),
+        groupId: groupId,
+        eventId: eventId,
       ),
     );
   }
@@ -108,6 +124,7 @@ class PushController extends Notifier<bool> {
     required String ownerName,
     String? dogId,
     String? peerUserId,
+    String? conversationId,
   }) {
     return _dispatch(
       PushPayload(
@@ -116,7 +133,9 @@ class PushController extends Notifier<bool> {
         body: NotificationStrings.pushWalkBody(dogName, ownerName),
         dogId: dogId,
         peerUserId: peerUserId,
+        conversationId: conversationId,
       ),
+      local: false,
     );
   }
 
@@ -124,16 +143,17 @@ class PushController extends Notifier<bool> {
     final settings = ref.read(appSettingsProvider);
     return switch (kind) {
       PushKind.match => settings.notifyNewMatches,
-      PushKind.message => settings.notifyMessages,
+      PushKind.message ||
+      PushKind.group ||
+      PushKind.event =>
+        settings.notifyMessages,
       PushKind.walk => settings.notifyWalkRequests,
     };
   }
 
   Future<void> _dispatch(PushPayload payload, {bool local = true}) async {
-    if (_isEnabled(payload.kind)) {
-      if (local) {
-        _ingest(payload);
-      }
+    if (_isEnabled(payload.kind) && local) {
+      _ingest(payload);
       await _gateway.present(payload);
     }
     final peer = payload.peerUserId;
@@ -168,17 +188,23 @@ class PushController extends Notifier<bool> {
     }
     ref.read(notificationControllerProvider.notifier).prepend(
           AppNotification(
-            id: 'push-${payload.kind.name}-${DateTime.now().microsecondsSinceEpoch}',
+            id:
+                'push-${payload.kind.name}-${DateTime.now().microsecondsSinceEpoch}',
             kind: switch (payload.kind) {
               PushKind.match => NotificationKind.match,
               PushKind.message => NotificationKind.chatMessage,
               PushKind.walk => NotificationKind.walkRequest,
+              PushKind.group => NotificationKind.groupMessage,
+              PushKind.event => NotificationKind.eventMessage,
             },
             title: payload.title,
             body: payload.body,
             createdAt: DateTime.now(),
             dogId: payload.dogId,
             fromUserId: payload.peerUserId,
+            conversationId: payload.conversationId,
+            groupId: payload.groupId,
+            eventId: payload.eventId,
           ),
         );
   }

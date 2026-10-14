@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="sr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+  <title>VauVau — Reels najava</title>
+  <style>
+    :root {
+      --orange: #ea580c;
+      --cream: #fff7ed;
+      --ink: #1c1917;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      height: 100%;
+      background: #0c0a09;
+      color: var(--ink);
+      font-family: "Segoe UI", system-ui, sans-serif;
+    }
+    body {
+      display: grid;
+      place-items: center;
+      gap: 16px;
+      padding: 16px;
+    }
+    .stage-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+    }
+    .stage {
+      width: min(360px, 92vw);
+      aspect-ratio: 9 / 16;
+      border-radius: 24px;
+      overflow: hidden;
+      position: relative;
+      background: var(--cream);
+      box-shadow: 0 24px 80px rgba(234, 88, 12, 0.25);
+    }
+    .slide {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      transform: scale(1.08);
+      transition: opacity 0.55s ease, transform 3.2s ease-out;
+      background-size: cover;
+      background-position: center;
+    }
+    .slide.active {
+      opacity: 1;
+      transform: scale(1);
+      z-index: 1;
+    }
+    .progress {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      right: 10px;
+      display: flex;
+      gap: 4px;
+      z-index: 5;
+    }
+    .progress span {
+      flex: 1;
+      height: 3px;
+      border-radius: 99px;
+      background: rgba(255,255,255,0.35);
+      overflow: hidden;
+    }
+    .progress span i {
+      display: block;
+      height: 100%;
+      width: 0%;
+      background: #fff;
+      border-radius: inherit;
+    }
+    .progress span.done i { width: 100%; }
+    .progress span.current i {
+      animation: fill var(--dur, 3.2s) linear forwards;
+    }
+    @keyframes fill { to { width: 100%; } }
+    .controls {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    button {
+      border: 0;
+      border-radius: 999px;
+      padding: 10px 18px;
+      font-weight: 700;
+      cursor: pointer;
+      background: var(--orange);
+      color: #fff;
+    }
+    button.secondary {
+      background: #292524;
+      color: #fff;
+    }
+    .hint {
+      max-width: 420px;
+      text-align: center;
+      color: #a8a29e;
+      font-size: 13px;
+      line-height: 1.45;
+    }
+    .hint strong { color: #fafaf9; }
+  </style>
+</head>
+<body>
+  <div class="stage-wrap">
+    <div class="stage" id="stage" aria-label="VauVau Reels preview">
+      <div class="progress" id="progress"></div>
+      <div class="slide" style="background-image:url('01_hook.jpg')"></div>
+      <div class="slide" style="background-image:url('02_value.jpg')"></div>
+      <div class="slide" style="background-image:url('03_features.jpg')"></div>
+      <div class="slide" style="background-image:url('04_cta.jpg')"></div>
+    </div>
+    <div class="controls">
+      <button type="button" id="play">▶ Pokreni</button>
+      <button type="button" class="secondary" id="fs">Fullscreen</button>
+    </div>
+    <p class="hint">
+      Trajanje ~<strong>13 s</strong> · format <strong>9:16</strong>.
+      Otvori fullscreen i snimi ekran (Win+Alt+R ili telefonski screen record),
+      ili uvezi JPG fajlove u CapCut / Instagram.
+    </p>
+  </div>
+  <script>
+    const DUR = 3200;
+    const slides = [...document.querySelectorAll('.slide')];
+    const progress = document.getElementById('progress');
+    slides.forEach(() => {
+      const s = document.createElement('span');
+      s.innerHTML = '<i></i>';
+      progress.appendChild(s);
+    });
+    const bars = [...progress.querySelectorAll('span')];
+    let idx = 0;
+    let timer;
+    let playing = false;
+
+    function paint(i) {
+      slides.forEach((el, n) => el.classList.toggle('active', n === i));
+      bars.forEach((bar, n) => {
+        bar.classList.remove('done', 'current');
+        bar.style.setProperty('--dur', DUR + 'ms');
+        const fill = bar.querySelector('i');
+        fill.style.animation = 'none';
+        fill.offsetHeight;
+        fill.style.width = '';
+        fill.style.animation = '';
+        if (n < i) bar.classList.add('done');
+        if (n === i) bar.classList.add('current');
+      });
+    }
+
+    function tick() {
+      paint(idx);
+      clearTimeout(timer);
+      timer = setTimeout(() => {
+        idx = (idx + 1) % slides.length;
+        if (idx === 0 && playing) {
+          // one full loop then stop on last CTA for recording ease
+          idx = slides.length - 1;
+          paint(idx);
+          playing = false;
+          document.getElementById('play').textContent = '▶ Ponovo';
+          return;
+        }
+        tick();
+      }, DUR);
+    }
+
+    document.getElementById('play').onclick = () => {
+      playing = true;
+      idx = 0;
+      document.getElementById('play').textContent = '⏸ ...';
+      tick();
+    };
+    document.getElementById('fs').onclick = () => {
+      const stage = document.getElementById('stage');
+      if (stage.requestFullscreen) stage.requestFullscreen();
+    };
+    paint(0);
+  </script>
+</body>
+</html>

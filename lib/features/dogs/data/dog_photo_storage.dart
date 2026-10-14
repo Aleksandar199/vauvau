@@ -1,18 +1,32 @@
 import 'package:image_picker/image_picker.dart';
 
-import '../../../core/images/image_upload_service.dart';
+import '../../../services/storage_service.dart';
 
 class DogPhotoStorage {
-  const DogPhotoStorage({this.uploader = const ImageUploadService()});
+  DogPhotoStorage({StorageService? storage})
+      : _storage = storage ?? StorageService();
 
-  final ImageUploadService uploader;
+  final StorageService _storage;
 
   Future<List<String>> uploadAll({
     required String dogId,
     required List<XFile> files,
     String ownerId = '',
-  }) {
-    return uploader.uploadAll(files);
+  }) async {
+    final urls = <String>[];
+    for (final file in files) {
+      final url = await _storage.uploadXFile(
+        file: file,
+        folderName: 'pets',
+        ownerId: ownerId,
+      );
+      if (url != null &&
+          url.startsWith('http') &&
+          !StorageService.isGsUri(url)) {
+        urls.add(url);
+      }
+    }
+    return urls;
   }
 
   Future<String> upload({
@@ -21,6 +35,16 @@ class DogPhotoStorage {
     required XFile file,
     String ownerId = '',
   }) async {
-    return ImageUploadService.upload(await file.readAsBytes());
+    final url = await _storage.uploadXFile(
+      file: file,
+      folderName: 'pets',
+      ownerId: ownerId,
+    );
+    if (url == null ||
+        !url.startsWith('http') ||
+        StorageService.isGsUri(url)) {
+      throw StateError('Upload fotografije nije uspeo.');
+    }
+    return url;
   }
 }

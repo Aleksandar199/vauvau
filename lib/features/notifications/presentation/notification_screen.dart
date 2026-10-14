@@ -3,16 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/feed_state.dart';
-import '../../chat/presentation/chat_detail_screen.dart';
-import '../../chat/presentation/chat_inbox.dart';
-import '../../discover/data/load_discover_profile.dart';
-import '../../discover/data/mock_discover_profiles.dart';
-import '../../discover/domain/discover_profile.dart';
-import '../../discover/presentation/discover_controller.dart';
-import '../../discover/presentation/widgets/swipe_dog_card.dart';
-import '../../home/presentation/home_tab.dart';
 import '../domain/app_notification.dart';
 import 'notification_controller.dart';
+import 'notification_routing.dart';
 import 'notification_strings.dart';
 
 class NotificationScreen extends ConsumerWidget {
@@ -22,7 +15,7 @@ class NotificationScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text(NotificationStrings.title),
+        title: Text(NotificationStrings.title),
         actions: const [_MarkAllReadButton()],
       ),
       body: const NotificationsInbox(),
@@ -39,7 +32,7 @@ Future<void> showNotificationsSheet(BuildContext context) {
       final height = MediaQuery.sizeOf(sheetContext).height * 0.78;
       return SizedBox(
         height: height,
-        child: const Column(
+        child: Column(
           children: [
             Padding(
               padding: EdgeInsets.fromLTRB(16, 4, 8, 8),
@@ -82,7 +75,7 @@ class _MarkAllReadButton extends ConsumerWidget {
     return TextButton(
       onPressed: () =>
           ref.read(notificationControllerProvider.notifier).markAllRead(),
-      child: const Text(NotificationStrings.markAll),
+      child: Text(NotificationStrings.markAll),
     );
   }
 }
@@ -171,7 +164,7 @@ class _NotificationCard extends ConsumerWidget {
                         height: 1.3,
                       ),
                     ),
-                    const SizedBox(height: 6),
+                    SizedBox(height: 6),
                     Text(
                       NotificationStrings.timeAgo(item.createdAt),
                       style: TextStyle(
@@ -220,6 +213,8 @@ IconData _iconFor(NotificationKind kind) {
     NotificationKind.chatMessage => Icons.chat_bubble,
     NotificationKind.like => Icons.favorite_border,
     NotificationKind.superLike => Icons.star,
+    NotificationKind.groupMessage => Icons.groups_outlined,
+    NotificationKind.eventMessage => Icons.event_outlined,
   };
 }
 
@@ -229,109 +224,7 @@ Future<void> _openNotification(
   AppNotification item,
 ) async {
   ref.read(notificationControllerProvider.notifier).markRead(item.id);
-  if (item.kind == NotificationKind.walkRequest) {
-    ref.read(homeTabIndexProvider.notifier).showMap();
-    if (Navigator.of(context).canPop()) {
-      Navigator.of(context).pop();
-    }
-    return;
-  }
-  if (item.kind == NotificationKind.like ||
-      item.kind == NotificationKind.superLike) {
-    final host = Navigator.of(context).context;
-    if (Navigator.of(context).canPop()) {
-      Navigator.of(context).pop();
-    }
-    final profile = await _resolveSenderProfile(ref, item);
-    if (!host.mounted || profile == null) {
-      return;
-    }
-    await showModalBottomSheet<void>(
-      context: host,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (sheetContext) => DogDetailSheet(
-        profile: profile,
-      ),
-    );
-    return;
-  }
-  DiscoverProfile? profile = await _resolveSenderProfile(ref, item);
-  profile ??= _catalogOrMock(ref, item.dogId);
-  if (!context.mounted) {
-    return;
-  }
-  _openChat(context, ref, profile);
-}
-
-Future<DiscoverProfile?> _resolveSenderProfile(
-  WidgetRef ref,
-  AppNotification item,
-) async {
-  try {
-    final loaded = await loadDiscoverProfile(
-      dogId: item.dogId,
-      ownerId: item.fromUserId,
-    );
-    if (loaded != null) {
-      return loaded;
-    }
-  } catch (_) {}
-  return _catalogMatch(ref, item);
-}
-
-DiscoverProfile? _catalogMatch(WidgetRef ref, AppNotification item) {
-  final catalog = ref.read(discoverControllerProvider).catalog;
-  for (final dog in catalog) {
-    if (item.dogId != null &&
-        item.dogId!.isNotEmpty &&
-        dog.id == item.dogId) {
-      return dog;
-    }
-    if (item.fromUserId != null &&
-        item.fromUserId!.isNotEmpty &&
-        dog.ownerId == item.fromUserId) {
-      return dog;
-    }
-  }
-  return null;
-}
-
-DiscoverProfile _catalogOrMock(WidgetRef ref, String? dogId) {
-  final match = _catalogMatch(
-    ref,
-    AppNotification(
-      id: '',
-      kind: NotificationKind.like,
-      title: '',
-      body: '',
-      createdAt: DateTime.now(),
-      dogId: dogId,
-    ),
-  );
-  if (match != null) {
-    return match;
-  }
-  for (final dog in mockDiscoverProfiles) {
-    if (dog.id == dogId) {
-      return dog;
-    }
-  }
-  return mockDiscoverProfiles.first;
-}
-
-void _openChat(
-  BuildContext context,
-  WidgetRef ref,
-  DiscoverProfile profile,
-) {
-  final chatId = ref.read(chatInboxProvider.notifier).openFromMatch(profile);
-  ref.read(homeTabIndexProvider.notifier).showMessages();
-  Navigator.of(context).push(
-    MaterialPageRoute<void>(
-      builder: (_) => ChatDetailScreen(conversationId: chatId),
-    ),
-  );
+  await openAppNotification(context, ref, item);
 }
 
 class _EmptyNotifications extends StatelessWidget {
@@ -339,7 +232,7 @@ class _EmptyNotifications extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const FeedStateView(
+    return FeedStateView(
       icon: Icons.notifications_none,
       title: NotificationStrings.empty,
       subtitle: NotificationStrings.emptySubtitle,

@@ -43,3 +43,17 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Release signing secrets (keep key.properties.example only)
+/android/key.properties
+*.jks
+*.keystore
+
+# Local release artifacts (do not commit AABs)
+/release/
+
+# Local tooling / caches / test scratch output
+/docs/reels/ffmpeg/
+/.firebase/
+/moments_fail.txt
+/flutter_*.png

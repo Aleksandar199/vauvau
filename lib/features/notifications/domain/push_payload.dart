@@ -1,4 +1,4 @@
-enum PushKind { match, message, walk }
+enum PushKind { match, message, walk, group, event }
 
 class PushPayload {
   const PushPayload({
@@ -8,6 +8,8 @@ class PushPayload {
     this.dogId,
     this.peerUserId,
     this.conversationId,
+    this.groupId,
+    this.eventId,
   });
 
   final PushKind kind;
@@ -16,11 +18,15 @@ class PushPayload {
   final String? dogId;
   final String? peerUserId;
   final String? conversationId;
+  final String? groupId;
+  final String? eventId;
 
   String get typeName => switch (kind) {
         PushKind.match => 'match',
         PushKind.message => 'message',
         PushKind.walk => 'walk',
+        PushKind.group => 'group',
+        PushKind.event => 'event',
       };
 
   Map<String, String> get data => {
@@ -30,6 +36,8 @@ class PushPayload {
         'dogId': ?dogId,
         'peerUserId': ?peerUserId,
         'conversationId': ?conversationId,
+        'groupId': ?groupId,
+        'eventId': ?eventId,
       };
 
   factory PushPayload.fromData(Map<String, dynamic> data) {
@@ -41,13 +49,22 @@ class PushPayload {
       return value;
     }
 
+    final nested = data['data'];
+    if (nested is Map) {
+      for (final entry in nested.entries) {
+        data.putIfAbsent(entry.key.toString(), () => entry.value);
+      }
+    }
+
     return PushPayload(
       kind: kindFrom(read('type')),
       title: read('title') ?? '',
       body: read('body') ?? '',
-      dogId: read('dogId'),
-      peerUserId: read('peerUserId') ?? read('fromUserId'),
-      conversationId: read('conversationId') ?? read('chatId'),
+      dogId: read('dogId') ?? read('senderDogId') ?? read('fromDogId'),
+      peerUserId: read('peerUserId') ?? read('fromUserId') ?? read('senderUserId'),
+      conversationId: read('conversationId') ?? read('chatId') ?? read('matchId'),
+      groupId: read('groupId'),
+      eventId: read('eventId'),
     );
   }
 
@@ -57,6 +74,10 @@ class PushPayload {
         return PushKind.message;
       case 'walk':
         return PushKind.walk;
+      case 'group':
+        return PushKind.group;
+      case 'event':
+        return PushKind.event;
       default:
         return PushKind.match;
     }

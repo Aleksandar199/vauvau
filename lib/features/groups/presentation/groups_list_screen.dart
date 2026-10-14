@@ -17,7 +17,7 @@ class GroupsListScreen extends ConsumerWidget {
     final memberId = ref.watch(groupsMemberIdProvider);
     return Scaffold(
       appBar: AppBar(
-        title: const Text(GroupsStrings.title),
+        title: Text(GroupsStrings.title),
         actions: [
           IconButton(
             tooltip: GroupsStrings.createGroup,
@@ -119,12 +119,12 @@ class _CreateGroupSheetState extends ConsumerState<CreateGroupSheet> {
                 context,
               ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
             TextFormField(
               controller: _nameController,
               enabled: !_isLoading,
               textCapitalization: TextCapitalization.sentences,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: GroupsStrings.groupName,
               ),
               validator: (value) {
@@ -134,14 +134,14 @@ class _CreateGroupSheetState extends ConsumerState<CreateGroupSheet> {
                 return ContentValidationService.validateTitle(value!);
               },
             ),
-            const SizedBox(height: 10),
+            SizedBox(height: 10),
             TextFormField(
               controller: _descriptionController,
               enabled: !_isLoading,
               minLines: 2,
               maxLines: 4,
               textCapitalization: TextCapitalization.sentences,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: GroupsStrings.groupDescription,
               ),
             ),
@@ -157,7 +157,7 @@ class _CreateGroupSheetState extends ConsumerState<CreateGroupSheet> {
                         color: Colors.white,
                       ),
                     )
-                  : const Text(GroupsStrings.submitGroup),
+                  : Text(GroupsStrings.submitGroup),
             ),
           ],
         ),
@@ -191,21 +191,21 @@ class _CreateGroupSheetState extends ConsumerState<CreateGroupSheet> {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
-          title: const Row(
+          title: Row(
             children: [
               Icon(Icons.check_circle_outline, color: Colors.green),
               SizedBox(width: 8),
               Expanded(child: Text(GroupsStrings.requestSentTitle)),
             ],
           ),
-          content: const Text(GroupsStrings.requestSentBody),
+          content: Text(GroupsStrings.requestSentBody),
           actions: [
             ElevatedButton(
               onPressed: () {
                 Navigator.of(ctx).pop();
                 Navigator.of(context).pop();
               },
-              child: const Text(GroupsStrings.ok),
+              child: Text(GroupsStrings.ok),
             ),
           ],
         ),
@@ -223,7 +223,7 @@ class _CreateGroupSheetState extends ConsumerState<CreateGroupSheet> {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
-          title: const Row(
+          title: Row(
             children: [
               Icon(Icons.error_outline, color: Colors.red),
               SizedBox(width: 8),
@@ -238,7 +238,7 @@ class _CreateGroupSheetState extends ConsumerState<CreateGroupSheet> {
           actions: [
             TextButton(
               onPressed: () => Navigator.of(ctx).pop(),
-              child: const Text(GroupsStrings.close),
+              child: Text(GroupsStrings.close),
             ),
           ],
         ),

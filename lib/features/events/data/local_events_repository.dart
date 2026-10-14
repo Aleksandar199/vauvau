@@ -95,6 +95,7 @@ class LocalEventsRepository implements EventsRepository {
     String imageUrl = '',
     String? senderId,
     String? senderName,
+    GroupMessage? replyTo,
   }) async {
     final trimmed = text.trim();
     if (trimmed.isEmpty && imageUrl.trim().isEmpty) {
@@ -111,6 +112,9 @@ class LocalEventsRepository implements EventsRepository {
       imageUrl: imageUrl,
       createdAt: DateTime.now(),
       isMine: id == currentUserId,
+      replyToMessageId: replyTo?.id ?? '',
+      replyToText: replyTo?.preview ?? '',
+      replyToSenderName: replyTo?.senderName ?? '',
     );
     _append(eventId, message);
   }
@@ -119,8 +123,98 @@ class LocalEventsRepository implements EventsRepository {
   Future<void> sendPhoto({
     required String eventId,
     required String imageUrl,
+    GroupMessage? replyTo,
   }) {
-    return sendMessage(eventId: eventId, text: '', imageUrl: imageUrl);
+    return sendMessage(
+      eventId: eventId,
+      text: '',
+      imageUrl: imageUrl,
+      replyTo: replyTo,
+    );
+  }
+
+  @override
+  Future<void> sendWalkInvite({
+    required String eventId,
+    required DateTime walkTime,
+    required String walkLocationName,
+  }) async {
+    final place = walkLocationName.trim();
+    final preview =
+        place.isEmpty ? 'Poziv na šetnju' : 'Poziv na šetnju: $place';
+    _append(
+      eventId,
+      GroupMessage(
+        id: 'emsg-${DateTime.now().millisecondsSinceEpoch}',
+        senderId: currentUserId,
+        senderName: senderName,
+        senderAvatarUrl: senderAvatarUrl,
+        text: preview,
+        imageUrl: '',
+        createdAt: DateTime.now(),
+        isMine: true,
+        type: GroupMessageType.walkInvite,
+        status: GroupWalkInviteStatus.pending,
+        walkTime: walkTime,
+        walkLocationName: place,
+      ),
+    );
+  }
+
+  @override
+  Future<void> respondToWalkInvite({
+    required String eventId,
+    required String messageId,
+    required GroupWalkInviteStatus status,
+  }) async {
+    final current = _messages[eventId] ?? const <GroupMessage>[];
+    final next = [
+      for (final message in current)
+        if (message.id == messageId)
+          message.copyWith(
+            status: GroupWalkInviteStatus.pending,
+            acceptedByUserIds: status == GroupWalkInviteStatus.accepted
+                ? {...message.acceptedByUserIds, currentUserId}.toList()
+                : [
+                    for (final id in message.acceptedByUserIds)
+                      if (id != currentUserId) id,
+                  ],
+            declinedByUserIds: status == GroupWalkInviteStatus.declined
+                ? {...message.declinedByUserIds, currentUserId}.toList()
+                : [
+                    for (final id in message.declinedByUserIds)
+                      if (id != currentUserId) id,
+                  ],
+          )
+        else
+          message,
+    ];
+    _messages[eventId] = next;
+    _messageControllerFor(eventId).add(List<GroupMessage>.from(next));
+  }
+
+  @override
+  Future<void> toggleMessageLike({
+    required String eventId,
+    required String messageId,
+  }) async {
+    final current = _messages[eventId] ?? const <GroupMessage>[];
+    final next = [
+      for (final message in current)
+        if (message.id == messageId)
+          message.copyWith(
+            likes: message.isLikedBy(currentUserId)
+                ? [
+                    for (final id in message.likes)
+                      if (id != currentUserId) id,
+                  ]
+                : [...message.likes, currentUserId],
+          )
+        else
+          message,
+    ];
+    _messages[eventId] = next;
+    _messageControllerFor(eventId).add(List<GroupMessage>.from(next));
   }
 
   @override
@@ -146,6 +240,7 @@ class LocalEventsRepository implements EventsRepository {
         ...event.participantUserIds,
       }.where((id) => id.isNotEmpty).toList(),
       createdAt: DateTime.now(),
+      cityId: event.cityId.trim(),
     );
     _events.insert(0, created);
     _lastRead[id] = DateTime.now();

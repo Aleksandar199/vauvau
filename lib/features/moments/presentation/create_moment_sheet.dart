@@ -2,7 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../../../core/constants/serbia_locations.dart';
 import '../../events/data/seed_events.dart';
+import '../../events/presentation/events_controller.dart';
+import '../../location/presentation/home_city_provider.dart';
 import '../../profile/presentation/profile_controller.dart';
 import '../domain/moment_model.dart';
 import 'moments_controller.dart';
@@ -17,7 +20,8 @@ Future<void> showCreateMomentSheet(BuildContext context) {
     builder: (sheetContext) {
       return Padding(
         padding: EdgeInsets.only(
-          bottom: MediaQuery.viewInsetsOf(sheetContext).bottom,
+          // Extra lift so "Objavi" clears the phone gesture / nav bar.
+          bottom: MediaQuery.viewInsetsOf(sheetContext).bottom + 40,
         ),
         child: const CreateMomentSheet(),
       );
@@ -34,14 +38,31 @@ class CreateMomentSheet extends ConsumerStatefulWidget {
 
 class _CreateMomentSheetState extends ConsumerState<CreateMomentSheet> {
   final _caption = TextEditingController();
-  String _location = EventVenues.names.first;
+  final _customLocation = TextEditingController();
+  late String _cityId;
+  String? _preset;
   String? _dogId;
   XFile? _photo;
   var _isLoading = false;
 
+  String get _selectedVenue {
+    final venues = ref.read(eventVenuesProvider(_cityId));
+    final preset = _preset;
+    return preset != null && venues.contains(preset) ? preset : venues.first;
+  }
+
+  bool get _isCustom => EventVenues.isCustom(_selectedVenue);
+
+  @override
+  void initState() {
+    super.initState();
+    _cityId = ref.read(homeCityProvider)?.id ?? SerbiaLocations.noviSadId;
+  }
+
   @override
   void dispose() {
     _caption.dispose();
+    _customLocation.dispose();
     super.dispose();
   }
 
@@ -49,13 +70,10 @@ class _CreateMomentSheetState extends ConsumerState<CreateMomentSheet> {
   Widget build(BuildContext context) {
     final profile = ref.watch(profileControllerProvider);
     final dogs = profile.dogs;
+    final venues = ref.watch(eventVenuesProvider(_cityId));
     _dogId ??= profile.selectedDogId.isNotEmpty
         ? profile.selectedDogId
         : (dogs.isEmpty ? null : dogs.first.id);
-    final parks = [
-      for (final name in EventVenues.names)
-        if (!EventVenues.isCustom(name)) name,
-    ];
     return Material(
       color: Theme.of(context).scaffoldBackgroundColor,
       child: ListView(
@@ -68,13 +86,13 @@ class _CreateMomentSheetState extends ConsumerState<CreateMomentSheet> {
               context,
             ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           if (dogs.isEmpty)
-            const Text(MomentsStrings.noDogs)
+            Text(MomentsStrings.noDogs)
           else
             DropdownButtonFormField<String>(
               initialValue: _dogId,
-              decoration: const InputDecoration(labelText: MomentsStrings.dog),
+              decoration: InputDecoration(labelText: MomentsStrings.dog),
               items: [
                 for (final dog in dogs)
                   DropdownMenuItem(value: dog.id, child: Text(dog.name)),
@@ -83,34 +101,72 @@ class _CreateMomentSheetState extends ConsumerState<CreateMomentSheet> {
                   ? null
                   : (value) => setState(() => _dogId = value),
             ),
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
           DropdownButtonFormField<String>(
-            initialValue: parks.contains(_location) ? _location : parks.first,
-            decoration: const InputDecoration(
+            key: const ValueKey('moment-city'),
+            initialValue: _cityId,
+            decoration: InputDecoration(labelText: MomentsStrings.city),
+            items: [
+              for (final city in SerbiaLocations.cities)
+                DropdownMenuItem(value: city.id, child: Text(city.name)),
+            ],
+            onChanged: _isLoading
+                ? null
+                : (value) {
+                    if (value != null && value != _cityId) {
+                      setState(() {
+                        _cityId = value;
+                        _preset = null;
+                        _customLocation.clear();
+                      });
+                    }
+                  },
+          ),
+          SizedBox(height: 12),
+          DropdownButtonFormField<String>(
+            key: ValueKey('moment-venue-$_cityId'),
+            initialValue: _selectedVenue,
+            isExpanded: true,
+            decoration: InputDecoration(
               labelText: MomentsStrings.location,
             ),
             items: [
-              for (final name in parks)
-                DropdownMenuItem(value: name, child: Text(name)),
+              for (final name in venues)
+                DropdownMenuItem(
+                  value: name,
+                  child: Text(name, overflow: TextOverflow.ellipsis),
+                ),
             ],
             onChanged: _isLoading
                 ? null
                 : (value) {
                     if (value != null) {
-                      setState(() => _location = value);
+                      setState(() => _preset = value);
                     }
                   },
           ),
-          const SizedBox(height: 12),
+          if (_isCustom) ...[
+            SizedBox(height: 12),
+            TextField(
+              controller: _customLocation,
+              enabled: !_isLoading,
+              textCapitalization: TextCapitalization.sentences,
+              decoration: InputDecoration(
+                labelText: MomentsStrings.customLocationHint,
+                hintText: MomentsStrings.customLocationHint,
+              ),
+            ),
+          ],
+          SizedBox(height: 12),
           TextField(
             controller: _caption,
             enabled: !_isLoading,
             maxLines: 3,
-            decoration: const InputDecoration(
+            decoration: InputDecoration(
               labelText: MomentsStrings.caption,
             ),
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
           OutlinedButton.icon(
             onPressed: _isLoading ? null : _pickPhoto,
             icon: const Icon(Icons.photo_outlined),
@@ -120,7 +176,7 @@ class _CreateMomentSheetState extends ConsumerState<CreateMomentSheet> {
           ),
           if (_isLoading) ...[
             const SizedBox(height: 16),
-            const Row(
+            Row(
               children: [
                 SizedBox(
                   width: 18,
@@ -144,7 +200,7 @@ class _CreateMomentSheetState extends ConsumerState<CreateMomentSheet> {
                       color: Colors.white,
                     ),
                   )
-                : const Text(MomentsStrings.publish),
+                : Text(MomentsStrings.publish),
           ),
         ],
       ),
@@ -158,6 +214,14 @@ class _CreateMomentSheetState extends ConsumerState<CreateMomentSheet> {
     }
   }
 
+  String? _resolvedLocation() {
+    if (!_isCustom) {
+      return _selectedVenue;
+    }
+    final custom = _customLocation.text.trim();
+    return custom.isEmpty ? null : custom;
+  }
+
   Future<void> _save() async {
     final profile = ref.read(profileControllerProvider);
     final caption = _caption.text.trim();
@@ -165,12 +229,19 @@ class _CreateMomentSheetState extends ConsumerState<CreateMomentSheet> {
     if (dogId == null) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text(MomentsStrings.dogRequired)));
+      ).showSnackBar(SnackBar(content: Text(MomentsStrings.dogRequired)));
       return;
     }
     if (_photo == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text(MomentsStrings.photoRequired)),
+        SnackBar(content: Text(MomentsStrings.photoRequired)),
+      );
+      return;
+    }
+    final location = _resolvedLocation();
+    if (location == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(MomentsStrings.customLocationRequired)),
       );
       return;
     }
@@ -195,7 +266,7 @@ class _CreateMomentSheetState extends ConsumerState<CreateMomentSheet> {
               dogPhotoUrl: selected.photoUrl,
               momentPhotoUrl: '',
               caption: caption,
-              locationName: _location,
+              locationName: location,
               likes: const [],
               commentsCount: 0,
               createdAt: DateTime.now(),
@@ -215,21 +286,21 @@ class _CreateMomentSheetState extends ConsumerState<CreateMomentSheet> {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
-          title: const Row(
+          title: Row(
             children: [
               Icon(Icons.check_circle_outline, color: Colors.green),
               SizedBox(width: 8),
               Expanded(child: Text(MomentsStrings.successTitle)),
             ],
           ),
-          content: const Text(MomentsStrings.successBody),
+          content: Text(MomentsStrings.successBody),
           actions: [
             ElevatedButton(
               onPressed: () {
                 Navigator.of(ctx).pop();
                 Navigator.of(context).pop();
               },
-              child: const Text(MomentsStrings.ok),
+              child: Text(MomentsStrings.ok),
             ),
           ],
         ),
@@ -247,7 +318,7 @@ class _CreateMomentSheetState extends ConsumerState<CreateMomentSheet> {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
-          title: const Row(
+          title: Row(
             children: [
               Icon(Icons.error_outline, color: Colors.red),
               SizedBox(width: 8),
@@ -262,7 +333,7 @@ class _CreateMomentSheetState extends ConsumerState<CreateMomentSheet> {
           actions: [
             TextButton(
               onPressed: () => Navigator.of(ctx).pop(),
-              child: const Text(MomentsStrings.close),
+              child: Text(MomentsStrings.close),
             ),
           ],
         ),

@@ -1,23 +1,34 @@
 import 'package:flutter/material.dart';
 
+import '../../../../core/images/dog_image.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/widgets/comment_like_button.dart';
 import '../../domain/chat_message.dart';
 import '../../domain/chat_time.dart';
 import 'chat_ui.dart';
+import 'message_reply.dart';
 
 class MessageBubble extends StatelessWidget {
   const MessageBubble({
     super.key,
     required this.message,
     required this.now,
-    this.onReport,
+    this.fallbackAvatarUrl = '',
+    this.fallbackSenderName = '',
+    this.currentUserId = '',
+    this.onLongPress,
     this.onTap,
+    this.onToggleLike,
   });
 
   final ChatMessage message;
   final DateTime now;
-  final VoidCallback? onReport;
+  final String fallbackAvatarUrl;
+  final String fallbackSenderName;
+  final String currentUserId;
+  final VoidCallback? onLongPress;
   final VoidCallback? onTap;
+  final VoidCallback? onToggleLike;
 
   @override
   Widget build(BuildContext context) {
@@ -25,53 +36,117 @@ class MessageBubble extends StatelessWidget {
     final background =
         isMine ? AppColors.primary : Colors.grey.shade200;
     final foreground = isMine ? AppColors.onPrimary : AppColors.ink;
+    final avatarUrl = message.senderAvatarUrl.trim().isNotEmpty
+        ? message.senderAvatarUrl
+        : fallbackAvatarUrl;
+    final senderName = message.senderName.trim().isNotEmpty
+        ? message.senderName
+        : fallbackSenderName;
+    final caption = message.text.trim();
+    final liked = message.isLikedBy(currentUserId);
+    final showLike = !isMine || message.likeCount > 0;
 
     return Padding(
       padding: ChatUiTokens.bubbleOuterPadding,
-      child: Align(
-        alignment: isMine ? Alignment.centerRight : Alignment.centerLeft,
-        child: GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onTap: message.isMine ? null : onTap,
-          onLongPress: message.isMine ? null : onReport,
-          child: ConstrainedBox(
-            constraints: BoxConstraints(
-              maxWidth: MediaQuery.sizeOf(context).width * 0.78,
-            ),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 180),
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-              decoration: BoxDecoration(
-                color: background,
-                borderRadius: ChatUiTokens.bubbleRadius(isMine: isMine),
-              ),
-              child: Column(
-                crossAxisAlignment: isMine
-                    ? CrossAxisAlignment.end
-                    : CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    message.text,
-                    style: TextStyle(
-                      color: foreground,
-                      fontSize: 14,
-                      height: 1.35,
+      child: Row(
+        mainAxisAlignment:
+            isMine ? MainAxisAlignment.end : MainAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          if (!isMine) ...[
+            SenderAvatar(url: avatarUrl, name: senderName),
+            const SizedBox(width: 8),
+          ],
+          Flexible(
+            child: Align(
+              alignment: isMine ? Alignment.centerRight : Alignment.centerLeft,
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: message.isMine ? null : onTap,
+                onLongPress: onLongPress,
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(
+                    maxWidth: MediaQuery.sizeOf(context).width * 0.72,
+                  ),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 180),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 10,
+                    ),
+                    decoration: BoxDecoration(
+                      color: background,
+                      borderRadius: ChatUiTokens.bubbleRadius(isMine: isMine),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: isMine
+                          ? CrossAxisAlignment.end
+                          : CrossAxisAlignment.start,
+                      children: [
+                        if (message.hasReply)
+                          ReplyQuote(
+                            senderName: message.replyToSenderName,
+                            text: message.replyToText,
+                            isMine: isMine,
+                          ),
+                        if (message.hasImage) ...[
+                          const SizedBox(height: 2),
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(12),
+                            child: SizedBox(
+                              height: 160,
+                              width: double.infinity,
+                              child: buildDogImage(
+                                message.imageUrl,
+                                seed: message.id,
+                              ),
+                            ),
+                          ),
+                        ],
+                        if (caption.isNotEmpty) ...[
+                          if (message.hasImage) const SizedBox(height: 4),
+                          Text(
+                            caption,
+                            style: TextStyle(
+                              color: foreground,
+                              fontSize: 14,
+                              height: 1.35,
+                            ),
+                          ),
+                        ],
+                        const SizedBox(height: 4),
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              formatChatTimestamp(message.sentAt, now),
+                              style: TextStyle(
+                                color: foreground.withValues(alpha: 0.65),
+                                fontSize: 10,
+                              ),
+                            ),
+                            if (showLike) ...[
+                              const SizedBox(width: 8),
+                              CommentLikeButton(
+                                liked: liked,
+                                count: message.likeCount,
+                                onPressed: isMine ? null : onToggleLike,
+                              ),
+                            ],
+                          ],
+                        ),
+                      ],
                     ),
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    formatChatTimestamp(message.sentAt, now),
-                    style: TextStyle(
-                      color: foreground.withValues(alpha: 0.65),
-                      fontSize: 10,
-                    ),
-                  ),
-                ],
+                ),
               ),
             ),
           ),
-        ),
+          if (isMine) ...[
+            const SizedBox(width: 8),
+            SenderAvatar(url: avatarUrl, name: senderName),
+          ],
+        ],
       ),
     );
   }

@@ -1,8 +1,9 @@
+import '../../../core/constants/serbia_locations.dart';
 import '../../discover/domain/discover_profile.dart';
 
 enum FilterGender { any, male, female }
 
-enum FilterCity { any, noviSad, beograd }
+enum FilterCity { any, noviSad, beograd, nis, kragujevac }
 
 enum FilterEnergy { any, low, medium, high }
 
@@ -67,14 +68,12 @@ class MatchingFilters {
     if (gender == FilterGender.female && profile.gender != 'ženka') {
       return false;
     }
-    if (city == FilterCity.noviSad &&
-        !profile.location.startsWith('Novi Sad')) {
+    if (!_matchesCity(profile.location)) {
       return false;
     }
-    if (city == FilterCity.beograd && !profile.location.startsWith('Beograd')) {
-      return false;
-    }
-    if (profile.distanceKm > radiusKm) {
+    // Radius is measured from the viewer, so it only makes sense when no
+    // specific (possibly distant) city is chosen.
+    if (city == FilterCity.any && profile.distanceKm > radiusKm) {
       return false;
     }
     if (profile.ageYears < minAge || profile.ageYears > maxAge) {
@@ -91,6 +90,23 @@ class MatchingFilters {
       return false;
     }
     return true;
+  }
+
+  /// [SerbiaLocations] id of the explicitly chosen city, or null for "any".
+  String? get cityId => switch (city) {
+        FilterCity.any => null,
+        FilterCity.noviSad => SerbiaLocations.noviSadId,
+        FilterCity.beograd => 'beograd',
+        FilterCity.nis => SerbiaLocations.nisId,
+        FilterCity.kragujevac => SerbiaLocations.kragujevacId,
+      };
+
+  bool _matchesCity(String location) {
+    final wanted = cityId;
+    if (wanted == null) {
+      return true;
+    }
+    return SerbiaLocations.cityIdForLabel(location) == wanted;
   }
 
   FilterEnergy _energyOf(String value) {

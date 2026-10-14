@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:image_picker/image_picker.dart';
 
 import '../../../core/constants/app_strings.dart';
 import '../../../core/constants/serbia_locations.dart';
-import '../../../core/images/image_upload_service.dart';
 import '../../../core/network/network_failure.dart';
 import '../../../core/utils/content_validation_service.dart';
+import '../../../core/widgets/city_neighborhood_fields.dart';
+import '../../../services/storage_service.dart';
 import '../../auth/presentation/auth_providers.dart';
 import 'profile_controller.dart';
 import 'profile_strings.dart';
@@ -23,8 +23,9 @@ class _EditOwnerProfileScreenState
     extends ConsumerState<EditOwnerProfileScreen> {
   late final TextEditingController _name;
   late final TextEditingController _bio;
+  late final TextEditingController _customNeighborhood;
   late String _cityId;
-  late String _neighborhoodId;
+  late String? _neighborhoodId;
   var _uploading = false;
 
   @override
@@ -36,17 +37,36 @@ class _EditOwnerProfileScreenState
     _cityId = profile.ownerCityId.isEmpty
         ? SerbiaLocations.cities.first.id
         : profile.ownerCityId;
-    final city =
-        SerbiaLocations.cityById(_cityId) ?? SerbiaLocations.cities.first;
-    _neighborhoodId = profile.ownerNeighborhoodId.isEmpty
-        ? city.neighborhoods.first.id
-        : profile.ownerNeighborhoodId;
+    final storedHood = profile.ownerNeighborhoodId;
+    if (storedHood.isEmpty) {
+      _neighborhoodId = null;
+      _customNeighborhood = TextEditingController();
+    } else if (SerbiaLocations.usesCustomNeighborhood(_cityId, storedHood)) {
+      _neighborhoodId = SerbiaLocations.customNeighborhoodId;
+      _customNeighborhood = TextEditingController(
+        text: profile.ownerNeighborhoodName.isNotEmpty
+            ? profile.ownerNeighborhoodName
+            : _fallbackCustomName(profile.ownerLocation),
+      );
+    } else {
+      _neighborhoodId = storedHood;
+      _customNeighborhood = TextEditingController();
+    }
+  }
+
+  String _fallbackCustomName(String location) {
+    final parts = location.split(',');
+    if (parts.length < 2) {
+      return '';
+    }
+    return parts.sublist(1).join(',').trim();
   }
 
   @override
   void dispose() {
     _name.dispose();
     _bio.dispose();
+    _customNeighborhood.dispose();
     super.dispose();
   }
 
@@ -54,20 +74,22 @@ class _EditOwnerProfileScreenState
     if (_uploading) {
       return;
     }
-    final picked = await ImagePicker().pickImage(source: ImageSource.gallery);
-    if (picked == null || !mounted) {
-      return;
-    }
     setState(() => _uploading = true);
     try {
-      final bytes = await picked.readAsBytes();
-      final url = await ImageUploadService.upload(bytes);
+      final storage = StorageService();
+      final previous =
+          ref.read(authStateProvider).asData?.value?.ownerAvatarUrl ?? '';
+      final url = await storage.uploadImageFromGallery(folderName: 'users');
+      if (url == null) {
+        return;
+      }
       if (!url.startsWith('http')) {
         throw StateError(AppStrings.photoUploadFailed);
       }
       await ref
           .read(profileControllerProvider.notifier)
           .saveOwnerCustomPhoto(url);
+      await storage.tryDeleteImageByUrl(previous);
     } catch (error) {
       if (mounted) {
         showNetworkErrorSnackBar(
@@ -94,15 +116,31 @@ class _EditOwnerProfileScreenState
       return;
     }
     final city = SerbiaLocations.cityById(_cityId);
-    var neighborhood = '';
-    if (city != null) {
-      for (final hood in city.neighborhoods) {
-        if (hood.id == _neighborhoodId) {
-          neighborhood = hood.name;
-          break;
-        }
-      }
+    if (city == null || _neighborhoodId == null || _neighborhoodId!.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(AppStrings.neighborhoodRequired)),
+      );
+      return;
     }
+    final customName = _customNeighborhood.text.trim();
+    if (SerbiaLocations.usesCustomNeighborhood(_cityId, _neighborhoodId) &&
+        customName.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(AppStrings.customNeighborhoodRequired)),
+      );
+      return;
+    }
+    final neighborhood = SerbiaLocations.resolveNeighborhoodName(
+      cityId: _cityId,
+      neighborhoodId: _neighborhoodId,
+      customName: customName,
+    );
+    final storedHoodId = SerbiaLocations.usesCustomNeighborhood(
+          _cityId,
+          _neighborhoodId,
+        )
+        ? SerbiaLocations.customNeighborhoodId
+        : _neighborhoodId!;
     final current = ref.read(profileControllerProvider);
     ref
         .read(profileControllerProvider.notifier)
@@ -111,16 +149,17 @@ class _EditOwnerProfileScreenState
             ownerName: _name.text.trim(),
             ownerBio: _bio.text.trim(),
             ownerLocation: SerbiaLocations.formatPlace(
-              city?.name ?? '',
+              city.name,
               neighborhood,
             ),
             ownerCityId: _cityId,
-            ownerNeighborhoodId: _neighborhoodId,
+            ownerNeighborhoodId: storedHoodId,
+            ownerNeighborhoodName: neighborhood,
             dogs: [
               for (final dog in current.dogs)
                 dog.copyWith(
                   location: SerbiaLocations.formatPlace(
-                    city?.name ?? '',
+                    city.name,
                     neighborhood,
                   ),
                 ),
@@ -132,8 +171,6 @@ class _EditOwnerProfileScreenState
 
   @override
   Widget build(BuildContext context) {
-    final city = SerbiaLocations.cityById(_cityId);
-    final neighborhoods = city?.neighborhoods ?? [];
     final profile = ref.watch(profileControllerProvider);
     final email = profile.ownerEmail;
     final avatarUrl =
@@ -142,7 +179,7 @@ class _EditOwnerProfileScreenState
         avatarUrl.startsWith('http://') || avatarUrl.startsWith('https://');
 
     return Scaffold(
-      appBar: AppBar(title: const Text(ProfileStrings.editProfile)),
+      appBar: AppBar(title: Text(ProfileStrings.editProfile)),
       body: ListView(
         padding: const EdgeInsets.all(24),
         children: [
@@ -178,23 +215,23 @@ class _EditOwnerProfileScreenState
                     ),
                   ],
                 ),
-                const SizedBox(height: 8),
-                const Text(AppStrings.ownerPhotoLabel),
+                SizedBox(height: 8),
+                Text(AppStrings.ownerPhotoLabel),
               ],
             ),
           ),
-          const SizedBox(height: 24),
+          SizedBox(height: 24),
           TextField(
             controller: _name,
-            decoration: const InputDecoration(
+            decoration: InputDecoration(
               labelText: ProfileStrings.ownerName,
               border: OutlineInputBorder(),
             ),
           ),
           if (email.isNotEmpty) ...[
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             InputDecorator(
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: AppStrings.emailLabel,
                 border: OutlineInputBorder(),
               ),
@@ -202,41 +239,31 @@ class _EditOwnerProfileScreenState
             ),
           ],
           const SizedBox(height: 16),
-          Text(ProfileStrings.city),
-          Wrap(
-            spacing: 8,
-            children: [
-              for (final item in SerbiaLocations.cities)
-                ChoiceChip(
-                  label: Text(item.name),
-                  selected: _cityId == item.id,
-                  onSelected: (_) {
-                    setState(() {
-                      _cityId = item.id;
-                      _neighborhoodId = item.neighborhoods.first.id;
-                    });
-                  },
-                ),
-            ],
+          CityNeighborhoodFields(
+            cityId: _cityId,
+            neighborhoodId: _neighborhoodId,
+            customNeighborhoodController: _customNeighborhood,
+            onCityChanged: (value) {
+              setState(() {
+                _cityId = value;
+                _neighborhoodId = null;
+                _customNeighborhood.clear();
+              });
+            },
+            onNeighborhoodChanged: (value) {
+              setState(() {
+                _neighborhoodId = value;
+                if (!SerbiaLocations.isCustomNeighborhoodId(value)) {
+                  _customNeighborhood.clear();
+                }
+              });
+            },
           ),
-          const SizedBox(height: 16),
-          Text(ProfileStrings.neighborhood),
-          Wrap(
-            spacing: 8,
-            children: [
-              for (final item in neighborhoods)
-                ChoiceChip(
-                  label: Text(item.name),
-                  selected: _neighborhoodId == item.id,
-                  onSelected: (_) => setState(() => _neighborhoodId = item.id),
-                ),
-            ],
-          ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           TextField(
             controller: _bio,
             maxLines: 3,
-            decoration: const InputDecoration(
+            decoration: InputDecoration(
               labelText: ProfileStrings.ownerBio,
               hintText: ProfileStrings.ownerBioHint,
               border: OutlineInputBorder(),
@@ -249,7 +276,7 @@ class _EditOwnerProfileScreenState
           padding: const EdgeInsets.fromLTRB(24, 8, 24, 16),
           child: FilledButton(
             onPressed: _save,
-            child: const Text(ProfileStrings.saveChanges),
+            child: Text(ProfileStrings.saveChanges),
           ),
         ),
       ),

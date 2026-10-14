@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'app/app.dart';
 import 'app/firebase_init_error_app.dart';
+import 'core/crash/crash_reporting.dart';
 import 'core/services/notification_service.dart';
 import 'core/widgets/feed_state.dart';
 import 'firebase_options.dart';
@@ -44,10 +45,12 @@ Future<void> main() async {
     if (!authReady || !firestoreReady) {
       throw StateError('Firebase Auth ili Firestore nisu dostupni.');
     }
+    await CrashReporting.init();
     runApp(const ProviderScope(child: VauVauApp()));
   } catch (error, stack) {
     debugPrint('🔴 MAIN CATCH: $error');
     debugPrint('🔴 STACK: $stack');
+    await CrashReporting.recordError(error, stack, fatal: true);
     runApp(FirebaseInitErrorApp(message: error.toString()));
   }
 }

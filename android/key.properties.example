@@ -1,0 +1,8 @@
+# Copy to android/key.properties (gitignored) and fill real values.
+# Release AAB will fail the build if any value is missing or still a placeholder.
+# Never commit key.properties, *.jks, or *.keystore.
+
+storePassword=YOUR_STORE_PASSWORD
+keyPassword=YOUR_KEY_PASSWORD
+keyAlias=upload
+storeFile=C:/Users/YOU/upload-keystore.jks

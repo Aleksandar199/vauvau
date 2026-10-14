@@ -18,7 +18,7 @@ class RulesAndSupportScreen extends StatelessWidget {
       initialIndex: initialTab.clamp(0, 3),
       child: Scaffold(
         appBar: AppBar(
-          title: const Text(SupportStrings.title),
+          title: Text(SupportStrings.title),
           bottom: TabBar(
             indicatorColor: Theme.of(context).colorScheme.primary,
             labelColor: Theme.of(context).colorScheme.primary,
@@ -27,7 +27,7 @@ class RulesAndSupportScreen extends StatelessWidget {
             unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w500),
             isScrollable: true,
             tabAlignment: TabAlignment.start,
-            tabs: const [
+            tabs: [
               Tab(text: 'SOS'),
               Tab(text: SupportStrings.tipsTab),
               Tab(text: SupportStrings.rulesTab),

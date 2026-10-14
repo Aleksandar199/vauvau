@@ -119,6 +119,32 @@ class NotificationService {
     }
   }
 
+  /// Stable id so we can dismiss the tray entry when the user reads in-app.
+  static int alertIdFor(Map<String, String>? data) {
+    final key = (data?['conversationId'] ??
+            data?['chatId'] ??
+            data?['groupId'] ??
+            data?['eventId'] ??
+            data?['type'] ??
+            'alert')
+        .trim();
+    return key.hashCode & 0x7fffffff;
+  }
+
+  static String alertTagFor(Map<String, String>? data) {
+    final type = (data?['type'] ?? 'alert').trim();
+    final id = (data?['conversationId'] ??
+            data?['chatId'] ??
+            data?['groupId'] ??
+            data?['eventId'] ??
+            '')
+        .trim();
+    if (id.isNotEmpty) {
+      return 'vauvau_${type}_$id';
+    }
+    return 'vauvau_$type';
+  }
+
   /// Shows an immediate heads-up notification for a foreground FCM message.
   Future<void> showPushAlert({
     required String title,
@@ -133,12 +159,13 @@ class NotificationService {
       return;
     }
     final payload = data == null || data.isEmpty ? null : jsonEncode(data);
+    final tag = alertTagFor(data);
     try {
       await _plugin.show(
-        id: DateTime.now().millisecondsSinceEpoch.remainder(100000),
+        id: alertIdFor(data),
         title: title.isEmpty ? 'VauVau' : title,
         body: body,
-        notificationDetails: const NotificationDetails(
+        notificationDetails: NotificationDetails(
           android: AndroidNotificationDetails(
             alertsChannelId,
             alertsChannelName,
@@ -146,8 +173,10 @@ class NotificationService {
             importance: Importance.high,
             priority: Priority.high,
             icon: '@mipmap/ic_launcher',
+            tag: tag,
+            groupKey: 'vauvau_alerts_group',
           ),
-          iOS: DarwinNotificationDetails(
+          iOS: const DarwinNotificationDetails(
             presentAlert: true,
             presentBadge: true,
             presentSound: true,
@@ -158,6 +187,74 @@ class NotificationService {
     } catch (error, stack) {
       debugPrint('Push alert failed: $error');
       debugPrint('$stack');
+    }
+  }
+
+  /// Clears matching entries from the OS notification shade (pull-down tray).
+  Future<void> dismissTrayAlerts({
+    String? conversationId,
+    String? groupId,
+    String? eventId,
+    bool allAlerts = false,
+  }) async {
+    if (!isSupported) {
+      return;
+    }
+    await initialize();
+    if (!_initialized) {
+      return;
+    }
+    try {
+      if (conversationId != null && conversationId.trim().isNotEmpty) {
+        final id = conversationId.trim();
+        final data = {'type': 'message', 'conversationId': id};
+        await _plugin.cancel(id: alertIdFor(data), tag: alertTagFor(data));
+        await _plugin.cancel(id: alertIdFor(data));
+      }
+      if (groupId != null && groupId.trim().isNotEmpty) {
+        final id = groupId.trim();
+        final data = {'type': 'group', 'groupId': id};
+        await _plugin.cancel(id: alertIdFor(data), tag: alertTagFor(data));
+      }
+      if (eventId != null && eventId.trim().isNotEmpty) {
+        final id = eventId.trim();
+        final data = {'type': 'event', 'eventId': id};
+        await _plugin.cancel(id: alertIdFor(data), tag: alertTagFor(data));
+      }
+
+      // Also sweep active tray items on the alerts channel (covers older
+      // random-id notifications and FCM-presented ones we can see).
+      if (defaultTargetPlatform == TargetPlatform.android) {
+        final android = _plugin.resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin>();
+        final active = await android?.getActiveNotifications() ?? const [];
+        for (final item in active) {
+          final channel = item.channelId ?? '';
+          final tag = item.tag ?? '';
+          final nid = item.id;
+          if (nid == null) {
+            continue;
+          }
+          if (channel.isNotEmpty && channel != alertsChannelId) {
+            continue;
+          }
+          if (allAlerts) {
+            await _plugin.cancel(id: nid, tag: tag.isEmpty ? null : tag);
+            continue;
+          }
+          final conv = conversationId?.trim() ?? '';
+          final group = groupId?.trim() ?? '';
+          final event = eventId?.trim() ?? '';
+          final matchConv = conv.isNotEmpty && tag.contains(conv);
+          final matchGroup = group.isNotEmpty && tag.contains(group);
+          final matchEvent = event.isNotEmpty && tag.contains(event);
+          if (matchConv || matchGroup || matchEvent) {
+            await _plugin.cancel(id: nid, tag: tag.isEmpty ? null : tag);
+          }
+        }
+      }
+    } catch (error) {
+      debugPrint('Dismiss tray alerts failed: $error');
     }
   }
 

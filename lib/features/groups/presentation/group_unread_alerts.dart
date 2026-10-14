@@ -26,6 +26,7 @@ final groupUnreadAlertsProvider = Provider<void>((ref) {
           ref.read(pushControllerProvider.notifier).notifyGroupThread(
                 groupTitle: thread.group.title,
                 count: thread.unreadCount,
+                groupId: thread.group.id,
               ),
         );
       }
@@ -47,6 +48,7 @@ final groupUnreadAlertsProvider = Provider<void>((ref) {
           ref.read(pushControllerProvider.notifier).notifyGroupThread(
                 groupTitle: thread.event.title,
                 count: thread.unreadCount,
+                eventId: thread.event.id,
               ),
         );
       }

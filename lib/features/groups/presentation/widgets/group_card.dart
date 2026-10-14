@@ -56,7 +56,7 @@ class GroupCard extends StatelessWidget {
                       fontWeight: FontWeight.w800,
                     ),
                   ),
-                  const SizedBox(height: 2),
+                  SizedBox(height: 2),
                   Text(
                     GroupsStrings.memberCount(group.displayMemberCount),
                     style: theme.textTheme.bodySmall?.copyWith(
@@ -69,13 +69,13 @@ class GroupCard extends StatelessWidget {
                     group.description,
                     style: theme.textTheme.bodyMedium,
                   ),
-                  const SizedBox(height: 10),
+                  SizedBox(height: 10),
                   Align(
                     alignment: Alignment.centerLeft,
                     child: isMember
                         ? OutlinedButton(
                             onPressed: onOpenChat,
-                            child: const Text(GroupsStrings.openChat),
+                            child: Text(GroupsStrings.openChat),
                           )
                         : FilledButton(
                             onPressed: onJoin,
@@ -83,7 +83,7 @@ class GroupCard extends StatelessWidget {
                               backgroundColor: const Color(0xFF2E7D32),
                               foregroundColor: Colors.white,
                             ),
-                            child: const Text(GroupsStrings.join),
+                            child: Text(GroupsStrings.join),
                           ),
                   ),
                 ],

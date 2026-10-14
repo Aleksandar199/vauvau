@@ -11,4 +11,6 @@ abstract class DogsRepository {
   });
 
   Future<void> updateDog(Dog dog, {int ageMonths = 0});
+
+  Future<void> deleteDog(String dogId, {required String ownerId});
 }

@@ -1,21 +1,23 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:image_picker/image_picker.dart';
 
 import '../../../core/constants/app_strings.dart';
 import '../../../core/constants/serbia_locations.dart';
-import '../../../core/images/image_upload_service.dart';
 import '../../../core/network/network_failure.dart';
 import '../../../core/widgets/brand_mark.dart';
+import '../../../core/widgets/city_neighborhood_fields.dart';
 import '../../../core/widgets/feed_state.dart';
 import '../../../core/widgets/primary_button.dart';
+import '../../../services/storage_service.dart';
+import '../../legal/presentation/legal_consent_text.dart';
 import '../domain/auth_exception.dart';
 import 'auth_controller.dart';
 import 'auth_providers.dart';
 import 'forgot_password_dialog.dart';
 import 'widgets/auth_text_field.dart';
-import 'widgets/google_sign_in_button.dart';
+// Phase: Google Sign-In hidden — re-enable with google_sign_in_button.dart
+// import 'widgets/google_sign_in_button.dart';
 
 enum AuthMode { signIn, signUp }
 
@@ -39,6 +41,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
   final _signUpEmailController = TextEditingController();
   final _signUpPasswordController = TextEditingController();
   final _confirmController = TextEditingController();
+  final _customNeighborhoodController = TextEditingController();
   String _cityId = SerbiaLocations.cities.first.id;
   String? _neighborhoodId;
   String _ownerPhotoUrl = '';
@@ -71,6 +74,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
     _signUpEmailController.dispose();
     _signUpPasswordController.dispose();
     _confirmController.dispose();
+    _customNeighborhoodController.dispose();
     super.dispose();
   }
 
@@ -106,23 +110,35 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
     final neighborhoodId = _neighborhoodId;
     if (city == null || neighborhoodId == null || neighborhoodId.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text(AppStrings.neighborhoodRequired)),
+        SnackBar(content: Text(AppStrings.neighborhoodRequired)),
       );
       return;
     }
-    String neighborhoodName = '';
-    for (final hood in city.neighborhoods) {
-      if (hood.id == neighborhoodId) {
-        neighborhoodName = hood.name;
-        break;
-      }
+    final customName = _customNeighborhoodController.text.trim();
+    if (SerbiaLocations.usesCustomNeighborhood(_cityId, neighborhoodId) &&
+        customName.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(AppStrings.customNeighborhoodRequired)),
+      );
+      return;
     }
+    final neighborhoodName = SerbiaLocations.resolveNeighborhoodName(
+      cityId: city.id,
+      neighborhoodId: neighborhoodId,
+      customName: customName,
+    );
     if (neighborhoodName.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text(AppStrings.neighborhoodRequired)),
+        SnackBar(content: Text(AppStrings.neighborhoodRequired)),
       );
       return;
     }
+    final storedHoodId = SerbiaLocations.usesCustomNeighborhood(
+          city.id,
+          neighborhoodId,
+        )
+        ? SerbiaLocations.customNeighborhoodId
+        : neighborhoodId;
     final ownerPhoto =
         _ownerPhotoUrl.startsWith('http') ? _ownerPhotoUrl.trim() : '';
     final success = await ref.read(authControllerProvider.notifier).register(
@@ -131,7 +147,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
           password: _signUpPasswordController.text,
           city: city.name,
           cityId: city.id,
-          neighborhoodId: neighborhoodId,
+          neighborhoodId: storedHoodId,
           neighborhoodName: neighborhoodName,
           bio: '',
           customPhotoUrl: ownerPhoto,
@@ -155,7 +171,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
         debugPrint('Owner photo save after register: $error');
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text(AppStrings.photoUploadFailed)),
+            SnackBar(content: Text(AppStrings.photoUploadFailed)),
           );
         }
       }
@@ -170,20 +186,21 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
     if (_uploadingOwnerPhoto) {
       return;
     }
-    final picked = await ImagePicker().pickImage(source: ImageSource.gallery);
-    if (picked == null || !mounted) {
-      return;
-    }
     setState(() => _uploadingOwnerPhoto = true);
     try {
-      final bytes = await picked.readAsBytes();
-      final url = await ImageUploadService.upload(bytes);
+      final storage = StorageService();
+      final previous = _ownerPhotoUrl;
+      final url = await storage.uploadImageFromGallery(folderName: 'users');
+      if (url == null) {
+        return;
+      }
       if (!url.startsWith('http')) {
         throw StateError(AppStrings.photoUploadFailed);
       }
       if (mounted) {
         setState(() => _ownerPhotoUrl = url);
       }
+      await storage.tryDeleteImageByUrl(previous);
     } catch (error) {
       if (mounted) {
         showNetworkErrorSnackBar(
@@ -199,14 +216,15 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
     }
   }
 
-  Future<void> _signInWithGoogle() async {
-    final success =
-        await ref.read(authControllerProvider.notifier).signInWithGoogle();
-    if (!mounted || !success) {
-      return;
-    }
-    Navigator.of(context).popUntil((route) => route.isFirst);
-  }
+  // Phase: Google Sign-In hidden.
+  // Future<void> _signInWithGoogle() async {
+  //   final success =
+  //       await ref.read(authControllerProvider.notifier).signInWithGoogle();
+  //   if (!mounted || !success) {
+  //     return;
+  //   }
+  //   Navigator.of(context).popUntil((route) => route.isFirst);
+  // }
 
   @override
   Widget build(BuildContext context) {
@@ -222,9 +240,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
       );
     });
     final authAction = ref.watch(authControllerProvider);
-    final busy = ref.read(authControllerProvider.notifier).busy;
     final isLoading = authAction.isLoading;
-    final isGoogleLoading = busy == AuthBusy.google;
     final error = authAction.error;
 
     return Scaffold(
@@ -234,94 +250,73 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
         ),
         bottom: TabBar(
           controller: _tabs,
-          tabs: const [
+          tabs: [
             Tab(text: AppStrings.logInTitle),
             Tab(text: AppStrings.signUpTab),
           ],
         ),
       ),
       body: SafeArea(
-        child: Column(
+        child: TabBarView(
+          controller: _tabs,
           children: [
-            Expanded(
-              child: TabBarView(
-                controller: _tabs,
-                children: [
-                  _SignInForm(
-                    formKey: _signInFormKey,
-                    emailController: _signInEmailController,
-                    passwordController: _signInPasswordController,
-                    obscurePassword: _obscureSignInPassword,
-                    error: error,
-                    isLoading: isLoading && !isGoogleLoading,
-                    onToggleObscure: () {
-                      setState(
-                        () => _obscureSignInPassword = !_obscureSignInPassword,
-                      );
-                    },
-                    onSubmit: isLoading ? null : _submitSignIn,
-                    onForgotPassword: isLoading ? null : _forgotPassword,
-                  ),
-                  _SignUpForm(
-                    formKey: _signUpFormKey,
-                    nameController: _nameController,
-                    emailController: _signUpEmailController,
-                    passwordController: _signUpPasswordController,
-                    confirmController: _confirmController,
-                    cityId: _cityId,
-                    neighborhoodId: _neighborhoodId,
-                    ownerPhotoUrl: _ownerPhotoUrl,
-                    uploadingOwnerPhoto: _uploadingOwnerPhoto,
-                    obscurePassword: _obscurePassword,
-                    obscureConfirm: _obscureConfirm,
-                    error: error,
-                    isLoading: isLoading && !isGoogleLoading,
-                    onCityChanged: (value) {
-                      setState(() {
-                        _cityId = value;
-                        _neighborhoodId = null;
-                      });
-                    },
-                    onNeighborhoodChanged: (value) {
-                      setState(() => _neighborhoodId = value);
-                    },
-                    onPickOwnerPhoto: _pickOwnerPhoto,
-                    onTogglePassword: () {
-                      setState(() => _obscurePassword = !_obscurePassword);
-                    },
-                    onToggleConfirm: () {
-                      setState(() => _obscureConfirm = !_obscureConfirm);
-                    },
-                    onSubmit: isLoading ? null : _submitSignUp,
-                  ),
-                ],
-              ),
+            _SignInForm(
+              formKey: _signInFormKey,
+              emailController: _signInEmailController,
+              passwordController: _signInPasswordController,
+              obscurePassword: _obscureSignInPassword,
+              error: error,
+              isLoading: isLoading,
+              onToggleObscure: () {
+                setState(
+                  () => _obscureSignInPassword = !_obscureSignInPassword,
+                );
+              },
+              onSubmit: isLoading ? null : _submitSignIn,
+              onForgotPassword: isLoading ? null : _forgotPassword,
             ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(24, 8, 24, 16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  const Row(
-                    children: [
-                      Expanded(child: Divider()),
-                      Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 12),
-                        child: Text(AppStrings.orDivider),
-                      ),
-                      Expanded(child: Divider()),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  GoogleSignInButton(
-                    loading: isGoogleLoading,
-                    onPressed: isLoading ? null : _signInWithGoogle,
-                  ),
-                ],
-              ),
+            _SignUpForm(
+              formKey: _signUpFormKey,
+              nameController: _nameController,
+              emailController: _signUpEmailController,
+              passwordController: _signUpPasswordController,
+              confirmController: _confirmController,
+              customNeighborhoodController: _customNeighborhoodController,
+              cityId: _cityId,
+              neighborhoodId: _neighborhoodId,
+              ownerPhotoUrl: _ownerPhotoUrl,
+              uploadingOwnerPhoto: _uploadingOwnerPhoto,
+              obscurePassword: _obscurePassword,
+              obscureConfirm: _obscureConfirm,
+              error: error,
+              isLoading: isLoading,
+              onCityChanged: (value) {
+                setState(() {
+                  _cityId = value;
+                  _neighborhoodId = null;
+                  _customNeighborhoodController.clear();
+                });
+              },
+              onNeighborhoodChanged: (value) {
+                setState(() {
+                  _neighborhoodId = value;
+                  if (!SerbiaLocations.isCustomNeighborhoodId(value)) {
+                    _customNeighborhoodController.clear();
+                  }
+                });
+              },
+              onPickOwnerPhoto: _pickOwnerPhoto,
+              onTogglePassword: () {
+                setState(() => _obscurePassword = !_obscurePassword);
+              },
+              onToggleConfirm: () {
+                setState(() => _obscureConfirm = !_obscureConfirm);
+              },
+              onSubmit: isLoading ? null : _submitSignUp,
             ),
           ],
         ),
+        // Phase: Google Sign-In UI hidden — restore divider + GoogleSignInButton here.
       ),
     );
   }
@@ -361,8 +356,8 @@ class _SignInForm extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const BrandMark(),
-              const SizedBox(height: 24),
+              BrandMark(),
+              SizedBox(height: 24),
               AuthTextField(
                 controller: emailController,
                 label: AppStrings.emailLabel,
@@ -372,7 +367,7 @@ class _SignInForm extends StatelessWidget {
                 autofillHints: const [AutofillHints.email],
                 validator: _emailValidator,
               ),
-              const SizedBox(height: 16),
+              SizedBox(height: 16),
                   AuthTextField(
                     controller: passwordController,
                     label: AppStrings.passwordLabel,
@@ -388,7 +383,7 @@ class _SignInForm extends StatelessWidget {
                     alignment: Alignment.centerRight,
                     child: TextButton(
                       onPressed: isLoading ? null : onForgotPassword,
-                      child: const Text(AppStrings.forgotPassword),
+                      child: Text(AppStrings.forgotPassword),
                     ),
                   ),
               if (error != null) ...[
@@ -398,9 +393,9 @@ class _SignInForm extends StatelessWidget {
                   style: TextStyle(color: Theme.of(context).colorScheme.error),
                 ),
               ],
-              const SizedBox(height: 24),
+              SizedBox(height: 24),
               if (isLoading)
-                const Center(child: CircularProgressIndicator())
+                Center(child: CircularProgressIndicator())
               else
                 PrimaryButton(
                   label: AppStrings.logInTitle,
@@ -421,6 +416,7 @@ class _SignUpForm extends StatelessWidget {
     required this.emailController,
     required this.passwordController,
     required this.confirmController,
+    required this.customNeighborhoodController,
     required this.cityId,
     required this.neighborhoodId,
     required this.ownerPhotoUrl,
@@ -442,6 +438,7 @@ class _SignUpForm extends StatelessWidget {
   final TextEditingController emailController;
   final TextEditingController passwordController;
   final TextEditingController confirmController;
+  final TextEditingController customNeighborhoodController;
   final String cityId;
   final String? neighborhoodId;
   final String ownerPhotoUrl;
@@ -451,7 +448,7 @@ class _SignUpForm extends StatelessWidget {
   final Object? error;
   final bool isLoading;
   final ValueChanged<String> onCityChanged;
-  final ValueChanged<String> onNeighborhoodChanged;
+  final ValueChanged<String?> onNeighborhoodChanged;
   final VoidCallback onPickOwnerPhoto;
   final VoidCallback onTogglePassword;
   final VoidCallback onToggleConfirm;
@@ -514,7 +511,7 @@ class _SignUpForm extends StatelessWidget {
                                 : const Icon(Icons.person_add_alt, size: 32),
                       ),
                     ),
-                    const SizedBox(height: 8),
+                    SizedBox(height: 8),
                     Text(
                       ownerPhotoUrl.startsWith('http')
                           ? AppStrings.ownerPhotoLabel
@@ -524,7 +521,7 @@ class _SignUpForm extends StatelessWidget {
                   ],
                 ),
               ),
-              const SizedBox(height: 24),
+              SizedBox(height: 24),
               AuthTextField(
                 controller: nameController,
                 label: AppStrings.nameLabel,
@@ -538,7 +535,7 @@ class _SignUpForm extends StatelessWidget {
                   return null;
                 },
               ),
-              const SizedBox(height: 16),
+              SizedBox(height: 16),
               AuthTextField(
                 controller: emailController,
                 label: AppStrings.emailLabel,
@@ -549,55 +546,15 @@ class _SignUpForm extends StatelessWidget {
                 validator: _emailValidator,
               ),
               const SizedBox(height: 16),
-              DropdownButtonFormField<String>(
-                initialValue: cityId,
-                decoration: const InputDecoration(
-                  labelText: AppStrings.cityLabel,
-                  border: OutlineInputBorder(),
-                ),
-                items: [
-                  for (final city in SerbiaLocations.cities)
-                    DropdownMenuItem(
-                      value: city.id,
-                      child: Text(city.name),
-                    ),
-                ],
-                onChanged: (value) {
-                  if (value != null) {
-                    onCityChanged(value);
-                  }
-                },
+              CityNeighborhoodFields(
+                cityId: cityId,
+                neighborhoodId: neighborhoodId,
+                customNeighborhoodController: customNeighborhoodController,
+                onCityChanged: onCityChanged,
+                onNeighborhoodChanged: onNeighborhoodChanged,
+                enabled: !isLoading,
               ),
-              const SizedBox(height: 16),
-              DropdownButtonFormField<String>(
-                initialValue: neighborhoodId,
-                hint: const Text(AppStrings.neighborhoodLabel),
-                decoration: const InputDecoration(
-                  labelText: AppStrings.neighborhoodLabel,
-                  border: OutlineInputBorder(),
-                ),
-                items: [
-                  for (final hood
-                      in SerbiaLocations.cityById(cityId)?.neighborhoods ??
-                          const <Neighborhood>[])
-                    DropdownMenuItem(
-                      value: hood.id,
-                      child: Text(hood.name),
-                    ),
-                ],
-                onChanged: (value) {
-                  if (value != null) {
-                    onNeighborhoodChanged(value);
-                  }
-                },
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return AppStrings.neighborhoodRequired;
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 16),
+              SizedBox(height: 16),
               AuthTextField(
                 controller: passwordController,
                 label: AppStrings.passwordLabel,
@@ -608,7 +565,7 @@ class _SignUpForm extends StatelessWidget {
                 onToggleObscure: onTogglePassword,
                 validator: _passwordValidator,
               ),
-              const SizedBox(height: 16),
+              SizedBox(height: 16),
               AuthTextField(
                 controller: confirmController,
                 label: AppStrings.confirmPasswordLabel,
@@ -630,9 +587,11 @@ class _SignUpForm extends StatelessWidget {
                   style: TextStyle(color: Theme.of(context).colorScheme.error),
                 ),
               ],
-              const SizedBox(height: 24),
+              SizedBox(height: 20),
+              const LegalConsentText(),
+              SizedBox(height: 16),
               if (isLoading)
-                const Center(child: CircularProgressIndicator())
+                Center(child: CircularProgressIndicator())
               else
                 PrimaryButton(
                   label: AppStrings.createAccount,

@@ -5,8 +5,9 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/firebase/firebase_status.dart';
+import '../../../core/firebase/firestore_auth_guard.dart';
+import '../../../core/services/notification_service.dart';
 import '../../auth/presentation/auth_providers.dart';
-import '../data/mock_notifications.dart';
 import '../domain/app_notification.dart';
 
 class NotificationController extends Notifier<List<AppNotification>> {
@@ -21,26 +22,28 @@ class NotificationController extends Notifier<List<AppNotification>> {
     final uid = ref.watch(
       authStateProvider.select((auth) => auth.asData?.value?.uid ?? ''),
     );
+    final authReady =
+        ref.watch(firestoreAuthReadyProvider).asData?.value ?? false;
     _remote = const [];
-    if (!isFirebaseReady) {
-      _local = seedNotifications(DateTime.now());
-      return _local;
-    }
     _local = const [];
-    if (uid.isNotEmpty) {
-      final sub = _collection
+    if (!isFirebaseReady || uid.isEmpty || !authReady) {
+      return const [];
+    }
+    final sub = FirestoreAuthGuard.guardedStream<List<AppNotification>>(
+      label: 'notifications',
+      empty: const [],
+      create: () => _collection
           .where('toUserId', isEqualTo: uid)
           .limit(100)
           .snapshots()
-          .listen(
-        (snapshot) {
-          _remote = [for (final doc in snapshot.docs) _fromDoc(doc)];
-          state = _merged();
-        },
-        onError: (Object error) => debugPrint('Obaveštenja: $error'),
-      );
-      ref.onDispose(sub.cancel);
-    }
+          .map(
+            (snapshot) => [for (final doc in snapshot.docs) _fromDoc(doc)],
+          ),
+    ).listen((remote) {
+      _remote = remote;
+      state = _merged();
+    });
+    ref.onDispose(sub.cancel);
     return const [];
   }
 
@@ -56,13 +59,25 @@ class NotificationController extends Notifier<List<AppNotification>> {
       body: data['body'] as String? ?? data['message'] as String? ?? '',
       createdAt: created is Timestamp ? created.toDate() : DateTime.now(),
       isRead: data['isRead'] as bool? ?? false,
-      dogId: data['senderDogId'] as String? ??
-          data['fromDogId'] as String? ??
-          data['dogId'] as String? ??
-          data['toDogId'] as String?,
-      fromUserId: data['fromUserId'] as String? ??
-          data['senderUserId'] as String?,
+      dogId: _string(data['senderDogId']) ??
+          _string(data['fromDogId']) ??
+          _string(data['dogId']) ??
+          _string(data['toDogId']),
+      fromUserId: _string(data['fromUserId']) ??
+          _string(data['senderUserId']) ??
+          _string(data['senderId']) ??
+          _string(data['peerUserId']),
+      conversationId: _string(data['conversationId']) ??
+          _string(data['chatId']) ??
+          _string(data['matchId']),
+      groupId: _string(data['groupId']),
+      eventId: _string(data['eventId']),
     );
+  }
+
+  String? _string(Object? raw) {
+    final value = raw?.toString().trim() ?? '';
+    return value.isEmpty ? null : value;
   }
 
   NotificationKind _kindFromKey(String? key) {
@@ -73,6 +88,10 @@ class NotificationController extends Notifier<List<AppNotification>> {
         return NotificationKind.walkRequest;
       case 'message':
         return NotificationKind.chatMessage;
+      case 'group':
+        return NotificationKind.groupMessage;
+      case 'event':
+        return NotificationKind.eventMessage;
       case 'SUPER_LIKE':
       case 'superLike':
       case 'super_like':
@@ -107,6 +126,13 @@ class NotificationController extends Notifier<List<AppNotification>> {
   }
 
   void markRead(String id) {
+    AppNotification? matched;
+    for (final item in [..._local, ..._remote]) {
+      if (item.id == id) {
+        matched = item;
+        break;
+      }
+    }
     final isRemote = _remote.any((item) => item.id == id);
     _local = [
       for (final item in _local)
@@ -124,6 +150,81 @@ class NotificationController extends Notifier<List<AppNotification>> {
         ),
       );
     }
+    // Clear the OS pull-down shade entry for this notification.
+    unawaited(
+      ref.read(notificationServiceProvider).dismissTrayAlerts(
+            conversationId: matched?.conversationId,
+            groupId: matched?.groupId,
+            eventId: matched?.eventId,
+            allAlerts: matched == null ||
+                ((matched.conversationId ?? '').isEmpty &&
+                    (matched.groupId ?? '').isEmpty &&
+                    (matched.eventId ?? '').isEmpty),
+          ),
+    );
+  }
+
+  /// When the user opens a DM and reads it, drop related "new message"
+  /// notifications (badge + list) — they've already seen the chat.
+  void markChatMessagesRead({
+    required String conversationId,
+    String? peerUserId,
+  }) {
+    final roomId = conversationId.trim();
+    final peer = (peerUserId ?? '').trim();
+    if (roomId.isEmpty && peer.isEmpty) {
+      return;
+    }
+
+    bool matches(AppNotification item) {
+      if (item.kind != NotificationKind.chatMessage) {
+        return false;
+      }
+      final cid = (item.conversationId ?? '').trim();
+      if (roomId.isNotEmpty && cid == roomId) {
+        return true;
+      }
+      // Older docs may lack conversationId — match by sender.
+      final from = (item.fromUserId ?? '').trim();
+      return peer.isNotEmpty && from == peer;
+    }
+
+    final remoteIds = [
+      for (final item in _remote)
+        if (matches(item)) item.id,
+    ];
+    final touchedLocal = _local.any(matches);
+    if (remoteIds.isEmpty && !touchedLocal) {
+      return;
+    }
+
+    // Remove entirely so the notifications screen doesn't show them after
+    // the user already read the conversation elsewhere.
+    _local = [for (final item in _local) if (!matches(item)) item];
+    _remote = [for (final item in _remote) if (!matches(item)) item];
+    state = _merged();
+
+    if (remoteIds.isEmpty) {
+      return;
+    }
+    final batch = FirebaseFirestore.instance.batch();
+    for (final id in remoteIds) {
+      batch.delete(_collection.doc(id));
+    }
+    unawaited(
+      batch.commit().catchError(
+        (Object error) =>
+            debugPrint('Chat obaveštenja nisu obrisana: $error'),
+      ),
+    );
+    // Drop shade entries for this chat; also clear other alert-channel
+    // leftovers (legacy random ids) so pull-down doesn't keep "read" ones.
+    unawaited(
+      ref.read(notificationServiceProvider).dismissTrayAlerts(
+            conversationId: roomId.isEmpty ? null : roomId,
+            allAlerts: true,
+          ),
+    );
   }
 
   void markAllRead() {
@@ -134,6 +235,9 @@ class NotificationController extends Notifier<List<AppNotification>> {
     _local = [for (final item in _local) item.copyWith(isRead: true)];
     _remote = [for (final item in _remote) item.copyWith(isRead: true)];
     state = _merged();
+    unawaited(
+      ref.read(notificationServiceProvider).dismissTrayAlerts(allAlerts: true),
+    );
     if (unreadRemote.isEmpty) {
       return;
     }
@@ -155,5 +259,8 @@ final notificationControllerProvider =
 );
 
 final notificationUnreadCountProvider = Provider<int>((ref) {
-  return ref.watch(notificationControllerProvider).where((item) => !item.isRead).length;
+  return ref
+      .watch(notificationControllerProvider)
+      .where((item) => !item.isRead)
+      .length;
 });

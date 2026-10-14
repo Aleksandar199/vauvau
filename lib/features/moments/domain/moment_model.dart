@@ -63,6 +63,7 @@ class MomentComment {
     required this.authorName,
     required this.text,
     required this.createdAt,
+    this.likes = const [],
   });
 
   final String id;
@@ -70,4 +71,20 @@ class MomentComment {
   final String authorName;
   final String text;
   final DateTime createdAt;
+  final List<String> likes;
+
+  int get likeCount => likes.length;
+
+  bool isLikedBy(String uid) => uid.isNotEmpty && likes.contains(uid);
+
+  MomentComment copyWith({List<String>? likes}) {
+    return MomentComment(
+      id: id,
+      authorUserId: authorUserId,
+      authorName: authorName,
+      text: text,
+      createdAt: createdAt,
+      likes: likes ?? this.likes,
+    );
+  }
 }

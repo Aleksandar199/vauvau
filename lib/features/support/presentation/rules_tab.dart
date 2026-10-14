@@ -37,7 +37,7 @@ class RulesTab extends StatelessWidget {
             color: titleColor,
           ),
         ),
-        const SizedBox(height: 6),
+        SizedBox(height: 6),
         Text(
           SupportStrings.rulesIntro,
           style: TextStyle(
@@ -55,7 +55,7 @@ class RulesTab extends StatelessWidget {
               padding: const EdgeInsets.only(top: 1),
               child: Icon(Icons.place_outlined, size: 16, color: mutedColor),
             ),
-            const SizedBox(width: 6),
+            SizedBox(width: 6),
             Expanded(
               child: Text(
                 SupportStrings.rulesLocalNote,
@@ -69,30 +69,30 @@ class RulesTab extends StatelessWidget {
             ),
           ],
         ),
-        const SizedBox(height: 20),
+        SizedBox(height: 20),
         _RulesBlock(
           label: SupportStrings.rulesCategoryDaily,
           accent: RulesContent.dailyAccent,
           rules: RulesContent.daily,
           onCta: onCta,
         ),
-        const SizedBox(height: 18),
+        SizedBox(height: 18),
         _RulesBlock(
           label: SupportStrings.rulesCategoryCommunity,
           accent: RulesContent.communityAccent,
           rules: RulesContent.community,
           onCta: onCta,
         ),
-        const SizedBox(height: 18),
+        SizedBox(height: 18),
         _RulesBlock(
           label: SupportStrings.rulesCategoryImportant,
           accent: RulesContent.importantAccent,
           rules: RulesContent.important,
           onCta: onCta,
         ),
-        const SizedBox(height: 22),
+        SizedBox(height: 22),
         _OutroCard(titleColor: titleColor, bodyColor: bodyColor),
-        const SizedBox(height: 12),
+        SizedBox(height: 12),
         Text(
           SupportStrings.rulesUpdateNote,
           textAlign: TextAlign.center,
@@ -168,8 +168,8 @@ class _OutroCard extends StatelessWidget {
       ),
       child: Column(
         children: [
-          const Icon(Icons.pets, color: AppColors.primary, size: 26),
-          const SizedBox(height: 8),
+          Icon(Icons.pets, color: AppColors.primary, size: 26),
+          SizedBox(height: 8),
           Text(
             SupportStrings.rulesOutroTitle,
             textAlign: TextAlign.center,
@@ -179,7 +179,7 @@ class _OutroCard extends StatelessWidget {
               color: titleColor,
             ),
           ),
-          const SizedBox(height: 6),
+          SizedBox(height: 6),
           Text(
             SupportStrings.rulesOutroBody,
             textAlign: TextAlign.center,

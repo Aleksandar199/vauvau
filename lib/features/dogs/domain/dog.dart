@@ -16,6 +16,7 @@ class Dog {
     required this.area,
     required this.photoUrls,
     this.weightKg,
+    this.ageMonths = 0,
     this.bio = '',
     this.vaccinated = false,
     this.chipped = false,
@@ -30,6 +31,7 @@ class Dog {
   final String breed;
   final DogGender gender;
   final int ageYears;
+  final int ageMonths;
   final DogSize size;
   final double? weightKg;
   final DogEnergyLevel energyLevel;
@@ -53,6 +55,7 @@ class Dog {
     String? breed,
     DogGender? gender,
     int? ageYears,
+    int? ageMonths,
     DogSize? size,
     double? weightKg,
     bool clearWeight = false,
@@ -74,6 +77,7 @@ class Dog {
       breed: breed ?? this.breed,
       gender: gender ?? this.gender,
       ageYears: ageYears ?? this.ageYears,
+      ageMonths: ageMonths ?? this.ageMonths,
       size: size ?? this.size,
       weightKg: clearWeight ? null : (weightKg ?? this.weightKg),
       energyLevel: energyLevel ?? this.energyLevel,

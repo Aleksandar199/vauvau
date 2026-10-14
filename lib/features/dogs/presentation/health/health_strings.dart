@@ -1,49 +1,63 @@
+import '../../../../core/l10n/l10n.dart';
 import '../../domain/health_record.dart';
 
 abstract final class HealthStrings {
-  static const String sectionTitle = 'Karton zdravlja';
-  static const String sectionIntro =
-      'Evidencija vakcina i zaštite od parazita za tvog psa.';
-  static const String addOrUpdate = 'Dodaj / Ažuriraj zapis';
-  static const String administeredDate = 'Datum primene';
-  static const String nextDueDate = 'Sledeći datum / Rok';
-  static const String noDate = 'Nije izabrano';
-  static const String clearDate = 'Obriši rok';
-  static const String reminderToggle = 'Postavi podsetnik na telefonu';
-  static const String reminderHint = 'Podsetnik stiže u 09:00 na dan roka.';
-  static const String notes = 'Napomena';
-  static const String save = 'Sačuvaj';
-  static const String saved = 'Zapis je sačuvan.';
-  static const String saveError = 'Zapis nije sačuvan. Pokušajte ponovo.';
-  static const String reminderSet = 'Podsetnik je zakazan za 09:00.';
-  static const String reminderUnavailable =
-      'Podsetnik nije zakazan. Proverite dozvole za obaveštenja.';
-  static const String lastDate = 'Poslednji put';
-  static const String nextDate = 'Sledeće';
-  static const String noRecord = 'Nema zapisa';
-  static const String statusValid = '🟢 Uredu';
-  static const String statusSoon = '🟡 Uskoro ističe';
-  static const String statusExpired = '🔴 Isteklo';
-  static const String statusUnknown = '⚪ Bez roka';
-  static const String reminderBadge = '🔔 Podsetnik';
-  static const String delete = 'Obriši zapis';
-  static const String titleLabel = 'Naziv / Preparat';
+  static String get sectionTitle => L10n.tr('Karton zdravlja', 'Health record');
+  static String get sectionIntro => L10n.tr(
+        'Evidencija vakcina i zaštite od parazita za tvog psa.',
+        'Vaccination and parasite protection records for your dog.',
+      );
+  static String get addOrUpdate => L10n.tr('Dodaj / Ažuriraj zapis', 'Add / update record');
+  static String get administeredDate => L10n.tr('Datum primene', 'Date given');
+  static String get nextDueDate => L10n.tr('Sledeći datum / Rok', 'Next due date');
+  static String get noDate => L10n.tr('Nije izabrano', 'Not selected');
+  static String get clearDate => L10n.tr('Obriši rok', 'Clear due date');
+  static String get reminderToggle => L10n.tr('Postavi podsetnik na telefonu', 'Set phone reminder');
+  static String get reminderHint =>
+      L10n.tr('Podsetnik stiže u 09:00 na dan roka.', 'Reminder arrives at 09:00 on the due date.');
+  static String get notes => L10n.tr('Napomena', 'Notes');
+  static String get save => L10n.tr('Sačuvaj', 'Save');
+  static String get saved => L10n.tr('Zapis je sačuvan.', 'Record saved.');
+  static String get saveError =>
+      L10n.tr('Zapis nije sačuvan. Pokušajte ponovo.', 'Record was not saved. Try again.');
+  static String get reminderSet => L10n.tr('Podsetnik je zakazan za 09:00.', 'Reminder scheduled for 09:00.');
+  static String get reminderUnavailable => L10n.tr(
+        'Podsetnik nije zakazan. Proverite dozvole za obaveštenja.',
+        'Reminder not scheduled. Check notification permissions.',
+      );
+  static String get lastDate => L10n.tr('Poslednji put', 'Last time');
+  static String get nextDate => L10n.tr('Sledeće', 'Next');
+  static String get noRecord => L10n.tr('Nema zapisa', 'No record');
+  static String get statusValid => L10n.tr('🟢 Uredu', '🟢 OK');
+  static String get statusSoon => L10n.tr('🟡 Uskoro ističe', '🟡 Expiring soon');
+  static String get statusExpired => L10n.tr('🔴 Isteklo', '🔴 Expired');
+  static String get statusUnknown => L10n.tr('⚪ Bez roka', '⚪ No due date');
+  static String get reminderBadge => L10n.tr('🔔 Podsetnik', '🔔 Reminder');
+  static String get delete => L10n.tr('Obriši zapis', 'Delete record');
+  static String get titleLabel => L10n.tr('Naziv / Preparat', 'Name / product');
 
   static String categoryLabel(HealthCategory category) {
     return switch (category) {
-      HealthCategory.vaccineRabies => '💉 Besnilo',
-      HealthCategory.vaccineCore => '🛡️ Zarazne bolesti',
-      HealthCategory.deworming => '🪱 Unutrašnji paraziti',
-      HealthCategory.tickProtection => '🦠 Krpelji i buve',
+      HealthCategory.vaccineRabies =>
+        L10n.tr('💉 Besnilo', '💉 Rabies'),
+      HealthCategory.vaccineCore =>
+        L10n.tr('🛡️ Zarazne bolesti', '🛡️ Core vaccines'),
+      HealthCategory.deworming =>
+        L10n.tr('🪱 Unutrašnji paraziti', '🪱 Internal parasites'),
+      HealthCategory.tickProtection =>
+        L10n.tr('🦠 Krpelji i buve', '🦠 Ticks and fleas'),
     };
   }
 
   static String categoryHint(HealthCategory category) {
     return switch (category) {
-      HealthCategory.vaccineRabies => 'Vakcina protiv besnila',
-      HealthCategory.vaccineCore => 'Vakcina protiv zaraznih bolesti',
-      HealthCategory.deworming => 'Tablete protiv glista',
-      HealthCategory.tickProtection => 'Bravecto / NexGard',
+      HealthCategory.vaccineRabies =>
+        L10n.tr('Vakcina protiv besnila', 'Rabies vaccine'),
+      HealthCategory.vaccineCore =>
+        L10n.tr('Vakcina protiv zaraznih bolesti', 'Core disease vaccine'),
+      HealthCategory.deworming =>
+        L10n.tr('Tablete protiv glista', 'Deworming tablets'),
+      HealthCategory.tickProtection => L10n.tr('Bravecto / NexGard', 'Bravecto / NexGard'),
     };
   }
 
@@ -56,11 +70,15 @@ abstract final class HealthStrings {
     };
   }
 
-  static String reminderTitle(String dogName) => '🐾 $dogName — podsetnik';
+  static String reminderTitle(String dogName) => L10n.tr(
+        '🐾 $dogName — podsetnik',
+        '🐾 $dogName — reminder',
+      );
 
-  static String reminderBody(String dogName, String title) {
-    return '$dogName: danas je rok za "$title".';
-  }
+  static String reminderBody(String dogName, String title) => L10n.tr(
+        '$dogName: danas je rok za "$title".',
+        '$dogName: "$title" is due today.',
+      );
 
   static String date(DateTime value) {
     final day = value.day.toString().padLeft(2, '0');

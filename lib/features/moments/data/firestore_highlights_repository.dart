@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 
+import '../../../core/firebase/firestore_auth_guard.dart';
 import '../domain/highlights_repository.dart';
 import '../domain/story_highlight.dart';
 
@@ -25,21 +26,25 @@ class FirestoreHighlightsRepository implements HighlightsRepository {
     if (dogId.isEmpty) {
       return Stream.value(const []);
     }
-    return _dog(dogId).snapshots().map((snap) {
-      final raw = snap.data()?[_field];
-      if (raw is! Map) {
-        return const <StoryHighlight>[];
-      }
-      return sortHighlights([
-        for (final entry in raw.entries)
-          if (entry.value is Map)
-            _fromMap(
-              id: entry.key.toString(),
-              dogId: dogId,
-              data: Map<String, dynamic>.from(entry.value as Map),
-            ),
-      ]);
-    });
+    return FirestoreAuthGuard.guardedStream<List<StoryHighlight>>(
+      label: 'highlights.watch',
+      empty: const [],
+      create: () => _dog(dogId).snapshots().map((snap) {
+        final raw = snap.data()?[_field];
+        if (raw is! Map) {
+          return const <StoryHighlight>[];
+        }
+        return sortHighlights([
+          for (final entry in raw.entries)
+            if (entry.value is Map)
+              _fromMap(
+                id: entry.key.toString(),
+                dogId: dogId,
+                data: Map<String, dynamic>.from(entry.value as Map),
+              ),
+        ]);
+      }),
+    );
   }
 
   @override

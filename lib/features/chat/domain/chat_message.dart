@@ -14,17 +14,27 @@ class ChatMessage {
     required this.isMine,
     this.senderId = '',
     this.receiverId = '',
+    this.senderName = '',
+    this.senderAvatarUrl = '',
+    this.imageUrl = '',
     this.isRead = false,
     this.type = ChatMessageType.text,
     this.status,
     this.walkTime,
     this.walkLocationName,
+    this.replyToMessageId = '',
+    this.replyToText = '',
+    this.replyToSenderName = '',
+    this.likes = const [],
   });
 
   final String id;
   final String senderId;
   final String receiverId;
+  final String senderName;
+  final String senderAvatarUrl;
   final String text;
+  final String imageUrl;
   final DateTime sentAt;
   final bool isRead;
   final bool isMine;
@@ -32,8 +42,36 @@ class ChatMessage {
   final WalkInviteStatus? status;
   final DateTime? walkTime;
   final String? walkLocationName;
+  final String replyToMessageId;
+  final String replyToText;
+  final String replyToSenderName;
+
+  /// User ids that liked this message.
+  final List<String> likes;
 
   DateTime get timestamp => sentAt;
+
+  bool get hasImage => imageUrl.trim().isNotEmpty;
+
+  bool get hasReply =>
+      replyToMessageId.isNotEmpty || replyToText.trim().isNotEmpty;
+
+  int get likeCount => likes.length;
+
+  bool isLikedBy(String uid) =>
+      uid.isNotEmpty && likes.contains(uid);
+
+  /// Inbox / reply preview when the body is a photo with no caption.
+  String get previewText {
+    final trimmed = text.trim();
+    if (trimmed.isNotEmpty) {
+      return trimmed;
+    }
+    if (hasImage) {
+      return '📷 Fotografija';
+    }
+    return '';
+  }
 
   String get typeKey => switch (type) {
         ChatMessageType.text => 'text',
@@ -55,12 +93,18 @@ class ChatMessage {
   ChatMessage copyWith({
     bool? isRead,
     WalkInviteStatus? status,
+    String? senderAvatarUrl,
+    String? imageUrl,
+    List<String>? likes,
   }) {
     return ChatMessage(
       id: id,
       senderId: senderId,
       receiverId: receiverId,
+      senderName: senderName,
+      senderAvatarUrl: senderAvatarUrl ?? this.senderAvatarUrl,
       text: text,
+      imageUrl: imageUrl ?? this.imageUrl,
       sentAt: sentAt,
       isRead: isRead ?? this.isRead,
       isMine: isMine,
@@ -68,6 +112,10 @@ class ChatMessage {
       status: status ?? this.status,
       walkTime: walkTime,
       walkLocationName: walkLocationName,
+      replyToMessageId: replyToMessageId,
+      replyToText: replyToText,
+      replyToSenderName: replyToSenderName,
+      likes: likes ?? this.likes,
     );
   }
 
@@ -86,5 +134,23 @@ class ChatMessage {
       'declined' => WalkInviteStatus.declined,
       _ => null,
     };
+  }
+
+  static String clipReplyText(String raw, [int max = 120]) {
+    final text = raw.trim();
+    if (text.length <= max) {
+      return text;
+    }
+    return '${text.substring(0, max).trimRight()}…';
+  }
+
+  static List<String> likesFrom(Object? value) {
+    if (value is! List) {
+      return const [];
+    }
+    return [
+      for (final item in value)
+        if (item != null && '$item'.trim().isNotEmpty) '$item',
+    ];
   }
 }

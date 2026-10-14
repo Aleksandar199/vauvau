@@ -1,6 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
+import '../crash/crash_reporting.dart';
+import '../firebase/firestore_auth_guard.dart';
+import '../network/network_failure.dart';
 import '../theme/app_colors.dart';
 
 /// Soft grey block used while network images / feed lists load.
@@ -280,11 +285,37 @@ void installGlobalErrorHandlers() {
     FlutterError.presentError(details);
     debugPrint('🔴 FLUTTER ERROR: ${details.exceptionAsString()}');
     debugPrint('🔴 STACK: ${details.stack}');
+    final exception = details.exception;
+    // Firestore permission-denied / OSM offline tiles must not count as fatal.
+    if (FirestoreAuthGuard.isSoftFailError(exception) ||
+        isNetworkFailure(exception)) {
+      unawaited(
+        CrashReporting.recordError(
+          exception,
+          details.stack,
+          fatal: false,
+          reason: 'soft_fail_flutter_error',
+        ),
+      );
+      return;
+    }
+    CrashReporting.recordFlutterError(details);
   };
 
   PlatformDispatcher.instance.onError = (error, stack) {
     debugPrint('Global Async Error: $error');
     debugPrint('$stack');
+    final soft =
+        FirestoreAuthGuard.isSoftFailError(error) || isNetworkFailure(error);
+    unawaited(
+      CrashReporting.recordError(
+        error,
+        stack,
+        fatal: !soft,
+        reason: soft ? 'soft_fail_async' : null,
+      ),
+    );
+    // Always handle so the isolate stays alive (tile/network/auth races).
     return true;
   };
 

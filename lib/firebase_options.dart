@@ -19,7 +19,8 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions android = FirebaseOptions(
     apiKey: 'AIzaSyD2WpCWpsaj0lM15ort_OpVd1-l-0g0vCI',
-    appId: '1:461477755452:android:e8f133d0500fcb05912139',
+    // Firebase Android app for package com.vauvau.app (not com.example.vauvau).
+    appId: '1:461477755452:android:13d12fdcbb5f9d68912139',
     messagingSenderId: '461477755452',
     projectId: 'vauvau-3195a',
     storageBucket: 'vauvau-3195a.firebasestorage.app',

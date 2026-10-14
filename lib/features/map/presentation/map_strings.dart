@@ -1,3 +1,4 @@
+import '../../../core/l10n/l10n.dart';
 import '../domain/map_place_type.dart';
 
 enum MapLayerFilter {
@@ -121,197 +122,262 @@ extension HotelAmenityFilterX on HotelAmenityFilter {
 }
 
 abstract final class MapStrings {
-  static const String tabLabel = 'Mapa';
-  static const String title = 'Mapa';
-  static const String startWalk = '🟢 Započni šetnju';
-  static const String readyToWalk = 'Spreman za šetnju po gradu?';
-  static const String endWalk = 'Završi šetnju';
-  static const String pauseWalk = 'Pauza';
-  static const String resumeWalk = 'Nastavi';
-  static const String endWalkTitle = 'Završiti šetnju?';
-  static const String endWalkBody =
-      'Da li ste sigurni da želite da završite šetnju?';
-  static const String walkTime = 'Vreme';
-  static const String walkDistance = 'Km';
-  static const String walkHistory = 'Moje šetnje';
-  static const String walkHistoryTitle = 'Istorija šetnji';
-  static const String walkHistoryEmpty =
-      'Još nema sačuvanih šetnji. Završi šetnju da se upiše ovde.';
-  static const String walkHistoryLastDays = 'Poslednjih 7 dana';
-  static const String walkHistoryTotal = 'Ukupno';
-  static const String walkSaved = 'Šetnja je sačuvana.';
-  static const String walkSaveFailed =
-      'Šetnja nije sačuvana. Pokušajte ponovo kasnije.';
-  static const String gpsActiveBanner =
-      'GPS Praćenje aktivno • Aplikacija prati šetnju u pozadini';
-  static const String gpsPausedBanner =
-      'Šetnja je pauzirana • GPS praćenje na čekanju';
-  static const String walking = 'U šetnji';
-  static const String statusHint =
-      'Npr. U šetnji, Odmaram, Tražim društvo za igru';
-  static const String statusWalking = 'U šetnji';
-  static const String statusResting = 'Odmaram';
-  static const String statusLookingForPlay = 'Tražim društvo za igru';
-  static const String statusLabel = 'Kratka poruka (opciono)';
-  static const String confirm = 'Potvrdi';
-  static const String cancel = 'Otkaži';
-  static const String join = 'Pridruži se';
-  static const String directions = 'Smernice';
-  static const String directionsSoon = 'Smernice uskoro stižu.';
-  static const String openProfile = 'Otvori profil';
-  static const String navigation = 'Navigacija';
-  static const String callNow = 'Pozovi odmah';
-  static const String callFailed = 'Poziv nije moguć na ovom uređaju.';
-  static const String reportChange = 'Prijavi promenu';
-  static const String reportTitle = 'Prijavi promenu';
-  static const String reportBody =
-      'Potvrdite da je objekat tačan, ili prijavite šta treba ispraviti.';
-  static const String reportConfirm = 'Prijavi';
-  static const String reportThanks =
-      'Hvala! Vaša prijava je poslata adminu.';
-  static const String reportChangeTypeLabel = 'Vrsta promene';
-  static const String reportChangeDescriptionLabel = 'Opis (opciono)';
-  static const String reportChangeDescriptionHint =
-      'Npr. novo radno vreme, tačnija adresa...';
-  static const String reportChangeTypeRequired = 'Izaberite vrstu promene.';
-  static const String reportChangeConfirmVerified =
-      'Potvrđujem da je objekat proveren';
-  static const String reportChangeWrongHours = 'Pogrešno radno vreme';
-  static const String reportChangeClosed = 'Objekat je zatvoren';
-  static const String reportChangeWrongLocation = 'Netačna lokacija';
-  static const String reportChangeOther = 'Ostalo';
-  static const String reportChangeFailed =
-      'Prijava nije poslata. Pokušajte ponovo.';
-  static const String reportChangeSubmit = 'Pošalji prijavu';
-  static const String reportConfirmThanks =
-      'Hvala! Potvrda je zabeležena i poslata adminu.';
-  static const String verifiedBadge = '✓ Potvrđeno';
-  static const String reportedBadge = 'Prijavljeno';
-  static const String submittedBadge = 'Predloženo';
-  static const String pendingBadge = 'Na čekanju';
-  static const String unknownBadge = 'Nije provereno';
-  static const String cafeFriendlyBadge = '☕ Pet Friendly';
-  static const String restaurantBadge = '🍽️ Dog-friendly restoran';
-  static const String dogParkBadge = '🐕 Park za pse';
-  static const String emergencyBadge = '🚨 DEŽURNO 0-24H';
-  static const String sponsoredBadge = 'PREMIUM PARTNER';
-  static const String amenityOvernight = '🌙 Prenoćište';
-  static const String amenityDayCare = '☀️ Dnevni boravak';
-  static const String amenityYard = '🌳 Dvorište';
-  static const String amenity24h = '00-24h dostupnost';
-  static const String amenityDogFriendly = '🐶 Dog friendly';
-  static const String amenityOutdoor = '🌳 Outdoor';
-  static const String amenityWater = '💧 Voda';
-  static const String hoursLabel = 'Radno vreme';
-  static const String sourceLabel = 'Izvor';
-  static const String userSource = 'VauVau Zajednica';
-  static const String navigationFailed = 'Navigacija nije dostupna na uređaju.';
-  static const String nearbyDogs = 'Pasa u blizini';
-  static const String openChat = 'Poruka';
-  static const String viewCard = 'Mini-kartica';
-  static const String park = 'Park / istrčavalište';
-  static const String cafe = 'Pet-friendly kafić';
-  static const String restaurant = 'Dog-friendly restoran';
-  static const String petShop = 'Pet shop';
-  static const String groomer = 'Grumer';
-  static const String vet = 'Veterinar';
-  static const String lodging = 'Pet-friendly smeštaj';
-  static const String training = 'Dresura / škola za pse';
-  static const String dogHotel = 'Hotel za pse';
-  static const String selfWash = 'Samouslužna perionica';
-  static const String dogTreats = 'Hrana / poslastice za pse';
-  static const String shelter = 'Azil / udomljavanje';
-  static const String waterForDogs = 'Voda za pse';
-  static const String otherPlace = 'Dog-friendly mesto';
-  static const String petSitter = 'Kućno čuvanje';
-  static const String walkingDogs = 'Psi trenutno u šetnji';
-  static const String joinWalkStatusPrefix = 'Šetamo se kod';
-  static const String searchHint = 'Pretraži mesta...';
-  static const String filterAll = 'Sve';
-  static const String filterNearby = 'U blizini';
-  static const String filterParks = '🐕 Parkovi';
-  static const String filterCafes = '☕ Kafići';
-  static const String filterRestaurants = '🍽️ Restorani';
-  static const String filterHotels = '🏠 Pansion';
-  static const String filterLodging = '🏨 Smeštaj';
-  static const String filterTraining = '🎓 Dresura';
-  static const String filterSelfWash = '🛁 Perionica';
-  static const String filterDogTreats = '🥩 Hrana';
-  static const String filterShelter = '🐾 Udomljavanje';
-  static const String filterWater = '💧 Voda';
-  static const String filterSitters = 'Dog Sitter / Čuvanje';
-  static const String filterEmergency = '🚨 24/7 Hitno';
-  static const String filterPetShops = '🛍️ Pet Shop';
-  static const String filterGroomers = '✂️ Grooming';
-  static const String filterVets = '🏥 Veterinar';
-  static const String filterWalkers = 'Psi u šetnji';
-  static const String filterMore = '⚙️ Više filtera';
-  static const String emptyCategoryTitle = 'Još nema lokacija u ovoj kategoriji.';
-  static const String emptyCategoryBody = 'Uskoro dodajemo još mesta.';
-  static const String placesListTitle = 'Lista mesta';
-  static const String showList = 'Lista';
-  static const String showMap = 'Mapa';
-  static const String openNavigation = 'Pokreni navigaciju';
-  static const String websiteAction = 'Sajt';
-  static const String addPlace = '+ Dodaj mesto / lokal';
-  static const String addPlaceAdminTitle = 'Dodaj mesto (Admin)';
-  static const String adminOnlyPlace = 'Samo admin može da dodaje mesta.';
-  static const String chooseCity = 'Izaberi grad';
-  static const String cityNoviSad = 'Novi Sad';
-  static const String cityBelgrade = 'Beograd';
-  static const String cityMyLocation = 'Moja lokacija 📍';
-  static const String cityMyLocationSubtitle = 'Koristi GPS poziciju uređaja';
-  static const String placeCity = 'Grad';
-  static const String placeCityRequired = 'Izaberite grad.';
-  static const String placeName = 'Naziv objekta / mesta';
-  static const String placeNameRequired = 'Unesite naziv mesta.';
-  static const String placeCategory = 'Kategorija';
-  static const String placeAddress = 'Adresa / lokacija';
-  static const String placeAddressSearch = 'Adresa / pretraga ulice';
-  static const String placeAddressRequired = 'Unesite adresu.';
-  static const String searchAddress = 'Pronađi adresu';
-  static const String addressNotFound = 'Adresa nije pronađena. Probajte drugačiji upit.';
-  static const String addressSearchFailed =
-      'Pretraga adrese nije uspela. Pokušajte ponovo.';
-  static const String fineTuneLocation = 'Podesi tačnu lokaciju';
-  static const String fineTuneLocationHint =
-      'Dodirnite mapu da pomerite pin na tačno mesto.';
-  static const String coordinates = 'Koordinate';
-  static const String openingHoursOptional = 'Radno vreme (opciono)';
-  static const String openingHoursHint = 'Npr. Pon–Pet 09–20';
-  static const String placePhone = 'Kontakt telefon';
-  static const String toggle24h = 'Radno vreme 24/7';
-  static const String toggleEmergency = 'Hitne intervencije 0-24';
-  static const String toggleOvernight = 'Prenoćište';
-  static const String toggleDayCare = 'Dnevni boravak';
-  static const String toggleYard = 'Ima dvorište';
-  static const String pricePerNight = 'Cena po noćenju (RSD)';
-  static const String submitPlace = 'Sačuvaj mesto';
-  static const String placeAdded = 'Mesto je dodato na mapu.';
-  static const String placeAddFailed = 'Mesto nije sačuvano. Pokušajte ponovo.';
-  static const String zoomIn = 'Uvećaj';
-  static const String zoomOut = 'Umanji';
-  static const String myLocation = 'Moja lokacija';
-  static const String joinWalk = 'Pridruži se u šetnji';
-  static const String walkRequestSent = 'Zahtev za šetnju je poslat.';
-  static const String fallbackBanner =
-      'Koristimo centar Novog Sada. Dozvolite lokaciju za tačan prikaz u blizini.';
-  static const String locationDeniedTitle = 'Lokacija nije dozvoljena';
-  static const String locationDeniedBody =
-      'VauVau koristi vašu lokaciju da prikaže pse u blizini i status „U šetnji“. Možete nastaviti sa Novim Sadom kao podrazumevanom lokacijom.';
-  static const String locationPermanentTitle = 'Lokacija je trajno odbijena';
-  static const String locationPermanentBody =
-      'Uključite lokaciju za VauVau u podešavanjima uređaja da biste videli pse oko sebe.';
-  static const String locationDisabledTitle = 'Usluge lokacije su isključene';
-  static const String locationDisabledBody =
-      'Uključite GPS / usluge lokacije na uređaju. Do tada koristimo centar Novog Sada.';
-  static const String allowLocation = 'Dozvoli lokaciju';
-  static const String openSettings = 'Otvori podešavanja';
-  static const String useDefaultCity = 'Koristi Novi Sad';
+  static String get tabLabel => L10n.tr('Mapa', 'Map');
+  static String get title => L10n.tr('Mapa', 'Map');
+  static String get startWalk => L10n.tr('🟢 Započni šetnju', '🟢 Start walk');
+  static String get readyToWalk =>
+      L10n.tr('Spreman za šetnju po gradu?', 'Ready for a walk around town?');
+  static String get endWalk => L10n.tr('Završi šetnju', 'End walk');
+  static String get pauseWalk => L10n.tr('Pauza', 'Pause');
+  static String get resumeWalk => L10n.tr('Nastavi', 'Resume');
+  static String get endWalkTitle => L10n.tr('Završiti šetnju?', 'End walk?');
+  static String get endWalkBody => L10n.tr(
+        'Da li ste sigurni da želite da završite šetnju?',
+        'Are you sure you want to end the walk?',
+      );
+  static String get walkTime => L10n.tr('Vreme', 'Time');
+  static String get walkDistance => L10n.tr('Km', 'Km');
+  static String get walkHistory => L10n.tr('Moje šetnje', 'My walks');
+  static String get walkHistoryTitle => L10n.tr('Istorija šetnji', 'Walk history');
+  static String get walkHistoryEmpty => L10n.tr(
+        'Još nema sačuvanih šetnji. Završi šetnju da se upiše ovde.',
+        'No saved walks yet. Finish a walk to log it here.',
+      );
+  static String get walkHistoryLastDays => L10n.tr('Poslednjih 7 dana', 'Last 7 days');
+  static String get walkHistoryTotal => L10n.tr('Ukupno', 'Total');
+  static String get walkSaved => L10n.tr('Šetnja je sačuvana.', 'Walk saved.');
+  static String get walkSaveFailed => L10n.tr(
+        'Šetnja nije sačuvana. Pokušajte ponovo kasnije.',
+        'Walk was not saved. Try again later.',
+      );
+  static String get gpsActiveBanner => L10n.tr(
+        'GPS praćenje aktivno • Šetnja se prati dok traje (obaveštenje)',
+        'GPS tracking active • Walk tracked while active (notification)',
+      );
+  static String get gpsPausedBanner => L10n.tr(
+        'Šetnja je pauzirana • GPS praćenje na čekanju',
+        'Walk paused • GPS tracking on hold',
+      );
+  static String get walking => L10n.tr('U šetnji', 'On a walk');
+  static String get statusHint => L10n.tr(
+        'Npr. U šetnji, Odmaram, Tražim društvo za igru',
+        'E.g. On a walk, Resting, Looking for playmates',
+      );
+  static String get statusWalking => L10n.tr('U šetnji', 'On a walk');
+  static String get statusResting => L10n.tr('Odmaram', 'Resting');
+  static String get statusLookingForPlay =>
+      L10n.tr('Tražim društvo za igru', 'Looking for playmates');
+  static String get statusLabel => L10n.tr('Kratka poruka (opciono)', 'Short message (optional)');
+  static String get confirm => L10n.tr('Potvrdi', 'Confirm');
+  static String get cancel => L10n.tr('Otkaži', 'Cancel');
+  static String get join => L10n.tr('Pridruži se', 'Join');
+  static String get directions => L10n.tr('Smernice', 'Directions');
+  static String get directionsSoon => L10n.tr('Smernice uskoro stižu.', 'Directions coming soon.');
+  static String get openProfile => L10n.tr('Otvori profil', 'Open profile');
+  static String get navigation => L10n.tr('Navigacija', 'Navigation');
+  static String get callNow => L10n.tr('Pozovi odmah', 'Call now');
+  static String get callFailed =>
+      L10n.tr('Poziv nije moguć na ovom uređaju.', 'Calling is not available on this device.');
+  static String get reportChange => L10n.tr('Prijavi promenu', 'Report a change');
+  static String get reportTitle => L10n.tr('Prijavi promenu', 'Report a change');
+  static String get reportBody => L10n.tr(
+        'Potvrdite da je objekat tačan, ili prijavite šta treba ispraviti.',
+        'Confirm the place is correct, or report what needs fixing.',
+      );
+  static String get reportConfirm => L10n.tr('Prijavi', 'Report');
+  static String get reportThanks =>
+      L10n.tr('Hvala! Vaša prijava je poslata adminu.', 'Thanks! Your report was sent to the admin.');
+  static String get reportChangeTypeLabel => L10n.tr('Vrsta promene', 'Type of change');
+  static String get reportChangeDescriptionLabel => L10n.tr('Opis (opciono)', 'Description (optional)');
+  static String get reportChangeDescriptionHint => L10n.tr(
+        'Npr. novo radno vreme, tačnija adresa...',
+        'E.g. new hours, more accurate address...',
+      );
+  static String get reportChangeTypeRequired =>
+      L10n.tr('Izaberite vrstu promene.', 'Select type of change.');
+  static String get reportChangeConfirmVerified =>
+      L10n.tr('Potvrđujem da je objekat proveren', 'I confirm this place was verified');
+  static String get reportChangeWrongHours =>
+      L10n.tr('Pogrešno radno vreme', 'Wrong opening hours');
+  static String get reportChangeClosed => L10n.tr('Objekat je zatvoren', 'Place is closed');
+  static String get reportChangeWrongLocation =>
+      L10n.tr('Netačna lokacija', 'Wrong location');
+  static String get reportChangeOther => L10n.tr('Ostalo', 'Other');
+  static String get reportChangeFailed =>
+      L10n.tr('Prijava nije poslata. Pokušajte ponovo.', 'Report was not sent. Try again.');
+  static String get reportChangeSubmit => L10n.tr('Pošalji prijavu', 'Submit report');
+  static String get reportConfirmThanks => L10n.tr(
+        'Hvala! Potvrda je zabeležena i poslata adminu.',
+        'Thanks! Confirmation was recorded and sent to the admin.',
+      );
+  static String get verifiedBadge => L10n.tr('✓ Potvrđeno', '✓ Verified');
+  static String get reportedBadge => L10n.tr('Prijavljeno', 'Reported');
+  static String get submittedBadge => L10n.tr('Predloženo', 'Submitted');
+  static String get pendingBadge => L10n.tr('Na čekanju', 'Pending');
+  static String get unknownBadge => L10n.tr('Nije provereno', 'Not verified');
+  static String get cafeFriendlyBadge => L10n.tr('☕ Pet Friendly', '☕ Pet Friendly');
+  static String get restaurantBadge =>
+      L10n.tr('🍽️ Dog-friendly restoran', '🍽️ Dog-friendly restaurant');
+  static String get dogParkBadge => L10n.tr('🐕 Park za pse', '🐕 Dog park');
+  static String get publicParkBadge => L10n.tr('🌳 Park', '🌳 Park');
+  static String get cafePlainBadge => L10n.tr('☕ Kafić', '☕ Cafe');
+  static String get restaurantPlainBadge =>
+      L10n.tr('🍽️ Restoran', '🍽️ Restaurant');
+  static String get amenityIndoor =>
+      L10n.tr('🏠 Psi i unutra', '🏠 Dogs inside');
+  static String get emergencyBadge => L10n.tr('🚨 DEŽURNO 0-24H', '🚨 ON-CALL 24/7');
+  static String get sponsoredBadge => L10n.tr('PREMIUM PARTNER', 'PREMIUM PARTNER');
+  static String get amenityOvernight => L10n.tr('🌙 Prenoćište', '🌙 Overnight');
+  static String get amenityDayCare => L10n.tr('☀️ Dnevni boravak', '☀️ Day care');
+  static String get amenityYard => L10n.tr('🌳 Dvorište', '🌳 Yard');
+  static String get amenity24h => L10n.tr('00-24h dostupnost', 'Open 24/7');
+  static String get amenityDogFriendly => L10n.tr('🐶 Dog friendly', '🐶 Dog friendly');
+  static String get amenityOutdoor => L10n.tr('🌳 Outdoor', '🌳 Outdoor');
+  static String get amenityWater => L10n.tr('💧 Voda', '💧 Water');
+  static String get hoursLabel => L10n.tr('Radno vreme', 'Opening hours');
+  static String get sourceLabel => L10n.tr('Izvor', 'Source');
+  static String get userSource => L10n.tr('VauVau Zajednica', 'VauVau Community');
+  static String get navigationFailed =>
+      L10n.tr('Navigacija nije dostupna na uređaju.', 'Navigation unavailable on this device.');
+  static String get nearbyDogs => L10n.tr('Pasa u blizini', 'Dogs nearby');
+  static String get openChat => L10n.tr('Poruka', 'Message');
+  static String get viewCard => L10n.tr('Mini-kartica', 'Mini card');
+  static String get park => L10n.tr('Park / istrčavalište', 'Park / run area');
+  static String get cafe => L10n.tr('Pet-friendly kafić', 'Pet-friendly café');
+  static String get restaurant => L10n.tr('Dog-friendly restoran', 'Dog-friendly restaurant');
+  static String get petShop => L10n.tr('Pet shop', 'Pet shop');
+  static String get groomer => L10n.tr('Grumer', 'Groomer');
+  static String get vet => L10n.tr('Veterinar', 'Vet');
+  static String get lodging => L10n.tr('Pet-friendly smeštaj', 'Pet-friendly lodging');
+  static String get training => L10n.tr('Dresura / škola za pse', 'Training / dog school');
+  static String get dogHotel => L10n.tr('Hotel za pse', 'Dog hotel');
+  static String get selfWash => L10n.tr('Samouslužna perionica', 'Self-service wash');
+  static String get dogTreats => L10n.tr('Hrana / poslastice za pse', 'Food / treats for dogs');
+  static String get shelter => L10n.tr('Azil / udomljavanje', 'Shelter / adoption');
+  static String get waterForDogs => L10n.tr('Voda za pse', 'Water for dogs');
+  static String get otherPlace => L10n.tr('Dog-friendly mesto', 'Dog-friendly place');
+  static String get petSitter => L10n.tr('Kućno čuvanje', 'Pet sitting');
+  static String get walkingDogs => L10n.tr('Psi trenutno u šetnji', 'Dogs walking now');
+  static String get joinWalkStatusPrefix => L10n.tr('Šetamo se kod', 'Walking near');
+  static String get searchHint => L10n.tr('Pretraži mesta...', 'Search places...');
+  static String get filterAll => L10n.tr('Sve', 'All');
+  static String get filterNearby => L10n.tr('U blizini', 'Nearby');
+  static String get filterParks => L10n.tr('🐕 Parkovi', '🐕 Parks');
+  static String get filterCafes => L10n.tr('☕ Kafići', '☕ Cafés');
+  static String get filterRestaurants => L10n.tr('🍽️ Restorani', '🍽️ Restaurants');
+  static String get filterHotels => L10n.tr('🏠 Pansion', '🏠 Boarding');
+  static String get filterLodging => L10n.tr('🏨 Smeštaj', '🏨 Lodging');
+  static String get filterTraining => L10n.tr('🎓 Dresura', '🎓 Training');
+  static String get filterSelfWash => L10n.tr('🛁 Perionica', '🛁 Wash');
+  static String get filterDogTreats => L10n.tr('🥩 Hrana', '🥩 Food');
+  static String get filterShelter => L10n.tr('🐾 Udomljavanje', '🐾 Adoption');
+  static String get filterWater => L10n.tr('💧 Voda', '💧 Water');
+  static String get filterSitters => L10n.tr('Dog Sitter / Čuvanje', 'Dog sitter / boarding');
+  static String get filterEmergency => L10n.tr('🚨 24/7 Hitno', '🚨 24/7 Emergency');
+  static String get filterPetShops => L10n.tr('🛍️ Pet Shop', '🛍️ Pet shop');
+  static String get filterGroomers => L10n.tr('✂️ Grooming', '✂️ Grooming');
+  static String get filterVets => L10n.tr('🏥 Veterinar', '🏥 Vet');
+  static String get filterWalkers => L10n.tr('Psi u šetnji', 'Dogs on walks');
+  static String get filterMore => L10n.tr('⚙️ Više filtera', '⚙️ More filters');
+  static String get emptyCategoryTitle =>
+      L10n.tr('Još nema lokacija u ovoj kategoriji.', 'No locations in this category yet.');
+  static String get emptyCategoryBody =>
+      L10n.tr('Uskoro dodajemo još mesta.', 'We\'re adding more places soon.');
+  static String get placesListTitle => L10n.tr('Lista mesta', 'Places list');
+  static String get showList => L10n.tr('Lista', 'List');
+  static String get showMap => L10n.tr('Mapa', 'Map');
+  static String get openNavigation => L10n.tr('Pokreni navigaciju', 'Start navigation');
+  static String get websiteAction => L10n.tr('Sajt', 'Website');
+  static String get addPlace => L10n.tr('+ Dodaj mesto / lokal', '+ Add place / venue');
+  static String get addPlaceAdminTitle => L10n.tr('Dodaj mesto (Admin)', 'Add place (Admin)');
+  static String get adminOnlyPlace =>
+      L10n.tr('Samo admin može da dodaje mesta.', 'Only admins can add places.');
+  static String get chooseCity => L10n.tr('Izaberi grad', 'Choose city');
+  static String get cityNoviSad => L10n.tr('Novi Sad', 'Novi Sad');
+  static String get cityBelgrade => L10n.tr('Beograd', 'Belgrade');
+  static String get cityNis => L10n.tr('Niš', 'Nis');
+  static String get cityKragujevac => L10n.tr('Kragujevac', 'Kragujevac');
+  static String get cityMyLocation => L10n.tr('Moja lokacija 📍', 'My location 📍');
+  static String get cityMyLocationSubtitle =>
+      L10n.tr('Koristi GPS poziciju uređaja', 'Use device GPS location');
+  static String get placeCity => L10n.tr('Grad', 'City');
+  static String get placeCityRequired => L10n.tr('Izaberite grad.', 'Select a city.');
+  static String get placeName => L10n.tr('Naziv objekta / mesta', 'Place / venue name');
+  static String get placeNameRequired => L10n.tr('Unesite naziv mesta.', 'Enter place name.');
+  static String get placeCategory => L10n.tr('Kategorija', 'Category');
+  static String get placeAddress => L10n.tr('Adresa / lokacija', 'Address / location');
+  static String get placeAddressSearch => L10n.tr('Adresa / pretraga ulice', 'Address / street search');
+  static String get placeAddressRequired => L10n.tr('Unesite adresu.', 'Enter address.');
+  static String get searchAddress => L10n.tr('Pronađi adresu', 'Find address');
+  static String get addressNotFound => L10n.tr(
+        'Adresa nije pronađena. Probajte drugačiji upit.',
+        'Address not found. Try a different query.',
+      );
+  static String get addressSearchFailed => L10n.tr(
+        'Pretraga adrese nije uspela. Pokušajte ponovo.',
+        'Address search failed. Try again.',
+      );
+  static String get fineTuneLocation => L10n.tr('Podesi tačnu lokaciju', 'Fine-tune location');
+  static String get fineTuneLocationHint => L10n.tr(
+        'Dodirnite mapu da pomerite pin na tačno mesto.',
+        'Tap the map to move the pin to the exact spot.',
+      );
+  static String get coordinates => L10n.tr('Koordinate', 'Coordinates');
+  static String get openingHoursOptional =>
+      L10n.tr('Radno vreme (opciono)', 'Opening hours (optional)');
+  static String get openingHoursHint => L10n.tr('Npr. Pon–Pet 09–20', 'E.g. Mon–Fri 09–20');
+  static String get placePhone => L10n.tr('Kontakt telefon', 'Contact phone');
+  static String get toggle24h => L10n.tr('Radno vreme 24/7', 'Open 24/7');
+  static String get toggleEmergency => L10n.tr('Hitne intervencije 0-24', 'Emergency 24/7');
+  static String get toggleOvernight => L10n.tr('Prenoćište', 'Overnight stay');
+  static String get toggleDayCare => L10n.tr('Dnevni boravak', 'Day care');
+  static String get toggleYard => L10n.tr('Ima dvorište', 'Has yard');
+  static String get pricePerNight => L10n.tr('Cena po noćenju (RSD)', 'Price per night (RSD)');
+  static String get submitPlace => L10n.tr('Sačuvaj mesto', 'Save place');
+  static String get placeAdded => L10n.tr('Mesto je dodato na mapu.', 'Place added to the map.');
+  static String get placeAddFailed =>
+      L10n.tr('Mesto nije sačuvano. Pokušajte ponovo.', 'Place was not saved. Try again.');
+  static String get zoomIn => L10n.tr('Uvećaj', 'Zoom in');
+  static String get zoomOut => L10n.tr('Umanji', 'Zoom out');
+  static String get myLocation => L10n.tr('Moja lokacija', 'My location');
+  static String get joinWalk => L10n.tr('Pridruži se u šetnji', 'Join walk');
+  static String get walkRequestSent =>
+      L10n.tr('Zahtev za šetnju je poslat.', 'Walk request sent.');
+  static String fallbackBanner(String city) => L10n.tr(
+        'Koristimo centar grada: $city. Dozvolite lokaciju za tačan prikaz u blizini.',
+        'Using the center of $city. Allow location for accurate nearby view.',
+      );
+  static String get locationDeniedTitle =>
+      L10n.tr('Lokacija nije dozvoljena', 'Location not allowed');
+  static String locationDeniedBody(String city) => L10n.tr(
+        'VauVau koristi vašu lokaciju da prikaže pse u blizini i status „U šetnji“. Možete nastaviti sa gradom $city kao podrazumevanom lokacijom.',
+        'VauVau uses your location to show nearby dogs and “On a walk” status. You can continue with $city as the default.',
+      );
+  static String get locationPermanentTitle =>
+      L10n.tr('Lokacija je trajno odbijena', 'Location permanently denied');
+  static String get locationPermanentBody => L10n.tr(
+        'Uključite lokaciju za VauVau u podešavanjima uređaja da biste videli pse oko sebe.',
+        'Enable location for VauVau in device settings to see dogs around you.',
+      );
+  static String get locationDisabledTitle =>
+      L10n.tr('Usluge lokacije su isključene', 'Location services off');
+  static String locationDisabledBody(String city) => L10n.tr(
+        'Uključite GPS / usluge lokacije na uređaju. Do tada koristimo centar grada: $city.',
+        'Turn on GPS / location services. Until then we use the center of $city.',
+      );
+  static String get allowLocation => L10n.tr('Dozvoli lokaciju', 'Allow location');
+  static String get openSettings => L10n.tr('Otvori podešavanja', 'Open settings');
+  static String useDefaultCity(String city) =>
+      L10n.tr('Koristi $city', 'Use $city');
 
-  static String remaining(int minutes) => 'Aktivno još $minutes min';
+  static String remaining(int minutes) => L10n.tr(
+        'Aktivno još $minutes min',
+        '$minutes min left',
+      );
 
-  static String nearbyCount(int count) => '$count aktivnih pasa u blizini';
+  static String nearbyCount(int count) => L10n.isEnglish
+      ? '$count active dogs nearby'
+      : '$count aktivnih pasa u blizini';
 
   static String lastVerifiedOn(DateTime date) {
     final day = date.day.toString().padLeft(2, '0');
@@ -329,6 +395,6 @@ abstract final class MapStrings {
           RegExp(r'(\d)(?=(\d{3})+$)'),
           (match) => '${match[1]}.',
         );
-    return '$formatted RSD / noć';
+    return L10n.tr('$formatted RSD / noć', '$formatted RSD / night');
   }
 }

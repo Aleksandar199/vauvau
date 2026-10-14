@@ -81,21 +81,21 @@ class _PlacePreviewSheetState extends ConsumerState<PlacePreviewSheet> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(place.name, style: theme.textTheme.titleLarge),
-                const SizedBox(height: 10),
+                SizedBox(height: 10),
                 Wrap(
                   spacing: 8,
                   runSpacing: 8,
                   children: [
                     if (place.isEmergencyService ||
                         (place.is24_7 && place.type == MapPlaceType.vet))
-                      const _Badge(
+                      _Badge(
                         label: MapStrings.emergencyBadge,
                         background: Color(0xFFB91C1C),
                         foreground: Colors.white,
                       )
                     else
                       _Badge(
-                        label: _categoryBadge(place.type),
+                        label: _categoryBadge(place),
                         background: place.pinColor,
                         foreground: Colors.white,
                       ),
@@ -109,37 +109,43 @@ class _PlacePreviewSheetState extends ConsumerState<PlacePreviewSheet> {
                         foreground: Colors.white,
                       ),
                     if (place.petFriendly)
-                      const _Badge(
+                      _Badge(
                         label: MapStrings.amenityDogFriendly,
                         background: Color(0xFFEEF2FF),
                         foreground: Color(0xFF312E81),
                       ),
+                    if (place.dogFriendlyIndoor == true)
+                      _Badge(
+                        label: MapStrings.amenityIndoor,
+                        background: Color(0xFFDCFCE7),
+                        foreground: Color(0xFF166534),
+                      ),
                     if (place.dogFriendlyOutdoor == true)
-                      const _Badge(
+                      _Badge(
                         label: MapStrings.amenityOutdoor,
                         background: Color(0xFFDCFCE7),
                         foreground: Color(0xFF166534),
                       ),
                     if (place.waterAvailable == true)
-                      const _Badge(
+                      _Badge(
                         label: MapStrings.amenityWater,
                         background: Color(0xFFE0F2FE),
                         foreground: Color(0xFF075985),
                       ),
                     if (place.overnightStay)
-                      const _Badge(
+                      _Badge(
                         label: MapStrings.amenityOvernight,
                         background: Color(0xFFEEF2FF),
                         foreground: Color(0xFF312E81),
                       ),
                     if (place.dayCare)
-                      const _Badge(
+                      _Badge(
                         label: MapStrings.amenityDayCare,
                         background: Color(0xFFFEF3C7),
                         foreground: Color(0xFF92400E),
                       ),
                     if (place.hasYard)
-                      const _Badge(
+                      _Badge(
                         label: MapStrings.amenityYard,
                         background: Color(0xFFDCFCE7),
                         foreground: Color(0xFF166534),
@@ -162,7 +168,7 @@ class _PlacePreviewSheetState extends ConsumerState<PlacePreviewSheet> {
                     ),
                   ),
                 ],
-                const SizedBox(height: 12),
+                SizedBox(height: 12),
                 Text(
                   MapStrings.addressAndDistance(
                     place.address,
@@ -171,14 +177,14 @@ class _PlacePreviewSheetState extends ConsumerState<PlacePreviewSheet> {
                   style: theme.textTheme.bodyMedium,
                 ),
                 if (place.openingHours.trim().isNotEmpty) ...[
-                  const SizedBox(height: 6),
+                  SizedBox(height: 6),
                   Text(
                     '${MapStrings.hoursLabel}: ${place.openingHours.trim()}',
                     style: theme.textTheme.bodyMedium,
                   ),
                 ],
                 if (_expanded) ...[
-                  const SizedBox(height: 12),
+                  SizedBox(height: 12),
                   if (place.source.isNotEmpty)
                     Text(
                       '${MapStrings.sourceLabel}: ${place.source}',
@@ -190,7 +196,7 @@ class _PlacePreviewSheetState extends ConsumerState<PlacePreviewSheet> {
                       style: theme.textTheme.titleMedium,
                     ),
                   if (place.nearbyDogs > 0) ...[
-                    const SizedBox(height: 4),
+                    SizedBox(height: 4),
                     Text(MapStrings.nearbyCount(place.nearbyDogs)),
                   ],
                   const SizedBox(height: 12),
@@ -202,21 +208,21 @@ class _PlacePreviewSheetState extends ConsumerState<PlacePreviewSheet> {
                         widget.onJoin();
                       },
                       icon: const Icon(Icons.directions_walk),
-                      label: const Text(MapStrings.join),
+                      label: Text(MapStrings.join),
                     ),
                   ),
                 ],
-                const SizedBox(height: 20),
+                SizedBox(height: 20),
                 Row(
                   children: [
                     Expanded(
                       child: FilledButton.icon(
                         onPressed: () => setState(() => _expanded = true),
                         icon: const Icon(Icons.info_outline),
-                        label: const Text(MapStrings.openProfile),
+                        label: Text(MapStrings.openProfile),
                       ),
                     ),
-                    const SizedBox(width: 12),
+                    SizedBox(width: 12),
                     Expanded(
                       child: FilledButton.tonalIcon(
                         onPressed: () {
@@ -224,7 +230,7 @@ class _PlacePreviewSheetState extends ConsumerState<PlacePreviewSheet> {
                           widget.onDirections();
                         },
                         icon: const Icon(Icons.map_outlined),
-                        label: const Text(MapStrings.openNavigation),
+                        label: Text(MapStrings.openNavigation),
                       ),
                     ),
                   ],
@@ -240,11 +246,11 @@ class _PlacePreviewSheetState extends ConsumerState<PlacePreviewSheet> {
                           raw.startsWith('http') ? raw : 'https://$raw',
                         );
                         if (uri != null) {
-                          const ExternalLinkLauncher().open(uri);
+                          ExternalLinkLauncher().open(uri);
                         }
                       },
                       icon: const Icon(Icons.language),
-                      label: const Text(MapStrings.websiteAction),
+                      label: Text(MapStrings.websiteAction),
                     ),
                   ),
                 ],
@@ -262,7 +268,7 @@ class _PlacePreviewSheetState extends ConsumerState<PlacePreviewSheet> {
                         widget.onCall!();
                       },
                       icon: const Icon(Icons.call),
-                      label: const Text(MapStrings.callNow),
+                      label: Text(MapStrings.callNow),
                     ),
                   ),
                 ],
@@ -281,7 +287,7 @@ class _PlacePreviewSheetState extends ConsumerState<PlacePreviewSheet> {
                           visualDensity: VisualDensity.compact,
                         ),
                         onPressed: () => _openReportChangeDialog(context),
-                        child: const FittedBox(
+                        child: FittedBox(
                           fit: BoxFit.scaleDown,
                           child: Text(
                             MapStrings.reportChange,
@@ -309,7 +315,7 @@ class _PlacePreviewSheetState extends ConsumerState<PlacePreviewSheet> {
                             Navigator.of(context).pop();
                             widget.onInappropriate!();
                           },
-                          child: const FittedBox(
+                          child: FittedBox(
                             fit: BoxFit.scaleDown,
                             child: Text(
                               ModerationStrings.reportAction,
@@ -411,13 +417,13 @@ class _ReportChangeSheet extends StatefulWidget {
 }
 
 class _ReportChangeSheetState extends State<_ReportChangeSheet> {
-  static const _changeTypes = <String>[
-    MapStrings.reportChangeConfirmVerified,
-    MapStrings.reportChangeWrongHours,
-    MapStrings.reportChangeClosed,
-    MapStrings.reportChangeWrongLocation,
-    MapStrings.reportChangeOther,
-  ];
+  List<String> get _changeTypes => [
+        MapStrings.reportChangeConfirmVerified,
+        MapStrings.reportChangeWrongHours,
+        MapStrings.reportChangeClosed,
+        MapStrings.reportChangeWrongLocation,
+        MapStrings.reportChangeOther,
+      ];
 
   final _formKey = GlobalKey<FormState>();
   final _descriptionController = TextEditingController();
@@ -454,15 +460,15 @@ class _ReportChangeSheetState extends State<_ReportChangeSheet> {
                     color: theme.colorScheme.onSurfaceVariant,
                   ),
                 ),
-                const SizedBox(height: 8),
+                SizedBox(height: 8),
                 Text(
                   MapStrings.reportBody,
                   style: theme.textTheme.bodySmall,
                 ),
-                const SizedBox(height: 16),
+                SizedBox(height: 16),
                 DropdownButtonFormField<String>(
                   initialValue: _selectedType,
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     labelText: MapStrings.reportChangeTypeLabel,
                     border: OutlineInputBorder(),
                   ),
@@ -480,13 +486,13 @@ class _ReportChangeSheetState extends State<_ReportChangeSheet> {
                       ? MapStrings.reportChangeTypeRequired
                       : null,
                 ),
-                const SizedBox(height: 16),
+                SizedBox(height: 16),
                 TextFormField(
                   controller: _descriptionController,
                   enabled: !_submitting,
                   maxLines: 3,
                   maxLength: 500,
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     labelText: MapStrings.reportChangeDescriptionLabel,
                     hintText: MapStrings.reportChangeDescriptionHint,
                     border: OutlineInputBorder(),
@@ -502,7 +508,7 @@ class _ReportChangeSheetState extends State<_ReportChangeSheet> {
                     ),
                   ),
                 ],
-                const SizedBox(height: 16),
+                SizedBox(height: 16),
                 Row(
                   children: [
                     Expanded(
@@ -510,7 +516,7 @@ class _ReportChangeSheetState extends State<_ReportChangeSheet> {
                         onPressed: _submitting
                             ? null
                             : () => Navigator.of(context).pop(false),
-                        child: const Text(MapStrings.cancel),
+                        child: Text(MapStrings.cancel),
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -525,7 +531,7 @@ class _ReportChangeSheetState extends State<_ReportChangeSheet> {
                                   strokeWidth: 2,
                                 ),
                               )
-                            : const Text(MapStrings.reportChangeSubmit),
+                            : Text(MapStrings.reportChangeSubmit),
                       ),
                     ),
                   ],
@@ -723,11 +729,17 @@ class _Badge extends StatelessWidget {
   }
 }
 
-String _categoryBadge(MapPlaceType type) {
-  return switch (type) {
-    MapPlaceType.park => MapStrings.dogParkBadge,
-    MapPlaceType.cafe => MapStrings.cafeFriendlyBadge,
-    MapPlaceType.restaurant => MapStrings.restaurantBadge,
+String _categoryBadge(MapPlace place) {
+  return switch (place.type) {
+    MapPlaceType.park => place.isOfficialDogPark
+        ? MapStrings.dogParkBadge
+        : MapStrings.publicParkBadge,
+    MapPlaceType.cafe => place.petFriendly
+        ? MapStrings.cafeFriendlyBadge
+        : MapStrings.cafePlainBadge,
+    MapPlaceType.restaurant => place.petFriendly
+        ? MapStrings.restaurantBadge
+        : MapStrings.restaurantPlainBadge,
     MapPlaceType.petShop => MapStrings.petShop,
     MapPlaceType.groomer => MapStrings.groomer,
     MapPlaceType.vet => MapStrings.vet,

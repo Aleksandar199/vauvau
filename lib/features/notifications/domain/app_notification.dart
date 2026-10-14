@@ -1,4 +1,12 @@
-enum NotificationKind { match, walkRequest, chatMessage, like, superLike }
+enum NotificationKind {
+  match,
+  walkRequest,
+  chatMessage,
+  like,
+  superLike,
+  groupMessage,
+  eventMessage,
+}
 
 class AppNotification {
   const AppNotification({
@@ -10,6 +18,9 @@ class AppNotification {
     this.isRead = false,
     this.dogId,
     this.fromUserId,
+    this.conversationId,
+    this.groupId,
+    this.eventId,
   });
 
   final String id;
@@ -20,6 +31,9 @@ class AppNotification {
   final bool isRead;
   final String? dogId;
   final String? fromUserId;
+  final String? conversationId;
+  final String? groupId;
+  final String? eventId;
 
   AppNotification copyWith({bool? isRead}) {
     return AppNotification(
@@ -31,6 +45,9 @@ class AppNotification {
       isRead: isRead ?? this.isRead,
       dogId: dogId,
       fromUserId: fromUserId,
+      conversationId: conversationId,
+      groupId: groupId,
+      eventId: eventId,
     );
   }
 }

@@ -21,7 +21,8 @@ Future<void> showReminderFormSheet({
     builder: (sheetContext) {
       return Padding(
         padding: EdgeInsets.only(
-          bottom: MediaQuery.viewInsetsOf(sheetContext).bottom,
+          // Extra lift so "Sačuvaj" clears the phone gesture / nav bar.
+          bottom: MediaQuery.viewInsetsOf(sheetContext).bottom + 30,
         ),
         child: ReminderFormSheet(
           dogs: dogs,
@@ -113,7 +114,7 @@ class _ReminderFormSheetState extends ConsumerState<ReminderFormSheet> {
               fontWeight: FontWeight.w800,
             ),
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           if (multiDog) ...[
             Text(
               ReminderStrings.forWhichDog,
@@ -132,7 +133,7 @@ class _ReminderFormSheetState extends ConsumerState<ReminderFormSheet> {
                 }
               },
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
           ],
           TextField(
             controller: _title,
@@ -142,7 +143,7 @@ class _ReminderFormSheetState extends ConsumerState<ReminderFormSheet> {
             ),
             textCapitalization: TextCapitalization.sentences,
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
           ListTile(
             contentPadding: EdgeInsets.zero,
             title: Text(ReminderStrings.dateLabel),
@@ -153,19 +154,19 @@ class _ReminderFormSheetState extends ConsumerState<ReminderFormSheet> {
             trailing: const Icon(Icons.calendar_today_outlined),
             onTap: _pickDate,
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           Text(
             ReminderStrings.repeatFieldLabel,
             style: theme.textTheme.labelLarge,
           ),
-          const SizedBox(height: 4),
+          SizedBox(height: 4),
           Text(
             ReminderStrings.repeatHint,
             style: theme.textTheme.bodySmall?.copyWith(
               color: theme.colorScheme.onSurface.withValues(alpha: 0.65),
             ),
           ),
-          const SizedBox(height: 6),
+          SizedBox(height: 6),
           DropdownButtonFormField<ReminderRepeat>(
             initialValue: _repeat,
             items: [
@@ -182,12 +183,12 @@ class _ReminderFormSheetState extends ConsumerState<ReminderFormSheet> {
             },
           ),
           if (_repeat == ReminderRepeat.custom) ...[
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
             Text(
               ReminderStrings.customIntervalLabel,
               style: theme.textTheme.labelLarge,
             ),
-            const SizedBox(height: 4),
+            SizedBox(height: 4),
             Text(
               ReminderStrings.customIntervalHint,
               style: theme.textTheme.bodySmall?.copyWith(
@@ -203,7 +204,7 @@ class _ReminderFormSheetState extends ConsumerState<ReminderFormSheet> {
                   child: TextField(
                     controller: _customCount,
                     keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       labelText: 'Broj',
                     ),
                   ),
@@ -212,7 +213,7 @@ class _ReminderFormSheetState extends ConsumerState<ReminderFormSheet> {
                 Expanded(
                   child: DropdownButtonFormField<CustomRepeatUnit>(
                     initialValue: _customUnit,
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       labelText: 'Jedinica',
                     ),
                     items: [
@@ -232,19 +233,19 @@ class _ReminderFormSheetState extends ConsumerState<ReminderFormSheet> {
               ],
             ),
           ],
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
           Text(
             ReminderStrings.remindMeLabel,
             style: theme.textTheme.labelLarge,
           ),
-          const SizedBox(height: 4),
+          SizedBox(height: 4),
           Text(
             ReminderStrings.remindMeHint,
             style: theme.textTheme.bodySmall?.copyWith(
               color: theme.colorScheme.onSurface.withValues(alpha: 0.65),
             ),
           ),
-          const SizedBox(height: 6),
+          SizedBox(height: 6),
           DropdownButtonFormField<ReminderOffset>(
             initialValue: _offset,
             items: [
@@ -260,17 +261,17 @@ class _ReminderFormSheetState extends ConsumerState<ReminderFormSheet> {
               }
             },
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
           TextField(
             controller: _note,
             maxLines: 3,
-            decoration: const InputDecoration(
+            decoration: InputDecoration(
               labelText: ReminderStrings.noteLabel,
               hintText: ReminderStrings.noteHint,
             ),
             textCapitalization: TextCapitalization.sentences,
           ),
-          const SizedBox(height: 20),
+          SizedBox(height: 20),
           FilledButton(
             onPressed: _saving ? null : _save,
             child: Text(
@@ -337,7 +338,7 @@ class _ReminderFormSheetState extends ConsumerState<ReminderFormSheet> {
       }
       navigator.pop();
       messenger.showSnackBar(
-        const SnackBar(content: Text(ReminderStrings.saved)),
+        SnackBar(content: Text(ReminderStrings.saved)),
       );
     } catch (_) {
       if (!mounted) {
@@ -345,7 +346,7 @@ class _ReminderFormSheetState extends ConsumerState<ReminderFormSheet> {
       }
       setState(() => _saving = false);
       messenger.showSnackBar(
-        const SnackBar(content: Text(ReminderStrings.saveError)),
+        SnackBar(content: Text(ReminderStrings.saveError)),
       );
     }
   }

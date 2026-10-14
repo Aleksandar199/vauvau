@@ -1,0 +1,9 @@
+[
+  {"id": "nis-hotel-animal-house", "name": "Pansion za pse Animal House", "category": "dogHotel", "address": "Mariborska 7, Niš", "query": "Mariborska 7"},
+  {"id": "nis-hotel-happy-paws", "name": "Pansion za pse Happy Paws", "category": "dogHotel", "address": "Babički odredi 130, Niš", "query": "Babičkog odreda 130"},
+  {"id": "nis-hotel-stevanovic", "name": "Pansion Stevanović — dom za pse i mace", "category": "dogHotel", "address": "Visočka 21, Niš", "query": "Visočka 21"},
+  {"id": "nis-hotel-oni", "name": "Hotel za pse Oni", "category": "dogHotel", "address": "Vinsenta Van Goga 10, Niš", "query": "Vinsenta Van Goga 10"},
+  {"id": "nis-training-dog-guard-team", "name": "Dog Guard Team — dresura pasa", "category": "training", "address": "Obrenovićeva 59, Niš", "query": "Obrenovićeva 59"},
+  {"id": "nis-training-baci-pet", "name": "Dresura pasa Baci Pet", "category": "training", "address": "Đorđa Stamenkovića 11, Čalije, Niš", "query": "Đorđa Stamenkovića 11"},
+  {"id": "nis-vet-dr-beli", "name": "Dr Beli Vet", "category": "vet", "address": "Drakčeta Milovanovića 14A, Niš", "query": "Дракчета Миловановића 14"}
+]

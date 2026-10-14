@@ -1,0 +1,266 @@
+[
+    {
+        "id":  "kg-park-veliki-park",
+        "latitude":  44.017661,
+        "longitude":  20.904234,
+        "precision":  "feature",
+        "geocodeQuery":  "Veliki park, Kragujevac",
+        "geocodeLabel":  "ÐÐµÐ»Ð¸ÐºÐ¸ Ð¿Ð°ÑÐº |   | leisure=park"
+    },
+    {
+        "id":  "kg-park-sumarice",
+        "latitude":  44.022096,
+        "longitude":  20.883832,
+        "precision":  "feature",
+        "geocodeQuery":  "Spomen-park Kragujevački oktobar, Kragujevac",
+        "geocodeLabel":  "Memorial Park \"Kragujevac October\" |   | leisure=park"
+    },
+    {
+        "id":  "kg-route-kej-lepenice",
+        "latitude":  44.003119,
+        "longitude":  20.906062,
+        "precision":  "feature",
+        "geocodeQuery":  "Lepenica, Kragujevac",
+        "geocodeLabel":  "ÐÐµÐ¿ÐµÐ½Ð¸ÑÐ° |   | waterway=river"
+    },
+    {
+        "id":  "kg-trg-radomira-putnika",
+        "latitude":  44.010928,
+        "longitude":  20.916326,
+        "precision":  "street",
+        "geocodeQuery":  "Trg Radomira Putnika, Kragujevac",
+        "geocodeLabel":  "Ð¢ÑÐ³ Ð²Ð¾ÑÐ²Ð¾Ð´Ðµ Ð Ð°Ð´Ð¾Ð¼Ð¸ÑÐ° ÐÑÑÐ½Ð¸ÐºÐ° |   | place=square"
+    },
+    {
+        "id":  "kg-dogpark-gradska-uprava",
+        "latitude":  44.013223,
+        "longitude":  20.919,
+        "precision":  "street",
+        "geocodeQuery":  "Trg slobode 3, Kragujevac",
+        "geocodeLabel":  "Ð¢ÑÐ³ ÑÐ»Ð¾Ð±Ð¾Ð´Ðµ |   | highway=footway"
+    },
+    {
+        "id":  "kg-dogpark-veliki-park",
+        "latitude":  44.022096,
+        "longitude":  20.883832,
+        "precision":  "feature",
+        "geocodeQuery":  "skate park, Kragujevac",
+        "geocodeLabel":  "Memorial Park \"Kragujevac October\" |   | leisure=park"
+    },
+    {
+        "id":  "kg-dogpark-metino-brdo",
+        "latitude":  43.996615,
+        "longitude":  20.923455,
+        "precision":  "feature",
+        "geocodeQuery":  "Metino brdo, Kragujevac",
+        "geocodeLabel":  "ÐÐµÑÐ¸Ð½Ð¾ ÐÑÐ´Ð¾ |   | leisure=park"
+    },
+    {
+        "id":  "kg-shop-pawz-sapice",
+        "latitude":  44.009103,
+        "longitude":  20.913829,
+        "precision":  "street",
+        "geocodeQuery":  "Kneza Mihaila 33, Kragujevac",
+        "geocodeLabel":  "ÐÐ½ÐµÐ·Ð° ÐÐ¸Ñ\u0085Ð°Ð¸Ð»Ð° |   | highway=secondary"
+    },
+    {
+        "id":  "kg-shop-pet-centar-save-kovacevica",
+        "latitude":  44.011042,
+        "longitude":  20.919177,
+        "precision":  "street",
+        "geocodeQuery":  "Save Kovačevića, Kragujevac",
+        "geocodeLabel":  "Ð¡Ð°Ð²Ðµ ÐÐ¾Ð²Ð°ÑÐµÐ²Ð¸ÑÐ° |   | highway=tertiary"
+    },
+    {
+        "id":  "kg-shop-zoo-centar",
+        "latitude":  44.011277,
+        "longitude":  20.915185,
+        "precision":  "street",
+        "geocodeQuery":  "Darinke Plave Pavlović 1, Kragujevac",
+        "geocodeLabel":  "ÐÐ°ÑÐ¸Ð½ÐºÐµ ÐÐ»Ð°Ð²Ðµ ÐÐ°Ð²Ð»Ð¾Ð²Ð¸Ñ |   | highway=service"
+    },
+    {
+        "id":  "kg-shop-premium-pet",
+        "latitude":  44.011042,
+        "longitude":  20.919177,
+        "precision":  "street",
+        "geocodeQuery":  "Save Kovačevića 48, Kragujevac",
+        "geocodeLabel":  "Ð¡Ð°Ð²Ðµ ÐÐ¾Ð²Ð°ÑÐµÐ²Ð¸ÑÐ° |   | highway=tertiary"
+    },
+    {
+        "id":  "kg-shop-scooby-doo",
+        "latitude":  44.012661,
+        "longitude":  20.911556,
+        "precision":  "street",
+        "geocodeQuery":  "Kralja Aleksandra I Karađorđevića 70, Kragujevac",
+        "geocodeLabel":  "ÐÑÐ°ÑÐ° ÐÐ»ÐµÐºÑÐ°Ð½Ð´ÑÐ° I ÐÐ°ÑÐ°ÑÐ¾ÑÑÐµÐ²Ð¸ÑÐ° |   | highway=tertiary"
+    },
+    {
+        "id":  "kg-shop-pet-centar-big",
+        "latitude":  44.008564,
+        "longitude":  20.899145,
+        "precision":  "street",
+        "geocodeQuery":  "Dimitrija Tucovića 23, Kragujevac",
+        "geocodeLabel":  "ÐÐ¸Ð¼Ð¸ÑÑÐ¸ÑÐ° Ð¢ÑÑÐ¾Ð²Ð¸ÑÐ° |   | highway=tertiary"
+    },
+    {
+        "id":  "kg-wash-snoopy",
+        "latitude":  44.030697,
+        "longitude":  20.903282,
+        "precision":  "street",
+        "geocodeQuery":  "Ljube Vučkovića 2, Kragujevac",
+        "geocodeLabel":  "ÐÑÐ±Ðµ ÐÑÑÐºÐ¾Ð²Ð¸ÑÐ° |   | highway=residential"
+    },
+    {
+        "id":  "kg-vet-kragujvet",
+        "latitude":  44.013564,
+        "longitude":  20.913171,
+        "precision":  "street",
+        "geocodeQuery":  "Kneza Miloša 1, Kragujevac",
+        "geocodeLabel":  "ÐÐ½ÐµÐ·Ð° ÐÐ¸Ð»Ð¾ÑÐ° |   | highway=tertiary"
+    },
+    {
+        "id":  "kg-vet-kragujvet-pet",
+        "latitude":  44.017176,
+        "longitude":  20.912366,
+        "precision":  "street",
+        "geocodeQuery":  "Luja Pastera 12, Kragujevac",
+        "geocodeLabel":  "ÐÑÑÐ° ÐÐ°ÑÑÐµÑÐ° |   | highway=residential"
+    },
+    {
+        "id":  "kg-vet-radicevic",
+        "latitude":  44.012661,
+        "longitude":  20.911556,
+        "precision":  "street",
+        "geocodeQuery":  "Kralja Aleksandra I Karađorđevića 124, Kragujevac",
+        "geocodeLabel":  "ÐÑÐ°ÑÐ° ÐÐ»ÐµÐºÑÐ°Ð½Ð´ÑÐ° I ÐÐ°ÑÐ°ÑÐ¾ÑÑÐµÐ²Ð¸ÑÐ° |   | highway=tertiary"
+    },
+    {
+        "id":  "kg-vet-daca-vet",
+        "latitude":  44.007148,
+        "longitude":  20.916498,
+        "precision":  "house",
+        "geocodeQuery":  "Sinđelićeva 8, Kragujevac",
+        "geocodeLabel":  "Academy of Professional Studies Sumadija, Department in Kragujevac | ÐÐ¾ÑÐ¾Ð²ÑÐºÐ° 8 | amenity=school"
+    },
+    {
+        "id":  "kg-vet-dog-ma",
+        "latitude":  44.010008,
+        "longitude":  20.92643,
+        "precision":  "street",
+        "geocodeQuery":  "Braće Poljakovića 27, Kragujevac",
+        "geocodeLabel":  "ÐÑÐ°ÑÐµ ÐÐ¾ÑÐ°ÐºÐ¾Ð²Ð¸ÑÐ° |   | highway=residential"
+    },
+    {
+        "id":  "kg-vet-dr-karic",
+        "latitude":  44.010768,
+        "longitude":  20.904557,
+        "precision":  "street",
+        "geocodeQuery":  "Daničićeva 64, Kragujevac",
+        "geocodeLabel":  "ÐÐ°Ð½Ð¸ÑÐ¸ÑÐµÐ²Ð° |   | highway=tertiary"
+    },
+    {
+        "id":  "kg-vet-fortuna",
+        "latitude":  44.006452,
+        "longitude":  20.905278,
+        "precision":  "street",
+        "geocodeQuery":  "Gružanska 1, Kragujevac",
+        "geocodeLabel":  "ÐÑÑÐ¶Ð°Ð½ÑÐºÐ° |   | highway=tertiary"
+    },
+    {
+        "id":  "kg-vet-lav-vet",
+        "latitude":  44.012598,
+        "longitude":  20.910769,
+        "precision":  "street",
+        "geocodeQuery":  "Cetinjska 3, Kragujevac",
+        "geocodeLabel":  "Ð¦ÐµÑÐ¸ÑÑÐºÐ° |   | highway=residential"
+    },
+    {
+        "id":  "kg-vet-medicus",
+        "latitude":  44.026158,
+        "longitude":  20.910113,
+        "precision":  "street",
+        "geocodeQuery":  "Bregalnička 8, Kragujevac",
+        "geocodeLabel":  "ÐÑÐµÐ³Ð°Ð»Ð½Ð¸ÑÐºÐ° |   | highway=residential"
+    },
+    {
+        "id":  "kg-vet-medikavet",
+        "latitude":  44.002886,
+        "longitude":  20.899357,
+        "precision":  "street",
+        "geocodeQuery":  "Hadži Milentijeva 3, Kragujevac",
+        "geocodeLabel":  "Ð¥Ð°ÑÐ¸ ÐÐ¸Ð»ÐµÐ½ÑÐ¸ÑÐµÐ²Ð° |   | highway=residential"
+    },
+    {
+        "id":  "kg-vet-milvet",
+        "latitude":  44.017162,
+        "longitude":  20.91501,
+        "precision":  "street",
+        "geocodeQuery":  "Janka Veselinovića 10, Kragujevac",
+        "geocodeLabel":  "ÐÐ°Ð½ÐºÐ° ÐÐµÑÐµÐ»Ð¸Ð½Ð¾Ð²Ð¸ÑÐ° |   | highway=residential"
+    },
+    {
+        "id":  "kg-vet-vetland",
+        "latitude":  44.01461,
+        "longitude":  20.907018,
+        "precision":  "street",
+        "geocodeQuery":  "Slobodana Perovića 7, Kragujevac",
+        "geocodeLabel":  "Ð¡Ð»Ð¾Ð±Ð¾Ð´Ð°Ð½Ð° ÐÐµÑÐ¾Ð²Ð¸ÑÐ° |   | highway=residential"
+    },
+    {
+        "id":  "kg-groom-molly",
+        "latitude":  44.012661,
+        "longitude":  20.911556,
+        "precision":  "street",
+        "geocodeQuery":  "Kralja Aleksandra I Karađorđevića 136, Kragujevac",
+        "geocodeLabel":  "ÐÑÐ°ÑÐ° ÐÐ»ÐµÐºÑÐ°Ð½Ð´ÑÐ° I ÐÐ°ÑÐ°ÑÐ¾ÑÑÐµÐ²Ð¸ÑÐ° |   | highway=tertiary"
+    },
+    {
+        "id":  "kg-groom-grooming",
+        "latitude":  44.009103,
+        "longitude":  20.913829,
+        "precision":  "street",
+        "geocodeQuery":  "Kneza Mihaila 144, Kragujevac",
+        "geocodeLabel":  "ÐÐ½ÐµÐ·Ð° ÐÐ¸Ñ\u0085Ð°Ð¸Ð»Ð° |   | highway=secondary"
+    },
+    {
+        "id":  "kg-groom-laika",
+        "latitude":  44.00816,
+        "longitude":  20.903169,
+        "precision":  "street",
+        "geocodeQuery":  "Starine Novaka 8, Kragujevac",
+        "geocodeLabel":  "Ð¡ÑÐ°ÑÐ¸Ð½Ðµ ÐÐ¾Ð²Ð°ÐºÐ° |   | highway=residential"
+    },
+    {
+        "id":  "kg-cafe-kafemat-27",
+        "latitude":  44.021218,
+        "longitude":  20.904187,
+        "precision":  "house",
+        "geocodeQuery":  "Karađorđeva 19, Kragujevac",
+        "geocodeLabel":  "Kit commerce | ÐÑÐ°ÑÐ° ÐÐ¸Ð»Ð°Ð½Ð° ÑÐµÑÐ²ÑÑÐ¾Ð³ 19v | shop=car_parts"
+    },
+    {
+        "id":  "kg-cafe-coffee-dream-cetinjska",
+        "latitude":  44.012598,
+        "longitude":  20.910769,
+        "precision":  "street",
+        "geocodeQuery":  "Cetinjska 14, Kragujevac",
+        "geocodeLabel":  "Ð¦ÐµÑÐ¸ÑÑÐºÐ° |   | highway=residential"
+    },
+    {
+        "id":  "kg-cafe-coffee-dream-big",
+        "latitude":  44.008564,
+        "longitude":  20.899145,
+        "precision":  "street",
+        "geocodeQuery":  "Dimitrija Tucovića 23, Kragujevac",
+        "geocodeLabel":  "ÐÐ¸Ð¼Ð¸ÑÑÐ¸ÑÐ° Ð¢ÑÑÐ¾Ð²Ð¸ÑÐ° |   | highway=tertiary"
+    },
+    {
+        "id":  "kg-cafe-nase-mesto",
+        "latitude":  44.008431,
+        "longitude":  20.914387,
+        "precision":  "street",
+        "geocodeQuery":  "Kosovska 5, Kragujevac",
+        "geocodeLabel":  "ÐÐ¾ÑÐ¾Ð²ÑÐºÐ° |   | highway=tertiary"
+    }
+]

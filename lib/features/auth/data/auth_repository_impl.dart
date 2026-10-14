@@ -8,6 +8,7 @@ import '../domain/app_user.dart';
 import '../domain/auth_exception.dart';
 import '../domain/auth_repository.dart';
 import '../domain/user_dog_profile.dart';
+import 'account_deletion_service.dart';
 import 'firebase_auth_datasource.dart';
 import 'user_document.dart';
 
@@ -163,7 +164,7 @@ class AuthRepositoryImpl implements AuthRepository {
   Future<void> deleteAccount() async {
     final uid = _datasource.currentUser?.uid;
     if (uid == null || uid.isEmpty) {
-      throw const AuthException(AuthErrorCode.unknown);
+      throw AuthException(AuthErrorCode.unknown);
     }
     try {
       await _deleteOwnedData(uid);
@@ -178,39 +179,7 @@ class AuthRepositoryImpl implements AuthRepository {
     if (firestore == null) {
       return;
     }
-    await _deleteQuery(firestore.collection('dogs').where('ownerId', isEqualTo: uid));
-    await _deleteQuery(
-      firestore.collection('adoption_dogs').where('uploaderUserId', isEqualTo: uid),
-    );
-    await _deleteQuery(
-      firestore.collection('lost_dogs').where('uploaderUserId', isEqualTo: uid),
-    );
-    await _deleteQuery(
-      firestore.collection('users').doc(uid).collection('fcmInbox'),
-    );
-    await firestore.collection(userCollection).doc(uid).delete();
-  }
-
-  Future<void> _deleteQuery(Query<Map<String, dynamic>> query) async {
-    final snapshot = await query.get();
-    if (snapshot.docs.isEmpty) {
-      return;
-    }
-    final store = query.firestore;
-    var batch = store.batch();
-    var count = 0;
-    for (final doc in snapshot.docs) {
-      batch.delete(doc.reference);
-      count++;
-      if (count == 400) {
-        await batch.commit();
-        batch = store.batch();
-        count = 0;
-      }
-    }
-    if (count > 0) {
-      await batch.commit();
-    }
+    await AccountDeletionService(firestore: firestore).deleteAllUserData(uid);
   }
 
   @override
@@ -338,7 +307,7 @@ class AuthRepositoryImpl implements AuthRepository {
 
   AppUser _requireUser(User? user) {
     if (user == null) {
-      throw const AuthException(AuthErrorCode.unknown);
+      throw AuthException(AuthErrorCode.unknown);
     }
     return _mapAuthUser(user);
   }
@@ -346,7 +315,7 @@ class AuthRepositoryImpl implements AuthRepository {
   AuthException _mapFirebase(FirebaseAuthException error) {
     switch (error.code) {
       case 'invalid-email':
-        return const AuthException(
+        return AuthException(
           AuthErrorCode.invalidEmail,
           AppStrings.authInvalidEmail,
         );
@@ -354,33 +323,33 @@ class AuthRepositoryImpl implements AuthRepository {
       case 'invalid-credential':
       case 'user-not-found':
       case 'INVALID_LOGIN_CREDENTIALS':
-        return const AuthException(
+        return AuthException(
           AuthErrorCode.wrongPassword,
           AppStrings.authWrongPassword,
         );
       case 'weak-password':
-        return const AuthException(
+        return AuthException(
           AuthErrorCode.weakPassword,
           AppStrings.authWeakPassword,
         );
       case 'email-already-in-use':
       case 'account-exists-with-different-credential':
-        return const AuthException(
+        return AuthException(
           AuthErrorCode.emailInUse,
           AppStrings.authEmailInUse,
         );
       case 'network-request-failed':
-        return const AuthException(
+        return AuthException(
           AuthErrorCode.network,
           AppStrings.authNetwork,
         );
       case 'requires-recent-login':
-        return const AuthException(
+        return AuthException(
           AuthErrorCode.requiresRecentLogin,
           AppStrings.authRequiresRecentLogin,
         );
       default:
-        return const AuthException(
+        return AuthException(
           AuthErrorCode.unknown,
           AppStrings.authUnknownError,
         );

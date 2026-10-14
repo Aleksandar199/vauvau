@@ -13,10 +13,12 @@ class DogDraft {
     this.temperament = const [],
     this.cityId = SerbiaLocations.noviSadId,
     this.neighborhoodId,
+    this.customNeighborhoodName = '',
     this.photos = const [],
     this.vaccinated = false,
     this.chipped = false,
     this.sterilized = false,
+    this.bio = '',
     this.likesTags = const [],
     this.dislikesTags = const [],
   });
@@ -31,10 +33,12 @@ class DogDraft {
   final List<DogTemperament> temperament;
   final String? cityId;
   final String? neighborhoodId;
+  final String customNeighborhoodName;
   final List<String> photos;
   final bool vaccinated;
   final bool chipped;
   final bool sterilized;
+  final String bio;
   final List<String> likesTags;
   final List<String> dislikesTags;
 
@@ -51,10 +55,12 @@ class DogDraft {
     String? cityId,
     bool clearNeighborhood = false,
     String? neighborhoodId,
+    String? customNeighborhoodName,
     List<String>? photos,
     bool? vaccinated,
     bool? chipped,
     bool? sterilized,
+    String? bio,
     List<String>? likesTags,
     List<String>? dislikesTags,
   }) {
@@ -70,10 +76,14 @@ class DogDraft {
       cityId: cityId ?? this.cityId,
       neighborhoodId:
           clearNeighborhood ? null : (neighborhoodId ?? this.neighborhoodId),
+      customNeighborhoodName: clearNeighborhood
+          ? ''
+          : (customNeighborhoodName ?? this.customNeighborhoodName),
       photos: photos ?? this.photos,
       vaccinated: vaccinated ?? this.vaccinated,
       chipped: chipped ?? this.chipped,
       sterilized: sterilized ?? this.sterilized,
+      bio: bio ?? this.bio,
       likesTags: likesTags ?? this.likesTags,
       dislikesTags: dislikesTags ?? this.dislikesTags,
     );

@@ -61,7 +61,7 @@ class _LostDogsScreenState extends ConsumerState<LostDogsScreen>
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text(LostDogStrings.title),
+        title: Text(LostDogStrings.title),
         actions: [
           IconButton(
             tooltip: LostDogStrings.addCta,
@@ -81,7 +81,7 @@ class _LostDogsScreenState extends ConsumerState<LostDogsScreen>
           tabs: [
             Tab(text: '${LostDogStrings.tabLost} ${lost.length}'),
             Tab(text: '${LostDogStrings.tabFound} ${found.length}'),
-            const Tab(text: LostDogStrings.tabAll),
+            Tab(text: LostDogStrings.tabAll),
           ],
         ),
       ),
@@ -177,7 +177,7 @@ class _LostDogsScreenState extends ConsumerState<LostDogsScreen>
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
-          title: const Row(
+          title: Row(
             children: [
               Icon(Icons.check_circle_outline, color: Colors.green),
               SizedBox(width: 8),
@@ -192,7 +192,7 @@ class _LostDogsScreenState extends ConsumerState<LostDogsScreen>
           actions: [
             FilledButton(
               onPressed: () => Navigator.of(dialogContext).pop(),
-              child: const Text(LostDogStrings.ok),
+              child: Text(LostDogStrings.ok),
             ),
           ],
         );
@@ -255,17 +255,17 @@ class _LostDogCard extends ConsumerWidget {
                   child: Row(
                     children: [
                       if (!found) ...[
-                        const StatusBadge(
+                        StatusBadge(
                           label: LostDogStrings.urgentBadge,
                           tone: StatusBadgeTone.urgent,
                         ),
-                        const SizedBox(width: 6),
-                        const StatusBadge(
+                        SizedBox(width: 6),
+                        StatusBadge(
                           label: LostDogStrings.missingBadge,
                           tone: StatusBadgeTone.warning,
                         ),
                       ] else
-                        const StatusBadge(
+                        StatusBadge(
                           label: LostDogStrings.foundBadge,
                           tone: StatusBadgeTone.success,
                         ),
@@ -286,17 +286,17 @@ class _LostDogCard extends ConsumerWidget {
                       ? LostDogStrings.foundHeadline(dog.dogName)
                       : LostDogStrings.missingHeadline(dog.dogName),
                 ),
-                const SizedBox(height: 6),
+                SizedBox(height: 6),
                 Text(
                   LostDogStrings.breedLine(dog.breed),
                   style: TextStyle(fontSize: 13, color: Colors.grey.shade700),
                 ),
-                const SizedBox(height: 4),
+                SizedBox(height: 4),
                 CardLocationRow(
                   label: LostDogStrings.place(dog.city, dog.neighborhood),
                   iconColor: accent,
                 ),
-                const SizedBox(height: 4),
+                SizedBox(height: 4),
                 CardTimeLabel(
                   label: found
                       ? LostDogStrings.foundOn(
@@ -327,7 +327,7 @@ class _LostDogCard extends ConsumerWidget {
                     ),
                   ),
                 ],
-                const SizedBox(height: 12),
+                SizedBox(height: 12),
                 DetailPrimaryButton(
                   label: found
                       ? LostDogStrings.contactFinder
@@ -339,7 +339,7 @@ class _LostDogCard extends ConsumerWidget {
                     dog: dog,
                   ),
                 ),
-                const SizedBox(height: 8),
+                SizedBox(height: 8),
                 DetailPrimaryButton(
                   label: LostDogStrings.leaveComment,
                   icon: Icons.chat_bubble_outline,
@@ -370,7 +370,7 @@ class _LostDogCard extends ConsumerWidget {
                 if (isAdmin) ...[
                   TextButton(
                     onPressed: () => _confirmDelete(context, ref, dog.id),
-                    child: const Text(LostDogStrings.deletePost),
+                    child: Text(LostDogStrings.deletePost),
                   ),
                 ],
               ],
@@ -390,12 +390,12 @@ class _LostDogCard extends ConsumerWidget {
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
-          title: const Text(LostDogStrings.foundConfirmTitle),
-          content: const Text(LostDogStrings.foundConfirmBody),
+          title: Text(LostDogStrings.foundConfirmTitle),
+          content: Text(LostDogStrings.foundConfirmBody),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(dialogContext).pop(false),
-              child: const Text(LostDogStrings.cancel),
+              child: Text(LostDogStrings.cancel),
             ),
             FilledButton(
               onPressed: () => Navigator.of(dialogContext).pop(true),
@@ -423,19 +423,19 @@ class _LostDogCard extends ConsumerWidget {
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
-          title: const Text(LostDogStrings.deleteConfirmTitle),
-          content: const Text(LostDogStrings.deleteConfirmBody),
+          title: Text(LostDogStrings.deleteConfirmTitle),
+          content: Text(LostDogStrings.deleteConfirmBody),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(dialogContext).pop(false),
-              child: const Text(LostDogStrings.cancel),
+              child: Text(LostDogStrings.cancel),
             ),
             FilledButton(
               style: FilledButton.styleFrom(
                 backgroundColor: const Color(0xFFB91C1C),
               ),
               onPressed: () => Navigator.of(dialogContext).pop(true),
-              child: const Text(LostDogStrings.deletePost),
+              child: Text(LostDogStrings.deletePost),
             ),
           ],
         );
@@ -453,6 +453,9 @@ class _MatchBanner extends StatelessWidget {
   final LostDog match;
   final VoidCallback onOpen;
 
+  static const _ink = Color(0xFF78350F);
+  static const _border = Color(0xFFD97706);
+
   @override
   Widget build(BuildContext context) {
     final breed = match.breed.trim().isEmpty
@@ -464,7 +467,7 @@ class _MatchBanner extends StatelessWidget {
       decoration: BoxDecoration(
         color: const Color(0xFFFFFBEB),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFF59E0B), width: 1.4),
+        border: Border.all(color: _border, width: 1.4),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -478,14 +481,25 @@ class _MatchBanner extends StatelessWidget {
               ),
             ),
             style: const TextStyle(
-              color: Color(0xFF92400E),
+              color: _ink,
               fontWeight: FontWeight.w700,
+              fontSize: 13,
+              height: 1.35,
             ),
           ),
           const SizedBox(height: 8),
-          OutlinedButton(
+          OutlinedButton.icon(
             onPressed: onOpen,
-            child: Text(LostDogStrings.viewMatchProfile(match.dogName)),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: _ink,
+              side: const BorderSide(color: _border),
+              textStyle: const TextStyle(
+                fontWeight: FontWeight.w700,
+                fontSize: 13,
+              ),
+            ),
+            icon: const Icon(Icons.search, size: 18, color: _ink),
+            label: Text(LostDogStrings.viewMatchProfile(match.dogName)),
           ),
         ],
       ),

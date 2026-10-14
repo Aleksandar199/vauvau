@@ -15,7 +15,7 @@ class FirebaseInitErrorApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light(),
       darkTheme: AppTheme.dark(),
-      themeMode: ThemeMode.system,
+      themeMode: ThemeMode.dark,
       home: Scaffold(
         body: SafeArea(
           child: Padding(

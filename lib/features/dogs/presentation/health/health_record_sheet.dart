@@ -95,15 +95,15 @@ class _HealthRecordSheetState extends ConsumerState<HealthRecordSheet> {
               fontWeight: FontWeight.w800,
             ),
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           TextField(
             controller: _title,
             enabled: !_saving,
-            decoration: const InputDecoration(
+            decoration: InputDecoration(
               labelText: HealthStrings.titleLabel,
             ),
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           _DateField(
             label: HealthStrings.administeredDate,
             value: _administered,
@@ -130,27 +130,27 @@ class _HealthRecordSheetState extends ConsumerState<HealthRecordSheet> {
             onChanged: _saving || due == null
                 ? null
                 : (value) => setState(() => _reminder = value),
-            title: const Text(HealthStrings.reminderToggle),
-            subtitle: const Text(HealthStrings.reminderHint),
+            title: Text(HealthStrings.reminderToggle),
+            subtitle: Text(HealthStrings.reminderHint),
             contentPadding: EdgeInsets.zero,
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           TextField(
             controller: _notes,
             enabled: !_saving,
             maxLines: 3,
-            decoration: const InputDecoration(labelText: HealthStrings.notes),
+            decoration: InputDecoration(labelText: HealthStrings.notes),
           ),
-          const SizedBox(height: 20),
+          SizedBox(height: 20),
           FilledButton(
             onPressed: _saving ? null : _save,
             child: Text(_saving ? '...' : HealthStrings.save),
           ),
           if (widget.existing != null) ...[
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
             TextButton(
               onPressed: _saving ? null : _delete,
-              child: const Text(HealthStrings.delete),
+              child: Text(HealthStrings.delete),
             ),
           ],
         ],
@@ -194,7 +194,7 @@ class _HealthRecordSheetState extends ConsumerState<HealthRecordSheet> {
       if (mounted) {
         setState(() => _saving = false);
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text(HealthStrings.saveError)),
+          SnackBar(content: Text(HealthStrings.saveError)),
         );
       }
     }

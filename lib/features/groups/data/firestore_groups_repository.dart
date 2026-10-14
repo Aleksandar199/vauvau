@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import '../../../core/firebase/firestore_auth_guard.dart';
 import 'seed_breed_groups.dart';
 import '../domain/groups_models.dart';
 
@@ -63,46 +64,58 @@ class FirestoreGroupsRepository implements GroupsRepository {
   @override
   Stream<List<BreedGroup>> watchGroups() async* {
     await ensureSeeded();
-    yield* _col.snapshots().map((snapshot) {
-      final List<BreedGroup> approved = snapshot.docs
-          .map((doc) => BreedGroup.tryFromMap(doc.id, doc.data()))
-          .whereType<BreedGroup>()
-          .where((group) => group.isApproved)
-          .toList();
-      return SeedBreedGroups.sortByPopularity(approved);
-    });
+    yield* FirestoreAuthGuard.guardedStream<List<BreedGroup>>(
+      label: 'groups.watch',
+      empty: const [],
+      create: () => _col.snapshots().map((snapshot) {
+        final List<BreedGroup> approved = snapshot.docs
+            .map((doc) => BreedGroup.tryFromMap(doc.id, doc.data()))
+            .whereType<BreedGroup>()
+            .where((group) => group.isApproved)
+            .toList();
+        return SeedBreedGroups.sortByPopularity(approved);
+      }),
+    );
   }
 
   @override
   Stream<List<BreedGroup>> watchPendingGroups() async* {
     await ensureSeeded();
-    yield* _col.snapshots().map((snapshot) {
-      final List<BreedGroup> pending = snapshot.docs
-          .map((doc) => BreedGroup.tryFromMap(doc.id, doc.data()))
-          .whereType<BreedGroup>()
-          .where((group) => !group.isApproved)
-          .toList()
-        ..sort(
-          (BreedGroup a, BreedGroup b) {
-            final aAt = a.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
-            final bAt = b.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
-            return bAt.compareTo(aAt);
-          },
-        );
-      return pending;
-    });
+    yield* FirestoreAuthGuard.guardedStream<List<BreedGroup>>(
+      label: 'groups.pending',
+      empty: const [],
+      create: () => _col.snapshots().map((snapshot) {
+        final List<BreedGroup> pending = snapshot.docs
+            .map((doc) => BreedGroup.tryFromMap(doc.id, doc.data()))
+            .whereType<BreedGroup>()
+            .where((group) => !group.isApproved)
+            .toList()
+          ..sort(
+            (BreedGroup a, BreedGroup b) {
+              final aAt = a.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+              final bAt = b.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+              return bAt.compareTo(aAt);
+            },
+          );
+        return pending;
+      }),
+    );
   }
 
   @override
   Stream<List<GroupMessage>> watchMessages(String groupId) {
-    return _col
-        .doc(groupId)
-        .collection('messages')
-        .orderBy('createdAt')
-        .snapshots()
-        .map(
-          (snapshot) => snapshot.docs.map(_messageFromDoc).toList(),
-        );
+    return FirestoreAuthGuard.guardedStream<List<GroupMessage>>(
+      label: 'groups.messages',
+      empty: const [],
+      create: () => _col
+          .doc(groupId)
+          .collection('messages')
+          .orderBy('createdAt')
+          .snapshots()
+          .map(
+            (snapshot) => snapshot.docs.map(_messageFromDoc).toList(),
+          ),
+    );
   }
 
   @override
@@ -143,15 +156,19 @@ class FirestoreGroupsRepository implements GroupsRepository {
     if (currentUserId.isEmpty) {
       return Stream<DateTime?>.value(null);
     }
-    return _col
-        .doc(groupId)
-        .collection('members')
-        .doc(currentUserId)
-        .snapshots()
-        .map((snap) {
-      final created = snap.data()?['lastReadTimestamp'];
-      return created is Timestamp ? created.toDate() : null;
-    });
+    return FirestoreAuthGuard.guardedStream<DateTime?>(
+      label: 'groups.lastRead',
+      empty: null,
+      create: () => _col
+          .doc(groupId)
+          .collection('members')
+          .doc(currentUserId)
+          .snapshots()
+          .map((snap) {
+        final created = snap.data()?['lastReadTimestamp'];
+        return created is Timestamp ? created.toDate() : null;
+      }),
+    );
   }
 
   @override
@@ -189,8 +206,7 @@ class FirestoreGroupsRepository implements GroupsRepository {
     final data = <String, dynamic>{
       'title': trimmedTitle,
       'description': desc,
-      'imageUrl':
-          'https://images.unsplash.com/photo-1558788353-f76d92427f16?auto=format&fit=crop&w=400&q=80',
+      'imageUrl': '',
       'memberIds': <String>[currentUserId],
       'memberCount': 1,
       'sortOrder': 999,
@@ -239,6 +255,7 @@ class FirestoreGroupsRepository implements GroupsRepository {
     required String groupId,
     required String text,
     String imageUrl = '',
+    GroupMessage? replyTo,
   }) async {
     if (currentUserId.isEmpty) {
       throw StateError('Morate biti prijavljeni.');
@@ -256,6 +273,13 @@ class FirestoreGroupsRepository implements GroupsRepository {
       'text': trimmed,
       'imageUrl': imageUrl.trim(),
       'createdAt': FieldValue.serverTimestamp(),
+      if (replyTo != null) ...{
+        'replyToMessageId': replyTo.id,
+        'replyToText': _clipReply(replyTo.preview),
+        'replyToSenderName': replyTo.senderName.trim().isEmpty
+            ? 'Član'
+            : replyTo.senderName.trim(),
+      },
     });
     await groupRef.set(
       {
@@ -271,8 +295,74 @@ class FirestoreGroupsRepository implements GroupsRepository {
   Future<void> sendPhoto({
     required String groupId,
     required String imageUrl,
+    GroupMessage? replyTo,
   }) {
-    return sendMessage(groupId: groupId, text: '', imageUrl: imageUrl);
+    return sendMessage(
+      groupId: groupId,
+      text: '',
+      imageUrl: imageUrl,
+      replyTo: replyTo,
+    );
+  }
+
+  @override
+  Future<void> sendWalkInvite({
+    required String groupId,
+    required DateTime walkTime,
+    required String walkLocationName,
+  }) async {
+    if (currentUserId.isEmpty) {
+      throw StateError('Morate biti prijavljeni.');
+    }
+    final place = walkLocationName.trim();
+    final preview =
+        place.isEmpty ? 'Poziv na šetnju' : 'Poziv na šetnju: $place';
+    final groupRef = _col.doc(groupId);
+    await groupRef.collection('messages').add({
+      'senderId': currentUserId,
+      'senderName': senderName,
+      'senderAvatarUrl': senderAvatarUrl,
+      'text': preview,
+      'imageUrl': '',
+      'type': 'walk_invite',
+      'status': 'pending',
+      'walkTime': Timestamp.fromDate(walkTime),
+      'walkLocationName': place,
+      'acceptedByUserIds': <String>[],
+      'declinedByUserIds': <String>[],
+      'createdAt': FieldValue.serverTimestamp(),
+    });
+    await groupRef.set(
+      {
+        'lastMessage': preview,
+        'lastMessageAt': FieldValue.serverTimestamp(),
+        'lastMessageSenderId': currentUserId,
+      },
+      SetOptions(merge: true),
+    );
+  }
+
+  @override
+  Future<void> respondToWalkInvite({
+    required String groupId,
+    required String messageId,
+    required GroupWalkInviteStatus status,
+  }) {
+    if (currentUserId.isEmpty) {
+      return Future.value();
+    }
+    final accepted = status == GroupWalkInviteStatus.accepted;
+    return _col.doc(groupId).collection('messages').doc(messageId).update({
+      if (accepted) ...{
+        'acceptedByUserIds': FieldValue.arrayUnion([currentUserId]),
+        'declinedByUserIds': FieldValue.arrayRemove([currentUserId]),
+      } else ...{
+        'declinedByUserIds': FieldValue.arrayUnion([currentUserId]),
+        'acceptedByUserIds': FieldValue.arrayRemove([currentUserId]),
+      },
+      // Keep invite open for other members; personal state is in the arrays.
+      'status': 'pending',
+    });
   }
 
   GroupMessage _messageFromDoc(
@@ -280,6 +370,12 @@ class FirestoreGroupsRepository implements GroupsRepository {
   ) {
     final data = doc.data();
     final created = data['createdAt'];
+    final type = _typeFromKey(data['type'] as String?);
+    final status = _statusFromKey(data['status'] as String?) ??
+        (type == GroupMessageType.walkInvite
+            ? GroupWalkInviteStatus.pending
+            : null);
+    final walkTime = data['walkTime'];
     return GroupMessage(
       id: doc.id,
       senderId: data['senderId'] as String? ?? '',
@@ -289,6 +385,71 @@ class FirestoreGroupsRepository implements GroupsRepository {
       imageUrl: data['imageUrl'] as String? ?? '',
       createdAt: created is Timestamp ? created.toDate() : DateTime.now(),
       isMine: (data['senderId'] as String? ?? '') == currentUserId,
+      replyToMessageId: data['replyToMessageId'] as String? ?? '',
+      replyToText: data['replyToText'] as String? ?? '',
+      replyToSenderName: data['replyToSenderName'] as String? ?? '',
+      type: type,
+      status: status,
+      walkTime: walkTime is Timestamp ? walkTime.toDate() : null,
+      walkLocationName: data['walkLocationName'] as String?,
+      acceptedByUserIds: _stringList(data['acceptedByUserIds']),
+      declinedByUserIds: _stringList(data['declinedByUserIds']),
+      likes: _stringList(data['likes']),
     );
+  }
+
+  @override
+  Future<void> toggleMessageLike({
+    required String groupId,
+    required String messageId,
+  }) async {
+    if (currentUserId.isEmpty) {
+      return;
+    }
+    final ref = _col.doc(groupId).collection('messages').doc(messageId);
+    await firestore.runTransaction((tx) async {
+      final snap = await tx.get(ref);
+      final data = snap.data() ?? <String, dynamic>{};
+      final ids = _stringList(data['likes']);
+      if (ids.contains(currentUserId)) {
+        ids.remove(currentUserId);
+      } else {
+        ids.add(currentUserId);
+      }
+      tx.set(ref, {'likes': ids}, SetOptions(merge: true));
+    });
+  }
+
+  List<String> _stringList(Object? value) {
+    if (value is! List) {
+      return const [];
+    }
+    return [
+      for (final item in value)
+        if (item != null && '$item'.trim().isNotEmpty) '$item',
+    ];
+  }
+
+  GroupMessageType _typeFromKey(String? value) {
+    return value == 'walk_invite'
+        ? GroupMessageType.walkInvite
+        : GroupMessageType.text;
+  }
+
+  GroupWalkInviteStatus? _statusFromKey(String? value) {
+    return switch (value) {
+      'pending' => GroupWalkInviteStatus.pending,
+      'accepted' => GroupWalkInviteStatus.accepted,
+      'declined' => GroupWalkInviteStatus.declined,
+      _ => null,
+    };
+  }
+
+  String _clipReply(String raw, [int max = 120]) {
+    final text = raw.trim();
+    if (text.length <= max) {
+      return text;
+    }
+    return '${text.substring(0, max).trimRight()}…';
   }
 }

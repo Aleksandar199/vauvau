@@ -1,145 +1,173 @@
-abstract final class AdminStrings {
-  static const String panel = 'Administracija';
-  static const String title = 'Administracija';
-  static const String denied = 'Samo administratori mogu da otvore ovaj panel.';
-  static const String statsTab = 'Statistika';
-  static const String usersTab = 'Korisnici';
-  static const String reportsTab = 'Prijave';
-  static const String contentTab = 'Sadržaj';
-  static const String pendingTab = 'Na čekanju (POIs)';
-  static const String reportDeleteContent = 'Obriši';
-  static const String reportMarkReviewed = 'Rešeno';
-  static const String reportDismiss = 'Odbaci';
-  static const String reportStatusPending = 'Na čekanju';
-  static const String reportReason = 'Razlog';
-  static const String reportReviewed = 'Prijava je označena kao rešena.';
-  static const String confirmDeleteReported =
-      'Prijavljeni sadržaj će biti uklonjen iz aplikacije.';
-  static const String searchTab = 'Pretraga Korisnika & Pasa';
-  static const String approve = '✓ Odobri';
-  static const String edit = '✏️ Izmeni';
-  static const String reject = '🗑️ Odbij';
-  static const String block = '🚫 Blokiraj / Obriši Sadržaj';
-  static const String dismiss = '✓ Odbaci Prijavu';
-  static const String emptyPending = 'Nema POI predloga na čekanju.';
-  static const String emptyReports = 'Nema aktivnih prijava.';
-  static const String searchHint = 'Pretraži korisnike ili pse...';
-  static const String noSearch = 'Nema rezultata.';
-  static const String users = 'Korisnici';
-  static const String dogs = 'Psi';
-  static const String saved = 'Izmena je sačuvana.';
-  static const String approved = 'Mesto je odobreno.';
-  static const String rejected = 'Predlog je odbijen.';
-  static const String blocked = 'Sadržaj je uklonjen.';
-  static const String dismissed = 'Prijava je odbačena.';
-  static const String editTitle = 'Izmeni mesto';
-  static const String editAndResolve = 'Izmeni i reši';
-  static const String saveAndResolve = 'Sačuvaj i označi rešeno';
-  static const String saveOnly = 'Samo sačuvaj izmene';
-  static const String reportContextTitle = 'Šta je prijavljeno';
-  static const String name = 'Naziv';
-  static const String address = 'Adresa';
-  static const String openingHours = 'Radno vreme';
-  static const String openingHoursHint = 'Npr. Pon–Pet 09–20, Sub 10–14';
-  static const String pricePerNight = 'Cena po noći (RSD)';
-  static const String pricePerNightHint = 'Ostavi prazno ako nema';
-  static const String phone = 'Telefon';
-  static const String website = 'Website';
-  static const String latitude = 'Geografska širina';
-  static const String longitude = 'Geografska dužina';
-  static const String verificationStatus = 'Status provere';
-  static const String statusVerified = '✓ Potvrđeno';
-  static const String statusPending = 'Na čekanju';
-  static const String statusSubmitted = 'Predloženo';
-  static const String statusReported = 'Prijavljeno';
-  static const String statusRejected = 'Odbijeno';
-  static const String statusUnknown = 'Nije provereno';
-  static const String flag24h = 'Dostupno 00–24h';
-  static const String flagEmergency = 'Dežurna služba';
-  static const String flagOvernight = 'Prenoćište';
-  static const String flagDayCare = 'Dnevni boravak';
-  static const String flagYard = 'Dvorište';
-  static const String flagPetFriendly = 'Pet-friendly';
-  static const String invalidCoords = 'Unesite ispravne koordinate.';
-  static const String invalidPrice = 'Unesite ispravnu cenu ili ostavite prazno.';
-  static const String poiNotFound =
-      'Mesto nije pronađeno. Proverite ID ili dodajte ga kao novi POI.';
-  static const String poiUpdatedAndResolved =
-      'Mesto je izmenjeno i prijava je rešena.';
+import '../../../core/l10n/l10n.dart';
 
-  static const String drawerItem = 'Admin Panel';
-  static const String feedbackTab = '📩 Poruke & Feedback';
-  static const String momentsTab = '📸 Moderacija Momenata';
-  static const String emptyFeedback = 'Nema poruka od korisnika.';
-  static const String emptyMoments = 'Nema objavljenih momenata.';
-  static const String emptyUsers = 'Nema registrovanih korisnika.';
-  static const String resolve = '✓ Označi kao rešeno';
-  static const String resolved = 'Rešeno';
-  static const String isNew = 'Novo';
-  static const String delete = '🗑️ Obriši';
-  static const String deleteMoment = '🗑️ Obriši momenat';
-  static const String feedbackResolved = 'Poruka je označena kao rešena.';
-  static const String feedbackDeleted = 'Poruka je obrisana.';
-  static const String momentDeleted = 'Momenat je obrisan.';
-  static const String actionFailed = 'Radnja nije uspela. Pokušajte ponovo.';
-  static const String confirmDeleteTitle = 'Obrisati?';
-  static const String confirmDeleteFeedback =
-      'Poruka će biti trajno obrisana iz baze.';
-  static const String confirmDeleteMoment =
-      'Momenat će biti trajno obrisan za sve korisnike.';
-  static const String cancel = 'Otkaži';
-  static const String confirm = 'Obriši';
-  static const String loadError = 'Podaci nisu dostupni.';
-  static const String noEmail = 'Bez email adrese';
-  static const String adminBadge = 'ADMIN';
-  static const String statUsers = 'Korisnici';
-  static const String statDogs = 'Aktivni psi';
-  static const String statReports = 'Prijave';
-  static const String statPending = 'POI na čekanju';
-  static const String contentMoments = 'Momenti';
-  static const String contentPending = 'Predlozi mesta';
-  static const String groupsTab = 'Grupe na čekanju';
-  static const String emptyPendingGroups =
-      'Nema grupa koje čekaju na odobrenje';
-  static const String groupApproved = 'Grupa je odobrena.';
-  static const String groupDeleted = 'Grupa je obrisana.';
-  static const String approveGroup = '✓ Odobri';
-  static const String rejectGroup = '✗ Odbij';
+abstract final class AdminStrings {
+  static String get panel => L10n.tr('Administracija', 'Administration');
+  static String get title => L10n.tr('Administracija', 'Administration');
+  static String get denied =>
+      L10n.tr('Samo administratori mogu da otvore ovaj panel.', 'Only administrators can open this panel.');
+  static String get statsTab => L10n.tr('Statistika', 'Statistics');
+  static String get usersTab => L10n.tr('Korisnici', 'Users');
+  static String get reportsTab => L10n.tr('Prijave', 'Reports');
+  static String get contentTab => L10n.tr('Sadržaj', 'Content');
+  static String get pendingTab => L10n.tr('Na čekanju (POIs)', 'Pending (POIs)');
+  static String get reportDeleteContent => L10n.tr('Obriši', 'Delete');
+  static String get reportMarkReviewed => L10n.tr('Rešeno', 'Resolved');
+  static String get reportDismiss => L10n.tr('Odbaci', 'Dismiss');
+  static String get reportStatusPending => L10n.tr('Na čekanju', 'Pending');
+  static String get reportReason => L10n.tr('Razlog', 'Reason');
+  static String get reportReviewed =>
+      L10n.tr('Prijava je označena kao rešena.', 'Report marked as resolved.');
+  static String get confirmDeleteReported => L10n.tr(
+        'Prijavljeni sadržaj će biti uklonjen iz aplikacije.',
+        'Reported content will be removed from the app.',
+      );
+  static String get searchTab => L10n.tr('Pretraga Korisnika & Pasa', 'Search users & dogs');
+  static String get approve => L10n.tr('✓ Odobri', '✓ Approve');
+  static String get edit => L10n.tr('✏️ Izmeni', '✏️ Edit');
+  static String get reject => L10n.tr('🗑️ Odbij', '🗑️ Reject');
+  static String get block => L10n.tr('🚫 Blokiraj / Obriši Sadržaj', '🚫 Block / remove content');
+  static String get dismiss => L10n.tr('✓ Odbaci Prijavu', '✓ Dismiss report');
+  static String get emptyPending => L10n.tr('Nema POI predloga na čekanju.', 'No pending POI suggestions.');
+  static String get emptyReports => L10n.tr('Nema aktivnih prijava.', 'No active reports.');
+  static String get searchHint => L10n.tr('Pretraži korisnike ili pse...', 'Search users or dogs...');
+  static String get noSearch => L10n.tr('Nema rezultata.', 'No results.');
+  static String get users => L10n.tr('Korisnici', 'Users');
+  static String get dogs => L10n.tr('Psi', 'Dogs');
+  static String get saved => L10n.tr('Izmena je sačuvana.', 'Changes saved.');
+  static String get approved => L10n.tr('Mesto je odobreno.', 'Place approved.');
+  static String get rejected => L10n.tr('Predlog je odbijen.', 'Suggestion rejected.');
+  static String get blocked => L10n.tr('Sadržaj je uklonjen.', 'Content removed.');
+  static String get dismissed => L10n.tr('Prijava je odbačena.', 'Report dismissed.');
+  static String get editTitle => L10n.tr('Izmeni mesto', 'Edit place');
+  static String get editAndResolve => L10n.tr('Izmeni i reši', 'Edit and resolve');
+  static String get saveAndResolve => L10n.tr('Sačuvaj i označi rešeno', 'Save and mark resolved');
+  static String get saveOnly => L10n.tr('Samo sačuvaj izmene', 'Save changes only');
+  static String get reportContextTitle => L10n.tr('Šta je prijavljeno', 'What was reported');
+  static String get name => L10n.tr('Naziv', 'Name');
+  static String get address => L10n.tr('Adresa', 'Address');
+  static String get openingHours => L10n.tr('Radno vreme', 'Opening hours');
+  static String get openingHoursHint =>
+      L10n.tr('Npr. Pon–Pet 09–20, Sub 10–14', 'E.g. Mon–Fri 09–20, Sat 10–14');
+  static String get pricePerNight => L10n.tr('Cena po noći (RSD)', 'Price per night (RSD)');
+  static String get pricePerNightHint =>
+      L10n.tr('Ostavi prazno ako nema', 'Leave empty if none');
+  static String get phone => L10n.tr('Telefon', 'Phone');
+  static String get website => L10n.tr('Website', 'Website');
+  static String get latitude => L10n.tr('Geografska širina', 'Latitude');
+  static String get longitude => L10n.tr('Geografska dužina', 'Longitude');
+  static String get verificationStatus => L10n.tr('Status provere', 'Verification status');
+  static String get statusVerified => L10n.tr('✓ Potvrđeno', '✓ Verified');
+  static String get statusPending => L10n.tr('Na čekanju', 'Pending');
+  static String get statusSubmitted => L10n.tr('Predloženo', 'Submitted');
+  static String get statusReported => L10n.tr('Prijavljeno', 'Reported');
+  static String get statusRejected => L10n.tr('Odbijeno', 'Rejected');
+  static String get statusUnknown => L10n.tr('Nije provereno', 'Not verified');
+  static String get flag24h => L10n.tr('Dostupno 00–24h', 'Open 24/7');
+  static String get flagEmergency => L10n.tr('Dežurna služba', 'Emergency service');
+  static String get flagOvernight => L10n.tr('Prenoćište', 'Overnight stay');
+  static String get flagDayCare => L10n.tr('Dnevni boravak', 'Day care');
+  static String get flagYard => L10n.tr('Dvorište', 'Yard');
+  static String get flagPetFriendly => L10n.tr('Pet-friendly', 'Pet-friendly');
+  static String get flagDogPark =>
+      L10n.tr('Zvanični park za pse', 'Official dog park');
+  static String get invalidCoords => L10n.tr('Unesite ispravne koordinate.', 'Enter valid coordinates.');
+  static String get invalidPrice =>
+      L10n.tr('Unesite ispravnu cenu ili ostavite prazno.', 'Enter a valid price or leave empty.');
+  static String get poiNotFound => L10n.tr(
+        'Mesto nije pronađeno. Proverite ID ili dodajte ga kao novi POI.',
+        'Place not found. Check the ID or add it as a new POI.',
+      );
+  static String get poiUpdatedAndResolved => L10n.tr(
+        'Mesto je izmenjeno i prijava je rešena.',
+        'Place updated and report resolved.',
+      );
+
+  static String get drawerItem => L10n.tr('Admin Panel', 'Admin Panel');
+  static String get feedbackTab => L10n.tr('📩 Poruke & Feedback', '📩 Messages & feedback');
+  static String get momentsTab => L10n.tr('📸 Moderacija Momenata', '📸 Moment moderation');
+  static String get emptyFeedback => L10n.tr('Nema poruka od korisnika.', 'No user messages.');
+  static String get emptyMoments => L10n.tr('Nema objavljenih momenata.', 'No published moments.');
+  static String get emptyUsers => L10n.tr('Nema registrovanih korisnika.', 'No registered users.');
+  static String get resolve => L10n.tr('✓ Označi kao rešeno', '✓ Mark resolved');
+  static String get resolved => L10n.tr('Rešeno', 'Resolved');
+  static String get isNew => L10n.tr('Novo', 'New');
+  static String get delete => L10n.tr('🗑️ Obriši', '🗑️ Delete');
+  static String get deleteMoment => L10n.tr('🗑️ Obriši momenat', '🗑️ Delete moment');
+  static String get feedbackResolved =>
+      L10n.tr('Poruka je označena kao rešena.', 'Message marked as resolved.');
+  static String get feedbackDeleted => L10n.tr('Poruka je obrisana.', 'Message deleted.');
+  static String get momentDeleted => L10n.tr('Momenat je obrisan.', 'Moment deleted.');
+  static String get actionFailed =>
+      L10n.tr('Radnja nije uspela. Pokušajte ponovo.', 'Action failed. Try again.');
+  static String get confirmDeleteTitle => L10n.tr('Obrisati?', 'Delete?');
+  static String get confirmDeleteFeedback => L10n.tr(
+        'Poruka će biti trajno obrisana iz baze.',
+        'The message will be permanently deleted.',
+      );
+  static String get confirmDeleteMoment => L10n.tr(
+        'Momenat će biti trajno obrisan za sve korisnike.',
+        'The moment will be permanently deleted for all users.',
+      );
+  static String get cancel => L10n.tr('Otkaži', 'Cancel');
+  static String get confirm => L10n.tr('Obriši', 'Delete');
+  static String get loadError => L10n.tr('Podaci nisu dostupni.', 'Data unavailable.');
+  static String get noEmail => L10n.tr('Bez email adrese', 'No email address');
+  static String get adminBadge => L10n.tr('ADMIN', 'ADMIN');
+  static String get statUsers => L10n.tr('Korisnici', 'Users');
+  static String get statDogs => L10n.tr('Aktivni psi', 'Active dogs');
+  static String get statReports => L10n.tr('Prijave', 'Reports');
+  static String get statPending => L10n.tr('POI na čekanju', 'POIs pending');
+  static String get contentMoments => L10n.tr('Momenti', 'Moments');
+  static String get contentPending => L10n.tr('Predlozi mesta', 'Place suggestions');
+  static String get groupsTab => L10n.tr('Grupe na čekanju', 'Groups pending');
+  static String get emptyPendingGroups =>
+      L10n.tr('Nema grupa koje čekaju na odobrenje', 'No groups awaiting approval');
+  static String get groupApproved => L10n.tr('Grupa je odobrena.', 'Group approved.');
+  static String get groupDeleted => L10n.tr('Grupa je obrisana.', 'Group deleted.');
+  static String get approveGroup => L10n.tr('✓ Odobri', '✓ Approve');
+  static String get rejectGroup => L10n.tr('✗ Odbij', '✗ Reject');
 
   static String groupCreatedBy(String userId) {
-    return 'Predložio: ${userId.isEmpty ? unknownUser : userId}';
+    final who = userId.isEmpty ? unknownUser : userId;
+    return L10n.tr('Predložio: $who', 'Suggested by: $who');
   }
 
   static String groupCreatedAt(DateTime? value) {
     if (value == null) {
-      return 'Datum kreiranja nepoznat';
+      return L10n.tr('Datum kreiranja nepoznat', 'Creation date unknown');
     }
-    return 'Kreirano: ${_date(value)}';
+    return L10n.tr('Kreirano: ${_date(value)}', 'Created: ${_date(value)}');
   }
 
-  static String totalUsers(int count) => 'Ukupno registrovanih: $count';
+  static String totalUsers(int count) =>
+      L10n.tr('Ukupno registrovanih: $count', 'Total registered: $count');
 
   static String reportedBy(String userId) {
-    return 'Prijavio: ${userId.isEmpty ? unknownUser : userId}';
+    final who = userId.isEmpty ? unknownUser : userId;
+    return L10n.tr('Prijavio: $who', 'Reported by: $who');
   }
 
   static String reportedUser(String userId) {
-    return 'Prijavljen: ${userId.isEmpty ? unknownUser : userId}';
+    final who = userId.isEmpty ? unknownUser : userId;
+    return L10n.tr('Prijavljen: $who', 'Reported user: $who');
   }
 
-  static const String unknownUser = 'nepoznat korisnik';
+  static String get unknownUser => L10n.tr('nepoznat korisnik', 'unknown user');
 
   static String joinedOn(DateTime? value) {
     if (value == null) {
-      return 'Datum pristupanja nepoznat';
+      return L10n.tr('Datum pristupanja nepoznat', 'Join date unknown');
     }
-    return 'Pridružen/a ${_date(value)}';
+    return L10n.tr('Pridružen/a ${_date(value)}', 'Joined ${_date(value)}');
   }
 
   static String timestamp(DateTime value) {
     final hour = value.hour.toString().padLeft(2, '0');
     final minute = value.minute.toString().padLeft(2, '0');
-    return '${_date(value)} u $hour:$minute';
+    return L10n.tr(
+      '${_date(value)} u $hour:$minute',
+      '${_date(value)} at $hour:$minute',
+    );
   }
 
   static String _date(DateTime value) {

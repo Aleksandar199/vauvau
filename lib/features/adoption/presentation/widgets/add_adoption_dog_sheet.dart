@@ -3,9 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../../../core/constants/serbia_locations.dart';
+import '../../../location/presentation/home_city_provider.dart';
 import '../../../../core/network/network_failure.dart';
+import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/content_validation_service.dart';
-import '../../../discover/presentation/widgets/discover_filter_chip.dart';
+import '../../../../core/widgets/breed_field.dart';
 import '../../../profile/presentation/profile_controller.dart';
 import '../adoption_controller.dart';
 import '../adoption_strings.dart';
@@ -37,10 +39,11 @@ Future<bool?> showAddAdoptionDogSheet(BuildContext context) {
 class _AddAdoptionDogScreenState extends ConsumerState<AddAdoptionDogScreen> {
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _name;
-  late final TextEditingController _breed;
+  late final TextEditingController _customBreed;
   late final TextEditingController _age;
   late final TextEditingController _story;
   late final TextEditingController _phone;
+  String _breed = '';
   String _gender = 'mužjak';
   String _size = 'srednji';
   String _city = 'Novi Sad';
@@ -55,7 +58,7 @@ class _AddAdoptionDogScreenState extends ConsumerState<AddAdoptionDogScreen> {
     super.initState();
     final profile = ref.read(profileControllerProvider);
     _name = TextEditingController();
-    _breed = TextEditingController();
+    _customBreed = TextEditingController();
     _age = TextEditingController();
     _story = TextEditingController();
     _phone = TextEditingController();
@@ -67,7 +70,7 @@ class _AddAdoptionDogScreenState extends ConsumerState<AddAdoptionDogScreen> {
   @override
   void dispose() {
     _name.dispose();
-    _breed.dispose();
+    _customBreed.dispose();
     _age.dispose();
     _story.dispose();
     _phone.dispose();
@@ -77,7 +80,7 @@ class _AddAdoptionDogScreenState extends ConsumerState<AddAdoptionDogScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text(AdoptionStrings.addTitle)),
+      appBar: AppBar(title: Text(AdoptionStrings.addTitle)),
       body: Form(
         key: _formKey,
         child: ListView(
@@ -86,7 +89,7 @@ class _AddAdoptionDogScreenState extends ConsumerState<AddAdoptionDogScreen> {
             TextFormField(
               controller: _name,
               textCapitalization: TextCapitalization.words,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: AdoptionStrings.name,
                 border: OutlineInputBorder(),
               ),
@@ -97,25 +100,26 @@ class _AddAdoptionDogScreenState extends ConsumerState<AddAdoptionDogScreen> {
                 return ContentValidationService.validateText(value);
               },
             ),
-            const SizedBox(height: 12),
-            TextFormField(
-              controller: _breed,
-              textCapitalization: TextCapitalization.sentences,
-              decoration: const InputDecoration(
-                labelText: AdoptionStrings.breed,
-                border: OutlineInputBorder(),
-              ),
+            SizedBox(height: 12),
+            BreedField(
+              breed: _breed,
+              customBreedController: _customBreed,
+              onBreedChanged: (value) => setState(() => _breed = value),
               validator: (value) {
-                if (value == null || value.trim().isEmpty) {
+                if (value == null || value.isEmpty) {
                   return AdoptionStrings.breedRequired;
                 }
-                return ContentValidationService.validateText(value);
+                final text = _breed.trim();
+                if (text.isEmpty) {
+                  return AdoptionStrings.breedRequired;
+                }
+                return ContentValidationService.validateText(text);
               },
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
             TextFormField(
               controller: _age,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: AdoptionStrings.age,
                 hintText: AdoptionStrings.ageHint,
                 border: OutlineInputBorder(),
@@ -127,52 +131,56 @@ class _AddAdoptionDogScreenState extends ConsumerState<AddAdoptionDogScreen> {
                 return null;
               },
             ),
-            const SizedBox(height: 16),
-            const Text(AdoptionStrings.gender),
-            const SizedBox(height: 8),
+            SizedBox(height: 16),
+            _SectionLabel(AdoptionStrings.gender),
+            SizedBox(height: 10),
             Wrap(
-              spacing: 8,
+              spacing: 10,
+              runSpacing: 10,
               children: [
-                DiscoverFilterChip(
+                _ChoiceChip(
                   label: AdoptionStrings.male,
+                  icon: Icons.male_rounded,
                   selected: _gender == 'mužjak',
                   onTap: () => setState(() => _gender = 'mužjak'),
                 ),
-                DiscoverFilterChip(
+                _ChoiceChip(
                   label: AdoptionStrings.female,
+                  icon: Icons.female_rounded,
                   selected: _gender == 'ženka',
                   onTap: () => setState(() => _gender = 'ženka'),
                 ),
               ],
             ),
-            const SizedBox(height: 16),
-            const Text(AdoptionStrings.size),
-            const SizedBox(height: 8),
+            SizedBox(height: 16),
+            _SectionLabel(AdoptionStrings.size),
+            SizedBox(height: 10),
             Wrap(
-              spacing: 8,
+              spacing: 10,
+              runSpacing: 10,
               children: [
-                DiscoverFilterChip(
+                _ChoiceChip(
                   label: AdoptionStrings.sizeSmall,
                   selected: _size == 'mali',
                   onTap: () => setState(() => _size = 'mali'),
                 ),
-                DiscoverFilterChip(
+                _ChoiceChip(
                   label: AdoptionStrings.sizeMedium,
                   selected: _size == 'srednji',
                   onTap: () => setState(() => _size = 'srednji'),
                 ),
-                DiscoverFilterChip(
+                _ChoiceChip(
                   label: AdoptionStrings.sizeLarge,
                   selected: _size == 'veliki',
                   onTap: () => setState(() => _size = 'veliki'),
                 ),
               ],
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             TextFormField(
               controller: _story,
               maxLines: 5,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: AdoptionStrings.story,
                 hintText: AdoptionStrings.storyHint,
                 alignLabelWithHint: true,
@@ -185,12 +193,12 @@ class _AddAdoptionDogScreenState extends ConsumerState<AddAdoptionDogScreen> {
                 return ContentValidationService.validateText(value);
               },
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
             DropdownButtonFormField<String>(
               key: const ValueKey('adoption-city'),
               initialValue: _city,
               isExpanded: true,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: AdoptionStrings.city,
                 border: OutlineInputBorder(),
               ),
@@ -224,7 +232,7 @@ class _AddAdoptionDogScreenState extends ConsumerState<AddAdoptionDogScreen> {
                   ? _neighborhood
                   : SerbiaLocations.neighborhoodsForAdoptionCity(_city).first,
               isExpanded: true,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: AdoptionStrings.neighborhood,
                 border: OutlineInputBorder(),
               ),
@@ -244,11 +252,11 @@ class _AddAdoptionDogScreenState extends ConsumerState<AddAdoptionDogScreen> {
                       ? AdoptionStrings.neighborhoodRequired
                       : null,
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
             TextFormField(
               controller: _phone,
               keyboardType: TextInputType.phone,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: AdoptionStrings.phone,
                 border: OutlineInputBorder(),
               ),
@@ -259,30 +267,59 @@ class _AddAdoptionDogScreenState extends ConsumerState<AddAdoptionDogScreen> {
             ),
             SwitchListTile(
               contentPadding: EdgeInsets.zero,
-              title: const Text(AdoptionStrings.vaccinated),
+              title: Text(AdoptionStrings.vaccinated),
+              activeThumbColor: AppColors.onPrimary,
+              activeTrackColor: AppColors.primary,
               value: _vaccinated,
               onChanged: (value) => setState(() => _vaccinated = value),
             ),
             SwitchListTile(
               contentPadding: EdgeInsets.zero,
-              title: const Text(AdoptionStrings.sterilized),
+              title: Text(AdoptionStrings.sterilized),
+              activeThumbColor: AppColors.onPrimary,
+              activeTrackColor: AppColors.primary,
               value: _sterilized,
               onChanged: (value) => setState(() => _sterilized = value),
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
+            _SectionLabel(AdoptionStrings.addPhotos),
+            const SizedBox(height: 10),
             Row(
               children: [
                 Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: _saving ? null : () => _pickPhotos(ImageSource.gallery),
+                  child: FilledButton.tonalIcon(
+                    onPressed:
+                        _saving ? null : () => _pickPhotos(ImageSource.gallery),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: AppColors.primarySoft,
+                      foregroundColor: AppColors.primaryDeep,
+                      minimumSize: const Size.fromHeight(48),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                    ),
                     icon: const Icon(Icons.photo_library_outlined),
-                    label: Text('${AdoptionStrings.addPhotos} (${_photos.length})'),
+                    label: Text(
+                      '${AdoptionStrings.addPhotos} (${_photos.length})',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
                 ),
-                const SizedBox(width: 8),
-                IconButton.outlined(
-                  onPressed: _saving ? null : () => _pickPhotos(ImageSource.camera),
-                  icon: const Icon(Icons.photo_camera_outlined),
+                const SizedBox(width: 10),
+                FilledButton.tonal(
+                  onPressed:
+                      _saving ? null : () => _pickPhotos(ImageSource.camera),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppColors.primarySoft,
+                    foregroundColor: AppColors.primaryDeep,
+                    minimumSize: const Size(48, 48),
+                    padding: EdgeInsets.zero,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                  child: const Icon(Icons.photo_camera_outlined),
                 ),
               ],
             ),
@@ -324,24 +361,38 @@ class _AddAdoptionDogScreenState extends ConsumerState<AddAdoptionDogScreen> {
                 ),
               ),
             ],
-            const SizedBox(height: 20),
-            FilledButton(
-              style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(48)),
+            const SizedBox(height: 24),
+            FilledButton.icon(
+              style: FilledButton.styleFrom(
+                minimumSize: const Size.fromHeight(52),
+                backgroundColor: AppColors.primary,
+                foregroundColor: AppColors.onPrimary,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+              ),
               onPressed: _saving ? null : _publish,
-              child: _saving
-                  ? const Row(
+              icon: _saving
+                  ? const SizedBox.shrink()
+                  : const Icon(Icons.campaign_outlined),
+              label: _saving
+                  ? Row(
                       mainAxisAlignment: MainAxisAlignment.center,
+                      mainAxisSize: MainAxisSize.min,
                       children: [
                         SizedBox(
                           width: 18,
                           height: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2),
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: AppColors.onPrimary,
+                          ),
                         ),
                         SizedBox(width: 10),
                         Text(AdoptionStrings.publishing),
                       ],
                     )
-                  : const Text(AdoptionStrings.publish),
+                  : Text(AdoptionStrings.publish),
             ),
           ],
         ),
@@ -386,7 +437,7 @@ class _AddAdoptionDogScreenState extends ConsumerState<AddAdoptionDogScreen> {
     try {
       final ok = await ref.read(adoptionControllerProvider.notifier).publish(
             name: _name.text.trim(),
-            breed: _breed.text.trim(),
+            breed: _breed.trim(),
             age: _age.text.trim(),
             gender: _gender,
             size: _size,
@@ -405,7 +456,7 @@ class _AddAdoptionDogScreenState extends ConsumerState<AddAdoptionDogScreen> {
         Navigator.of(context).pop(true);
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text(AdoptionStrings.publishError)),
+          SnackBar(content: Text(AdoptionStrings.publishError)),
         );
       }
     } catch (e) {
@@ -431,6 +482,10 @@ class _AddAdoptionDogScreenState extends ConsumerState<AddAdoptionDogScreen> {
       if (sanitized.toLowerCase().startsWith(city.toLowerCase())) {
         return city;
       }
+    }
+    final homeName = ref.read(homeCityProvider)?.name;
+    if (homeName != null && SerbiaLocations.adoptionCities.contains(homeName)) {
+      return homeName;
     }
     return 'Novi Sad';
   }
@@ -459,5 +514,85 @@ class _AddAdoptionDogScreenState extends ConsumerState<AddAdoptionDogScreen> {
       }
     }
     return hoods.first;
+  }
+}
+
+class _SectionLabel extends StatelessWidget {
+  const _SectionLabel(this.text);
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      text,
+      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+            fontWeight: FontWeight.w700,
+            color: AppColors.lightOnBackground,
+          ),
+    );
+  }
+}
+
+class _ChoiceChip extends StatelessWidget {
+  const _ChoiceChip({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+    this.icon,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+  final IconData? icon;
+
+  @override
+  Widget build(BuildContext context) {
+    final bg = selected ? AppColors.primary : AppColors.primarySoft;
+    final fg = selected ? AppColors.onPrimary : AppColors.primaryDeep;
+    return Material(
+      color: bg,
+      borderRadius: BorderRadius.circular(999),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(999),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 160),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(999),
+            border: Border.all(
+              color: selected ? AppColors.primary : AppColors.primary.withValues(alpha: 0.35),
+              width: selected ? 0 : 1.5,
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (selected) ...[
+                const Icon(
+                  Icons.check_rounded,
+                  size: 18,
+                  color: AppColors.onPrimary,
+                ),
+                const SizedBox(width: 6),
+              ] else if (icon != null) ...[
+                Icon(icon, size: 18, color: fg),
+                const SizedBox(width: 6),
+              ],
+              Text(
+                label,
+                style: TextStyle(
+                  color: fg,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 14,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }

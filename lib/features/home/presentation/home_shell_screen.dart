@@ -9,7 +9,6 @@ import '../../discover/presentation/discover_screen.dart';
 import '../../discover/presentation/discover_strings.dart';
 import '../../discover/presentation/widgets/discover_app_bar.dart';
 import '../../groups/presentation/group_unread_alerts.dart';
-import '../../location/presentation/location_controller.dart';
 import '../../lost_dogs/presentation/lost_dog_emergency_host.dart';
 import '../../map/presentation/map_screen.dart';
 import '../../map/presentation/map_strings.dart';
@@ -17,6 +16,7 @@ import '../../notifications/presentation/notification_controller.dart';
 import '../../notifications/presentation/notification_screen.dart';
 import '../../notifications/presentation/notification_strings.dart';
 import '../../notifications/presentation/push_bootstrap.dart';
+import '../../profile/presentation/profile_controller.dart';
 import '../../profile/presentation/profile_screen.dart';
 import '../../profile/presentation/profile_strings.dart';
 import '../../profile/presentation/profile_system_sheet.dart';
@@ -31,9 +31,11 @@ class HomeShellScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final tabIndex = ref.watch(homeTabIndexProvider);
     final scheduledWalks = ref.watch(scheduledWalksProvider);
-        final unread = ref.watch(notificationUnreadCountProvider);
+    final unread = ref.watch(notificationUnreadCountProvider);
     final unreadChats = ref.watch(totalUnreadChatCountProvider);
-    ref.watch(userLocationProvider);
+    // Rebuild tab labels/copy when the user switches language.
+    ref.watch(appSettingsProvider.select((s) => s.language));
+    final showScheduledWalks = tabIndex == 1 || tabIndex == 2;
     ref.watch(groupUnreadAlertsProvider);
 
     final titles = [
@@ -81,7 +83,8 @@ class HomeShellScreen extends ConsumerWidget {
               ),
         body: Column(
           children: [
-            ScheduledWalksBanner(walks: scheduledWalks),
+            if (showScheduledWalks)
+              ScheduledWalksBanner(walks: scheduledWalks),
             Expanded(
               child: IndexedStack(
                 index: tabIndex,
@@ -101,12 +104,12 @@ class HomeShellScreen extends ConsumerWidget {
             ref.read(homeTabIndexProvider.notifier).setIndex(index);
           },
           destinations: [
-            const NavigationDestination(
+            NavigationDestination(
               icon: Icon(Icons.pets_outlined),
               selectedIcon: Icon(Icons.pets),
               label: DiscoverStrings.title,
             ),
-            const NavigationDestination(
+            NavigationDestination(
               icon: Icon(Icons.map_outlined),
               selectedIcon: Icon(Icons.map),
               label: MapStrings.tabLabel,
@@ -124,7 +127,7 @@ class HomeShellScreen extends ConsumerWidget {
               ),
               label: ChatStrings.tabLabel,
             ),
-            const NavigationDestination(
+            NavigationDestination(
               icon: Icon(Icons.person_outline),
               selectedIcon: Icon(Icons.person),
               label: ProfileStrings.tabLabel,

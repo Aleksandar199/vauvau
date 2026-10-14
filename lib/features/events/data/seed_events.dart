@@ -1,5 +1,8 @@
 import 'package:latlong2/latlong.dart';
 
+import '../../../core/constants/serbia_locations.dart';
+import '../../map/domain/map_place.dart';
+import '../../map/domain/map_place_type.dart';
 import '../domain/event_model.dart';
 
 abstract final class EventVenues {
@@ -28,6 +31,36 @@ abstract final class EventVenues {
   static bool isCustom(String value) => value == customOption;
 
   static LatLng? latLngFor(String locationName) => coordinates[locationName];
+
+  /// Walk spots for [cityId]: parks, dog parks, promenades and squares from
+  /// the map catalog (seed + Firestore), plus the classic Novi Sad venues.
+  /// Always ends with [customOption].
+  static List<String> forCity(String cityId, Iterable<MapPlace> places) {
+    final mapCityId = cityId.replaceAll('_', '-');
+    final legacy = cityId == SerbiaLocations.noviSadId
+        ? [for (final name in names) if (!isCustom(name)) name]
+        : const <String>[];
+    final fromMap = <String>{
+      for (final place in places)
+        if ((place.type == MapPlaceType.park ||
+                place.type == MapPlaceType.other) &&
+            (place.cityId == mapCityId || place.cityId == cityId) &&
+            place.name.trim().isNotEmpty)
+          place.name.trim(),
+    }.difference(legacy.toSet()).toList()
+      ..sort();
+    return [...legacy, ...fromMap, customOption];
+  }
+
+  /// City of an event; older events without `cityId` are matched by venue.
+  static String? cityIdForEvent(EventModel event) {
+    final explicit = event.cityId.trim();
+    if (explicit.isNotEmpty) return explicit;
+    if (coordinates.containsKey(event.locationName)) {
+      return SerbiaLocations.noviSadId;
+    }
+    return SerbiaLocations.cityIdForLabel(event.locationName);
+  }
 }
 
 abstract final class SeedEvents {
@@ -45,45 +78,47 @@ abstract final class SeedEvents {
     'seed-11',
   ];
 
+  static DateTime get _now => DateTime.now();
+
   static final List<EventModel> all = [
     EventModel(
       id: 'event-liman',
       title: 'Grupna šetnja Liman',
       locationName: 'Limanski park',
-      dateTime: DateTime(2026, 10, 3, 17),
+      dateTime: _now.add(const Duration(days: 1, hours: 5)),
       description: 'Opustena vecernja šetnja uz Dunav. Ponesite vodu i kesice.',
-      imageUrl:
-          'https://images.unsplash.com/photo-1558788353-f76d92427f16?auto=format&fit=crop&w=800&q=80',
+      imageUrl: '',
       organizerUserId: 'vauvau',
       organizerName: 'VauVau',
       participantUserIds: _dummies,
-      createdAt: DateTime(2026, 9, 20),
+      createdAt: _now.subtract(const Duration(days: 2)),
+      cityId: SerbiaLocations.noviSadId,
     ),
     EventModel(
       id: 'event-malenici',
       title: 'Playdate za male pse',
       locationName: 'Kamenički park',
-      dateTime: DateTime(2026, 10, 4, 11),
+      dateTime: _now.add(const Duration(days: 3, hours: 2)),
       description: 'Igra i druženje za male i srednje pse. Držimo se staze.',
-      imageUrl:
-          'https://images.unsplash.com/photo-1537151608828-ea2b11777ee8?auto=format&fit=crop&w=800&q=80',
+      imageUrl: '',
       organizerUserId: 'vauvau',
       organizerName: 'VauVau',
       participantUserIds: _dummies.take(8).toList(),
-      createdAt: DateTime(2026, 9, 21),
+      createdAt: _now.subtract(const Duration(days: 1)),
+      cityId: SerbiaLocations.noviSadId,
     ),
     EventModel(
       id: 'event-tvrdjava',
       title: 'Vikend šetnja na Tvrđavi',
       locationName: 'Petrovaradinska tvrđava',
-      dateTime: DateTime(2026, 10, 10, 10),
+      dateTime: _now.add(const Duration(days: 7, hours: 3)),
       description: 'Jutarnja šetnja bedemima. Pogled i kafa posle.',
-      imageUrl:
-          'https://images.unsplash.com/photo-1543466835-00a7907e9de1?auto=format&fit=crop&w=800&q=80',
+      imageUrl: '',
       organizerUserId: 'vauvau',
       organizerName: 'VauVau',
       participantUserIds: _dummies.take(5).toList(),
-      createdAt: DateTime(2026, 9, 22),
+      createdAt: _now.subtract(const Duration(hours: 12)),
+      cityId: SerbiaLocations.noviSadId,
     ),
   ];
 
@@ -99,6 +134,7 @@ abstract final class SeedEvents {
       'participantUserIds': event.participantUserIds,
       'createdAt': event.createdAt.toIso8601String(),
       'lastMessage': event.lastMessage,
+      'cityId': event.cityId,
     };
   }
 }

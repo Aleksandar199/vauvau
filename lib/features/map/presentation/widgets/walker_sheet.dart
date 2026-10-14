@@ -30,7 +30,7 @@ Future<void> showWalkerSheet({
             ),
             const SizedBox(height: 12),
             WalkerMiniCard(profile: profile, status: pin.status),
-            const SizedBox(height: 20),
+            SizedBox(height: 20),
             SizedBox(
               width: double.infinity,
               child: FilledButton(
@@ -38,10 +38,10 @@ Future<void> showWalkerSheet({
                   Navigator.of(sheetContext).pop();
                   onJoinWalk();
                 },
-                child: const Text(MapStrings.joinWalk),
+                child: Text(MapStrings.joinWalk),
               ),
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
             SizedBox(
               width: double.infinity,
               child: OutlinedButton(
@@ -49,7 +49,7 @@ Future<void> showWalkerSheet({
                   Navigator.of(sheetContext).pop();
                   onOpenChat();
                 },
-                child: const Text(MapStrings.openChat),
+                child: Text(MapStrings.openChat),
               ),
             ),
           ],

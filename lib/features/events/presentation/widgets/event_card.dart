@@ -2,8 +2,20 @@ import 'package:flutter/material.dart';
 
 import '../../../../core/images/dog_image.dart';
 import '../../../../core/theme/app_cards.dart';
+import '../../../../core/constants/serbia_locations.dart';
+import '../../data/seed_events.dart';
 import '../../domain/event_model.dart';
 import '../events_strings.dart';
+
+String _locationLabel(EventModel event) {
+  final cityId = EventVenues.cityIdForEvent(event);
+  final city = cityId == null ? null : SerbiaLocations.cityById(cityId)?.name;
+  if (city == null ||
+      event.locationName.toLowerCase().contains(city.toLowerCase())) {
+    return event.locationName;
+  }
+  return '${event.locationName}, $city';
+}
 
 class EventCard extends StatelessWidget {
   const EventCard({
@@ -44,7 +56,7 @@ class EventCard extends StatelessWidget {
                     child: buildDogImage(event.imageUrl, seed: event.id),
                   ),
                 ),
-                const Positioned(
+                Positioned(
                   top: 8,
                   left: 8,
                   child: StatusBadge(
@@ -61,14 +73,30 @@ class EventCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 CardTitleText(text: event.title),
-                const SizedBox(height: 6),
-                CardLocationRow(label: event.locationName),
-                const SizedBox(height: 4),
-                CardTimeLabel(
-                  label:
-                      '${EventsStrings.when(event.dateTime)} · ${EventsStrings.timeAgo(event.createdAt)}',
+                SizedBox(height: 6),
+                CardLocationRow(label: _locationLabel(event)),
+                SizedBox(height: 6),
+                Row(
+                  children: [
+                    Icon(
+                      Icons.calendar_today_outlined,
+                      size: 14,
+                      color: Colors.grey.shade700,
+                    ),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        EventsStrings.when(event.dateTime),
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.grey.shade800,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 4),
+                SizedBox(height: 4),
                 Text(
                   EventsStrings.interested(event.participantCount),
                   style: TextStyle(
@@ -108,7 +136,7 @@ class EventCard extends StatelessWidget {
                             ),
                           ),
                           icon: const Icon(Icons.chat_bubble_outline),
-                          label: const Text(EventsStrings.openChat),
+                          label: Text(EventsStrings.openChat),
                         )
                       : FilledButton.icon(
                           onPressed: onJoin,
@@ -126,7 +154,7 @@ class EventCard extends StatelessWidget {
                             ),
                           ),
                           icon: const Icon(Icons.group_add),
-                          label: const Text(EventsStrings.join),
+                          label: Text(EventsStrings.join),
                         ),
                 ),
               ],

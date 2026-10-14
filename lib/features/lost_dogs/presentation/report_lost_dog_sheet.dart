@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../../core/constants/serbia_locations.dart';
+import '../../location/presentation/home_city_provider.dart';
 import '../../../core/network/network_failure.dart';
 import '../../../core/utils/content_validation_service.dart';
 import '../../adoption/presentation/adoption_strings.dart';
@@ -35,7 +36,7 @@ Future<String?> showReportCaseChooser(BuildContext context) {
                 ),
                 onPressed: () =>
                     Navigator.of(sheetContext).pop(LostDogType.lost),
-                child: const Text(LostDogStrings.reportLost),
+                child: Text(LostDogStrings.reportLost),
               ),
               const SizedBox(height: 10),
               FilledButton(
@@ -46,7 +47,7 @@ Future<String?> showReportCaseChooser(BuildContext context) {
                 ),
                 onPressed: () =>
                     Navigator.of(sheetContext).pop(LostDogType.found),
-                child: const Text(LostDogStrings.reportFound),
+                child: Text(LostDogStrings.reportFound),
               ),
             ],
           ),
@@ -90,6 +91,7 @@ class _ReportLostDogSheetState extends ConsumerState<ReportLostDogSheet> {
   late final TextEditingController _description;
   late final TextEditingController _phone;
   late final TextEditingController _breedOther;
+  final _customNeighborhood = TextEditingController();
   String _city = 'Novi Sad';
   String _neighborhood = 'Liman 1';
   String _breed = LostDogStrings.breedUnknown;
@@ -106,8 +108,11 @@ class _ReportLostDogSheetState extends ConsumerState<ReportLostDogSheet> {
     _description = TextEditingController();
     _phone = TextEditingController();
     _breedOther = TextEditingController();
-    final hoods = SerbiaLocations.neighborhoodsForAdoptionCity(_city);
-    _neighborhood = hoods.first;
+    final homeName = ref.read(homeCityProvider)?.name;
+    if (homeName != null && SerbiaLocations.adoptionCities.contains(homeName)) {
+      _city = homeName;
+    }
+    _neighborhood = _neighborhoodOptions(_city).first;
   }
 
   @override
@@ -116,8 +121,23 @@ class _ReportLostDogSheetState extends ConsumerState<ReportLostDogSheet> {
     _description.dispose();
     _phone.dispose();
     _breedOther.dispose();
+    _customNeighborhood.dispose();
     super.dispose();
   }
+
+  /// City neighborhoods with the manual-entry option always last.
+  static List<String> _neighborhoodOptions(String city) => [
+        for (final hood in SerbiaLocations.neighborhoodsForAdoptionCity(city))
+          if (hood != 'Ostalo') hood,
+        SerbiaLocations.customNeighborhoodLabel,
+      ];
+
+  bool get _isCustomNeighborhood =>
+      _neighborhood == SerbiaLocations.customNeighborhoodLabel;
+
+  String get _resolvedNeighborhood => _isCustomNeighborhood
+      ? _customNeighborhood.text.trim()
+      : _neighborhood;
 
   String get _resolvedBreed {
     if (_breed == LostDogStrings.breedOther) {
@@ -161,11 +181,11 @@ class _ReportLostDogSheetState extends ConsumerState<ReportLostDogSheet> {
                 return ContentValidationService.validateText(value);
               },
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
             DropdownButtonFormField<String>(
               initialValue: _breed,
               isExpanded: true,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: LostDogStrings.breed,
                 border: OutlineInputBorder(),
               ),
@@ -181,10 +201,10 @@ class _ReportLostDogSheetState extends ConsumerState<ReportLostDogSheet> {
               },
             ),
             if (_breed == LostDogStrings.breedOther) ...[
-              const SizedBox(height: 12),
+              SizedBox(height: 12),
               TextFormField(
                 controller: _breedOther,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   labelText: LostDogStrings.breedHint,
                   border: OutlineInputBorder(),
                 ),
@@ -196,11 +216,11 @@ class _ReportLostDogSheetState extends ConsumerState<ReportLostDogSheet> {
                 },
               ),
             ],
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
             DropdownButtonFormField<String>(
               initialValue: _city,
               isExpanded: true,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: AdoptionStrings.city,
                 border: OutlineInputBorder(),
               ),
@@ -214,24 +234,23 @@ class _ReportLostDogSheetState extends ConsumerState<ReportLostDogSheet> {
                 }
                 setState(() {
                   _city = value;
-                  final hoods =
-                      SerbiaLocations.neighborhoodsForAdoptionCity(value);
-                  _neighborhood = hoods.first;
+                  _neighborhood = _neighborhoodOptions(value).first;
+                  _customNeighborhood.clear();
                 });
               },
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
             DropdownButtonFormField<String>(
               key: ValueKey('lost-hood-$_city-$_neighborhood'),
               initialValue: _neighborhood,
               isExpanded: true,
-              decoration: const InputDecoration(
+              menuMaxHeight: 360,
+              decoration: InputDecoration(
                 labelText: AdoptionStrings.neighborhood,
                 border: OutlineInputBorder(),
               ),
               items: [
-                for (final hood
-                    in SerbiaLocations.neighborhoodsForAdoptionCity(_city))
+                for (final hood in _neighborhoodOptions(_city))
                   DropdownMenuItem(value: hood, child: Text(hood)),
               ],
               onChanged: (value) {
@@ -241,7 +260,26 @@ class _ReportLostDogSheetState extends ConsumerState<ReportLostDogSheet> {
                 setState(() => _neighborhood = value);
               },
             ),
-            const SizedBox(height: 12),
+            if (_isCustomNeighborhood) ...[
+              SizedBox(height: 12),
+              TextFormField(
+                key: const ValueKey('lost-custom-hood'),
+                controller: _customNeighborhood,
+                textCapitalization: TextCapitalization.words,
+                decoration: InputDecoration(
+                  labelText: LostDogStrings.customNeighborhood,
+                  hintText: LostDogStrings.customNeighborhoodHint,
+                  border: const OutlineInputBorder(),
+                ),
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return LostDogStrings.customNeighborhoodRequired;
+                  }
+                  return ContentValidationService.validateText(value);
+                },
+              ),
+            ],
+            SizedBox(height: 12),
             ListTile(
               contentPadding: EdgeInsets.zero,
               title: Text(
@@ -251,7 +289,7 @@ class _ReportLostDogSheetState extends ConsumerState<ReportLostDogSheet> {
               trailing: const Icon(Icons.calendar_today_outlined),
               onTap: _pickDate,
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
             TextFormField(
               controller: _description,
               maxLines: 4,
@@ -270,11 +308,11 @@ class _ReportLostDogSheetState extends ConsumerState<ReportLostDogSheet> {
                 return ContentValidationService.validateText(value);
               },
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
             TextFormField(
               controller: _phone,
               keyboardType: TextInputType.phone,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: LostDogStrings.phone,
                 border: OutlineInputBorder(),
               ),
@@ -282,7 +320,7 @@ class _ReportLostDogSheetState extends ConsumerState<ReportLostDogSheet> {
                   ? LostDogStrings.phoneRequired
                   : null,
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
             OutlinedButton.icon(
               onPressed: _saving ? null : _pickPhoto,
               icon: const Icon(Icons.add_a_photo_outlined),
@@ -331,7 +369,7 @@ class _ReportLostDogSheetState extends ConsumerState<ReportLostDogSheet> {
               ),
               onPressed: _saving ? null : _submit,
               child: _saving
-                  ? const Text(LostDogStrings.publishing)
+                  ? Text(LostDogStrings.publishing)
                   : Text(
                       _isFound
                           ? LostDogStrings.publishFound
@@ -378,7 +416,7 @@ class _ReportLostDogSheetState extends ConsumerState<ReportLostDogSheet> {
     }
     if (_isFound && _photo == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text(LostDogStrings.photoRequired)),
+        SnackBar(content: Text(LostDogStrings.photoRequired)),
       );
       return;
     }
@@ -388,7 +426,7 @@ class _ReportLostDogSheetState extends ConsumerState<ReportLostDogSheet> {
       final ok = await ref.read(lostDogsControllerProvider.notifier).report(
             dogName: name.isEmpty ? LostDogStrings.unknownName : name,
             city: _city,
-            neighborhood: _neighborhood,
+            neighborhood: _resolvedNeighborhood,
             eventDate: _eventDate,
             description: _description.text.trim(),
             contactPhone: _phone.text.trim(),
@@ -405,7 +443,7 @@ class _ReportLostDogSheetState extends ConsumerState<ReportLostDogSheet> {
         Navigator.of(context).pop(true);
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text(LostDogStrings.publishError)),
+          SnackBar(content: Text(LostDogStrings.publishError)),
         );
       }
     } catch (e) {

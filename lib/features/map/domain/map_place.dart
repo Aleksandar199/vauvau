@@ -26,6 +26,7 @@ class MapPlace {
     this.dogFriendlyIndoor,
     this.dogFriendlyOutdoor,
     this.waterAvailable,
+    this.isDogPark,
     this.municipality = '',
     this.description = '',
     this.imageUrl,
@@ -64,6 +65,7 @@ class MapPlace {
       dogFriendlyIndoor: poi.dogFriendlyIndoor,
       dogFriendlyOutdoor: poi.dogFriendlyOutdoor,
       waterAvailable: poi.waterAvailable,
+      isDogPark: poi.isDogPark,
       municipality: poi.municipality,
       description: poi.description,
       imageUrl: poi.imageUrl,
@@ -102,6 +104,7 @@ class MapPlace {
   final bool? dogFriendlyIndoor;
   final bool? dogFriendlyOutdoor;
   final bool? waterAvailable;
+  final bool? isDogPark;
   final String municipality;
   final String description;
   final String? imageUrl;
@@ -119,6 +122,28 @@ class MapPlace {
   final int sponsorPriority;
 
   String get address => neighborhood;
+
+  /// Only designated dog areas get the dog-park badge; a public park is not
+  /// one by default. Unset legacy records keep the "Park za pse" naming rule.
+  bool get isOfficialDogPark {
+    if (type != MapPlaceType.park) return false;
+    final explicit = isDogPark;
+    if (explicit != null) return explicit;
+    final lower = name.toLowerCase();
+    return lower.contains('park za pse') ||
+        lower.contains('pet park') ||
+        lower.contains('poligon za pse');
+  }
+
+  /// False for 0,0 (failed geocode) and out-of-range points.
+  bool get hasValidCoordinates {
+    if (latitude.isNaN || longitude.isNaN) return false;
+    if (latitude == 0 && longitude == 0) return false;
+    return latitude >= -90 &&
+        latitude <= 90 &&
+        longitude >= -180 &&
+        longitude <= 180;
+  }
 
   Color get pinColor => isEmergencyService
       ? const Color(0xFFDC2626)
@@ -153,6 +178,7 @@ class MapPlace {
       dogFriendlyIndoor: dogFriendlyIndoor,
       dogFriendlyOutdoor: dogFriendlyOutdoor,
       waterAvailable: waterAvailable,
+      isDogPark: isDogPark,
       municipality: municipality,
       description: description,
       imageUrl: imageUrl,

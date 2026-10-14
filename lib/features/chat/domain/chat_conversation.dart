@@ -17,6 +17,7 @@ class ChatConversation {
     this.peerUserId = '',
     this.isNewMatch = false,
     this.unreadCount = 0,
+    this.lastMessagePreview = '',
   });
 
   final String id;
@@ -34,6 +35,9 @@ class ChatConversation {
   final bool isNewMatch;
   final int unreadCount;
 
+  /// From the room document (`lastMessage`) — used when messages are not hydrated.
+  final String lastMessagePreview;
+
   String get title => '$dogName ($ownerName)';
 
   ChatRoom get room => ChatRoom(
@@ -46,16 +50,16 @@ class ChatConversation {
       );
 
   String get lastSnippet {
-    if (messages.isEmpty) {
-      return '';
+    if (messages.isNotEmpty) {
+      final last = messages.last;
+      if (last.isWalkInvite) {
+        return last.walkLocationName == null || last.walkLocationName!.isEmpty
+            ? last.text
+            : last.text;
+      }
+      return last.previewText;
     }
-    final last = messages.last;
-    if (last.isWalkInvite) {
-      return last.walkLocationName == null || last.walkLocationName!.isEmpty
-          ? last.text
-          : last.text;
-    }
-    return last.text;
+    return lastMessagePreview;
   }
 
   ChatConversation copyWith({
@@ -66,6 +70,7 @@ class ChatConversation {
     DateTime? lastActivityAt,
     bool? isNewMatch,
     int? unreadCount,
+    String? lastMessagePreview,
   }) {
     return ChatConversation(
       id: id,
@@ -82,6 +87,7 @@ class ChatConversation {
       lastActivityAt: lastActivityAt ?? this.lastActivityAt,
       isNewMatch: isNewMatch ?? this.isNewMatch,
       unreadCount: unreadCount ?? this.unreadCount,
+      lastMessagePreview: lastMessagePreview ?? this.lastMessagePreview,
     );
   }
 }

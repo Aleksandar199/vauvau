@@ -11,9 +11,7 @@ final List<AdoptionDog> mockAdoptionDogs = [
     location: 'Novi Sad - Telep',
     description:
         'Bara je nežna i druželjubiva. Traži miran dom sa dvorištem i strpljivim ljudima.',
-    imageUrls: const [
-      'https://images.unsplash.com/photo-1552053831-71594a27632d?auto=format&fit=crop&w=800&q=80',
-    ],
+    imageUrls: const [],
     contactPhone: '+381 64 111 2233',
     uploaderUserId: 'shelter-ns',
     uploaderName: 'Prihvatilište Novi Sad',
@@ -31,9 +29,7 @@ final List<AdoptionDog> mockAdoptionDogs = [
     location: 'Novi Sad - Liman',
     description:
         'Džeki voli šetnje uz Dunav i loptu. Uči se osnovnim komandama i voli decu.',
-    imageUrls: const [
-      'https://images.unsplash.com/photo-1558788353-f76d92427f16?auto=format&fit=crop&w=800&q=80',
-    ],
+    imageUrls: const [],
     contactPhone: '+381 63 555 0199',
     uploaderUserId: 'ana-udomi',
     uploaderName: 'Ana Petrović',
@@ -51,9 +47,7 @@ final List<AdoptionDog> mockAdoptionDogs = [
     location: 'Beograd - Vračar',
     description:
         'Mala Mili traži stan i puno maženja. Vakcinisana, vesela i slatka kao bombona.',
-    imageUrls: const [
-      'https://images.unsplash.com/photo-1517849845537-4d257902454a?auto=format&fit=crop&w=800&q=80',
-    ],
+    imageUrls: const [],
     contactPhone: '+381 61 222 3344',
     uploaderUserId: 'vracar-pets',
     uploaderName: 'Udruženje Šapa',
