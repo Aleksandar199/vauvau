@@ -91,18 +91,42 @@ class ChatInboxController extends Notifier<List<ChatConversation>> {
   }) async {
     await _repo.sendMessage(conversationId, rawText, replyTo: replyTo);
     state = _repo.currentInbox;
-    final chat = byId(conversationId);
     final preview = rawText.trim();
-    if (chat == null || preview.isEmpty) {
+    if (preview.isEmpty) {
       return;
     }
-    final senderName = ref.read(authStateProvider).asData?.value?.displayName ??
-        chat.ownerName;
+    _notifyPeerOfMessage(conversationId, preview);
+  }
+
+  /// My name as the peer should see it. Never `chat.ownerName`: that is the
+  /// peer's own name (the bug where invites read "Nina vas poziva…" to Nina).
+  String get _myName {
+    final auth =
+        (ref.read(authStateProvider).asData?.value?.displayName ?? '').trim();
+    if (auth.isNotEmpty) {
+      return auth;
+    }
+    final owner = ref.read(profileControllerProvider).ownerName.trim();
+    return owner.isEmpty ? 'Neko' : owner;
+  }
+
+  /// My selected dog, or null while my profile has no real dog yet.
+  DiscoverProfile? get _myDog {
+    final profile = ref.read(profileControllerProvider);
+    return profile.dogs.isEmpty ? null : profile.dog;
+  }
+
+  /// Phone push to the peer (fcmInbox only: no in-app notification).
+  void _notifyPeerOfMessage(String conversationId, String preview) {
+    final chat = byId(conversationId);
+    if (chat == null) {
+      return;
+    }
     unawaited(
       ref.read(pushControllerProvider.notifier).notifyMessage(
-            senderName: senderName.trim().isEmpty ? 'Neko' : senderName.trim(),
+            senderName: _myName,
             preview: preview,
-            dogId: chat.dogId,
+            dogId: _myDog?.id,
             peerUserId: chat.peerUserId,
             conversationId: conversationId,
           ),
@@ -125,16 +149,26 @@ class ChatInboxController extends Notifier<List<ChatConversation>> {
     state = _repo.currentInbox;
     final chat = byId(conversationId);
     if (chat != null) {
-      unawaited(
-        ref.read(pushControllerProvider.notifier).notifyWalk(
-              dogName: chat.dogName,
-              ownerName: chat.ownerName,
-              dogId: chat.dogId,
-              peerUserId: chat.peerUserId,
-              conversationId: conversationId,
-            ),
+      notifyWalkRequest(
+        peerUserId: chat.peerUserId,
+        conversationId: conversationId,
       );
     }
+  }
+
+  /// Tells [peerUserId] that I invited them for a walk. The invite comes from
+  /// me: my name and my dog, not the peer's.
+  void notifyWalkRequest({required String peerUserId, String? conversationId}) {
+    final myDog = _myDog;
+    unawaited(
+      ref.read(pushControllerProvider.notifier).notifyWalk(
+            dogName: myDog?.name ?? '',
+            ownerName: _myName,
+            dogId: myDog?.id,
+            peerUserId: peerUserId,
+            conversationId: conversationId,
+          ),
+    );
   }
 
   Future<void> sendLocationPin({
@@ -146,6 +180,7 @@ class ChatInboxController extends Notifier<List<ChatConversation>> {
       locationName: locationName,
     );
     state = _repo.currentInbox;
+    _notifyPeerOfMessage(conversationId, '📍 $locationName');
   }
 
   Future<void> sendPhoto(
@@ -167,21 +202,7 @@ class ChatInboxController extends Notifier<List<ChatConversation>> {
       replyTo: replyTo,
     );
     state = _repo.currentInbox;
-    final chat = byId(conversationId);
-    if (chat == null) {
-      return;
-    }
-    final senderName = ref.read(authStateProvider).asData?.value?.displayName ??
-        chat.ownerName;
-    unawaited(
-      ref.read(pushControllerProvider.notifier).notifyMessage(
-            senderName: senderName.trim().isEmpty ? 'Neko' : senderName.trim(),
-            preview: '📷 Fotografija',
-            dogId: chat.dogId,
-            peerUserId: chat.peerUserId,
-            conversationId: conversationId,
-          ),
-    );
+    _notifyPeerOfMessage(conversationId, '📷 Fotografija');
   }
 
   Future<void> respondToWalkInvite({

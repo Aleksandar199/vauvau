@@ -1,18 +1,21 @@
 import 'dart:async';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/firebase/firebase_status.dart';
 import '../../../core/firebase/firestore_auth_guard.dart';
 import '../../../core/services/notification_service.dart';
 import '../../auth/presentation/auth_providers.dart';
+import '../../chat/presentation/open_chats.dart';
+import '../data/conversation_notifications.dart';
 import '../domain/app_notification.dart';
 
 class NotificationController extends Notifier<List<AppNotification>> {
   List<AppNotification> _local = const [];
   List<AppNotification> _remote = const [];
+  String _uid = '';
 
   CollectionReference<Map<String, dynamic>> get _collection =>
       FirebaseFirestore.instance.collection('notifications');
@@ -26,6 +29,7 @@ class NotificationController extends Notifier<List<AppNotification>> {
         ref.watch(firestoreAuthReadyProvider).asData?.value ?? false;
     _remote = const [];
     _local = const [];
+    _uid = uid;
     if (!isFirebaseReady || uid.isEmpty || !authReady) {
       return const [];
     }
@@ -42,6 +46,7 @@ class NotificationController extends Notifier<List<AppNotification>> {
     ).listen((remote) {
       _remote = remote;
       state = _merged();
+      _readArrivalsForOpenChats();
     });
     ref.onDispose(sub.cancel);
     return const [];
@@ -164,8 +169,13 @@ class NotificationController extends Notifier<List<AppNotification>> {
     );
   }
 
-  /// When the user opens a DM and reads it, drop related "new message"
-  /// notifications (badge + list) — they've already seen the chat.
+  /// The user opened and read a 1:1 chat: its notifications (old "new
+  /// message" docs, walk invites…) become read in the list, in Firestore and
+  /// in the phone tray.
+  ///
+  /// Previously this only touched `chatMessage` docs already in [_remote]
+  /// and deleted them; walk invites and docs that arrived a moment later
+  /// (e.g. when the chat was opened straight from a push) stayed unread.
   void markChatMessagesRead({
     required String conversationId,
     String? peerUserId,
@@ -176,55 +186,69 @@ class NotificationController extends Notifier<List<AppNotification>> {
       return;
     }
 
-    bool matches(AppNotification item) {
-      if (item.kind != NotificationKind.chatMessage) {
-        return false;
-      }
-      final cid = (item.conversationId ?? '').trim();
-      if (roomId.isNotEmpty && cid == roomId) {
-        return true;
-      }
-      // Older docs may lack conversationId — match by sender.
-      final from = (item.fromUserId ?? '').trim();
-      return peer.isNotEmpty && from == peer;
-    }
+    bool matches(AppNotification item) => notificationBelongsToChat(
+          item,
+          conversationId: roomId,
+          peerUserId: peer,
+        );
 
     final remoteIds = [
       for (final item in _remote)
-        if (matches(item)) item.id,
+        if (!item.isRead && matches(item)) item.id,
     ];
-    final touchedLocal = _local.any(matches);
-    if (remoteIds.isEmpty && !touchedLocal) {
-      return;
+    if (_local.any((item) => !item.isRead && matches(item)) ||
+        remoteIds.isNotEmpty) {
+      _local = [
+        for (final item in _local)
+          if (matches(item)) item.copyWith(isRead: true) else item,
+      ];
+      _remote = [
+        for (final item in _remote)
+          if (matches(item)) item.copyWith(isRead: true) else item,
+      ];
+      state = _merged();
     }
 
-    // Remove entirely so the notifications screen doesn't show them after
-    // the user already read the conversation elsewhere.
-    _local = [for (final item in _local) if (!matches(item)) item];
-    _remote = [for (final item in _remote) if (!matches(item)) item];
-    state = _merged();
-
-    if (remoteIds.isEmpty) {
-      return;
+    if (isFirebaseReady && _uid.isNotEmpty) {
+      unawaited(
+        markConversationNotificationsRead(
+          FirebaseFirestore.instance,
+          uid: _uid,
+          conversationId: roomId,
+          alsoIds: remoteIds,
+        ).catchError((Object error) {
+          debugPrint('Chat obaveštenja nisu označena: $error');
+          return const <String>[];
+        }),
+      );
     }
-    final batch = FirebaseFirestore.instance.batch();
-    for (final id in remoteIds) {
-      batch.delete(_collection.doc(id));
-    }
-    unawaited(
-      batch.commit().catchError(
-        (Object error) =>
-            debugPrint('Chat obaveštenja nisu obrisana: $error'),
-      ),
-    );
-    // Drop shade entries for this chat; also clear other alert-channel
-    // leftovers (legacy random ids) so pull-down doesn't keep "read" ones.
+    // Only this chat's tray entries; other chats' alerts stay.
     unawaited(
       ref.read(notificationServiceProvider).dismissTrayAlerts(
             conversationId: roomId.isEmpty ? null : roomId,
-            allAlerts: true,
           ),
     );
+  }
+
+  /// Notifications that arrive for a chat the user is looking at right now
+  /// are read on arrival.
+  void _readArrivalsForOpenChats() {
+    final lifecycle = WidgetsBinding.instance.lifecycleState;
+    if (lifecycle != null && lifecycle != AppLifecycleState.resumed) {
+      return;
+    }
+    final open = ref.read(openChatsProvider);
+    if (open.isEmpty) {
+      return;
+    }
+    final rooms = <String>{
+      for (final item in _remote)
+        if (!item.isRead && open.contains(item.conversationId))
+          item.conversationId!,
+    };
+    for (final roomId in rooms) {
+      markChatMessagesRead(conversationId: roomId);
+    }
   }
 
   void markAllRead() {

@@ -16,6 +16,7 @@ import '../domain/chat_conversation.dart';
 import '../domain/chat_message.dart';
 import 'chat_inbox.dart';
 import 'chat_strings.dart';
+import 'open_chats.dart';
 import 'schedule_walk_sheet.dart';
 import 'widgets/chat_ui.dart';
 import 'widgets/dog_avatar.dart';
@@ -34,7 +35,8 @@ class ChatDetailScreen extends ConsumerStatefulWidget {
   ConsumerState<ChatDetailScreen> createState() => _ChatDetailScreenState();
 }
 
-class _ChatDetailScreenState extends ConsumerState<ChatDetailScreen> {
+class _ChatDetailScreenState extends ConsumerState<ChatDetailScreen>
+    with WidgetsBindingObserver {
   final _input = TextEditingController();
   final _scroll = ScrollController();
   final _focusNode = FocusNode();
@@ -42,6 +44,7 @@ class _ChatDetailScreenState extends ConsumerState<ChatDetailScreen> {
   ChatMessage? _replyTo;
   var _sendingPhoto = false;
   ChatInboxController? _inbox;
+  OpenChatsController? _openChats;
   var _roomAttached = false;
   /// Unread count captured before [markRead] clears it.
   var _openUnreadCount = 0;
@@ -57,10 +60,14 @@ class _ChatDetailScreenState extends ConsumerState<ChatDetailScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) {
         return;
       }
+      final openChats = ref.read(openChatsProvider.notifier);
+      openChats.open(widget.conversationId);
+      _openChats = openChats;
       _inbox = ref.read(chatInboxProvider.notifier);
       final chat = _conversationFromInbox();
       _openUnreadCount = chat?.unreadCount ?? 0;
@@ -103,6 +110,8 @@ class _ChatDetailScreenState extends ConsumerState<ChatDetailScreen> {
   @override
   void dispose() {
     // Do not use [ref] here (unsafe after unmount). Detach via cached notifier.
+    WidgetsBinding.instance.removeObserver(this);
+    _openChats?.close(widget.conversationId);
     if (_roomAttached) {
       _inbox?.detachRoom(widget.conversationId);
       _roomAttached = false;
@@ -228,6 +237,19 @@ class _ChatDetailScreenState extends ConsumerState<ChatDetailScreen> {
       return;
     }
     _inbox?.markRead(widget.conversationId);
+  }
+
+  /// Messages that arrived while the app was in the background are read as
+  /// soon as the user is back in this chat (no other inbox change may come).
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state != AppLifecycleState.resumed || !mounted) {
+      return;
+    }
+    final chat = _conversationFromInbox();
+    if (chat != null) {
+      _clearUnreadWhileViewing(chat);
+    }
   }
 
   void _onMessagesUpdated(List<ChatMessage> messages) {

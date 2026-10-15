@@ -88,7 +88,7 @@ Pun spisak polja: `docs/TEHNICKI_PREGLED.md` sekcija 5 „Firestore struktura po
 - `lost_dogs/{id}` – dogName, breed, type (`lost`/`found`), city, neighborhood, lostDate/foundDate, imageUrl, contactPhone, uploaderUserId, status (`active`/`resolved`), comments[] (niz u dokumentu!), commentLikes, commentsCount.
 - `adoption_dogs/{id}` – name, breed, age, gender, size, location, imageUrls[], contactPhone, uploaderUserId, status (`available`/`adopted`).
 - `pois/{id}` (sva mesta za mapu: category, address, lat/lng, phone, openingHours, verificationStatus, sponsor polja…), `places/{id}` (admin izvor istine, kopija u `pois`), `cities/{id}` (name, lat, lng, radiusKm, isActive).
-- `notifications/{id}` (toUserId/recipientId, type, title, body, isRead, createdAt…), `reports`, `admin_notifications`, `admin_feedback` (status `new`/`resolved`), `change_requests`. Legacy: `highlights`, `support` (samo pravila).
+- `notifications/{id}` (toUserId/recipientId, fromUserId, type, title, body, conversationId, isRead, createdAt…; nove čet poruke – `message`/`group`/`event` – se NE upisuju ovde, samo u `fcmInbox` + lokalna notifikacija na telefonu), `reports`, `admin_notifications`, `admin_feedback` (status `new`/`resolved`), `change_requests`. Legacy: `highlights`, `support` (samo pravila).
 - **Storage:** `{pets|users|moments|events|groups|adoption|lost_dogs|uploads|chats}/{uid}/{millis}.ext`, limit 8 MB.
 - **Pooštreno 2026-10-15 (NIJE deployovano, testovi u `rules_test/`, 64):**
   - `users`: privatna polja samo u `private/account`; `{path=**}/private` čita samo admin (lista prijava, email-ovi).
@@ -141,7 +141,8 @@ Pun spisak polja: `docs/TEHNICKI_PREGLED.md` sekcija 5 „Firestore struktura po
 2. Admin „Obriši“ na prijavi ne briše korisnika/poruku/psa/čet (samo moment).
 3. `notifyMatch` se nigde ne poziva; prijava sadržaja pravi notifikaciju samom prijaviocu.
 4. Seed grupe/događaji se upisuju sa klijenta u produkciju (lažni `memberCount`, `isApproved: true`). Po novim pravilima to sme samo admin; `ensureSeeded` kod ostalih preskače odbijen upis.
-- Testovi (2026-10-15): 177 prolazi, 18 pada – isti skup kao pre popravki (admin, events, map, safety, chat walk invite, notifications, settings, widget, discover, moments – `moments_test` „owner creates a highlight“ visi 10 min). `profile_test` „opens settings and search filters“ pada (discover mock nema pse za Beograd) – ranije se nije ni kompajlirao. `flutter analyze` čist.
+5. Čet (prijavljeno, nije menjano): pošiljalac poziva ne dobija obaveštenje kad sagovornik prihvati/odbije šetnju; pravila ne proveravaju blokadu za `chats/*/messages` (blokirani i dalje može da piše, primalac to samo ne vidi u listi; ekran otvoren iz push-a/obaveštenja blokiranog korisnika i dalje radi); poziv sa vremenom u prošlosti se tiho ignoriše (`sendWalkInvite`); stari `notifications` dokumenti tipa `message` ostaju u listi dok se razgovor ne otvori.
+- Testovi (2026-10-15, posle popravki četa): 190 prolazi, 15 pada – isti skup kao pre (bez `moments_test`, koji visi). Ranije: 177 prolazi, 18 pada – isti skup kao pre popravki (admin, events, map, safety, chat walk invite, notifications, settings, widget, discover, moments – `moments_test` „owner creates a highlight“ visi 10 min). `profile_test` „opens settings and search filters“ pada (discover mock nema pse za Beograd) – ranije se nije ni kompajlirao. `flutter analyze` čist.
 
 ## TODO (po prioritetu)
 1. Push na `master` (komit `a0e5c3f` je lokalan na `main`) – samo uz odobrenje.
@@ -182,3 +183,11 @@ Pun spisak polja: `docs/TEHNICKI_PREGLED.md` sekcija 5 „Firestore struktura po
   - Storage `chats/` po putanji samo pošiljalac.
   - kompatibilnost sa starim pravilima dok se ne deployuju: `setUserPrivateFields` (prijave idu u javni profil ako je `private` odbijen), presence/token best-effort, `_existsSafely` za sobu/marker, lajk komentara pada nazad na ceo `commentLikes` map; admin lista prijava čita i stari javni profil.
   - `rules_test/` 64 testa, svi prolaze; Flutter: isti 15 padova pre i posle (bez `moments_test`, koji visi); `flutter analyze` čist.
+- [2026-10-15] Čet „Poruke“ – popravke (pravila nisu menjana ni deployovana):
+  - ime u obaveštenju: poziv u šetnju je slao ime i psa SAGOVORNIKA (`chat.ownerName`/`chat.dogName`), pa je Nina dobijala „Nina vas poziva…“; isto za poruku/sliku kad `displayName` nije postavljen. Sad je pošiljalac uvek trenutni korisnik (`_myName`/`_myDog`, `notifyWalkRequest` u `chat_inbox.dart`; i poziv sa mape u `map_screen.dart`). U `writeQueuedNotification` (`push_notification_gateway.dart`) `data.peerUserId` = pošiljalac (ranije primalac sam sebi);
+  - pročitan razgovor → njegova obaveštenja (`conversationId`, i stari `message`/`walk` po pošiljaocu) dobijaju `isRead: true` upitom u Firestore (`notifications/data/conversation_notifications.dart`), ne brišu se; obaveštenja koja stignu dok je čet otvoren čitaju se odmah (`chat/presentation/open_chats.dart`); povratak u app sa otvorenim četom zove `markRead` (`chat_detail_screen.dart`); tap na push više ne dodaje novu nepročitanu kopiju (`push_controller.dart`); brišu se samo tray stavke tog četa;
+  - nova poruka (1:1, grupa, događaj) više nema in-app obaveštenje: `PushPayload.showsInApp`, sender piše samo `fcmInbox`; primalac dobija lokalnu notifikaciju na telefonu (`incomingChatAlertProvider` u `incoming_message_sound.dart`, ne za otvoren čet); slanje lokacije sad šalje push;
+  - lajk poruke: na mojoj (narandžastoj) poruci srce je bilo prazno i u boji teme / crveno na narandžastom – nevidljivo. `ChatLikeIndicator` (`message_bubble.dart`) crta puno srce u boji teksta balona; `CommentLikeButton` ima `likedColor`/`idleColor`;
+  - obaveštenje o pozivu sa `conversationId` otvara čet umesto mape (`notification_routing.dart`);
+  - novi `test/chat_notifications_test.dart` (14), `rules_test/` 65 (upit + `isRead` primaoca); Flutter: isti 15 padova pre i posle; `flutter analyze` čist.
+  - predlog (nije menjano): poziv u šetnju zadržati i kao in-app obaveštenje – traži odgovor (prihvati/odbij), za razliku od obične poruke.

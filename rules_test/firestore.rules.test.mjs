@@ -11,6 +11,7 @@ import {
   arrayRemove,
   Timestamp,
   arrayUnion,
+  collection,
   collectionGroup,
   deleteDoc,
   deleteField,
@@ -18,9 +19,11 @@ import {
   getDoc,
   getDocs,
   increment,
+  query,
   serverTimestamp,
   setDoc,
   updateDoc,
+  where,
   writeBatch,
 } from 'firebase/firestore';
 
@@ -430,6 +433,34 @@ describe('3. notifications i fcmInbox', () => {
 
   test('fcmInbox: lažni pošiljalac', async () => {
     await assertFails(setDoc(doc(as('alice'), 'users/bob/fcmInbox/f1'), payload('carol')));
+  });
+
+  test('pročitan čet: primalac upitom nalazi svoja obaveštenja razgovora i označava ih', async () => {
+    await env.withSecurityRulesDisabled((ctx) =>
+      setDoc(doc(ctx.firestore(), 'notifications/walk'), {
+        ...payload('alice'),
+        type: 'walk',
+        conversationId: 'alice_bob',
+        createdAt: Timestamp.now(),
+      }),
+    );
+    const mine = query(
+      collection(as('bob'), 'notifications'),
+      where('toUserId', '==', 'bob'),
+      where('conversationId', '==', 'alice_bob'),
+    );
+    await assertSucceeds(getDocs(mine));
+    await assertSucceeds(updateDoc(doc(as('bob'), 'notifications/walk'), { isRead: true }));
+    // Tuđa obaveštenja: ni upit ni označavanje.
+    await assertFails(
+      getDocs(
+        query(
+          collection(as('carol'), 'notifications'),
+          where('conversationId', '==', 'alice_bob'),
+        ),
+      ),
+    );
+    await assertFails(updateDoc(doc(as('carol'), 'notifications/walk'), { isRead: true }));
   });
 });
 

@@ -151,9 +151,33 @@ class PushController extends Notifier<bool> {
     };
   }
 
+  /// Phone notification on this device for a 1:1 message that just arrived.
+  /// Like every chat message it stays out of the in-app notifications list.
+  Future<void> alertIncomingMessage({
+    required String senderName,
+    required String preview,
+    String? dogId,
+    String? senderUserId,
+    String? conversationId,
+  }) async {
+    final payload = PushPayload(
+      kind: PushKind.message,
+      title: NotificationStrings.pushMessageTitle,
+      body: NotificationStrings.pushMessageBody(senderName, preview),
+      dogId: dogId,
+      peerUserId: senderUserId,
+      conversationId: conversationId,
+    );
+    if (_isEnabled(payload.kind)) {
+      await _gateway.present(payload);
+    }
+  }
+
   Future<void> _dispatch(PushPayload payload, {bool local = true}) async {
     if (_isEnabled(payload.kind) && local) {
-      _ingest(payload);
+      if (payload.showsInApp) {
+        _ingest(payload);
+      }
       await _gateway.present(payload);
     }
     final peer = payload.peerUserId;
@@ -173,12 +197,16 @@ class PushController extends Notifier<bool> {
     if (!_isEnabled(payload.kind)) {
       return;
     }
-    _ingest(payload);
+    if (payload.showsInApp) {
+      _ingest(payload);
+    }
     await _gateway.present(payload);
   }
 
   Future<void> _handleOpened(PushPayload payload) async {
-    _ingest(payload);
+    // No _ingest here: the user just tapped it, so a fresh unread copy in the
+    // list would be wrong (in-app kinds already have their `notifications`
+    // doc from the sender).
     await openPushDestination(ref, payload);
   }
 

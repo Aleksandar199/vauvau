@@ -45,8 +45,7 @@ class MessageBubble extends StatelessWidget {
         ? message.senderName
         : fallbackSenderName;
     final caption = message.text.trim();
-    final liked = message.isLikedBy(currentUserId);
-    final showLike = !isMine || message.likeCount > 0;
+    final showLike = ChatLikeIndicator.isShown(message);
 
     return Padding(
       padding: ChatUiTokens.bubbleOuterPadding,
@@ -141,10 +140,11 @@ class MessageBubble extends StatelessWidget {
                             ),
                             if (showLike) ...[
                               const SizedBox(width: 8),
-                              CommentLikeButton(
-                                liked: liked,
-                                count: message.likeCount,
-                                onPressed: isMine ? null : onToggleLike,
+                              ChatLikeIndicator(
+                                message: message,
+                                currentUserId: currentUserId,
+                                foreground: foreground,
+                                onToggleLike: onToggleLike,
                               ),
                             ],
                           ],
@@ -162,6 +162,44 @@ class MessageBubble extends StatelessWidget {
           ],
         ],
       ),
+    );
+  }
+}
+
+/// Heart + count under a chat bubble.
+///
+/// On the peer's bubble it is my like toggle (red when I liked it). On my own
+/// orange bubble it only shows that the peer liked it, so it is filled and
+/// drawn in the bubble's text color: the old red / outlined theme-colored
+/// heart was practically invisible there, so likes looked missing.
+class ChatLikeIndicator extends StatelessWidget {
+  const ChatLikeIndicator({
+    super.key,
+    required this.message,
+    required this.currentUserId,
+    required this.foreground,
+    this.onToggleLike,
+  });
+
+  final ChatMessage message;
+  final String currentUserId;
+  final Color foreground;
+  final VoidCallback? onToggleLike;
+
+  /// The peer's messages always offer the toggle; mine only once liked.
+  static bool isShown(ChatMessage message) =>
+      !message.isMine || message.likeCount > 0;
+
+  @override
+  Widget build(BuildContext context) {
+    final isMine = message.isMine;
+    return CommentLikeButton(
+      key: const ValueKey('chat-message-like'),
+      liked: isMine ? message.likeCount > 0 : message.isLikedBy(currentUserId),
+      count: message.likeCount,
+      likedColor: isMine ? foreground : null,
+      idleColor: foreground.withValues(alpha: 0.65),
+      onPressed: isMine ? null : onToggleLike,
     );
   }
 }

@@ -44,9 +44,18 @@ abstract final class NotificationStrings {
     return '$groupTitle: $suffix';
   }
 
-  static String pushWalkBody(String dogName, String ownerName) => L10n.isEnglish
-      ? '$ownerName invites you for a walk with $dogName.'
-      : '$ownerName vas poziva u šetnju sa $dogName.';
+  /// [ownerName] / [dogName] are the inviter's (the sender's), never the
+  /// recipient's own.
+  static String pushWalkBody(String dogName, String ownerName) {
+    if (dogName.trim().isEmpty) {
+      return L10n.isEnglish
+          ? '$ownerName invites you for a walk.'
+          : '$ownerName vas poziva u šetnju.';
+    }
+    return L10n.isEnglish
+        ? '$ownerName invites you for a walk with $dogName.'
+        : '$ownerName vas poziva u šetnju sa $dogName.';
+  }
 
   static String timeAgo(DateTime createdAt, [DateTime? now]) {
     final elapsed = (now ?? DateTime.now()).difference(createdAt);

@@ -17,7 +17,6 @@ import '../../location/presentation/location_disclosure.dart';
 import '../../auth/presentation/auth_providers.dart';
 import '../../moderation/domain/content_report.dart';
 import '../../moderation/presentation/report_sheet.dart';
-import '../../notifications/presentation/push_controller.dart';
 import '../data/mock_map_data.dart';
 import '../domain/city_model.dart';
 import '../domain/map_city.dart';
@@ -909,22 +908,21 @@ class _MapScreenState extends ConsumerState<MapScreen> {
       context: context,
       pin: pin,
       onJoinWalk: () {
-        ref.read(pushControllerProvider.notifier).notifyWalk(
-              dogName: pin.profile.name,
-              ownerName: pin.profile.ownerName,
-              dogId: pin.profile.id,
-              peerUserId: pin.profile.ownerId,
-            );
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(MapStrings.walkRequestSent)),
         );
-        _openWalkerChat(pin);
+        final chatId = _openWalkerChat(pin);
+        // Sender = me (name + my dog); previously the walker got their own.
+        ref.read(chatInboxProvider.notifier).notifyWalkRequest(
+              peerUserId: pin.profile.ownerId,
+              conversationId: chatId,
+            );
       },
       onOpenChat: () => _openWalkerChat(pin),
     );
   }
 
-  void _openWalkerChat(WalkingDogPin pin) {
+  String _openWalkerChat(WalkingDogPin pin) {
     final chatId =
         ref.read(chatInboxProvider.notifier).openFromMatch(pin.profile);
     ref.read(homeTabIndexProvider.notifier).showMessages();
@@ -933,6 +931,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
         builder: (_) => ChatScreen(conversationId: chatId),
       ),
     );
+    return chatId;
   }
 
   Future<void> _promptStartWalk(BuildContext context, {String? preset}) async {

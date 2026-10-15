@@ -29,6 +29,13 @@ class PushPayload {
         PushKind.event => 'event',
       };
 
+  /// Chat messages (1:1, group, event) are announced only as a phone
+  /// notification; they never go to the in-app notifications list.
+  bool get showsInApp => switch (kind) {
+        PushKind.message || PushKind.group || PushKind.event => false,
+        PushKind.match || PushKind.walk => true,
+      };
+
   Map<String, String> get data => {
         'type': typeName,
         'title': title,

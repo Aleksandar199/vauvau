@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_colors.dart';
-import '../../../../core/widgets/comment_like_button.dart';
 import '../../domain/chat_message.dart';
 import '../../domain/chat_time.dart';
 import '../chat_strings.dart';
 import 'chat_ui.dart';
+import 'message_bubble.dart';
 
 class LocationPinBubble extends StatelessWidget {
   const LocationPinBubble({
@@ -32,8 +32,7 @@ class LocationPinBubble extends StatelessWidget {
             message.walkLocationName!.trim().isNotEmpty)
         ? message.walkLocationName!.trim()
         : message.text;
-    final liked = message.isLikedBy(currentUserId);
-    final showLike = !isMine || message.likeCount > 0;
+    final showLike = ChatLikeIndicator.isShown(message);
 
     return Padding(
       padding: ChatUiTokens.bubbleOuterPadding,
@@ -91,10 +90,11 @@ class LocationPinBubble extends StatelessWidget {
                     ),
                     if (showLike) ...[
                       const SizedBox(width: 8),
-                      CommentLikeButton(
-                        liked: liked,
-                        count: message.likeCount,
-                        onPressed: isMine ? null : onToggleLike,
+                      ChatLikeIndicator(
+                        message: message,
+                        currentUserId: currentUserId,
+                        foreground: foreground,
+                        onToggleLike: onToggleLike,
                       ),
                     ],
                   ],

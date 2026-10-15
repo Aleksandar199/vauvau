@@ -70,8 +70,13 @@ Future<void> _open(
 }) async {
   T read<T>(dynamic provider) => ref.read(provider) as T;
 
+  // A walk invite sent in a chat is answered in that chat (accept/decline),
+  // so open it; only invites without a chat (legacy) go to the map.
+  final walkChat = kind == NotificationKind.walkRequest &&
+      (conversationId?.trim() ?? '').isNotEmpty;
+
   switch (kind) {
-    case NotificationKind.walkRequest:
+    case NotificationKind.walkRequest when !walkChat:
       read<HomeTabIndex>(homeTabIndexProvider.notifier).showMap();
       _popSheetIfNeeded(context);
       return;
@@ -121,6 +126,7 @@ Future<void> _open(
       return;
     case NotificationKind.match:
     case NotificationKind.chatMessage:
+    case NotificationKind.walkRequest:
       final chatId = await _resolveConversationId(
         ref,
         conversationId: conversationId,

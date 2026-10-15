@@ -172,39 +172,12 @@ class FcmPushNotificationGateway implements PushNotificationGateway {
     if (userId.isEmpty || !isFirebaseReady) {
       return;
     }
-    // peerUserId on the payload is the recipient; fromUserId is the sender.
-    final senderId = FirebaseAuth.instance.currentUser?.uid ?? '';
-    final doc = <String, dynamic>{
-      'type': payload.typeName,
-      // Rules cap notification text; long chat messages are clipped here.
-      'title': clipLastMessagePreview(payload.title),
-      'body': clipLastMessagePreview(payload.body),
-      'dogId': payload.dogId,
-      'fromUserId': senderId.isEmpty ? null : senderId,
-      'senderUserId': senderId.isEmpty ? null : senderId,
-      'conversationId': payload.conversationId,
-      'groupId': payload.groupId,
-      'eventId': payload.eventId,
-      'toUserId': userId,
-      'isRead': false,
-      'createdAt': FieldValue.serverTimestamp(),
-      'data': {
-        ...payload.data,
-        if (senderId.isNotEmpty) 'fromUserId': senderId,
-        'toUserId': userId,
-      },
-    };
-    try {
-      await _firestore
-          .collection('users')
-          .doc(userId)
-          .collection('fcmInbox')
-          .add(doc);
-    } catch (_) {}
-    try {
-      // In-app notifications inbox (taps route using these IDs).
-      await _firestore.collection('notifications').add(doc);
-    } catch (_) {}
+    await writeQueuedNotification(
+      _firestore,
+      userId: userId,
+      senderId: FirebaseAuth.instance.currentUser?.uid ?? '',
+      payload: payload,
+    );
   }
 
   @override
@@ -258,6 +231,54 @@ class FcmPushNotificationGateway implements PushNotificationGateway {
     }
     return PushPayload.fromData(data);
   }
+}
+
+/// Queues [payload] from [senderId] for [userId]: always in
+/// `users/{userId}/fcmInbox` (phone push), and in the in-app `notifications`
+/// list only when [PushPayload.showsInApp] (not for chat messages).
+Future<void> writeQueuedNotification(
+  FirebaseFirestore firestore, {
+  required String userId,
+  required String senderId,
+  required PushPayload payload,
+}) async {
+  // The payload is built from the sender's side, so its peerUserId is the
+  // recipient. Stored for the recipient, the peer is the sender.
+  final doc = <String, dynamic>{
+    'type': payload.typeName,
+    // Rules cap notification text; long chat messages are clipped here.
+    'title': clipLastMessagePreview(payload.title),
+    'body': clipLastMessagePreview(payload.body),
+    'dogId': payload.dogId,
+    'fromUserId': senderId.isEmpty ? null : senderId,
+    'senderUserId': senderId.isEmpty ? null : senderId,
+    'conversationId': payload.conversationId,
+    'groupId': payload.groupId,
+    'eventId': payload.eventId,
+    'toUserId': userId,
+    'isRead': false,
+    'createdAt': FieldValue.serverTimestamp(),
+    'data': {
+      ...payload.data,
+      if (senderId.isNotEmpty) 'fromUserId': senderId,
+      if (senderId.isNotEmpty) 'peerUserId': senderId,
+      'toUserId': userId,
+    },
+  };
+  try {
+    await firestore
+        .collection('users')
+        .doc(userId)
+        .collection('fcmInbox')
+        .add(doc);
+  } catch (_) {}
+  if (!payload.showsInApp) {
+    return;
+  }
+  try {
+    // In-app notifications inbox (taps route using these IDs).
+    await firestore.collection('notifications').add(doc);
+  } catch (_) {}
 }
 
 PushPayload? pushPayloadFromNotificationJson(String? raw) {
