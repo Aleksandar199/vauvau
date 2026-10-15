@@ -55,7 +55,8 @@
 - `lib/features/chat/presentation/chat_inbox.dart` – `ChatInboxController`, unread/walk-invite provideri.
 - `lib/features/chat/presentation/incoming_message_sound.dart` – detektor dolazne poruke → zvuk.
 - `lib/features/groups/data/firestore_groups_repository.dart` / `events/data/firestore_events_repository.dart` – grupe/događaji + seed.
-- `lib/features/discover/data/firestore_discover_repository.dart` – swipe, lajkovi, mečevi, kreiranje četa.
+- `lib/features/discover/data/firestore_discover_repository.dart` – feed (live prva strana + `fetchProfilesPage`), swipe, lajkovi, mečevi, kreiranje četa.
+- `lib/features/discover/presentation/discover_controller.dart` – `DiscoverFeedController` (paginacija, 8 po strani, zadržava kartice pri osvežavanju), `discoverAreaProvider`, `discoverFeedProvider` (blokirani/sakriveni/sopstveni psi).
 - `lib/features/dogs/data/dogs_repository_impl.dart` – CRUD psa.
 - `lib/features/map/presentation/walk_controller.dart` – šetnja, presence, spajanje mesta (`mapPlacesProvider`).
 - `lib/features/map/data/places_repository.dart` – admin mesta (`places` SoT + kopija u `pois`, atomski batch).
@@ -141,7 +142,7 @@ Pun spisak polja: `docs/TEHNICKI_PREGLED.md` sekcija 5 „Firestore struktura po
 2. Admin „Obriši“ na prijavi ne briše korisnika/poruku/psa/čet (samo moment).
 3. `notifyMatch` se nigde ne poziva; prijava sadržaja pravi notifikaciju samom prijaviocu.
 4. Seed grupe/događaji se upisuju sa klijenta u produkciju (lažni `memberCount`, `isApproved: true`). Po novim pravilima to sme samo admin; `ensureSeeded` kod ostalih preskače odbijen upis.
-- Testovi (2026-10-15): 177 prolazi, 18 pada – isti skup kao pre popravki (admin, events, map, safety, chat walk invite, notifications, settings, widget, discover, moments – `moments_test` „owner creates a highlight“ visi 10 min). `profile_test` „opens settings and search filters“ pada (discover mock nema pse za Beograd) – ranije se nije ni kompajlirao. `flutter analyze` čist.
+- Testovi (2026-10-15, posle Discover paginacije): 183 prolazi, 13 pada bez `moments_test` (admin, chat walk invite, discover „detail sheet“, events, map, notifications ×2, profile, safety, settings ×2, widget ×2; moments – `moments_test` „owner creates a highlight“ visi 10 min). `profile_test` „opens settings and search filters“ pada (discover mock nema pse za Beograd) – ranije se nije ni kompajlirao. `flutter analyze` čist.
 
 ## TODO (po prioritetu)
 1. Push na `master` (komit `a0e5c3f` je lokalan na `main`) – samo uz odobrenje.
@@ -182,3 +183,11 @@ Pun spisak polja: `docs/TEHNICKI_PREGLED.md` sekcija 5 „Firestore struktura po
   - Storage `chats/` po putanji samo pošiljalac.
   - kompatibilnost sa starim pravilima dok se ne deployuju: `setUserPrivateFields` (prijave idu u javni profil ako je `private` odbijen), presence/token best-effort, `_existsSafely` za sobu/marker, lajk komentara pada nazad na ceo `commentLikes` map; admin lista prijava čita i stari javni profil.
   - `rules_test/` 64 testa, svi prolaze; Flutter: isti 15 padova pre i posle (bez `moments_test`, koji visi); `flutter analyze` čist.
+- [2026-10-15] Discover učitavanje i paginacija:
+  - uzrok treperenja (prazno → kartice → prazno → kartice): `DiscoverFeedController` je pri svakom rebuild-u (auth korisnik obogaćen iz Firestore-a, `firestoreAuthReadyProvider` ponovo u loading-u → `asData` = null, GPS/home city menja `discoverAreaProvider`) vraćao `[]`, a ekran nije razlikovao „učitava se“ od „nema pasa“; lokalni Firestore keš je mogao da vrati prazan prvi snapshot;
+  - `discover_controller.dart`: stanje `DiscoverFeedState` (items, isLoading, isLoadingMore, hasMore); rebuild zadržava prethodne kartice dok ne stigne nova prva strana; `select` na uid/grad, `.value` umesto `asData`; prazan odgovor iz keša čeka server (do 6 s); stranica 8, sledeća kad ostanu ≤3 kartice (`prefetchThreshold`) ili kad filteri sakriju sve učitane; feed radi i bez Firebase-a (Local repo – ranije uvek prazan);
+  - `firestoreAuthReadyProvider` gleda samo uid (`firestore_auth_guard.dart`);
+  - repozitorijum: `watchProfiles` vraća `DiscoverPage` (kursor = poslednji pročitani dokument, `isFromCache`); `fetchProfilesPage` više ne odseca stranu na `limit` (kursor je bio iza odsečenih pasa → preskakani); stari `loadMore` je ponovo čitao prvu stranu i preskakao pse;
+  - `discover_screen.dart` + novi `widgets/discover_skeleton.dart` (skeleton kartice sa `SoftPlaceholder`, `AnimatedSwitcher`); `DiscoverStrings.loadingDogs`;
+  - testovi: novi `test/discover_feed_pagination_test.dart` (5); `discover_test.dart` helper čeka prvu stranu → „directory cards“ i „tapping a card“ sad prolaze. Ceo paket (bez `moments_test`): 183 prolazi, 13 pada (pre: 176/15, nijedan novi pad). `flutter analyze` čist.
+  - uočeno, nije menjano: slika `https://i.ibb.co/HpYqtHSn/22f8b762bec3.jpg` u bazi vraća 404 (pokvaren URL fotografije psa).

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -212,12 +213,18 @@ class DiscoverArea {
 final discoverAreaProvider = Provider<DiscoverArea>((ref) {
   final location = ref.watch(userLocationProvider);
   final filters = ref.watch(matchingFiltersProvider);
-  final user = ref.watch(authStateProvider).asData?.value;
+  // Only the city matters here, not every update of the auth user.
+  final userCity = ref.watch(
+    authStateProvider.select((auth) {
+      final user = auth.value;
+      return user == null ? null : (user.cityId, user.cityName);
+    }),
+  );
   final explicitCity = filters.cityId;
   final cityId = explicitCity ??
-      (user == null
+      (userCity == null
           ? null
-          : SerbiaLocations.resolveCityId(user.cityId, user.cityName));
+          : SerbiaLocations.resolveCityId(userCity.$1, userCity.$2));
   if (cityId == null) {
     return DiscoverArea(origin: location.coord, radiusKm: filters.radiusKm);
   }
@@ -244,148 +251,234 @@ final discoverRepositoryProvider = Provider<DiscoverRepository>((ref) {
   return LocalDiscoverRepository(seed: ref.watch(discoverProfilesProvider));
 });
 
-/// Paginates Discover: live first page (15) + older pages via [loadMore].
-class DiscoverFeedController extends Notifier<List<DiscoverProfile>> {
-  static const int pageSize = 15;
+/// What Discover has loaded so far for the current user and area.
+class DiscoverFeedState {
+  const DiscoverFeedState({
+    this.items = const [],
+    this.isLoading = true,
+    this.isLoadingMore = false,
+    this.hasMore = false,
+  });
 
-  var _hasMore = true;
+  final List<DiscoverProfile> items;
+
+  /// No page has arrived yet for the current user / area. [items] may still
+  /// hold the previous area's cards, which stay visible while refreshing.
+  final bool isLoading;
+  final bool isLoadingMore;
+  final bool hasMore;
+}
+
+/// Paginates Discover: a small live first page + older pages via [loadMore].
+///
+/// Rebuilds (auth user enriched from Firestore, GPS fix, home city, radius)
+/// keep the previous cards until the new first page arrives, so the feed
+/// never blinks to the empty state while it is only reloading.
+class DiscoverFeedController extends Notifier<DiscoverFeedState> {
+  static const int pageSize = 8;
+
+  /// Fetch the next page once at most this many cards are left to see.
+  static const int prefetchThreshold = 3;
+
+  /// An empty answer from the offline cache is not trusted as "no dogs"
+  /// until the server answers or this much time passes (offline).
+  static const Duration cacheGrace = Duration(seconds: 6);
+
+  var _generation = 0;
+  var _uid = '';
+  GeoQuery? _geo;
+  var _gotFirstPage = false;
   var _loadingMore = false;
-  List<DiscoverProfile> _older = const [];
-  Object? _cursor;
-  List<DiscoverProfile>? _live;
+  List<DiscoverProfile> _stale = const [];
+  List<DiscoverProfile> _live = const [];
+  Object? _liveCursor;
+  var _liveHasMore = false;
 
-  bool get hasMore => _hasMore;
-  bool get isLoadingMore => _loadingMore;
+  /// Live cards pushed out of the first page by newer dogs after paging
+  /// started; they would otherwise fall into the gap before [_older].
+  List<DiscoverProfile> _pushedOut = const [];
+  List<DiscoverProfile> _older = const [];
+  var _paged = false;
+  Object? _cursor;
+  var _olderHasMore = false;
+
+  bool get hasMore => state.hasMore;
+  bool get isLoadingMore => state.isLoadingMore;
 
   @override
-  List<DiscoverProfile> build() {
+  DiscoverFeedState build() {
     final area = ref.watch(discoverAreaProvider);
-    final exclude =
-        ref.watch(authStateProvider).asData?.value?.uid ?? '';
-    final authReady =
-        ref.watch(firestoreAuthReadyProvider).asData?.value ?? false;
-    // Reset paging when location / radius / auth changes (rebuild).
+    final uid = ref.watch(
+      authStateProvider.select((auth) => auth.value?.uid ?? ''),
+    );
+    // `.value` keeps `true` while the provider re-checks; `asData` would drop
+    // to null and blank the feed on every auth user update.
+    final authReady = ref.watch(
+      firestoreAuthReadyProvider.select((ready) => ready.value ?? false),
+    );
+    final repo = ref.watch(discoverRepositoryProvider);
+
+    final generation = ++_generation;
+    final previous = stateOrNull;
+    _stale = previous != null && uid == _uid ? previous.items : const [];
+    _uid = uid;
+    _geo = area.geo;
+    _gotFirstPage = false;
+    _loadingMore = false;
+    _live = const [];
+    _liveCursor = null;
+    _liveHasMore = false;
+    _pushedOut = const [];
     _older = const [];
+    _paged = false;
     _cursor = null;
-    _hasMore = true;
-    _live = null;
-    if (!authReady || exclude.isEmpty) {
-      return const [];
+    _olderHasMore = false;
+
+    // Firestore needs a signed-in user; the local repository does not.
+    if (isFirebaseReady && (!authReady || uid.isEmpty)) {
+      return DiscoverFeedState(items: _stale);
     }
-    final geo = area.geo;
-    final sub = ref
-        .watch(discoverRepositoryProvider)
-        .watchProfiles(
-          excludeOwnerId: exclude,
-          geo: geo,
-          limit: pageSize,
-        )
+
+    Timer? grace;
+    final sub = repo
+        .watchProfiles(excludeOwnerId: uid, geo: _geo, limit: pageSize)
         .listen(
-          (profiles) {
-            _live = profiles;
-            if (_older.isEmpty) {
-              _hasMore = profiles.length >= pageSize;
+          (page) {
+            if (generation != _generation) {
+              return;
             }
-            state = _merged();
+            if (page.isFromCache && page.items.isEmpty && !_gotFirstPage) {
+              grace ??= Timer(cacheGrace, () {
+                if (generation == _generation && !_gotFirstPage) {
+                  _onFirstPage(page);
+                }
+              });
+              return;
+            }
+            grace?.cancel();
+            _onFirstPage(page);
           },
           onError: (Object error, StackTrace stack) {
+            if (generation != _generation) {
+              return;
+            }
             if (FirestoreAuthGuard.isPermissionDenied(error)) {
               FirestoreAuthGuard.logPermissionDenied(
                 error,
                 stack,
                 label: 'discover.feed',
               );
-              _live = const [];
-              state = _merged();
-              return;
+            } else {
+              debugPrint('Discover feed stream: $error');
             }
-            debugPrint('Discover feed stream: $error');
+            grace?.cancel();
+            if (!_gotFirstPage) {
+              _onFirstPage(const DiscoverPage(items: []));
+            }
           },
         );
-    ref.onDispose(sub.cancel);
-    return _merged();
+    ref.onDispose(() {
+      sub.cancel();
+      grace?.cancel();
+    });
+    return DiscoverFeedState(items: _stale);
+  }
+
+  void _onFirstPage(DiscoverPage page) {
+    if (_paged) {
+      final ids = {for (final profile in page.items) profile.id};
+      _pushedOut = [
+        ..._pushedOut,
+        for (final profile in _live)
+          if (!ids.contains(profile.id)) profile,
+      ];
+    }
+    _live = page.items;
+    _liveCursor = page.nextCursor;
+    _liveHasMore = page.hasMore && page.nextCursor != null;
+    _gotFirstPage = true;
+    _stale = const [];
+    _publish();
+  }
+
+  void _publish() {
+    state = DiscoverFeedState(
+      items: _gotFirstPage ? _merged() : _stale,
+      isLoading: !_gotFirstPage,
+      isLoadingMore: _loadingMore,
+      hasMore: _gotFirstPage && (_paged ? _olderHasMore : _liveHasMore),
+    );
   }
 
   List<DiscoverProfile> _merged() {
-    final live = _live ?? const <DiscoverProfile>[];
-    if (_older.isEmpty) {
-      return live;
-    }
-    final seen = {for (final profile in live) profile.id};
+    final seen = <String>{};
     return [
-      ...live,
-      for (final profile in _older)
+      for (final profile in [..._live, ..._pushedOut, ..._older])
         if (seen.add(profile.id)) profile,
     ];
   }
 
+  /// Loads the next page in the background; no-op while busy or exhausted.
   Future<void> loadMore() async {
-    if (_loadingMore || !_hasMore) {
+    if (_loadingMore || !state.hasMore) {
       return;
     }
+    final cursor = _paged ? _cursor : _liveCursor;
+    if (cursor == null) {
+      return;
+    }
+    final generation = _generation;
+    final repo = ref.read(discoverRepositoryProvider);
     _loadingMore = true;
-    state = _merged();
+    _publish();
+    var hasMore = false;
+    Object? next;
+    var items = const <DiscoverProfile>[];
     try {
-      final exclude =
-          ref.read(authStateProvider).asData?.value?.uid ?? '';
-      final repo = ref.read(discoverRepositoryProvider);
-      final geo = ref.read(discoverAreaProvider).geo;
-
-      // First loadMore: advance cursor past the live first page (avoid dupes).
-      if (_cursor == null) {
-        final seed = await repo.fetchProfilesPage(
-          excludeOwnerId: exclude,
-          geo: geo,
-          limit: pageSize,
-        );
-        _cursor = seed.nextCursor;
-        _hasMore = seed.hasMore && seed.nextCursor != null;
-        if (_cursor == null) {
-          return;
-        }
-      }
-
       final page = await repo.fetchProfilesPage(
-        excludeOwnerId: exclude,
-        geo: geo,
-        cursor: _cursor,
+        excludeOwnerId: _uid,
+        geo: _geo,
+        cursor: cursor,
         limit: pageSize,
       );
-      final seen = {for (final profile in _merged()) profile.id};
-      final fresh = [
-        for (final profile in page.items)
-          if (seen.add(profile.id)) profile,
-      ];
-      _older = [..._older, ...fresh];
-      _cursor = page.nextCursor;
-      _hasMore = page.hasMore && page.nextCursor != null;
-      state = _merged();
+      items = page.items;
+      next = page.nextCursor;
+      hasMore = page.hasMore && next != null;
     } catch (error, stack) {
+      // Stop paging this area instead of retrying in a loop.
       debugPrint('Discover loadMore failed: $error\n$stack');
-    } finally {
-      _loadingMore = false;
-      state = _merged();
     }
+    if (!ref.mounted || generation != _generation) {
+      return;
+    }
+    _older = [..._older, ...items];
+    _paged = true;
+    _cursor = next;
+    _olderHasMore = hasMore;
+    _loadingMore = false;
+    _publish();
   }
 }
 
 final discoverFeedControllerProvider =
-    NotifierProvider<DiscoverFeedController, List<DiscoverProfile>>(
+    NotifierProvider<DiscoverFeedController, DiscoverFeedState>(
   DiscoverFeedController.new,
 );
 
 final liveDiscoverProfilesProvider = Provider<List<DiscoverProfile>>((ref) {
-  return ref.watch(discoverFeedControllerProvider);
+  return ref.watch(discoverFeedControllerProvider.select((feed) => feed.items));
 });
 
 final discoverFeedProvider = Provider<List<DiscoverProfile>>((ref) {
   final hidden = ref.watch(hiddenContentProvider);
   final blocked = ref.watch(blockedUserIdsProvider);
   final source = ref.watch(liveDiscoverProfilesProvider);
-  final myUid = ref.watch(authStateProvider).asData?.value?.uid ?? '';
+  final myUid = ref.watch(
+    authStateProvider.select((auth) => auth.value?.uid ?? ''),
+  );
+  // `.value` keeps the last list while the provider reloads.
   final ownDogIds = {
-    for (final dog in ref.watch(ownerDogsProvider).asData?.value ?? const [])
-      dog.id,
+    for (final dog in ref.watch(ownerDogsProvider).value ?? const []) dog.id,
   };
 
   // Never show the current user's own dogs in Discover — others still see them

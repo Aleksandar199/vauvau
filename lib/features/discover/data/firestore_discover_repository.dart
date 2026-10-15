@@ -26,23 +26,28 @@ class FirestoreDiscoverRepository implements DiscoverRepository {
       _firestore.collection('chats');
 
   @override
-  Stream<List<DiscoverProfile>> watchProfiles({
+  Stream<DiscoverPage> watchProfiles({
     required String excludeOwnerId,
     GeoQuery? geo,
-    int limit = 15,
+    int limit = 8,
   }) {
-    return FirestoreAuthGuard.guardedStream<List<DiscoverProfile>>(
+    return FirestoreAuthGuard.guardedStream<DiscoverPage>(
       label: 'discover.watchProfiles',
-      empty: const [],
+      empty: const DiscoverPage(items: []),
       create: () => _dogs
           .orderBy('createdAt', descending: true)
           .limit(limit)
           .snapshots()
           .map(
-            (snapshot) => _filterProfiles(
-              snapshot.docs,
-              excludeOwnerId: excludeOwnerId,
-              geo: geo,
+            (snapshot) => DiscoverPage(
+              items: _filterProfiles(
+                snapshot.docs,
+                excludeOwnerId: excludeOwnerId,
+                geo: geo,
+              ),
+              nextCursor: snapshot.docs.isEmpty ? null : snapshot.docs.last,
+              hasMore: snapshot.docs.length >= limit,
+              isFromCache: snapshot.metadata.isFromCache,
             ),
           ),
     );
@@ -53,7 +58,7 @@ class FirestoreDiscoverRepository implements DiscoverRepository {
     required String excludeOwnerId,
     GeoQuery? geo,
     Object? cursor,
-    int limit = 15,
+    int limit = 8,
   }) {
     return FirestoreAuthGuard.run(
       label: 'discover.fetchProfilesPage',
@@ -72,8 +77,6 @@ class FirestoreDiscoverRepository implements DiscoverRepository {
               _dogs.orderBy('createdAt', descending: true).limit(fetchSize);
           final start = next;
           if (start is DocumentSnapshot<Map<String, dynamic>>) {
-            query = query.startAfterDocument(start);
-          } else if (start is QueryDocumentSnapshot<Map<String, dynamic>>) {
             query = query.startAfterDocument(start);
           }
           final snapshot = await query.get();
@@ -101,11 +104,12 @@ class FirestoreDiscoverRepository implements DiscoverRepository {
             break;
           }
         }
-        final page = collected.take(limit).toList();
+        // The cursor sits after every document read, so return all of them:
+        // trimming to [limit] would silently skip dogs on the next page.
         return DiscoverPage(
-          items: page,
-          nextCursor: rawExhausted && page.length < limit ? null : next,
-          hasMore: !rawExhausted || collected.length > limit,
+          items: collected,
+          nextCursor: rawExhausted ? null : next,
+          hasMore: !rawExhausted,
         );
       },
     );
