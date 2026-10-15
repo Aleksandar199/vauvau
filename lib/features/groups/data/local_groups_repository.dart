@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import '../../../core/utils/message_reactions.dart';
+
 import 'seed_breed_groups.dart';
 import '../domain/groups_models.dart';
 
@@ -243,18 +245,32 @@ class LocalGroupsRepository implements GroupsRepository {
   Future<void> toggleMessageLike({
     required String groupId,
     required String messageId,
+  }) {
+    String? mine;
+    for (final message in _messages[groupId] ?? const <GroupMessage>[]) {
+      if (message.id == messageId) {
+        mine = MessageReactions.reactionOf(message.likes, currentUserId);
+      }
+    }
+    return setMessageReaction(
+      groupId: groupId,
+      messageId: messageId,
+      emoji: mine == '❤️' ? null : '❤️',
+    );
+  }
+
+  @override
+  Future<void> setMessageReaction({
+    required String groupId,
+    required String messageId,
+    String? emoji,
   }) async {
     final current = _messages[groupId] ?? const <GroupMessage>[];
     final next = [
       for (final message in current)
         if (message.id == messageId)
           message.copyWith(
-            likes: message.isLikedBy(currentUserId)
-                ? [
-                    for (final id in message.likes)
-                      if (id != currentUserId) id,
-                  ]
-                : [...message.likes, currentUserId],
+            likes: MessageReactions.apply(message.likes, currentUserId, emoji),
           )
         else
           message,

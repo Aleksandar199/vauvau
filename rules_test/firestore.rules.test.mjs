@@ -884,4 +884,35 @@ describe('10. lajkovi: samo svoj uid', () => {
       updateDoc(doc(db, 'chats/alice_bob/messages/m1'), { likes: ['bob', 'alice'] }),
     );
   });
+
+  test('poruke u četu: emoji reakcija (uid:emoji), zamena i uklanjanje svoje', async () => {
+    const m1 = (uid) => doc(as(uid), 'chats/alice_bob/messages/m1');
+    // Alice ostavlja ❤️ (goli uid), Bob 😂.
+    await assertSucceeds(updateDoc(m1('alice'), { likes: ['alice'] }));
+    await assertSucceeds(updateDoc(m1('bob'), { likes: ['alice', 'bob:😂'] }));
+    // Bob menja 😂 → 👍 u jednom upisu.
+    await assertSucceeds(updateDoc(m1('bob'), { likes: ['alice', 'bob:👍'] }));
+    // Dve reakcije istog korisnika, emoji van palete, tuđa reakcija: pada.
+    await assertFails(updateDoc(m1('bob'), { likes: ['alice', 'bob:👍', 'bob'] }));
+    await assertFails(updateDoc(m1('bob'), { likes: ['alice', 'bob:💩'] }));
+    await assertFails(updateDoc(m1('bob'), { likes: ['bob:👍'] }));
+    await assertFails(updateDoc(m1('bob'), { likes: ['alice', 'bob:👍', 'alice:😂'] }));
+    // Carol nije u četu.
+    await assertFails(updateDoc(m1('carol'), { likes: ['alice', 'bob:👍', 'carol'] }));
+    // Bob uklanja svoju.
+    await assertSucceeds(updateDoc(m1('bob'), { likes: ['alice'] }));
+  });
+
+  test('poruke u grupi i događaju: reakcija samo svoja', async () => {
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      const db = ctx.firestore();
+      await setDoc(doc(db, 'breed_groups/g1/messages/gm1'), { senderId: 'alice', text: 'Ćao' });
+      await setDoc(doc(db, 'events/e1/messages/em1'), { senderId: 'alice', text: 'Ćao' });
+    });
+    const db = as('alice');
+    await assertSucceeds(updateDoc(doc(db, 'breed_groups/g1/messages/gm1'), { likes: ['alice:🙏'] }));
+    await assertFails(updateDoc(doc(db, 'breed_groups/g1/messages/gm1'), { likes: ['alice:🙏', 'bob'] }));
+    await assertSucceeds(updateDoc(doc(db, 'events/e1/messages/em1'), { likes: ['alice:😮'] }));
+    await assertFails(updateDoc(doc(as('bob'), 'events/e1/messages/em1'), { likes: [] }));
+  });
 });

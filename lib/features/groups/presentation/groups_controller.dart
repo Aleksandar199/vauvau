@@ -121,6 +121,18 @@ class GroupsController extends Notifier<List<BreedGroup>> {
           messageId: messageId,
         );
   }
+
+  Future<void> setMessageReaction({
+    required String groupId,
+    required String messageId,
+    String? emoji,
+  }) {
+    return ref.read(groupsRepositoryProvider).setMessageReaction(
+          groupId: groupId,
+          messageId: messageId,
+          emoji: emoji,
+        );
+  }
 }
 
 final groupsRepositoryProvider = Provider<GroupsRepository>((ref) {

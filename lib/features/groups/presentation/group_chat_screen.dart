@@ -5,29 +5,25 @@ import 'package:image_picker/image_picker.dart';
 import '../../../core/images/dog_image.dart';
 import '../../../core/network/network_failure.dart';
 import '../../../core/theme/app_colors.dart';
-import '../../../core/widgets/comment_like_button.dart';
+import '../../../core/utils/message_reactions.dart';
 import '../../chat/domain/chat_message.dart';
 import '../../chat/domain/chat_time.dart';
 import '../../chat/presentation/chat_strings.dart';
 import '../../chat/presentation/schedule_walk_sheet.dart';
 import '../../chat/presentation/widgets/chat_ui.dart';
+import '../../chat/presentation/widgets/message_reactions.dart';
 import '../../chat/presentation/widgets/message_reply.dart';
 import '../../chat/presentation/widgets/walk_invite_card.dart';
-import '../../discover/data/load_discover_profile.dart';
-import '../../discover/domain/discover_profile.dart';
 import '../../discover/presentation/widgets/dog_photo_gallery.dart';
-import '../../discover/presentation/widgets/swipe_dog_card.dart';
 import '../../events/presentation/events_controller.dart';
+import '../../profile/presentation/owner_profile_sheet.dart';
 import '../domain/groups_models.dart';
 import 'groups_controller.dart';
 import 'groups_strings.dart';
 
 class GroupChatScreen extends ConsumerStatefulWidget {
-  const GroupChatScreen({
-    super.key,
-    this.groupId,
-    this.eventId,
-  }) : assert(groupId != null || eventId != null);
+  const GroupChatScreen({super.key, this.groupId, this.eventId})
+    : assert(groupId != null || eventId != null);
 
   final String? groupId;
   final String? eventId;
@@ -275,17 +271,13 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen> {
     setState(() => _replyTo = null);
     _keepInputFocused();
     if (widget.isEvent) {
-      await ref.read(eventsControllerProvider.notifier).sendText(
-            widget.threadId,
-            text,
-            replyTo: reply,
-          );
+      await ref
+          .read(eventsControllerProvider.notifier)
+          .sendText(widget.threadId, text, replyTo: reply);
     } else {
-      await ref.read(groupsControllerProvider.notifier).sendText(
-            widget.threadId,
-            text,
-            replyTo: reply,
-          );
+      await ref
+          .read(groupsControllerProvider.notifier)
+          .sendText(widget.threadId, text, replyTo: reply);
     }
     if (!mounted) {
       return;
@@ -307,9 +299,9 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen> {
                 leading: const Icon(Icons.pets),
                 title: Text(ChatStrings.scheduleWalk),
                 onTap: () => Navigator.pop(
-                      sheetContext,
-                      _GroupAttachAction.scheduleWalk,
-                    ),
+                  sheetContext,
+                  _GroupAttachAction.scheduleWalk,
+                ),
               ),
               ListTile(
                 leading: const Icon(Icons.photo_camera_outlined),
@@ -338,13 +330,17 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen> {
       context: context,
       onSend: (walkTime, location) async {
         if (widget.isEvent) {
-          await ref.read(eventsControllerProvider.notifier).sendWalkInvite(
+          await ref
+              .read(eventsControllerProvider.notifier)
+              .sendWalkInvite(
                 eventId: widget.threadId,
                 walkTime: walkTime,
                 walkLocationName: location,
               );
         } else {
-          await ref.read(groupsControllerProvider.notifier).sendWalkInvite(
+          await ref
+              .read(groupsControllerProvider.notifier)
+              .sendWalkInvite(
                 groupId: widget.threadId,
                 walkTime: walkTime,
                 walkLocationName: location,
@@ -387,7 +383,10 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen> {
     if (source == null || !mounted) {
       return;
     }
-    final file = await ImagePicker().pickImage(source: source, imageQuality: 72);
+    final file = await ImagePicker().pickImage(
+      source: source,
+      imageQuality: 72,
+    );
     if (file == null || !mounted) {
       return;
     }
@@ -398,17 +397,13 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen> {
     });
     try {
       if (widget.isEvent) {
-        await ref.read(eventsControllerProvider.notifier).sendPhoto(
-              widget.threadId,
-              file,
-              replyTo: reply,
-            );
+        await ref
+            .read(eventsControllerProvider.notifier)
+            .sendPhoto(widget.threadId, file, replyTo: reply);
       } else {
-        await ref.read(groupsControllerProvider.notifier).sendPhoto(
-              widget.threadId,
-              file,
-              replyTo: reply,
-            );
+        await ref
+            .read(groupsControllerProvider.notifier)
+            .sendPhoto(widget.threadId, file, replyTo: reply);
       }
       _scrollToEnd();
     } catch (error) {
@@ -431,13 +426,17 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen> {
     GroupWalkInviteStatus status,
   ) async {
     if (widget.isEvent) {
-      await ref.read(eventsControllerProvider.notifier).respondToWalkInvite(
+      await ref
+          .read(eventsControllerProvider.notifier)
+          .respondToWalkInvite(
             eventId: widget.threadId,
             messageId: message.id,
             status: status,
           );
     } else {
-      await ref.read(groupsControllerProvider.notifier).respondToWalkInvite(
+      await ref
+          .read(groupsControllerProvider.notifier)
+          .respondToWalkInvite(
             groupId: widget.threadId,
             messageId: message.id,
             status: status,
@@ -446,63 +445,56 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen> {
   }
 
   Future<void> _onMessageLongPress(GroupMessage message) async {
-    final action = await showMessageActionsSheet(
+    final choice = await showMessageActionsSheet(
       context,
       canReport: false,
+      canReact: true,
+      currentReaction: MessageReactions.reactionOf(
+        message.likes,
+        ref.read(groupsMemberIdProvider),
+      ),
     );
-    if (!mounted || action != MessageAction.reply) {
+    if (!mounted || choice == null) {
+      return;
+    }
+    if (choice.action == MessageAction.react) {
+      await _react(message.id, choice.emoji);
+      return;
+    }
+    if (choice.action != MessageAction.reply) {
       return;
     }
     setState(() => _replyTo = message);
     _inputFocus.requestFocus();
   }
 
-  Future<void> _openSenderProfile(GroupMessage message) async {
-    final senderId = message.senderId.trim();
-    DiscoverProfile? profile;
-    if (senderId.isNotEmpty) {
-      try {
-        profile = await loadDiscoverProfile(ownerId: senderId);
-      } catch (_) {
-        profile = null;
-      }
-    }
-    final avatar = message.senderAvatarUrl.trim();
-    profile ??= DiscoverProfile(
-      id: senderId.isEmpty ? message.id : senderId,
-      ownerId: senderId,
-      name: message.senderName,
-      ownerName: message.senderName,
-      breed: '',
-      ageYears: 0,
-      gender: '',
-      size: 'srednji',
-      location: 'Srbija',
-      bio: '',
-      photoUrls: avatar.isEmpty ? const [] : [avatar],
-    );
-    if (!mounted) {
-      return;
-    }
-    await showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) => DogDetailSheet(profile: profile!),
+  /// Avatar next to a message → the sender's own profile (with their dogs).
+  Future<void> _openSenderProfile(GroupMessage message) {
+    return showOwnerProfileSheet(
+      context,
+      userId: message.senderId.trim(),
+      fallbackName: message.senderName,
+      fallbackAvatarUrl: message.senderAvatarUrl,
     );
   }
 
-  Future<void> _toggleLike(String messageId) async {
+  Future<void> _react(String messageId, String? emoji) async {
     try {
       if (widget.isEvent) {
-        await ref.read(eventsControllerProvider.notifier).toggleMessageLike(
+        await ref
+            .read(eventsControllerProvider.notifier)
+            .setMessageReaction(
               eventId: widget.threadId,
               messageId: messageId,
+              emoji: emoji,
             );
       } else {
-        await ref.read(groupsControllerProvider.notifier).toggleMessageLike(
+        await ref
+            .read(groupsControllerProvider.notifier)
+            .setMessageReaction(
               groupId: widget.threadId,
               messageId: messageId,
+              emoji: emoji,
             );
       }
     } catch (error) {
@@ -545,9 +537,9 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen> {
         : null;
     final messages = widget.isEvent
         ? ref.watch(eventMessagesProvider(widget.threadId)).value ??
-            const <GroupMessage>[]
+              const <GroupMessage>[]
         : ref.watch(groupMessagesProvider(widget.threadId)).value ??
-            const <GroupMessage>[];
+              const <GroupMessage>[];
     final title = event?.title ?? group?.title ?? GroupsStrings.title;
     final count = event?.participantCount ?? group?.displayMemberCount ?? 0;
     final imageUrl = event?.imageUrl ?? group?.imageUrl;
@@ -584,7 +576,10 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen> {
                     title,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w800,
+                    ),
                   ),
                   Text(
                     GroupsStrings.memberCount(count),
@@ -614,8 +609,9 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen> {
                           message: _groupWalkAsChat(message, memberId),
                           now: now,
                           acceptedCount: message.acceptedCount,
-                          viewerAlreadyResponded:
-                              message.hasUserResponded(memberId),
+                          viewerAlreadyResponded: message.hasUserResponded(
+                            memberId,
+                          ),
                           onAccept: () => _respondToWalk(
                             message,
                             GroupWalkInviteStatus.accepted,
@@ -634,18 +630,12 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen> {
                               ? null
                               : () => _openSenderProfile(message),
                           onLongPress: () => _onMessageLongPress(message),
-                          onToggleLike: message.isMine
-                              ? null
-                              : () => _toggleLike(message.id),
                         );
                       }
                       if (!isUnreadAnchor) {
                         return child;
                       }
-                      return KeyedSubtree(
-                        key: _unreadAnchorKey,
-                        child: child,
-                      );
+                      return KeyedSubtree(key: _unreadAnchorKey, child: child);
                     },
                   ),
           ),
@@ -679,8 +669,8 @@ ChatMessage _groupWalkAsChat(GroupMessage message, String viewerId) {
   final personalStatus = message.acceptedByUserIds.contains(viewerId)
       ? WalkInviteStatus.accepted
       : message.declinedByUserIds.contains(viewerId)
-          ? WalkInviteStatus.declined
-          : WalkInviteStatus.pending;
+      ? WalkInviteStatus.declined
+      : WalkInviteStatus.pending;
   return ChatMessage(
     id: message.id,
     text: message.text,
@@ -702,28 +692,27 @@ class _GroupMessageBubble extends StatelessWidget {
     this.currentUserId = '',
     this.onAvatarTap,
     this.onLongPress,
-    this.onToggleLike,
   });
 
   final GroupMessage message;
   final DateTime now;
   final String currentUserId;
   final VoidCallback? onAvatarTap;
+
+  /// Reactions / reply menu (also from a tap on the reactions).
   final VoidCallback? onLongPress;
-  final VoidCallback? onToggleLike;
 
   @override
   Widget build(BuildContext context) {
     final mine = message.isMine;
     final background = mine ? AppColors.primary : Colors.grey.shade200;
     final foreground = mine ? AppColors.onPrimary : AppColors.ink;
-    final liked = message.isLikedBy(currentUserId);
-    final showLike = !mine || message.likeCount > 0;
     return Padding(
       padding: ChatUiTokens.bubbleOuterPadding,
       child: Row(
-        mainAxisAlignment:
-            mine ? MainAxisAlignment.end : MainAxisAlignment.start,
+        mainAxisAlignment: mine
+            ? MainAxisAlignment.end
+            : MainAxisAlignment.start,
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           if (!mine) ...[
@@ -739,94 +728,92 @@ class _GroupMessageBubble extends StatelessWidget {
             const SizedBox(width: 8),
           ],
           Flexible(
-            child: GestureDetector(
-              onLongPress: onLongPress,
-              child: ConstrainedBox(
-                constraints: BoxConstraints(
-                  maxWidth: MediaQuery.sizeOf(context).width * 0.72,
-                ),
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    color: background,
-                    borderRadius: ChatUiTokens.bubbleRadius(isMine: mine),
+            child: BubbleWithReactions(
+              likes: message.likes,
+              currentUserId: currentUserId,
+              isMine: mine,
+              onReactionsTap: onLongPress,
+              bubble: GestureDetector(
+                onLongPress: onLongPress,
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(
+                    maxWidth: MediaQuery.sizeOf(context).width * 0.72,
                   ),
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
-                    child: Column(
-                      crossAxisAlignment: mine
-                          ? CrossAxisAlignment.end
-                          : CrossAxisAlignment.start,
-                      children: [
-                        if (!mine)
-                          Text(
-                            message.senderName,
-                            style: TextStyle(
-                              color: foreground.withValues(alpha: 0.85),
-                              fontWeight: FontWeight.w800,
-                              fontSize: 12,
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: background,
+                      borderRadius: ChatUiTokens.bubbleRadius(isMine: mine),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+                      child: Column(
+                        crossAxisAlignment: mine
+                            ? CrossAxisAlignment.end
+                            : CrossAxisAlignment.start,
+                        children: [
+                          if (!mine)
+                            Text(
+                              message.senderName,
+                              style: TextStyle(
+                                color: foreground.withValues(alpha: 0.85),
+                                fontWeight: FontWeight.w800,
+                                fontSize: 12,
+                              ),
                             ),
-                          ),
-                        if (message.hasReply)
-                          ReplyQuote(
-                            senderName: message.replyToSenderName,
-                            text: message.replyToText,
-                            isMine: mine,
-                          ),
-                        if (message.hasImage) ...[
-                          const SizedBox(height: 6),
-                          GestureDetector(
-                            key: const ValueKey('group-message-image'),
-                            onTap: () => showDogPhotoViewer(
-                              context,
-                              photos: [message.imageUrl],
-                              seed: message.id,
+                          if (message.hasReply)
+                            ReplyQuote(
+                              senderName: message.replyToSenderName,
+                              text: message.replyToText,
+                              isMine: mine,
                             ),
-                            child: ClipRRect(
-                              borderRadius: BorderRadius.circular(12),
-                              child: SizedBox(
-                                height: 160,
-                                width: double.infinity,
-                                child: buildDogImage(
-                                  message.imageUrl,
-                                  seed: message.id,
+                          if (message.hasImage) ...[
+                            const SizedBox(height: 6),
+                            GestureDetector(
+                              key: const ValueKey('group-message-image'),
+                              onTap: () => showDogPhotoViewer(
+                                context,
+                                photos: [message.imageUrl],
+                                seed: message.id,
+                              ),
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(12),
+                                child: SizedBox(
+                                  height: 160,
+                                  width: double.infinity,
+                                  child: buildDogImage(
+                                    message.imageUrl,
+                                    seed: message.id,
+                                  ),
                                 ),
                               ),
                             ),
-                          ),
-                        ],
-                        if (message.text.isNotEmpty) ...[
-                          const SizedBox(height: 4),
-                          Text(
-                            message.text,
-                            style: TextStyle(
-                              color: foreground,
-                              fontSize: 14,
-                              height: 1.3,
-                            ),
-                          ),
-                        ],
-                        const SizedBox(height: 4),
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
+                          ],
+                          if (message.text.isNotEmpty) ...[
+                            const SizedBox(height: 4),
                             Text(
-                              formatChatTimestamp(message.createdAt, now),
+                              message.text,
                               style: TextStyle(
-                                color: foreground.withValues(alpha: 0.65),
-                                fontSize: 10,
+                                color: foreground,
+                                fontSize: 14,
+                                height: 1.3,
                               ),
                             ),
-                            if (showLike) ...[
-                              const SizedBox(width: 8),
-                              CommentLikeButton(
-                                liked: liked,
-                                count: message.likeCount,
-                                onPressed: mine ? null : onToggleLike,
+                          ],
+                          const SizedBox(height: 4),
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                formatChatTimestamp(message.createdAt, now),
+                                style: TextStyle(
+                                  color: foreground.withValues(alpha: 0.65),
+                                  fontSize: 10,
+                                ),
                               ),
                             ],
-                          ],
-                        ),
-                      ],
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),

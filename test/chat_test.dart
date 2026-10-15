@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:vauvau/features/profile/presentation/owner_profile_sheet.dart';
 import 'package:vauvau/features/chat/data/walk_locations.dart';
 import 'package:vauvau/features/chat/domain/chat_conversation.dart';
 import 'package:vauvau/features/chat/domain/chat_message.dart';
@@ -250,6 +251,19 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('message-sender-avatar')));
     await tester.pumpAndSettle();
 
+    // The avatar opens the person (owner) who sent it, with their dog.
+    expect(find.byType(OwnerProfileSheet), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byType(OwnerProfileSheet),
+        matching: find.text('Jelena'),
+      ),
+      findsOneWidget,
+    );
+    expect(find.byType(DogDetailSheet), findsNothing);
+
+    await tester.tap(find.byKey(const ValueKey('owner-dog-lola')));
+    await tester.pumpAndSettle();
     expect(find.byType(DogDetailSheet), findsOneWidget);
     expect(find.textContaining('Lola'), findsWidgets);
   });

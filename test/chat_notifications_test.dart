@@ -1,9 +1,7 @@
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vauvau/core/services/message_sound_player.dart';
-import 'package:vauvau/core/theme/app_colors.dart';
 import 'package:vauvau/features/auth/domain/app_user.dart';
 import 'package:vauvau/features/auth/presentation/auth_providers.dart';
 import 'package:vauvau/features/chat/data/firestore_chat_repository.dart';
@@ -12,7 +10,6 @@ import 'package:vauvau/features/chat/domain/chat_message.dart';
 import 'package:vauvau/features/chat/presentation/chat_inbox.dart';
 import 'package:vauvau/features/chat/presentation/incoming_message_sound.dart';
 import 'package:vauvau/features/chat/presentation/open_chats.dart';
-import 'package:vauvau/features/chat/presentation/widgets/message_bubble.dart';
 import 'package:vauvau/features/discover/domain/discover_profile.dart';
 import 'package:vauvau/features/events/presentation/events_controller.dart';
 import 'package:vauvau/features/groups/presentation/groups_controller.dart';
@@ -138,6 +135,9 @@ final _chats = NotifierProvider<_ChatList, List<ChatConversation>>(
 Future<void> _tick() => Future<void>.delayed(Duration.zero);
 
 void main() {
+  // The chat alert reads the app lifecycle from WidgetsBinding.
+  TestWidgetsFlutterBinding.ensureInitialized();
+
   group('sender of chat notifications (bug 1)', () {
     test('walk invite names me and my dog, not the peer', () async {
       final gateway = _RecordingGateway();
@@ -409,7 +409,7 @@ void main() {
     });
   });
 
-  group('message likes (bug 4)', () {
+  group('message likes (bug 4, now reactions)', () {
     test('Firestore likes reach the open conversation', () async {
       final firestore = FakeFirebaseFirestore();
       final repo = FirestoreChatRepository(
@@ -455,79 +455,6 @@ void main() {
       await repo.toggleMessageLike(conversationId: roomId, messageId: 'hers');
       await _tick();
       expect(message('hers').likes, isEmpty);
-    });
-
-    Future<Icon> pumpBubble(WidgetTester tester, ChatMessage message) async {
-      await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: MessageBubble(
-              message: message,
-              now: DateTime(2026, 10, 15, 12),
-              currentUserId: 'me',
-              onToggleLike: () {},
-            ),
-          ),
-        ),
-      );
-      return tester.widget<Icon>(
-        find.descendant(
-          of: find.byKey(const ValueKey('chat-message-like')),
-          matching: find.byType(Icon),
-        ),
-      );
-    }
-
-    testWidgets('peer like on my message is a filled, visible heart',
-        (tester) async {
-      final icon = await pumpBubble(
-        tester,
-        ChatMessage(
-          id: 'mine',
-          text: 'Zdravo',
-          sentAt: DateTime(2026, 10, 15, 11),
-          isMine: true,
-          likes: const ['nina'],
-        ),
-      );
-      expect(icon.icon, Icons.favorite);
-      expect(icon.color, AppColors.onPrimary);
-      expect(find.text('1'), findsOneWidget);
-    });
-
-    testWidgets('my like on the peer message is a red heart', (tester) async {
-      final icon = await pumpBubble(
-        tester,
-        ChatMessage(
-          id: 'hers',
-          text: 'Ćao',
-          sentAt: DateTime(2026, 10, 15, 10),
-          isMine: false,
-          likes: const ['me'],
-        ),
-      );
-      expect(icon.icon, Icons.favorite);
-      expect(icon.color, const Color(0xFFEF4444));
-    });
-
-    testWidgets('my message without likes shows no heart', (tester) async {
-      await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: MessageBubble(
-              message: ChatMessage(
-                id: 'mine',
-                text: 'Zdravo',
-                sentAt: DateTime(2026, 10, 15, 11),
-                isMine: true,
-              ),
-              now: DateTime(2026, 10, 15, 12),
-              currentUserId: 'me',
-            ),
-          ),
-        ),
-      );
-      expect(find.byKey(const ValueKey('chat-message-like')), findsNothing);
     });
   });
 }

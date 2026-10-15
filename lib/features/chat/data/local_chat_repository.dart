@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import '../../../core/images/dog_photo_urls.dart';
+import '../../../core/utils/message_reactions.dart';
 import '../../discover/domain/discover_profile.dart';
 import '../domain/chat_conversation.dart';
 import '../domain/chat_message.dart';
@@ -286,6 +287,27 @@ class LocalChatRepository implements ChatRepository {
   Future<void> toggleMessageLike({
     required String conversationId,
     required String messageId,
+  }) {
+    String? mine;
+    for (final chat in _inbox) {
+      for (final message in chat.messages) {
+        if (chat.id == conversationId && message.id == messageId) {
+          mine = MessageReactions.reactionOf(message.likes, currentUserId);
+        }
+      }
+    }
+    return setMessageReaction(
+      conversationId: conversationId,
+      messageId: messageId,
+      emoji: mine == '❤️' ? null : '❤️',
+    );
+  }
+
+  @override
+  Future<void> setMessageReaction({
+    required String conversationId,
+    required String messageId,
+    String? emoji,
   }) async {
     _inbox = [
       for (final chat in _inbox)
@@ -295,12 +317,11 @@ class LocalChatRepository implements ChatRepository {
               for (final message in chat.messages)
                 if (message.id == messageId)
                   message.copyWith(
-                    likes: message.isLikedBy(currentUserId)
-                        ? [
-                            for (final id in message.likes)
-                              if (id != currentUserId) id,
-                          ]
-                        : [...message.likes, currentUserId],
+                    likes: MessageReactions.apply(
+                      message.likes,
+                      currentUserId,
+                      emoji,
+                    ),
                   )
                 else
                   message,

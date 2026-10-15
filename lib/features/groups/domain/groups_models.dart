@@ -331,4 +331,11 @@ abstract class GroupsRepository {
     required String groupId,
     required String messageId,
   });
+
+  /// Sets my emoji reaction on a message; null removes it.
+  Future<void> setMessageReaction({
+    required String groupId,
+    required String messageId,
+    String? emoji,
+  });
 }

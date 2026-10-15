@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 
 import '../../../core/firebase/firestore_auth_guard.dart';
 import '../../../core/utils/message_preview.dart';
+import '../../../core/utils/message_reactions.dart';
 import '../../../core/images/dog_photo_urls.dart';
 import '../../groups/domain/groups_models.dart';
 import '../domain/event_model.dart';
@@ -422,17 +423,37 @@ class FirestoreEventsRepository implements EventsRepository {
     if (currentUserId.isEmpty) {
       return;
     }
+    await _react(eventId, messageId, (mine) => mine == '❤️' ? null : '❤️');
+  }
+
+  @override
+  Future<void> setMessageReaction({
+    required String eventId,
+    required String messageId,
+    String? emoji,
+  }) async {
+    if (currentUserId.isEmpty) {
+      return;
+    }
+    await _react(eventId, messageId, (_) => emoji);
+  }
+
+  /// Swaps my reaction in the message's `likes` list (see [MessageReactions]).
+  Future<void> _react(
+    String eventId,
+    String messageId,
+    String? Function(String? mine) choose,
+  ) async {
     final ref = _col.doc(eventId).collection('messages').doc(messageId);
     await firestore.runTransaction((tx) async {
       final snap = await tx.get(ref);
-      final data = snap.data() ?? <String, dynamic>{};
-      final ids = _stringList(data['likes']);
-      if (ids.contains(currentUserId)) {
-        ids.remove(currentUserId);
-      } else {
-        ids.add(currentUserId);
-      }
-      tx.set(ref, {'likes': ids}, SetOptions(merge: true));
+      final likes = _stringList(snap.data()?['likes']);
+      final next = choose(MessageReactions.reactionOf(likes, currentUserId));
+      tx.set(
+        ref,
+        {'likes': MessageReactions.apply(likes, currentUserId, next)},
+        SetOptions(merge: true),
+      );
     });
   }
 

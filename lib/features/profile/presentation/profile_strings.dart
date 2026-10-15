@@ -4,6 +4,8 @@ abstract final class ProfileStrings {
   static String get tabLabel => L10n.tr('Profil', 'Profile');
   static String get title => L10n.tr('Profil', 'Profile');
   static String get editProfile => L10n.tr('Izmeni profil', 'Edit profile');
+  static String get ownerDogs => L10n.tr('Psi', 'Dogs');
+  static String get ownerUnknown => L10n.tr('Korisnik', 'User');
   static String get editDog => L10n.tr('Izmeni psa', 'Edit dog');
   static String get deleteDog => L10n.tr('Obriši psa', 'Delete dog');
   static String get deleteDogTitle =>

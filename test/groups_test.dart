@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:vauvau/features/profile/presentation/owner_profile_sheet.dart';
 import 'package:vauvau/features/groups/data/local_groups_repository.dart';
 import 'package:vauvau/features/discover/presentation/widgets/dog_photo_gallery.dart';
 import 'package:vauvau/features/discover/presentation/widgets/swipe_dog_card.dart';
@@ -146,8 +147,15 @@ void main() {
 
     await tester.tap(find.byKey(const ValueKey('group-sender-avatar')));
     await tester.pumpAndSettle();
-    expect(find.byType(DogDetailSheet), findsOneWidget);
-    expect(find.textContaining('Marko'), findsWidgets);
+    // The avatar opens the sender's own (person) profile.
+    expect(find.byType(OwnerProfileSheet), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byType(OwnerProfileSheet),
+        matching: find.text('Marko'),
+      ),
+      findsOneWidget,
+    );
   });
 
   testWidgets('tapping a photo in group chat opens it full screen',

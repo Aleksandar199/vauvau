@@ -105,6 +105,18 @@ class EventsController extends Notifier<List<EventModel>> {
         );
   }
 
+  Future<void> setMessageReaction({
+    required String eventId,
+    required String messageId,
+    String? emoji,
+  }) {
+    return ref.read(eventsRepositoryProvider).setMessageReaction(
+          eventId: eventId,
+          messageId: messageId,
+          emoji: emoji,
+        );
+  }
+
   Future<String> create({
     required String title,
     required String locationName,

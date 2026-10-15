@@ -67,9 +67,17 @@ abstract class ChatRepository {
     required WalkInviteStatus status,
   });
 
+  /// ❤️ on / off (same as [setMessageReaction] with ❤️ or null).
   Future<void> toggleMessageLike({
     required String conversationId,
     required String messageId,
+  });
+
+  /// Sets my emoji reaction on a message; null removes it.
+  Future<void> setMessageReaction({
+    required String conversationId,
+    required String messageId,
+    String? emoji,
   });
 
   void dispose();

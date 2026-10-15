@@ -67,6 +67,28 @@ service cloud.firestore {
       return onlyChanged([field]) && (selfJoined(field) || selfLeft(field));
     }
 
+    // Chat message reactions are stored in `likes`: a bare uid is ❤️, other
+    // emoji are 'uid:emoji' (mirrors messageReactionEmojis in
+    // lib/core/utils/message_reactions.dart).
+    function myReactionEntries() {
+      let u = request.auth.uid;
+      return [u, u + ':👍', u + ':😂', u + ':😮', u + ':😢', u + ':🙏', u + ':❤️'];
+    }
+
+    // Only `field` changes, only in the caller's own entry, and the caller
+    // keeps at most one reaction; nobody else's reaction is touched.
+    function ownReaction(field) {
+      let before = resource.data.get(field, []);
+      let after = request.resource.data.get(field, []);
+      let mine = myReactionEntries().toSet();
+      return onlyChanged([field]) &&
+        after is list &&
+        after.size() == after.toSet().size() &&
+        after.toSet().difference(before.toSet()).difference(mine).size() == 0 &&
+        before.toSet().difference(after.toSet()).difference(mine).size() == 0 &&
+        after.toSet().intersection(mine).size() <= 1;
+    }
+
     // Counter `field` changed by exactly ±1 (missing counts as 0).
     function stepByOne(field) {
       return request.resource.data[field] is int &&
@@ -442,10 +464,10 @@ service cloud.firestore {
           request.auth.uid != resource.data.senderId &&
           request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']) &&
           request.resource.data.status in ['accepted', 'declined'];
-        // Participants may like / unlike any message (likes array only).
+        // Participants may react to any message (own entry in likes only).
         allow update: if isAuthenticated() &&
           request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participantIds &&
-          ownToggle('likes');
+          ownReaction('likes');
         // Sender may delete own messages (account deletion cascade).
         allow delete: if isAuthenticated() &&
           resource.data.senderId == request.auth.uid;
@@ -634,10 +656,10 @@ service cloud.firestore {
           resource.data.type == 'walk_invite' &&
           request.resource.data.diff(resource.data).affectedKeys()
             .hasOnly(['acceptedByUserIds', 'declinedByUserIds', 'status']);
-        // Members may like / unlike any message (likes array only).
+        // Members may react to any message (own entry in likes only).
         allow update: if isAuthenticated() &&
           request.auth.uid in get(/databases/$(database)/documents/breed_groups/$(groupId)).data.memberIds &&
-          ownToggle('likes');
+          ownReaction('likes');
         allow delete: if isAuthenticated() &&
           resource.data.senderId == request.auth.uid;
         allow update, delete: if isAdmin();
@@ -706,10 +728,10 @@ service cloud.firestore {
           resource.data.type == 'walk_invite' &&
           request.resource.data.diff(resource.data).affectedKeys()
             .hasOnly(['acceptedByUserIds', 'declinedByUserIds', 'status']);
-        // Participants may like / unlike any message (likes array only).
+        // Participants may react to any message (own entry in likes only).
         allow update: if isAuthenticated() &&
           request.auth.uid in get(/databases/$(database)/documents/events/$(eventId)).data.participantUserIds &&
-          ownToggle('likes');
+          ownReaction('likes');
         allow delete: if isAuthenticated() &&
           resource.data.senderId == request.auth.uid;
         allow update, delete: if isAdmin();

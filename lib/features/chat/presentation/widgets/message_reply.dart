@@ -1,8 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../../../core/images/dog_image.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../domain/chat_message.dart';
+import 'message_reactions.dart';
 
 /// Small circular sender avatar used next to chat bubbles.
 class SenderAvatar extends StatelessWidget {
@@ -177,13 +181,26 @@ class ReplyComposeBanner extends StatelessWidget {
   }
 }
 
-enum MessageAction { reply, report }
+enum MessageAction { react, reply, report }
 
-Future<MessageAction?> showMessageActionsSheet(
+/// What the user picked in the long-press menu. For [MessageAction.react],
+/// [emoji] is the new reaction (null = remove mine).
+class MessageActionChoice {
+  const MessageActionChoice(this.action, {this.emoji});
+
+  final MessageAction action;
+  final String? emoji;
+}
+
+/// Long-press menu: emoji reactions on top, then reply / report.
+Future<MessageActionChoice?> showMessageActionsSheet(
   BuildContext context, {
   required bool canReport,
+  bool canReact = false,
+  String? currentReaction,
 }) {
-  return showModalBottomSheet<MessageAction>(
+  unawaited(HapticFeedback.selectionClick());
+  return showModalBottomSheet<MessageActionChoice>(
     context: context,
     showDragHandle: true,
     builder: (sheetContext) {
@@ -191,16 +208,30 @@ Future<MessageAction?> showMessageActionsSheet(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            if (canReact)
+              ReactionPickerRow(
+                current: currentReaction,
+                onSelected: (emoji) => Navigator.pop(
+                  sheetContext,
+                  MessageActionChoice(MessageAction.react, emoji: emoji),
+                ),
+              ),
             ListTile(
               leading: const Icon(Icons.reply_rounded),
               title: const Text('Odgovori na poruku'),
-              onTap: () => Navigator.pop(sheetContext, MessageAction.reply),
+              onTap: () => Navigator.pop(
+                sheetContext,
+                const MessageActionChoice(MessageAction.reply),
+              ),
             ),
             if (canReport)
               ListTile(
                 leading: Icon(Icons.flag_outlined, color: Colors.red.shade400),
                 title: const Text('Prijavi poruku'),
-                onTap: () => Navigator.pop(sheetContext, MessageAction.report),
+                onTap: () => Navigator.pop(
+                  sheetContext,
+                  const MessageActionChoice(MessageAction.report),
+                ),
               ),
             ListTile(
               leading: const Icon(Icons.close),

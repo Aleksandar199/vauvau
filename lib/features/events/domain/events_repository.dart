@@ -44,5 +44,12 @@ abstract class EventsRepository {
     required String messageId,
   });
 
+  /// Sets my emoji reaction on a message; null removes it.
+  Future<void> setMessageReaction({
+    required String eventId,
+    required String messageId,
+    String? emoji,
+  });
+
   Future<String> createEvent(EventModel event);
 }

@@ -8,8 +8,6 @@ class CommentLikeButton extends StatelessWidget {
     required this.count,
     required this.onPressed,
     this.tooltip = 'Lajk',
-    this.likedColor,
-    this.idleColor,
   });
 
   final bool liked;
@@ -17,17 +15,11 @@ class CommentLikeButton extends StatelessWidget {
   final VoidCallback? onPressed;
   final String tooltip;
 
-  /// Overrides for colored backgrounds (chat bubbles), where the default red
-  /// / theme colors are hard to see.
-  final Color? likedColor;
-  final Color? idleColor;
-
   @override
   Widget build(BuildContext context) {
     final color = liked
-        ? likedColor ?? const Color(0xFFEF4444)
-        : idleColor ??
-            Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.55);
+        ? const Color(0xFFEF4444)
+        : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.55);
     return Tooltip(
       message: tooltip,
       child: InkWell(

@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../../core/network/network_failure.dart';
+import '../../../core/utils/message_reactions.dart';
 import '../../auth/presentation/auth_providers.dart';
 import '../../discover/data/load_discover_profile.dart';
 import '../../discover/domain/discover_profile.dart';
@@ -12,6 +13,7 @@ import '../../discover/presentation/widgets/swipe_dog_card.dart';
 import '../../moderation/domain/content_report.dart';
 import '../../moderation/presentation/report_sheet.dart';
 import '../../moderation/presentation/safety_menu.dart';
+import '../../profile/presentation/owner_profile_sheet.dart';
 import '../domain/chat_conversation.dart';
 import '../domain/chat_message.dart';
 import 'chat_inbox.dart';
@@ -46,12 +48,14 @@ class _ChatDetailScreenState extends ConsumerState<ChatDetailScreen>
   ChatInboxController? _inbox;
   OpenChatsController? _openChats;
   var _roomAttached = false;
+
   /// Unread count captured before [markRead] clears it.
   var _openUnreadCount = 0;
   var _initialScrollDone = false;
   var _initialScrollScheduled = false;
   int? _unreadAnchorIndex;
   var _lastKnownMessageCount = 0;
+
   /// Hydrated from the peer dog doc when the room is missing breed/location.
   String? _peerBreed;
   String? _peerLocation;
@@ -91,8 +95,9 @@ class _ChatDetailScreenState extends ConsumerState<ChatDetailScreen>
     }
     setState(() {
       _peerBreed = profile.breed.trim().isEmpty ? null : profile.breed.trim();
-      _peerLocation =
-          profile.location.trim().isEmpty ? null : profile.location.trim();
+      _peerLocation = profile.location.trim().isEmpty
+          ? null
+          : profile.location.trim();
       _peerWalking = profile.walking;
     });
   }
@@ -279,11 +284,9 @@ class _ChatDetailScreenState extends ConsumerState<ChatDetailScreen>
     _focusNode.requestFocus();
     _scrollToEnd();
     try {
-      await ref.read(chatInboxProvider.notifier).sendMessage(
-            widget.conversationId,
-            text,
-            replyTo: reply,
-          );
+      await ref
+          .read(chatInboxProvider.notifier)
+          .sendMessage(widget.conversationId, text, replyTo: reply);
     } catch (error) {
       if (!mounted) {
         return;
@@ -303,11 +306,19 @@ class _ChatDetailScreenState extends ConsumerState<ChatDetailScreen>
     ChatMessage message,
     ChatConversation chat,
   ) async {
-    final action = await showMessageActionsSheet(
+    final myId = ref.read(authStateProvider).asData?.value?.uid ?? '';
+    final choice = await showMessageActionsSheet(
       context,
       canReport: !message.isMine,
+      canReact: true,
+      currentReaction: MessageReactions.reactionOf(message.likes, myId),
     );
-    if (!mounted || action == null) {
+    if (!mounted || choice == null) {
+      return;
+    }
+    final action = choice.action;
+    if (action == MessageAction.react) {
+      await _react(message.id, choice.emoji);
       return;
     }
     if (action == MessageAction.reply) {
@@ -397,14 +408,11 @@ class _ChatDetailScreenState extends ConsumerState<ChatDetailScreen>
                         isNewMatch: open.isNewMatch,
                       ),
                       overflow: TextOverflow.ellipsis,
-                      style:
-                          Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                color: _peerWalking
-                                    ? const Color(0xFF16A34A)
-                                    : Theme.of(context)
-                                        .colorScheme
-                                        .onSurfaceVariant,
-                              ),
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: _peerWalking
+                            ? const Color(0xFF16A34A)
+                            : Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
                     ),
                   ],
                 ),
@@ -419,8 +427,7 @@ class _ChatDetailScreenState extends ConsumerState<ChatDetailScreen>
           ),
           SafetyMenuButton(
             reportedUserId: open.peerUserId,
-            targetId:
-                open.peerUserId.isEmpty ? open.dogId : open.peerUserId,
+            targetId: open.peerUserId.isEmpty ? open.dogId : open.peerUserId,
             onBlocked: () => Navigator.of(context).pop(),
           ),
         ],
@@ -439,23 +446,17 @@ class _ChatDetailScreenState extends ConsumerState<ChatDetailScreen>
                   child = WalkInviteCard(
                     message: message,
                     now: now,
-                    onAccept: () => _respond(
-                      message.id,
-                      WalkInviteStatus.accepted,
-                    ),
-                    onDecline: () => _respond(
-                      message.id,
-                      WalkInviteStatus.declined,
-                    ),
+                    onAccept: () =>
+                        _respond(message.id, WalkInviteStatus.accepted),
+                    onDecline: () =>
+                        _respond(message.id, WalkInviteStatus.declined),
                   );
                 } else if (message.isLocationPin) {
                   child = LocationPinBubble(
                     message: message,
                     now: now,
                     currentUserId: me?.uid ?? '',
-                    onToggleLike: message.isMine
-                        ? null
-                        : () => _toggleLike(message.id),
+                    onLongPress: () => _onMessageLongPress(message, open),
                   );
                 } else {
                   child = MessageBubble(
@@ -463,15 +464,13 @@ class _ChatDetailScreenState extends ConsumerState<ChatDetailScreen>
                     now: now,
                     currentUserId: me?.uid ?? '',
                     fallbackAvatarUrl: message.isMine ? myAvatar : '',
-                    fallbackSenderName:
-                        message.isMine ? myName : open.ownerName,
+                    fallbackSenderName: message.isMine
+                        ? myName
+                        : open.ownerName,
                     onAvatarTap: message.isMine
                         ? null
-                        : () => _openSenderProfile(context, open),
+                        : () => _openOwnerProfile(context, message, open),
                     onLongPress: () => _onMessageLongPress(message, open),
-                    onToggleLike: message.isMine
-                        ? null
-                        : () => _toggleLike(message.id),
                   );
                 }
                 if (index == _unreadAnchorIndex) {
@@ -486,8 +485,8 @@ class _ChatDetailScreenState extends ConsumerState<ChatDetailScreen>
               senderName: _replyTo!.isMine
                   ? myName
                   : (_replyTo!.senderName.trim().isNotEmpty
-                      ? _replyTo!.senderName
-                      : open.ownerName),
+                        ? _replyTo!.senderName
+                        : open.ownerName),
               text: _replyTo!.previewText,
               onCancel: () => setState(() => _replyTo = null),
             ),
@@ -511,11 +510,14 @@ class _ChatDetailScreenState extends ConsumerState<ChatDetailScreen>
     );
   }
 
-  Future<void> _toggleLike(String messageId) async {
+  Future<void> _react(String messageId, String? emoji) async {
     try {
-      await ref.read(chatInboxProvider.notifier).toggleMessageLike(
+      await ref
+          .read(chatInboxProvider.notifier)
+          .setMessageReaction(
             conversationId: widget.conversationId,
             messageId: messageId,
+            emoji: emoji,
           );
     } catch (error) {
       if (!mounted) {
@@ -527,7 +529,9 @@ class _ChatDetailScreenState extends ConsumerState<ChatDetailScreen>
 
   Future<void> _respond(String messageId, WalkInviteStatus status) async {
     try {
-      await ref.read(chatInboxProvider.notifier).respondToWalkInvite(
+      await ref
+          .read(chatInboxProvider.notifier)
+          .respondToWalkInvite(
             conversationId: widget.conversationId,
             messageId: messageId,
             status: status,
@@ -544,6 +548,24 @@ class _ChatDetailScreenState extends ConsumerState<ChatDetailScreen>
     }
   }
 
+  /// Avatar next to a message → the person who sent it (owner profile with
+  /// their dogs), not straight to the dog.
+  Future<void> _openOwnerProfile(
+    BuildContext context,
+    ChatMessage message,
+    ChatConversation chat,
+  ) {
+    final name = message.senderName.trim();
+    return showOwnerProfileSheet(
+      context,
+      userId: chat.peerUserId,
+      fallbackName: name.isNotEmpty ? name : chat.ownerName,
+      fallbackAvatarUrl: message.senderAvatarUrl,
+      fallbackDogs: [_profileFromChat(chat)],
+    );
+  }
+
+  /// App bar → the peer's dog in this chat.
   Future<void> _openSenderProfile(
     BuildContext context,
     ChatConversation chat,
@@ -583,10 +605,7 @@ class _ChatDetailScreenState extends ConsumerState<ChatDetailScreen>
   }
 
   Future<DiscoverProfile?> _loadPeerProfile(ChatConversation chat) {
-    return loadDiscoverProfile(
-      dogId: chat.dogId,
-      ownerId: chat.peerUserId,
-    );
+    return loadDiscoverProfile(dogId: chat.dogId, ownerId: chat.peerUserId);
   }
 
   Future<void> _openLocationPicker(BuildContext context) async {
@@ -595,7 +614,9 @@ class _ChatDetailScreenState extends ConsumerState<ChatDetailScreen>
       return;
     }
     try {
-      await ref.read(chatInboxProvider.notifier).sendLocationPin(
+      await ref
+          .read(chatInboxProvider.notifier)
+          .sendLocationPin(
             conversationId: widget.conversationId,
             locationName: location,
           );
@@ -616,7 +637,9 @@ class _ChatDetailScreenState extends ConsumerState<ChatDetailScreen>
       context: context,
       onSend: (walkTime, location) async {
         try {
-          await ref.read(chatInboxProvider.notifier).sendWalkInvite(
+          await ref
+              .read(chatInboxProvider.notifier)
+              .sendWalkInvite(
                 conversationId: widget.conversationId,
                 walkTime: walkTime,
                 walkLocationName: location,
@@ -649,23 +672,22 @@ class _ChatDetailScreenState extends ConsumerState<ChatDetailScreen>
               ListTile(
                 leading: const Icon(Icons.photo_outlined),
                 title: Text(ChatStrings.addPhoto),
-                onTap: () => Navigator.of(sheetContext).pop(
-                      _ChatAttachAction.photo,
-                    ),
+                onTap: () =>
+                    Navigator.of(sheetContext).pop(_ChatAttachAction.photo),
               ),
               ListTile(
                 leading: const Icon(Icons.pets),
                 title: Text(ChatStrings.scheduleWalk),
-                onTap: () => Navigator.of(sheetContext).pop(
-                      _ChatAttachAction.scheduleWalk,
-                    ),
+                onTap: () => Navigator.of(
+                  sheetContext,
+                ).pop(_ChatAttachAction.scheduleWalk),
               ),
               ListTile(
                 leading: const Icon(Icons.location_on_outlined),
                 title: Text(ChatStrings.sendLocation),
-                onTap: () => Navigator.of(sheetContext).pop(
-                      _ChatAttachAction.sendLocation,
-                    ),
+                onTap: () => Navigator.of(
+                  sheetContext,
+                ).pop(_ChatAttachAction.sendLocation),
               ),
             ],
           ),
@@ -717,8 +739,10 @@ class _ChatDetailScreenState extends ConsumerState<ChatDetailScreen>
     if (source == null || !mounted) {
       return;
     }
-    final file =
-        await ImagePicker().pickImage(source: source, imageQuality: 72);
+    final file = await ImagePicker().pickImage(
+      source: source,
+      imageQuality: 72,
+    );
     if (file == null || !mounted) {
       return;
     }
@@ -728,11 +752,9 @@ class _ChatDetailScreenState extends ConsumerState<ChatDetailScreen>
       _replyTo = null;
     });
     try {
-      await ref.read(chatInboxProvider.notifier).sendPhoto(
-            widget.conversationId,
-            file,
-            replyTo: reply,
-          );
+      await ref
+          .read(chatInboxProvider.notifier)
+          .sendPhoto(widget.conversationId, file, replyTo: reply);
       _scrollToEnd();
     } catch (error) {
       if (mounted) {

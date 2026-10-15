@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import '../../../core/images/dog_photo_urls.dart';
+import '../../../core/utils/message_reactions.dart';
 import '../../groups/domain/groups_models.dart';
 import '../domain/event_model.dart';
 import '../domain/events_repository.dart';
@@ -197,18 +198,32 @@ class LocalEventsRepository implements EventsRepository {
   Future<void> toggleMessageLike({
     required String eventId,
     required String messageId,
+  }) {
+    String? mine;
+    for (final message in _messages[eventId] ?? const <GroupMessage>[]) {
+      if (message.id == messageId) {
+        mine = MessageReactions.reactionOf(message.likes, currentUserId);
+      }
+    }
+    return setMessageReaction(
+      eventId: eventId,
+      messageId: messageId,
+      emoji: mine == '❤️' ? null : '❤️',
+    );
+  }
+
+  @override
+  Future<void> setMessageReaction({
+    required String eventId,
+    required String messageId,
+    String? emoji,
   }) async {
     final current = _messages[eventId] ?? const <GroupMessage>[];
     final next = [
       for (final message in current)
         if (message.id == messageId)
           message.copyWith(
-            likes: message.isLikedBy(currentUserId)
-                ? [
-                    for (final id in message.likes)
-                      if (id != currentUserId) id,
-                  ]
-                : [...message.likes, currentUserId],
+            likes: MessageReactions.apply(message.likes, currentUserId, emoji),
           )
         else
           message,

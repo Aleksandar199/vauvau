@@ -228,6 +228,19 @@ class ChatInboxController extends Notifier<List<ChatConversation>> {
     );
     state = _repo.currentInbox;
   }
+
+  Future<void> setMessageReaction({
+    required String conversationId,
+    required String messageId,
+    String? emoji,
+  }) async {
+    await _repo.setMessageReaction(
+      conversationId: conversationId,
+      messageId: messageId,
+      emoji: emoji,
+    );
+    state = _repo.currentInbox;
+  }
 }
 
 final chatSeedProvider = Provider<List<ChatConversation>>((ref) {

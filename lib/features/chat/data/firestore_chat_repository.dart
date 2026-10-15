@@ -6,6 +6,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../core/crash/crash_reporting.dart';
 import '../../../core/firebase/firestore_auth_guard.dart';
 import '../../../core/utils/message_preview.dart';
+import '../../../core/utils/message_reactions.dart';
 import '../../../core/images/dog_photo_urls.dart';
 import '../../../core/network/network_failure.dart';
 import '../../discover/domain/discover_profile.dart';
@@ -755,27 +756,70 @@ class FirestoreChatRepository implements ChatRepository {
   Future<void> toggleMessageLike({
     required String conversationId,
     required String messageId,
+  }) {
+    final mine = MessageReactions.reactionOf(
+      _messageById(conversationId, messageId)?.likes ?? const [],
+      currentUserId,
+    );
+    return setMessageReaction(
+      conversationId: conversationId,
+      messageId: messageId,
+      emoji: mine == '❤️' ? null : '❤️',
+    );
+  }
+
+  @override
+  Future<void> setMessageReaction({
+    required String conversationId,
+    required String messageId,
+    String? emoji,
   }) async {
     if (currentUserId.isEmpty) {
       return;
     }
-    List<String>? previous;
-    final existing = _byId(conversationId);
-    if (existing != null) {
-      for (final message in existing.messages) {
-        if (message.id == messageId) {
-          previous = List<String>.from(message.likes);
-          break;
-        }
+    final previous = _messageById(conversationId, messageId)?.likes;
+    if (previous != null) {
+      _replaceLikes(
+        conversationId,
+        messageId,
+        MessageReactions.apply(previous, currentUserId, emoji),
+      );
+    }
+    final ref = _rooms.doc(conversationId).collection('messages').doc(messageId);
+    try {
+      // Read-modify-write so the peer's concurrent reaction is not lost and
+      // my old emoji is swapped, not added next to the new one.
+      await _firestore.runTransaction((tx) async {
+        final snap = await tx.get(ref);
+        final likes = ChatMessage.likesFrom(snap.data()?['likes']);
+        tx.update(ref, {
+          'likes': MessageReactions.apply(likes, currentUserId, emoji),
+        });
+      });
+    } catch (error, stack) {
+      if (previous != null) {
+        _replaceLikes(conversationId, messageId, previous);
+      }
+      await _reportWriteFailure('setMessageReaction', error, stack);
+      rethrow;
+    }
+  }
+
+  ChatMessage? _messageById(String conversationId, String messageId) {
+    for (final message
+        in _byId(conversationId)?.messages ?? const <ChatMessage>[]) {
+      if (message.id == messageId) {
+        return message;
       }
     }
-    final nextLikes = <String>[...(previous ?? const <String>[])];
-    final liking = !nextLikes.contains(currentUserId);
-    if (!liking) {
-      nextLikes.remove(currentUserId);
-    } else {
-      nextLikes.add(currentUserId);
-    }
+    return null;
+  }
+
+  void _replaceLikes(
+    String conversationId,
+    String messageId,
+    List<String> likes,
+  ) {
     _inbox = [
       for (final chat in _inbox)
         if (chat.id == conversationId)
@@ -783,7 +827,7 @@ class FirestoreChatRepository implements ChatRepository {
             messages: [
               for (final message in chat.messages)
                 if (message.id == messageId)
-                  message.copyWith(likes: nextLikes)
+                  message.copyWith(likes: likes)
                 else
                   message,
             ],
@@ -792,39 +836,6 @@ class FirestoreChatRepository implements ChatRepository {
           chat,
     ];
     _emitNow();
-    try {
-      await _rooms
-          .doc(conversationId)
-          .collection('messages')
-          .doc(messageId)
-          // Atomic array ops so a concurrent like from the peer is not lost.
-          .update({
-            'likes': liking
-                ? FieldValue.arrayUnion([currentUserId])
-                : FieldValue.arrayRemove([currentUserId]),
-          });
-    } catch (error, stack) {
-      if (previous != null) {
-        _inbox = [
-          for (final chat in _inbox)
-            if (chat.id == conversationId)
-              chat.copyWith(
-                messages: [
-                  for (final message in chat.messages)
-                    if (message.id == messageId)
-                      message.copyWith(likes: previous)
-                    else
-                      message,
-                ],
-              )
-            else
-              chat,
-        ];
-        _emitNow();
-      }
-      await _reportWriteFailure('toggleMessageLike', error, stack);
-      rethrow;
-    }
   }
 
   @override
