@@ -1,4 +1,5 @@
 import 'app_user.dart';
+import 'owner_details.dart';
 import 'user_dog_profile.dart';
 
 abstract class AuthRepository {
@@ -44,6 +45,9 @@ abstract class AuthRepository {
     String? neighborhoodId,
     String? neighborhoodName,
     bool writeDog = true,
+    /// When given, replaces all optional "about me" fields (cleared ones are
+    /// deleted); null leaves them untouched.
+    OwnerDetails? details,
   });
 
   Future<void> saveOwnerCustomPhoto({

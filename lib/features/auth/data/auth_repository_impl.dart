@@ -9,6 +9,7 @@ import '../../../core/images/dog_photo_urls.dart';
 import '../domain/app_user.dart';
 import '../domain/auth_exception.dart';
 import '../domain/auth_repository.dart';
+import '../domain/owner_details.dart';
 import '../domain/user_dog_profile.dart';
 import 'account_deletion_service.dart';
 import 'firebase_auth_datasource.dart';
@@ -206,12 +207,14 @@ class AuthRepositoryImpl implements AuthRepository {
     String? neighborhoodId,
     String? neighborhoodName,
     bool writeDog = true,
+    OwnerDetails? details,
   }) async {
     final firestore = _firestore;
     if (firestore == null) {
       return;
     }
     final next = user.copyWith(
+      details: details,
       displayName: name ?? user.displayName,
       city: city ?? user.city,
       cityId: cityId ?? user.cityId,
@@ -221,16 +224,19 @@ class AuthRepositoryImpl implements AuthRepository {
       dog: dog ?? user.dog,
     );
     await firestore.collection(userCollection).doc(user.uid).set(
-          userDocumentPayload(
-            next,
-            includeCreatedAt: false,
-            // Never clobber Firestore admin role during profile edits.
-            includeRole: false,
-            includeDog: writeDog,
-            includeOwnerPhoto: false,
-          ),
-          SetOptions(merge: true),
-        );
+      {
+        ...userDocumentPayload(
+          next,
+          includeCreatedAt: false,
+          // Never clobber Firestore admin role during profile edits.
+          includeRole: false,
+          includeDog: writeDog,
+          includeOwnerPhoto: false,
+        ),
+        if (details != null) ...ownerDetailsPayload(details),
+      },
+      SetOptions(merge: true),
+    );
     if (!writeDog) {
       return;
     }

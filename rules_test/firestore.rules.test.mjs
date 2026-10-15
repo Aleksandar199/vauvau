@@ -746,6 +746,41 @@ describe('7. users privatna polja', () => {
     await assertSucceeds(getDoc(doc(as('admin'), 'users/bob/private/account')));
   });
 
+  test('opciona javna polja profila: vlasnik upisuje i briše, drugi ne', async () => {
+    const details = {
+      ageGroup: '25_34',
+      occupation: 'Dizajner',
+      interests: ['nature', 'music'],
+      languages: ['sr', 'en'],
+      lookingFor: ['walk_buddy'],
+      favoriteActivities: ['parks'],
+      walkTimes: ['morning'],
+      walkPace: 'easy',
+      groupWalks: true,
+      dogExperience: 'beginner',
+      sharesAdvice: true,
+      volunteerInterest: true,
+      favoriteBreed: 'Pudla',
+      favoriteWalkSpot: 'Kej',
+      instagram: 'alice.vau',
+    };
+    await assertSucceeds(
+      setDoc(doc(as('alice'), 'users/alice'), { name: 'Alice', ...details }, { merge: true }),
+    );
+    await assertSucceeds(
+      setDoc(
+        doc(as('alice'), 'users/alice'),
+        { occupation: deleteField(), instagram: deleteField(), interests: ['music'] },
+        { merge: true },
+      ),
+    );
+    await assertFails(
+      setDoc(doc(as('bob'), 'users/alice'), { occupation: 'Hack' }, { merge: true }),
+    );
+    // Javni profil čitaju svi prijavljeni.
+    await assertSucceeds(getDoc(doc(as('bob'), 'users/alice')));
+  });
+
   test('collection group private: samo admin', async () => {
     await assertSucceeds(getDocs(collectionGroup(as('admin'), 'private')));
     await assertFails(getDocs(collectionGroup(as('alice'), 'private')));

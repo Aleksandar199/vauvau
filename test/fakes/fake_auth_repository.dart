@@ -1,5 +1,6 @@
 import 'package:vauvau/features/auth/domain/app_user.dart';
 import 'package:vauvau/features/auth/domain/auth_repository.dart';
+import 'package:vauvau/features/auth/domain/owner_details.dart';
 import 'package:vauvau/features/auth/domain/user_dog_profile.dart';
 
 class FakeAuthRepository implements AuthRepository {
@@ -78,6 +79,7 @@ class FakeAuthRepository implements AuthRepository {
     String? neighborhoodId,
     String? neighborhoodName,
     bool writeDog = true,
+    OwnerDetails? details,
   }) async {
     this.user = user.copyWith(
       displayName: name ?? user.displayName,
@@ -87,6 +89,7 @@ class FakeAuthRepository implements AuthRepository {
       neighborhoodName: neighborhoodName ?? user.neighborhoodName,
       bio: bio ?? user.bio,
       dog: writeDog ? (dog ?? user.dog) : user.dog,
+      details: details ?? user.details,
     );
   }
 

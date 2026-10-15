@@ -294,4 +294,123 @@ abstract final class ProfileStrings {
         return gender.isEmpty ? '—' : gender;
     }
   }
+
+  // --- Optional owner details (edit profile + owner popup) ---
+  static String get aboutMeSection => L10n.tr('O meni', 'About me');
+  static String get socialSection =>
+      L10n.tr('Druženje i šetnje', 'Meetups and walks');
+  static String get experienceSection =>
+      L10n.tr('Iskustvo sa psima', 'Experience with dogs');
+  static String get extraSection => L10n.tr('Dodatno', 'More');
+  static String get optionalSectionsHint => L10n.tr(
+        'Sve ispod je opciono i vide ga drugi korisnici.',
+        'Everything below is optional and visible to other users.',
+      );
+  static String get ageGroup => L10n.tr('Godine', 'Age');
+  static String get occupation => L10n.tr('Zanimanje', 'Occupation');
+  static String get occupationHint =>
+      L10n.tr('npr. Grafički dizajner', 'e.g. Graphic designer');
+  static String get interests => L10n.tr('Interesovanja', 'Interests');
+  static String get languages => L10n.tr('Jezici', 'Languages');
+  static String get lookingFor => L10n.tr('Šta tražim', 'Looking for');
+  static String get favoriteActivities =>
+      L10n.tr('Omiljene aktivnosti', 'Favorite activities');
+  static String get walkTimes =>
+      L10n.tr('Kada najčešće šetam', 'When I usually walk');
+  static String get walkPace => L10n.tr('Tempo šetnje', 'Walking pace');
+  static String get groupWalks =>
+      L10n.tr('Zainteresovan/a za grupne šetnje', 'Interested in group walks');
+  static String get dogExperience => L10n.tr('Iskustvo', 'Experience');
+  static String get sharesAdvice => L10n.tr(
+        'Rado razmenjujem savete i iskustva',
+        'Happy to share tips and experience',
+      );
+  static String get volunteerInterest => L10n.tr(
+        'Zainteresovan/a za volontiranje i udomljavanje',
+        'Interested in volunteering and adoption',
+      );
+  static String get favoriteBreed =>
+      L10n.tr('Omiljena rasa pasa', 'Favorite dog breed');
+  static String get favoriteWalkSpot =>
+      L10n.tr('Omiljeno mesto za šetnju', 'Favorite walking spot');
+  static String get favoriteWalkSpotHint =>
+      L10n.tr('npr. Kej uz Dunav', 'e.g. Danube quay');
+  static String get instagram => L10n.tr('Instagram', 'Instagram');
+  static String get instagramHint =>
+      L10n.tr('@korisnicko.ime ili link', '@username or link');
+  static String get instagramInvalid => L10n.tr(
+        'Unesite Instagram korisničko ime ili link do profila.',
+        'Enter an Instagram username or profile link.',
+      );
+  static String get notSelected => L10n.tr('Nije izabrano', 'Not selected');
+  static String get clearChoice => L10n.tr('Ukloni izbor', 'Clear choice');
+  static String get close => L10n.tr('Zatvori', 'Close');
+  static String get ownerProfileTitle =>
+      L10n.tr('Profil vlasnika', 'Owner profile');
+  static String get openOwnerProfile =>
+      L10n.tr('Otvori profil vlasnika', 'Open owner profile');
+  static String get ownerProfileLoadFailed => L10n.tr(
+        'Profil trenutno ne može da se učita. Pokušajte ponovo kasnije.',
+        'The profile can\'t be loaded right now. Please try again later.',
+      );
+  static String get ownerProfileUnavailable =>
+      L10n.tr('Profil nije dostupan.', 'This profile is not available.');
+  static String get retry => L10n.tr('Pokušaj ponovo', 'Try again');
+
+  /// Label for a stable [OwnerDetailOptions] key; unknown keys are returned
+  /// as is.
+  static String ownerOption(String key) {
+    return switch (key) {
+      '18_24' => '18–24',
+      '25_34' => '25–34',
+      '35_44' => '35–44',
+      '45_54' => '45–54',
+      '55_64' => '55–64',
+      '65_plus' => '65+',
+      'nature' => L10n.tr('Priroda', 'Nature'),
+      'sport' => L10n.tr('Sport', 'Sports'),
+      'travel' => L10n.tr('Putovanja', 'Travel'),
+      'photography' => L10n.tr('Fotografija', 'Photography'),
+      'music' => L10n.tr('Muzika', 'Music'),
+      'books' => L10n.tr('Knjige', 'Books'),
+      'movies' => L10n.tr('Filmovi i serije', 'Movies & series'),
+      'cooking' => L10n.tr('Kuvanje', 'Cooking'),
+      'art' => L10n.tr('Umetnost', 'Art'),
+      'technology' => L10n.tr('Tehnologija', 'Technology'),
+      'gaming' => L10n.tr('Igrice', 'Gaming'),
+      'volunteering' => L10n.tr('Volontiranje', 'Volunteering'),
+      'sr' => L10n.tr('Srpski', 'Serbian'),
+      'en' => L10n.tr('Engleski', 'English'),
+      'de' => L10n.tr('Nemački', 'German'),
+      'hu' => L10n.tr('Mađarski', 'Hungarian'),
+      'ru' => L10n.tr('Ruski', 'Russian'),
+      'fr' => L10n.tr('Francuski', 'French'),
+      'it' => L10n.tr('Italijanski', 'Italian'),
+      'es' => L10n.tr('Španski', 'Spanish'),
+      'sk' => L10n.tr('Slovački', 'Slovak'),
+      'ro' => L10n.tr('Rumunski', 'Romanian'),
+      'walk_buddy' => L10n.tr('Društvo za šetnju', 'Walking company'),
+      'dog_playdates' => L10n.tr('Druženje pasa', 'Dog playdates'),
+      'new_friends' => L10n.tr('Nova poznanstva', 'New friends'),
+      'walks' => L10n.tr('Šetnje', 'Walks'),
+      'parks' => L10n.tr('Parkovi', 'Parks'),
+      'hiking' => L10n.tr('Planinarenje', 'Hiking'),
+      'cafes' => L10n.tr('Kafići', 'Cafés'),
+      'training' => L10n.tr('Trening', 'Training'),
+      'swimming' => L10n.tr('Kupanje', 'Swimming'),
+      'dog_sports' => L10n.tr('Pseći sportovi', 'Dog sports'),
+      'other' => L10n.tr('Drugo', 'Other'),
+      'morning' => L10n.tr('Ujutru', 'Mornings'),
+      'afternoon' => L10n.tr('Popodne', 'Afternoons'),
+      'evening' => L10n.tr('Uveče', 'Evenings'),
+      'weekend' => L10n.tr('Vikendom', 'Weekends'),
+      'easy' => L10n.tr('Lagana', 'Easy'),
+      'moderate' => L10n.tr('Umerena', 'Moderate'),
+      'active' => L10n.tr('Aktivna', 'Active'),
+      'beginner' => L10n.tr('Početnik', 'Beginner'),
+      'intermediate' => L10n.tr('Srednje iskustvo', 'Some experience'),
+      'experienced' => L10n.tr('Iskusan vlasnik', 'Experienced owner'),
+      _ => key,
+    };
+  }
 }

@@ -11,6 +11,7 @@ class PreferenceChipGroup extends StatelessWidget {
     required this.onToggle,
     required this.selectedColor,
     required this.selectedForeground,
+    this.labelOf,
   });
 
   final String title;
@@ -19,6 +20,9 @@ class PreferenceChipGroup extends StatelessWidget {
   final ValueChanged<String> onToggle;
   final Color selectedColor;
   final Color selectedForeground;
+
+  /// Label for an option key; defaults to [DogPreferenceTags.localize].
+  final String Function(String key)? labelOf;
 
   @override
   Widget build(BuildContext context) {
@@ -33,7 +37,7 @@ class PreferenceChipGroup extends StatelessWidget {
           children: [
             for (final tag in options)
               FilterChip(
-                label: Text(DogPreferenceTags.localize(tag)),
+                label: Text((labelOf ?? DogPreferenceTags.localize)(tag)),
                 selected: selected.contains(tag),
                 onSelected: (_) => onToggle(tag),
                 selectedColor: selectedColor,

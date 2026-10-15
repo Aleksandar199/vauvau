@@ -1,3 +1,4 @@
+import 'owner_details.dart';
 import 'user_dog_profile.dart';
 
 import '../../../core/constants/serbia_locations.dart';
@@ -29,6 +30,7 @@ class AppUser {
     this.bio = '',
     this.role = UserRole.user,
     this.dog = const UserDogProfile(),
+    this.details = const OwnerDetails(),
   });
 
   final String uid;
@@ -45,6 +47,8 @@ class AppUser {
   final String bio;
   final UserRole role;
   final UserDogProfile dog;
+  /// Optional public "about me" fields (age group, interests, walks...).
+  final OwnerDetails details;
 
   bool get isAdmin => role == UserRole.admin;
 
@@ -73,6 +77,7 @@ class AppUser {
     String? bio,
     UserRole? role,
     UserDogProfile? dog,
+    OwnerDetails? details,
   }) {
     return AppUser(
       uid: uid,
@@ -87,6 +92,7 @@ class AppUser {
       bio: bio ?? this.bio,
       role: role ?? this.role,
       dog: dog ?? this.dog,
+      details: details ?? this.details,
     );
   }
 
@@ -144,6 +150,7 @@ class AppUser {
       bio: doc['bio'] as String? ?? '',
       role: UserRoleX.fromString(doc['role'] as String?),
       dog: UserDogProfile.fromMap(doc['dog']),
+      details: OwnerDetails.fromMap(doc),
     );
   }
 }

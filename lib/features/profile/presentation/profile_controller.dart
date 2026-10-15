@@ -118,6 +118,7 @@ class ProfileController extends Notifier<UserProfile> {
       ownerCityId: user.cityId,
       ownerNeighborhoodId: user.neighborhoodId,
       ownerNeighborhoodName: user.neighborhoodName,
+      ownerDetails: user.details,
       selectedDogId: selectedId,
       dogs: dogs,
     );
@@ -128,7 +129,9 @@ class ProfileController extends Notifier<UserProfile> {
     state = state.copyWith(selectedDogId: dogId);
   }
 
-  void save(UserProfile profile) {
+  /// [writeOwnerDetails]: also replace the optional "about me" fields with
+  /// `profile.ownerDetails` (only the edit-profile screen edits them).
+  void save(UserProfile profile, {bool writeOwnerDetails = false}) {
     state = profile;
     final user = ref.read(authStateProvider).asData?.value;
     if (user == null || !isFirebaseReady) {
@@ -151,6 +154,7 @@ class ProfileController extends Notifier<UserProfile> {
             neighborhoodId: profile.ownerNeighborhoodId,
             neighborhoodName: neighborhoodName,
             writeDog: false,
+            details: writeOwnerDetails ? profile.ownerDetails : null,
           ),
     );
     final area = DogArea(

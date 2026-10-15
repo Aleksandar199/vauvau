@@ -51,6 +51,7 @@ class DogImage extends StatelessWidget {
     this.width,
     this.height,
     this.fit = BoxFit.cover,
+    this.fallback,
   });
 
   final String? url;
@@ -58,6 +59,10 @@ class DogImage extends StatelessWidget {
   final double? width;
   final double? height;
   final BoxFit fit;
+
+  /// Shown instead of the dog illustration when there is no usable image
+  /// (e.g. a person placeholder for owner photos).
+  final Widget? fallback;
 
   @override
   Widget build(BuildContext context) {
@@ -115,7 +120,8 @@ class DogImage extends StatelessWidget {
   }
 
   Widget _fallback() {
-    return DogIllustrationFallback(seed: seed, width: width, height: height);
+    return fallback ??
+        DogIllustrationFallback(seed: seed, width: width, height: height);
   }
 
   Widget _placeholder() {
@@ -134,7 +140,7 @@ class DogImage extends StatelessWidget {
         height: height,
         fit: fit,
         placeholder: _placeholder(),
-        broken: _broken(),
+        broken: fallback ?? _broken(),
       );
     }
 

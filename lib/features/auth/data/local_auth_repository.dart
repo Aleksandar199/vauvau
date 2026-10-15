@@ -2,6 +2,7 @@ import 'dart:async';
 
 import '../domain/app_user.dart';
 import '../domain/auth_repository.dart';
+import '../domain/owner_details.dart';
 import '../domain/user_dog_profile.dart';
 
 const AppUser localDemoUser = AppUser(
@@ -100,6 +101,7 @@ class LocalAuthRepository implements AuthRepository {
     String? neighborhoodId,
     String? neighborhoodName,
     bool writeDog = true,
+    OwnerDetails? details,
   }) async {
     if (_user == null || _user!.uid != user.uid) {
       return;
@@ -112,6 +114,7 @@ class LocalAuthRepository implements AuthRepository {
       neighborhoodName: neighborhoodName ?? _user!.neighborhoodName,
       bio: bio ?? _user!.bio,
       dog: writeDog ? (dog ?? _user!.dog) : _user!.dog,
+      details: details ?? _user!.details,
     );
     _controller.add(_user);
   }

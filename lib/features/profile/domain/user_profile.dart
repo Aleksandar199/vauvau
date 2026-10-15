@@ -1,4 +1,5 @@
 import '../../discover/data/mock_discover_profiles.dart';
+import '../../auth/domain/owner_details.dart';
 import '../../discover/domain/discover_profile.dart';
 
 class UserProfile {
@@ -12,6 +13,7 @@ class UserProfile {
     this.ownerCityId = '',
     this.ownerNeighborhoodId = '',
     this.ownerNeighborhoodName = '',
+    this.ownerDetails = const OwnerDetails(),
   });
 
   final String ownerName;
@@ -21,6 +23,7 @@ class UserProfile {
   final String ownerCityId;
   final String ownerNeighborhoodId;
   final String ownerNeighborhoodName;
+  final OwnerDetails ownerDetails;
   final List<DiscoverProfile> dogs;
   final String selectedDogId;
 
@@ -46,6 +49,7 @@ class UserProfile {
     String? ownerCityId,
     String? ownerNeighborhoodId,
     String? ownerNeighborhoodName,
+    OwnerDetails? ownerDetails,
     List<DiscoverProfile>? dogs,
     String? selectedDogId,
   }) {
@@ -58,6 +62,7 @@ class UserProfile {
       ownerNeighborhoodId: ownerNeighborhoodId ?? this.ownerNeighborhoodId,
       ownerNeighborhoodName:
           ownerNeighborhoodName ?? this.ownerNeighborhoodName,
+      ownerDetails: ownerDetails ?? this.ownerDetails,
       dogs: dogs ?? this.dogs,
       selectedDogId: selectedDogId ?? this.selectedDogId,
     );

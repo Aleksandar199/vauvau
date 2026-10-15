@@ -12,6 +12,9 @@ import '../../../chat/presentation/chat_screen.dart';
 import '../../../moderation/domain/content_report.dart';
 import '../../../moderation/presentation/safety_menu.dart';
 import '../../../moments/presentation/widgets/story_widgets.dart';
+import '../../../profile/data/owner_public_profile.dart';
+import '../../../profile/presentation/owner_profile_sheet.dart';
+import '../../../profile/presentation/profile_strings.dart';
 import '../../domain/discover_profile.dart';
 import '../../domain/discover_repository.dart';
 import '../discover_controller.dart';
@@ -768,20 +771,39 @@ class _ProfileActionBar extends ConsumerWidget {
   }
 }
 
-class _OwnerRow extends StatefulWidget {
+/// Owner avatar + name; tapping it opens the owner's public profile popup
+/// (loaded by [ownerId], never by name).
+class _OwnerRow extends ConsumerStatefulWidget {
   const _OwnerRow({required this.ownerId, required this.ownerName});
 
   final String ownerId;
   final String ownerName;
 
   @override
-  State<_OwnerRow> createState() => _OwnerRowState();
+  ConsumerState<_OwnerRow> createState() => _OwnerRowState();
 }
 
-class _OwnerRowState extends State<_OwnerRow> {
+class _OwnerRowState extends ConsumerState<_OwnerRow> {
   late final Future<String> _photoFuture = _loadPhoto();
+  var _photoUrl = '';
+
+  void _openOwner() {
+    showOwnerProfileSheet(
+      context,
+      userId: widget.ownerId,
+      fallbackName: widget.ownerName,
+      fallbackAvatarUrl: _photoUrl,
+      loader: ref.read(ownerProfileLoaderProvider),
+    );
+  }
 
   Future<String> _loadPhoto() async {
+    final url = await _fetchPhoto();
+    _photoUrl = url;
+    return url;
+  }
+
+  Future<String> _fetchPhoto() async {
     if (widget.ownerId.isEmpty) {
       return '';
     }
@@ -806,7 +828,9 @@ class _OwnerRowState extends State<_OwnerRow> {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
+    final theme = Theme.of(context);
+    final canOpen = widget.ownerId.trim().isNotEmpty;
+    final row = Row(
       children: [
         FutureBuilder<String>(
           future: _photoFuture,
@@ -843,10 +867,38 @@ class _OwnerRowState extends State<_OwnerRow> {
         Expanded(
           child: Text(
             widget.ownerName,
-            style: Theme.of(context).textTheme.bodyLarge,
+            key: const ValueKey('discover-owner-name'),
+            style: canOpen
+                ? theme.textTheme.bodyLarge?.copyWith(
+                    color: AppColors.primaryDeep,
+                    fontWeight: FontWeight.w700,
+                    decoration: TextDecoration.underline,
+                    decorationColor: AppColors.primaryDeep.withValues(
+                      alpha: 0.4,
+                    ),
+                  )
+                : theme.textTheme.bodyLarge,
           ),
         ),
+        if (canOpen)
+          const Icon(Icons.chevron_right_rounded, color: AppColors.primaryDeep),
       ],
+    );
+    if (!canOpen) {
+      return row;
+    }
+    return Semantics(
+      button: true,
+      label: ProfileStrings.openOwnerProfile,
+      child: InkWell(
+        key: const ValueKey('discover-owner-row'),
+        borderRadius: BorderRadius.circular(12),
+        onTap: _openOwner,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 4),
+          child: row,
+        ),
+      ),
     );
   }
 }

@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../domain/app_user.dart';
+import '../domain/owner_details.dart';
 import '../domain/user_dog_profile.dart';
 
 const String userCollection = 'users';
@@ -102,6 +103,15 @@ Future<void> moveUserPrivateFields(
 }
 
 Map<String, dynamic> emptyDogMap() => const UserDogProfile().toMap();
+
+/// Public "about me" fields for a merge write on `users/{uid}`: set values
+/// are written, cleared ones are deleted (other fields stay untouched).
+Map<String, dynamic> ownerDetailsPayload(OwnerDetails details) {
+  return {
+    for (final entry in details.toMap().entries)
+      entry.key: entry.value ?? FieldValue.delete(),
+  };
+}
 
 Map<String, dynamic> userDocumentPayload(
   AppUser user, {

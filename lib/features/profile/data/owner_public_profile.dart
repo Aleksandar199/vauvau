@@ -1,7 +1,9 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/firebase/firebase_status.dart';
 import '../../auth/domain/app_user.dart';
+import '../../auth/domain/owner_details.dart';
 import '../../discover/data/dog_profile_mapper.dart';
 import '../../discover/domain/discover_profile.dart';
 
@@ -16,6 +18,7 @@ class OwnerPublicProfile {
     required this.location,
     required this.bio,
     required this.dogs,
+    this.details = const OwnerDetails(),
   });
 
   final String userId;
@@ -24,7 +27,18 @@ class OwnerPublicProfile {
   final String location;
   final String bio;
   final List<DiscoverProfile> dogs;
+
+  /// Optional "about me" fields the owner filled in.
+  final OwnerDetails details;
 }
+
+typedef OwnerProfileLoader =
+    Future<OwnerPublicProfile?> Function(String userId);
+
+/// Loader used by the owner popup (overridable in tests).
+final ownerProfileLoaderProvider = Provider<OwnerProfileLoader>(
+  (ref) => loadOwnerPublicProfile,
+);
 
 /// Loads [userId]'s public profile; null when nothing is found (or Firebase
 /// is not set up and no [firestore] is given).
@@ -59,5 +73,6 @@ Future<OwnerPublicProfile?> loadOwnerPublicProfile(
     location: user.locationLabel,
     bio: user.bio.trim(),
     dogs: dogs,
+    details: user.details,
   );
 }
