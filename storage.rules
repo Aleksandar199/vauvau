@@ -1,7 +1,10 @@
 rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
-    // Public read for Image.network / CachedNetworkImage.
+    // Images are shown via download URLs (?token=…), which bypass these
+    // rules. Rules cover SDK/REST access by path: single objects of public
+    // roots are readable, but only the owner may list a folder (no
+    // enumeration of other users' uploads). Chat images need sign-in.
     // Writes require auth + image content type + max 8MB.
     // Deletes/writes are owner-scoped: {root}/{userId}/...
     function isSignedIn() {
@@ -22,55 +25,64 @@ service firebase.storage {
     }
 
     match /pets/{userId}/{allPaths=**} {
-      allow read: if true;
+      allow get: if true;
+      allow list: if isOwner(userId);
       allow create, update: if ownerImageWrite(userId);
       allow delete: if isOwner(userId);
     }
 
     match /users/{userId}/{allPaths=**} {
-      allow read: if true;
+      allow get: if true;
+      allow list: if isOwner(userId);
       allow create, update: if ownerImageWrite(userId);
       allow delete: if isOwner(userId);
     }
 
     match /moments/{userId}/{allPaths=**} {
-      allow read: if true;
+      allow get: if true;
+      allow list: if isOwner(userId);
       allow create, update: if ownerImageWrite(userId);
       allow delete: if isOwner(userId);
     }
 
     match /events/{userId}/{allPaths=**} {
-      allow read: if true;
+      allow get: if true;
+      allow list: if isOwner(userId);
       allow create, update: if ownerImageWrite(userId);
       allow delete: if isOwner(userId);
     }
 
     match /groups/{userId}/{allPaths=**} {
-      allow read: if true;
+      allow get: if true;
+      allow list: if isOwner(userId);
       allow create, update: if ownerImageWrite(userId);
       allow delete: if isOwner(userId);
     }
 
     match /adoption/{userId}/{allPaths=**} {
-      allow read: if true;
+      allow get: if true;
+      allow list: if isOwner(userId);
       allow create, update: if ownerImageWrite(userId);
       allow delete: if isOwner(userId);
     }
 
     match /lost_dogs/{userId}/{allPaths=**} {
-      allow read: if true;
+      allow get: if true;
+      allow list: if isOwner(userId);
       allow create, update: if ownerImageWrite(userId);
       allow delete: if isOwner(userId);
     }
 
     match /uploads/{userId}/{allPaths=**} {
-      allow read: if true;
+      allow get: if true;
+      allow list: if isOwner(userId);
       allow create, update: if ownerImageWrite(userId);
       allow delete: if isOwner(userId);
     }
 
     match /chats/{userId}/{allPaths=**} {
-      allow read: if true;
+      allow get: if isSignedIn();
+      allow list: if isOwner(userId);
       allow create, update: if ownerImageWrite(userId);
       allow delete: if isOwner(userId);
     }

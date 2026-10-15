@@ -5,6 +5,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../../../core/crash/crash_reporting.dart';
 import '../../../core/firebase/firestore_auth_guard.dart';
+import '../../../core/utils/message_preview.dart';
 import '../../../core/images/dog_photo_urls.dart';
 import '../../../core/network/network_failure.dart';
 import '../../discover/domain/discover_profile.dart';
@@ -928,7 +929,7 @@ class FirestoreChatRepository implements ChatRepository {
       await _rooms.doc(conversationId).collection('messages').add(payload);
       final peerId = _byId(conversationId)?.peerUserId ?? '';
       await _rooms.doc(conversationId).set({
-        'lastMessage': preview,
+        'lastMessage': clipLastMessagePreview(preview),
         'lastMessageTimestamp': FieldValue.serverTimestamp(),
         'isNewMatch': false,
         // Replying means everything before it was seen.

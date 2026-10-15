@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 
 import '../../../core/firebase/firestore_auth_guard.dart';
+import '../../../core/utils/message_preview.dart';
 import '../../../core/images/dog_photo_urls.dart';
 import '../../groups/domain/groups_models.dart';
 import '../domain/event_model.dart';
@@ -219,7 +220,7 @@ class FirestoreEventsRepository implements EventsRepository {
     });
     await eventRef.set(
       {
-        'lastMessage': preview,
+        'lastMessage': clipLastMessagePreview(preview),
         'lastMessageAt': FieldValue.serverTimestamp(),
       },
       SetOptions(merge: true),
@@ -269,7 +270,7 @@ class FirestoreEventsRepository implements EventsRepository {
     });
     await eventRef.set(
       {
-        'lastMessage': preview,
+        'lastMessage': clipLastMessagePreview(preview),
         'lastMessageAt': FieldValue.serverTimestamp(),
       },
       SetOptions(merge: true),

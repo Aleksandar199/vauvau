@@ -9,13 +9,16 @@ import {
 } from '@firebase/rules-unit-testing';
 import {
   arrayRemove,
+  Timestamp,
   arrayUnion,
+  deleteDoc,
   doc,
   getDoc,
   increment,
   serverTimestamp,
   setDoc,
   updateDoc,
+  writeBatch,
 } from 'firebase/firestore';
 
 let env;
@@ -448,33 +451,170 @@ describe('4. matches i swipes', () => {
   });
 });
 
-// --------------------------------------------------------------- 5. dogs
-describe('5. dogs brojači', () => {
-  test('likesCount ±1 i superLikesCount +1 (polje ne postoji)', async () => {
+// ------------------------------------------------- 5. dogs brojači lajkova
+describe('5. dogs brojači lajkova', () => {
+  const likeOf = (db, uid) => doc(db, `dogs/rex/likes/${uid}`);
+  const like = (type) => ({ userId: 'alice', type, createdAt: serverTimestamp() });
+
+  // Postojeći lajk/super lajk od alice, sa brojačima koji ga već uključuju.
+  const seedLike = (type) =>
+    env.withSecurityRulesDisabled(async (ctx) => {
+      const db = ctx.firestore();
+      await setDoc(likeOf(db, 'alice'), { userId: 'alice', type });
+      await setDoc(
+        doc(db, 'dogs/rex'),
+        { likesCount: 4, superLikesCount: type === 'superLike' ? 1 : 0 },
+        { merge: true },
+      );
+    });
+
+  test('lajk: like doc + likesCount +1 u istom batch-u', async () => {
     const db = as('alice');
-    await assertSucceeds(
-      setDoc(doc(db, 'dogs/rex'), { likesCount: increment(1) }, { merge: true }),
-    );
-    await assertSucceeds(
-      setDoc(doc(db, 'dogs/rex'), { likesCount: increment(-1) }, { merge: true }),
-    );
-    await assertSucceeds(
-      setDoc(doc(db, 'dogs/rex'), { superLikesCount: increment(1) }, { merge: true }),
-    );
+    const batch = writeBatch(db);
+    batch.set(likeOf(db, 'alice'), like('like'), { merge: true });
+    batch.set(doc(db, 'dogs/rex'), { likesCount: increment(1) }, { merge: true });
+    await assertSucceeds(batch.commit());
   });
 
-  test('skok brojača, postavljanje vrednosti ili drugo polje', async () => {
+  test('super lajk na novom psu: oba brojača +1 (polje superLikesCount ne postoji)', async () => {
     const db = as('alice');
-    await assertFails(updateDoc(doc(db, 'dogs/rex'), { likesCount: increment(5) }));
+    const batch = writeBatch(db);
+    batch.set(likeOf(db, 'alice'), like('superLike'), { merge: true });
+    batch.set(
+      doc(db, 'dogs/rex'),
+      { likesCount: increment(1), superLikesCount: increment(1) },
+      { merge: true },
+    );
+    await assertSucceeds(batch.commit());
+  });
+
+  test('brojač bez like doc-a, like doc bez brojača, ili skok +5', async () => {
+    const db = as('alice');
+    await assertFails(updateDoc(doc(db, 'dogs/rex'), { likesCount: increment(1) }));
+    await assertFails(setDoc(likeOf(db, 'alice'), like('like')));
+    const batch = writeBatch(db);
+    batch.set(likeOf(db, 'alice'), like('like'));
+    batch.set(doc(db, 'dogs/rex'), { likesCount: increment(5) }, { merge: true });
+    await assertFails(batch.commit());
+  });
+
+  test('ponovni lajk postojećeg lajka ne sme da poveća brojač', async () => {
+    await seedLike('like');
+    const db = as('alice');
+    const batch = writeBatch(db);
+    batch.set(likeOf(db, 'alice'), like('like'), { merge: true });
+    batch.set(doc(db, 'dogs/rex'), { likesCount: increment(1) }, { merge: true });
+    await assertFails(batch.commit());
+    // Bez brojača (samo osvežen createdAt) prolazi.
+    await assertSucceeds(setDoc(likeOf(db, 'alice'), like('like'), { merge: true }));
+  });
+
+  test('unlike: brisanje like doc-a + likesCount -1; bez brojača pada', async () => {
+    await seedLike('like');
+    const db = as('alice');
+    await assertFails(deleteDoc(likeOf(db, 'alice')));
+    const batch = writeBatch(db);
+    batch.delete(likeOf(db, 'alice'));
+    batch.set(doc(db, 'dogs/rex'), { likesCount: increment(-1) }, { merge: true });
+    await assertSucceeds(batch.commit());
+  });
+
+  test('like → superLike: superLikesCount +1; superLike → like zabranjeno', async () => {
+    await seedLike('like');
+    const db = as('alice');
+    let batch = writeBatch(db);
+    batch.set(likeOf(db, 'alice'), like('superLike'), { merge: true });
+    batch.set(doc(db, 'dogs/rex'), { superLikesCount: increment(1) }, { merge: true });
+    await assertSucceeds(batch.commit());
+    await assertFails(setDoc(likeOf(db, 'alice'), like('like'), { merge: true }));
+    batch = writeBatch(db);
+    batch.set(likeOf(db, 'alice'), like('like'), { merge: true });
+    batch.set(doc(db, 'dogs/rex'), { superLikesCount: increment(-1) }, { merge: true });
+    await assertFails(batch.commit());
+  });
+
+  test('superLike → ništa: oba brojača -1', async () => {
+    await seedLike('superLike');
+    const db = as('alice');
+    const batch = writeBatch(db);
+    batch.delete(likeOf(db, 'alice'));
+    batch.set(
+      doc(db, 'dogs/rex'),
+      { likesCount: increment(-1), superLikesCount: increment(-1) },
+      { merge: true },
+    );
+    await assertSucceeds(batch.commit());
+  });
+
+  test('vlasnik menja psa ali ne brojače; briše tuđe lajkove (brisanje naloga)', async () => {
+    await seedLike('like');
+    const db = as('bob');
+    await assertSucceeds(updateDoc(doc(db, 'dogs/rex'), { name: 'Rex II' }));
     await assertFails(updateDoc(doc(db, 'dogs/rex'), { likesCount: 1000 }));
-    await assertFails(updateDoc(doc(db, 'dogs/rex'), { superLikesCount: 2 }));
-    await assertFails(updateDoc(doc(db, 'dogs/rex'), { likesCount: '4' }));
+    await assertSucceeds(deleteDoc(likeOf(db, 'alice')));
+  });
+
+  test('treći korisnik ne briše tuđi lajk i ne menja druga polja', async () => {
+    await seedLike('like');
+    const db = as('carol');
+    await assertFails(deleteDoc(likeOf(db, 'alice')));
+    await assertFails(updateDoc(doc(db, 'dogs/rex'), { name: 'Hack' }));
+  });
+});
+
+// ------------------------------------------ 6. lastMessage i članstvo (dopuna)
+describe('6. lastMessage i članstvo', () => {
+  test('čet: dugačak lastMessage ili lažno vreme padaju', async () => {
+    const db = as('alice');
+    await assertFails(updateDoc(doc(db, 'chats/alice_bob'), { lastMessage: 'x'.repeat(1001) }));
+    await assertFails(updateDoc(doc(db, 'chats/alice_bob'), { lastMessage: 42 }));
     await assertFails(
-      updateDoc(doc(db, 'dogs/rex'), { likesCount: increment(1), name: 'Hack' }),
+      updateDoc(doc(db, 'chats/alice_bob'), {
+        lastMessage: 'hej',
+        lastMessageTimestamp: Timestamp.fromDate(new Date('2099-01-01')),
+      }),
+    );
+    await assertSucceeds(
+      updateDoc(doc(db, 'chats/alice_bob'), {
+        lastMessage: 'x'.repeat(1000),
+        lastMessageTimestamp: serverTimestamp(),
+      }),
     );
   });
 
-  test('vlasnik i dalje menja svog psa', async () => {
-    await assertSucceeds(updateDoc(doc(as('bob'), 'dogs/rex'), { name: 'Rex II', likesCount: 0 }));
+  test('grupa/događaj: lastMessageAt mora biti serverTimestamp', async () => {
+    const future = Timestamp.fromDate(new Date('2099-01-01'));
+    await assertFails(
+      updateDoc(doc(as('alice'), 'breed_groups/g1'), {
+        lastMessage: 'hej',
+        lastMessageAt: future,
+        lastMessageSenderId: 'alice',
+      }),
+    );
+    await assertFails(
+      updateDoc(doc(as('alice'), 'events/e1'), { lastMessage: 'hej', lastMessageAt: future }),
+    );
+    await assertSucceeds(
+      updateDoc(doc(as('alice'), 'events/e1'), {
+        lastMessage: 'hej',
+        lastMessageAt: serverTimestamp(),
+      }),
+    );
+  });
+
+  test('kreator/organizator ne dodaje tuđe članove', async () => {
+    await assertFails(
+      updateDoc(doc(as('alice'), 'breed_groups/g1'), {
+        memberIds: ['alice', 'carol'],
+        memberCount: 2,
+      }),
+    );
+    await assertFails(
+      updateDoc(doc(as('alice'), 'events/e1'), { participantUserIds: ['alice', 'carol'] }),
+    );
+    // Kreator i dalje sme sam da izađe iz svoje grupe.
+    await assertSucceeds(
+      updateDoc(doc(as('alice'), 'breed_groups/g1'), { memberIds: [], memberCount: 0 }),
+    );
   });
 });

@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 
 import '../../../core/firebase/firestore_auth_guard.dart';
+import '../../../core/utils/message_preview.dart';
 import 'seed_breed_groups.dart';
 import '../domain/groups_models.dart';
 
@@ -299,7 +300,7 @@ class FirestoreGroupsRepository implements GroupsRepository {
     });
     await groupRef.set(
       {
-        'lastMessage': preview,
+        'lastMessage': clipLastMessagePreview(preview),
         'lastMessageAt': FieldValue.serverTimestamp(),
         'lastMessageSenderId': currentUserId,
       },
@@ -350,7 +351,7 @@ class FirestoreGroupsRepository implements GroupsRepository {
     });
     await groupRef.set(
       {
-        'lastMessage': preview,
+        'lastMessage': clipLastMessagePreview(preview),
         'lastMessageAt': FieldValue.serverTimestamp(),
         'lastMessageSenderId': currentUserId,
       },

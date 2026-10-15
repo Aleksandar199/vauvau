@@ -52,6 +52,19 @@ service cloud.firestore {
         after.toSet() == before.toSet().difference([request.auth.uid].toSet());
     }
 
+    // Inbox preview: short string (client clips to 200 runes) and a server
+    // timestamp for its time field, so nobody can pin a chat to the top.
+    function previewOk(timeField) {
+      return (
+        !changed('lastMessage') || (
+          request.resource.data.lastMessage is string &&
+          request.resource.data.lastMessage.size() <= 1000
+        )
+      ) && (
+        !changed(timeField) || request.resource.data[timeField] == request.time
+      );
+    }
+
     // `lastMessage*` preview written by a member after posting to the chat.
     function lastMessageOk(membersField) {
       return (
@@ -60,6 +73,7 @@ service cloud.firestore {
         !changed('lastMessageSenderId')
       ) || (
         request.auth.uid in request.resource.data.get(membersField, []) &&
+        previewOk('lastMessageAt') &&
         (!changed('lastMessageSenderId') ||
           request.resource.data.lastMessageSenderId == request.auth.uid)
       );
@@ -76,13 +90,6 @@ service cloud.firestore {
         );
     }
 
-    // Counter field may only move by exactly ±1 (missing field counts as 0).
-    function counterStepOk(field) {
-      return !changed(field) || (
-        request.resource.data[field] is int &&
-        (request.resource.data[field] - resource.data.get(field, 0)) in [1, -1]
-      );
-    }
 
     match /users/{userId} {
       allow read: if isAuthenticated();
@@ -191,18 +198,92 @@ service cloud.firestore {
       allow read: if isAuthenticated();
       allow create: if isAuthenticated() &&
         request.resource.data.ownerId == request.auth.uid;
-      allow update, delete: if isAuthenticated() &&
-        (resource.data.ownerId == request.auth.uid || isAdmin());
-      // Likers may bump likesCount / superLikesCount by exactly ±1 without
-      // editing other dog fields.
+      // --- Like counters ---------------------------------------------------
+      // likesCount / superLikesCount change only together with the caller's
+      // likes/{uid} doc, in one batch: none→like (+1/0), none→superLike
+      // (+1/+1), like→superLike (0/+1), like→none (-1/0), superLike→none
+      // (-1/-1). superLike→like is forbidden (would allow re-super-liking).
+      function dogPath() {
+        return /databases/$(database)/documents/dogs/$(dogId);
+      }
+
+      function myLikePath() {
+        return /databases/$(database)/documents/dogs/$(dogId)/likes/$(request.auth.uid);
+      }
+
+      function wasLiked() {
+        return exists(myLikePath());
+      }
+
+      function isLiked() {
+        return existsAfter(myLikePath());
+      }
+
+      function wasSuper() {
+        return wasLiked() &&
+          get(myLikePath()).data.get('type', '') == 'superLike';
+      }
+
+      function isSuper() {
+        return isLiked() &&
+          getAfter(myLikePath()).data.get('type', '') == 'superLike';
+      }
+
+      // `delta` must equal after-state minus before-state of the flag.
+      function stepMatches(delta, before, after) {
+        return (before == after && delta == 0) ||
+          (!before && after && delta == 1) ||
+          (before && !after && delta == -1);
+      }
+
+      function likeCountersMatch(dLikes, dSuper) {
+        return !(wasSuper() && isLiked() && !isSuper()) &&
+          stepMatches(dLikes, wasLiked(), isLiked()) &&
+          stepMatches(dSuper, wasSuper(), isSuper());
+      }
+
+      // Owner edits the dog but not its like counters; admin anything.
+      allow update: if isAuthenticated() &&
+        resource.data.ownerId == request.auth.uid &&
+        !changed('likesCount') &&
+        !changed('superLikesCount');
+      allow delete: if isAuthenticated() &&
+        resource.data.ownerId == request.auth.uid;
+      allow update, delete: if isAdmin();
+      // Likers: counters only, matching their like doc transition.
       allow update: if isAuthenticated() &&
         onlyChanged(['likesCount', 'superLikesCount']) &&
-        counterStepOk('likesCount') &&
-        counterStepOk('superLikesCount');
+        likeCountersMatch(
+          request.resource.data.get('likesCount', 0) -
+            resource.data.get('likesCount', 0),
+          request.resource.data.get('superLikesCount', 0) -
+            resource.data.get('superLikesCount', 0)
+        );
 
       match /likes/{userId} {
         allow read: if isAuthenticated();
-        allow create, update, delete: if isOwner(userId);
+        // Liker writes their own like doc + dog counters in the same batch.
+        allow create, update: if isOwner(userId) &&
+          request.resource.data.type in ['like', 'superLike'] &&
+          likeCountersMatch(
+            getAfter(dogPath()).data.get('likesCount', 0) -
+              get(dogPath()).data.get('likesCount', 0),
+            getAfter(dogPath()).data.get('superLikesCount', 0) -
+              get(dogPath()).data.get('superLikesCount', 0)
+          );
+        allow delete: if isOwner(userId) &&
+          (
+            !exists(dogPath()) ||
+            likeCountersMatch(
+              getAfter(dogPath()).data.get('likesCount', 0) -
+                get(dogPath()).data.get('likesCount', 0),
+              getAfter(dogPath()).data.get('superLikesCount', 0) -
+                get(dogPath()).data.get('superLikesCount', 0)
+            )
+          );
+        // Dog owner cleans up likes when deleting the dog / account.
+        allow delete: if isAuthenticated() &&
+          get(dogPath()).data.ownerId == request.auth.uid;
       }
 
       match /health_records/{recordId} {
@@ -234,7 +315,8 @@ service cloud.firestore {
           request.resource.data.participantIds.toSet() ==
             resource.data.participantIds.toSet() ||
           selfLeft('participantIds')
-        );
+        ) &&
+        previewOk('lastMessageTimestamp');
       allow delete: if isAdmin();
 
       match /messages/{messageId} {
@@ -397,15 +479,19 @@ service cloud.firestore {
           ) ||
           isAdmin()
         );
-      // Creator may edit own group (not createdBy / isApproved); admin anything.
-      // Others: join/leave themselves (memberIds + memberCount ±1) and the
-      // lastMessage* preview after posting as a member.
+      // Creator may edit own group details (not createdBy / isApproved /
+      // membership); admin anything. Everyone (creator too): join/leave
+      // themselves (memberIds + memberCount ±1) and the lastMessage* preview
+      // after posting as a member.
       allow update: if isAuthenticated() &&
         (
           (
             resource.data.get('createdBy', '') == request.auth.uid &&
             !changed('createdBy') &&
-            !changed('isApproved')
+            !changed('isApproved') &&
+            !changed('memberIds') &&
+            !changed('memberCount') &&
+            lastMessageOk('memberIds')
           ) ||
           (
             onlyChanged([
@@ -463,14 +549,17 @@ service cloud.firestore {
           ) ||
           isAdmin()
         );
-      // Organizer may edit own event (not organizerUserId / isApproved); admin
-      // anything. Others: join/leave themselves and the lastMessage* preview.
+      // Organizer may edit own event details (not organizerUserId / isApproved
+      // / participants); admin anything. Everyone: join/leave themselves and
+      // the lastMessage* preview.
       allow update: if isAuthenticated() &&
         (
           (
             resource.data.get('organizerUserId', '') == request.auth.uid &&
             !changed('organizerUserId') &&
-            !changed('isApproved')
+            !changed('isApproved') &&
+            !changed('participantUserIds') &&
+            lastMessageOk('participantUserIds')
           ) ||
           (
             onlyChanged([

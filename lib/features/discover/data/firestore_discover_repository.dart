@@ -212,10 +212,7 @@ class FirestoreDiscoverRepository implements DiscoverRepository {
       'createdAt': FieldValue.serverTimestamp(),
     });
 
-    await _firestore.collection('dogs').doc(target.id).set({
-      'superLikesCount': FieldValue.increment(1),
-    }, SetOptions(merge: true));
-
+    // superLikesCount is bumped by _recordLike together with the like doc.
     await _recordLike(
       userId: userId,
       myDogId: myDogId,
@@ -357,17 +354,28 @@ class FirestoreDiscoverRepository implements DiscoverRepository {
         .collection('likes')
         .doc(userId);
     final likeSnap = await likeRef.get();
-    try {
-      await likeRef.delete();
-    } catch (_) {}
+    if (likeSnap.exists) {
+      // Rules require the like doc and its counters to change in one batch.
+      final wasSuper = likeSnap.data()?['type'] == 'superLike';
+      final batch = _firestore.batch()
+        ..delete(likeRef)
+        ..set(
+          _firestore.collection('dogs').doc(dogId),
+          {
+            'likesCount': FieldValue.increment(-1),
+            if (wasSuper) 'superLikesCount': FieldValue.increment(-1),
+          },
+          SetOptions(merge: true),
+        );
+      try {
+        await batch.commit();
+      } catch (error) {
+        debugPrint('unlike failed: $error');
+      }
+    }
     try {
       await _swipes.doc('${userId}_$dogId').delete();
     } catch (_) {}
-    if (likeSnap.exists) {
-      await _firestore.collection('dogs').doc(dogId).set({
-        'likesCount': FieldValue.increment(-1),
-      }, SetOptions(merge: true));
-    }
   }
 
   Future<void> _recordLike({
@@ -389,22 +397,28 @@ class FirestoreDiscoverRepository implements DiscoverRepository {
       'createdAt': FieldValue.serverTimestamp(),
     }, SetOptions(merge: true));
 
-    final likeRef = _firestore
-        .collection('dogs')
-        .doc(dogId)
-        .collection('likes')
-        .doc(userId);
+    final dogRef = _firestore.collection('dogs').doc(dogId);
+    final likeRef = dogRef.collection('likes').doc(userId);
     final likeExisting = await likeRef.get();
-    await likeRef.set({
-      'userId': userId,
-      'type': type,
-      'createdAt': FieldValue.serverTimestamp(),
-    }, SetOptions(merge: true));
-    if (!likeExisting.exists) {
-      await _firestore.collection('dogs').doc(dogId).set({
-        'likesCount': FieldValue.increment(1),
+    final wasSuper = likeExisting.data()?['type'] == 'superLike';
+    // A super like is never downgraded to a plain like (rules forbid it).
+    final likeType = wasSuper ? 'superLike' : type;
+    // Rules only accept counter changes in the same batch as the like doc.
+    final counters = <String, Object>{
+      if (!likeExisting.exists) 'likesCount': FieldValue.increment(1),
+      if (likeType == 'superLike' && !wasSuper)
+        'superLikesCount': FieldValue.increment(1),
+    };
+    final batch = _firestore.batch()
+      ..set(likeRef, {
+        'userId': userId,
+        'type': likeType,
+        'createdAt': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
+    if (counters.isNotEmpty) {
+      batch.set(dogRef, counters, SetOptions(merge: true));
     }
+    await batch.commit();
 
     // ignore: avoid_print
     print('DOG LIKE SUCCESS for: $dogId');
