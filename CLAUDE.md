@@ -121,8 +121,10 @@ Pun spisak polja: `docs/TEHNICKI_PREGLED.md` sekcija 5 „Firestore struktura po
 - Prijave/blokiranje, admin panel, pravila/saveti/SOS, feedback.
 - Pravne stranice na Hosting-u, privacy policy.
 
-## U toku (nekomitovano, ~25 fajlova)
-- Multiline unos u čet, zvuk dolazne poruke (`assets/sounds/message.wav`, `audioplayers`), popravke unread brojača, avatar → profil, zakazane šetnje (banner), full-screen slike u četu + novi testovi (`chat_unread_test`, `incoming_message_sound_test`, `message_bubble_avatar_test`, `scheduled_walks_test`).
+- Čet: multiline unos, zvuk dolazne poruke (`assets/sounds/message.wav`, `audioplayers`), unread popravke, avatar → profil, zakazane šetnje (banner), full-screen slike (komit `a0e5c3f`).
+
+## U toku
+- Ništa.
 
 ## Poznati bagovi
 1. Push ne stiže kad je app zatvorena (nema Cloud Functions).
@@ -132,7 +134,7 @@ Pun spisak polja: `docs/TEHNICKI_PREGLED.md` sekcija 5 „Firestore struktura po
 - Testovi (2026-10-15): 177 prolazi, 18 pada – isti skup kao pre popravki (admin, events, map, safety, chat walk invite, notifications, settings, widget, discover, moments – `moments_test` „owner creates a highlight“ visi 10 min). `profile_test` „opens settings and search filters“ pada (discover mock nema pse za Beograd) – ranije se nije ni kompajlirao. `flutter analyze` čist.
 
 ## TODO (po prioritetu)
-1. Komitovati trenutni rad (bez keystore/`key.properties`).
+1. Push na `master` (komit `a0e5c3f` je lokalan na `main`) – samo uz odobrenje.
 2. Pregledati pale testove (ne menjati očekivanja bez razloga).
 3. Ručno na uređaju proveriti: registraciju sa slikom, brisanje naloga (email + lozinka).
 4. Zameniti 7 `print()` poziva sa `debugPrint`/Crashlytics.
