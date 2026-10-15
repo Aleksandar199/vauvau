@@ -131,6 +131,8 @@ Future<void> _pumpDiscover(
     ),
   );
   await tester.pump();
+  // The first feed page arrives asynchronously; let the skeleton fade out.
+  await tester.pump(const Duration(milliseconds: 300));
 }
 
 void main() {

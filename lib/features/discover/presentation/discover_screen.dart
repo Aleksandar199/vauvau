@@ -10,6 +10,7 @@ import 'discover_strings.dart';
 import 'widgets/directory_cards.dart';
 import 'widgets/discover_empty_state.dart';
 import 'widgets/discover_filter_chip.dart';
+import 'widgets/discover_skeleton.dart';
 import 'widgets/swipe_dog_card.dart';
 
 class DiscoverScreen extends ConsumerStatefulWidget {
@@ -28,15 +29,24 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen> {
         (DiscoverCategory.large, DiscoverStrings.chipLarge),
       ];
 
-  bool _onScroll(ScrollNotification notification) {
-    if (notification.metrics.extentAfter > 400) {
-      return false;
+  var _loadMoreScheduled = false;
+
+  /// Asks for the next page after this frame (never while building).
+  void _scheduleLoadMore() {
+    if (_loadMoreScheduled) {
+      return;
     }
-    final feed = ref.read(discoverFeedControllerProvider.notifier);
-    if (feed.hasMore && !feed.isLoadingMore) {
-      feed.loadMore();
+    final feed = ref.read(discoverFeedControllerProvider);
+    if (feed.isLoading || feed.isLoadingMore || !feed.hasMore) {
+      return;
     }
-    return false;
+    _loadMoreScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadMoreScheduled = false;
+      if (mounted) {
+        ref.read(discoverFeedControllerProvider.notifier).loadMore();
+      }
+    });
   }
 
   @override
@@ -44,10 +54,15 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen> {
     final state = ref.watch(discoverControllerProvider);
     final filters = ref.watch(matchingFiltersProvider);
     final controller = ref.read(discoverControllerProvider.notifier);
-    final feedController = ref.watch(discoverFeedControllerProvider.notifier);
+    final feed = ref.watch(discoverFeedControllerProvider);
     final dogs = state.visible;
     final theme = Theme.of(context);
-    final showFooter = feedController.hasMore || feedController.isLoadingMore;
+    // Filters may hide a whole page: keep fetching before saying "no dogs".
+    final waiting = feed.isLoading || feed.isLoadingMore || feed.hasMore;
+    if (dogs.isEmpty && feed.hasMore) {
+      _scheduleLoadMore();
+    }
+    final footerCount = feed.isLoadingMore ? 2 : 0;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -111,11 +126,11 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen> {
         ),
         const SizedBox(height: 12),
         Expanded(
-          child: dogs.isEmpty
-              ? const DiscoverEmptyState()
-              : NotificationListener<ScrollNotification>(
-                  onNotification: _onScroll,
-                  child: GridView.builder(
+          child: AnimatedSwitcher(
+            duration: const Duration(milliseconds: 250),
+            child: dogs.isNotEmpty
+                ? GridView.builder(
+                    key: const ValueKey('discover-grid'),
                     padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
                     gridDelegate:
                         const SliverGridDelegateWithFixedCrossAxisCount(
@@ -124,19 +139,15 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen> {
                       crossAxisSpacing: 12,
                       childAspectRatio: 0.68,
                     ),
-                    itemCount: dogs.length + (showFooter ? 1 : 0),
+                    itemCount: dogs.length + footerCount,
                     itemBuilder: (context, index) {
                       if (index >= dogs.length) {
-                        return const Padding(
-                          padding: EdgeInsets.all(16),
-                          child: Center(
-                            child: SizedBox(
-                              width: 24,
-                              height: 24,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            ),
-                          ),
-                        );
+                        return const DiscoverSkeletonCard();
+                      }
+                      // Prefetch while the last few cards come into view.
+                      if (index >=
+                          dogs.length - DiscoverFeedController.prefetchThreshold) {
+                        _scheduleLoadMore();
                       }
                       final dog = dogs[index];
                       return DiscoverGridCard(
@@ -154,8 +165,15 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen> {
                         ),
                       );
                     },
-                  ),
-                ),
+                  )
+                : waiting
+                    ? const DiscoverSkeletonGrid(
+                        key: ValueKey('discover-skeleton'),
+                      )
+                    : const DiscoverEmptyState(
+                        key: ValueKey('discover-empty'),
+                      ),
+          ),
         ),
       ],
     );

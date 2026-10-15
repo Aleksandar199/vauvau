@@ -192,10 +192,14 @@ final firestoreAuthReadyProvider = FutureProvider<bool>((ref) async {
   if (signedOut || !isFirebaseReady) {
     return false;
   }
-  final appUser = ref.watch(authStateProvider).asData?.value;
-  if (appUser == null || appUser.uid.isEmpty) {
+  // Only the uid matters: re-running on every profile update would put this
+  // provider back into loading and briefly tear down dependent listeners.
+  final uid = ref.watch(
+    authStateProvider.select((auth) => auth.value?.uid ?? ''),
+  );
+  if (uid.isEmpty) {
     return false;
   }
   final user = await FirestoreAuthGuard.ensureReady();
-  return user != null && user.uid == appUser.uid;
+  return user != null && user.uid == uid;
 });

@@ -13,13 +13,18 @@ class LocalDiscoverRepository implements DiscoverRepository {
   final Set<String> _superLikedDogs = {};
 
   @override
-  Stream<List<DiscoverProfile>> watchProfiles({
+  Stream<DiscoverPage> watchProfiles({
     required String excludeOwnerId,
     GeoQuery? geo,
-    int limit = 15,
+    int limit = 8,
   }) {
-    final filtered = _page(_profiles, excludeOwnerId, geo, limit: limit);
-    return Stream.value(filtered);
+    return Stream.fromFuture(
+      fetchProfilesPage(
+        excludeOwnerId: excludeOwnerId,
+        geo: geo,
+        limit: limit,
+      ),
+    );
   }
 
   @override
@@ -27,7 +32,7 @@ class LocalDiscoverRepository implements DiscoverRepository {
     required String excludeOwnerId,
     GeoQuery? geo,
     Object? cursor,
-    int limit = 15,
+    int limit = 8,
   }) async {
     final all = _page(_profiles, excludeOwnerId, geo);
     final start = cursor is int ? cursor : 0;
@@ -44,9 +49,8 @@ class LocalDiscoverRepository implements DiscoverRepository {
   List<DiscoverProfile> _page(
     List<DiscoverProfile> source,
     String excludeOwnerId,
-    GeoQuery? geo, {
-    int? limit,
-  }) {
+    GeoQuery? geo,
+  ) {
     var list = [
       for (final profile in source)
         if (excludeOwnerId.isEmpty || profile.ownerId != excludeOwnerId) profile,
@@ -54,11 +58,7 @@ class LocalDiscoverRepository implements DiscoverRepository {
     if (geo != null) {
       list = geo.apply(list);
     }
-    list.sort(DiscoverProfile.compareFeedOrder);
-    if (limit != null && list.length > limit) {
-      return list.sublist(0, limit);
-    }
-    return list;
+    return list..sort(DiscoverProfile.compareFeedOrder);
   }
 
   @override

@@ -21,6 +21,8 @@ abstract final class DiscoverStrings {
       );
   static String get resetFilters =>
       L10n.tr('Resetuj filtere', 'Reset filters');
+  static String get loadingDogs =>
+      L10n.tr('Učitavanje pasa u blizini…', 'Loading nearby dogs…');
   static String get genderAll => L10n.tr('Svi', 'All');
   static String get sizeSmall => L10n.tr('Mali', 'Small');
   static String get sizeMid => L10n.tr('Srednji', 'Medium');
