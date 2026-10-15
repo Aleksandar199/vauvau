@@ -295,13 +295,36 @@ final chatMessagesProvider =
   return ref.watch(chatRepositoryProvider).watchMessages(roomId);
 });
 
+/// Walk invites for every conversation, independent of which chat is open.
+class ChatWalkInvitesController
+    extends Notifier<Map<String, List<ChatMessage>>> {
+  @override
+  Map<String, List<ChatMessage>> build() {
+    final repo = ref.watch(chatRepositoryProvider);
+    final sub = repo.watchWalkInvites().listen((value) => state = value);
+    ref.onDispose(sub.cancel);
+    return repo.currentWalkInvites;
+  }
+}
+
+final chatWalkInvitesProvider = NotifierProvider<ChatWalkInvitesController,
+    Map<String, List<ChatMessage>>>(ChatWalkInvitesController.new);
+
 final scheduledWalksProvider = Provider<List<ScheduledWalk>>((ref) {
   ref.watch(scheduledWalksClockProvider);
   final inbox = ref.watch(chatInboxProvider);
+  final invites = ref.watch(chatWalkInvitesProvider);
   final now = DateTime.now();
   final walks = <ScheduledWalk>[];
   for (final chat in inbox) {
-    for (final message in chat.messages) {
+    // Open rooms carry fresher (optimistic) copies of the same invites.
+    final byId = <String, ChatMessage>{
+      for (final message in invites[chat.id] ?? const <ChatMessage>[])
+        message.id: message,
+      for (final message in chat.messages)
+        if (message.isWalkInvite) message.id: message,
+    };
+    for (final message in byId.values) {
       final walkTime = message.walkTime;
       if (message.isWalkInvite &&
           message.status == WalkInviteStatus.accepted &&
@@ -328,7 +351,7 @@ final scheduledWalksProvider = Provider<List<ScheduledWalk>>((ref) {
 
 final totalUnreadChatCountProvider = Provider<int>((ref) {
   var threads = 0;
-  for (final chat in ref.watch(chatInboxProvider)) {
+  for (final chat in ref.watch(visibleConversationsProvider)) {
     if (chat.unreadCount > 0) {
       threads++;
     }

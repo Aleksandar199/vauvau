@@ -188,6 +188,10 @@ abstract final class ProfileStrings {
         'This permanently deletes your account and your content: dog profiles, photos, moments, chat messages, matches, listings, events you organized, and settings. This cannot be undone.',
       );
   static String get deleteConfirm => L10n.tr('Obriši', 'Delete');
+  static String get deleteAccountPasswordHint => L10n.tr(
+        'Radi bezbednosti unesite lozinku.',
+        'For your security, enter your password.',
+      );
   static String get deleteAccountFailed => L10n.tr(
         'Nalog nije obrisan. Pokušajte ponovo.',
         'Account was not deleted. Try again.',

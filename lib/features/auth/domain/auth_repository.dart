@@ -27,7 +27,12 @@ abstract class AuthRepository {
 
   Future<void> sendPasswordResetEmail(String email);
 
-  Future<void> deleteAccount();
+  /// Whether [deleteAccount] needs the current password for re-auth
+  /// (email accounts); Google accounts re-auth through the Google flow.
+  bool get deleteAccountRequiresPassword;
+
+  /// Re-authenticates, deletes the user's data, then the Auth account.
+  Future<void> deleteAccount({String? password});
 
   Future<void> saveUserProfile({
     required AppUser user,

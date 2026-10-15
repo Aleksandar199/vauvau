@@ -98,6 +98,47 @@ class FirebaseAuthDatasource {
     return _auth.sendPasswordResetEmail(email: normalized);
   }
 
+  /// True when the signed-in user has an email/password credential.
+  bool get currentUserHasPassword =>
+      _auth.currentUser?.providerData.any(
+        (info) => info.providerId == EmailAuthProvider.PROVIDER_ID,
+      ) ??
+      false;
+
+  /// Refreshes the sign-in so sensitive operations (account delete) do not
+  /// fail with `requires-recent-login`. Uses [password] for email accounts,
+  /// otherwise the Google flow.
+  Future<void> reauthenticate({String? password}) async {
+    final user = _auth.currentUser;
+    if (user == null) {
+      throw AuthException(AuthErrorCode.unknown);
+    }
+    if (currentUserHasPassword) {
+      final email = user.email ?? '';
+      if (email.isEmpty || password == null || password.isEmpty) {
+        throw AuthException(
+          AuthErrorCode.requiresRecentLogin,
+          AppStrings.authRequiresRecentLogin,
+        );
+      }
+      await user.reauthenticateWithCredential(
+        EmailAuthProvider.credential(email: email, password: password),
+      );
+      return;
+    }
+    final account = await _googleSignIn.signIn();
+    if (account == null) {
+      throw AuthException(AuthErrorCode.cancelled, AppStrings.authCancelled);
+    }
+    final googleAuth = await account.authentication;
+    await user.reauthenticateWithCredential(
+      GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
+      ),
+    );
+  }
+
   Future<void> deleteCurrentUser() async {
     final user = _auth.currentUser;
     if (user == null) {

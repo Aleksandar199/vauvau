@@ -38,7 +38,7 @@ Future<ProviderContainer> _pumpProfile(WidgetTester tester) async {
       child: MaterialApp(
         home: Scaffold(
           appBar: AppBar(
-            title: const Text(ProfileStrings.title),
+            title: Text(ProfileStrings.title),
             actions: [
               Consumer(
                 builder: (context, ref, _) {

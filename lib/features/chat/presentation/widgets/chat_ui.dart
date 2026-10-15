@@ -1,4 +1,6 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../../../core/theme/app_colors.dart';
 
@@ -107,7 +109,7 @@ class _ChatInputBarState extends State<ChatInputBar> {
 
   void _sendAndKeepFocus() {
     widget.onSend();
-    // Send button / TextInputAction.send often steals or drops focus; restore
+    // Send button / Enter shortcut often steals or drops focus; restore
     // it after the frame so the keyboard stays open for the next message.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted || !widget.enabled) {
@@ -124,6 +126,7 @@ class _ChatInputBarState extends State<ChatInputBar> {
       child: Padding(
         padding: ChatUiTokens.inputBarPadding,
         child: Row(
+          crossAxisAlignment: CrossAxisAlignment.end,
           children: [
             if (widget.onAttach != null)
               IconButton(
@@ -132,12 +135,66 @@ class _ChatInputBarState extends State<ChatInputBar> {
                 icon: Icon(widget.attachIcon),
               ),
             Expanded(
-              child: TextField(
+              child: CallbackShortcuts(
+                bindings: <ShortcutActivator, VoidCallback>{
+                  if (_enterSends)
+                    const SingleActivator(LogicalKeyboardKey.enter):
+                        _sendAndKeepFocus,
+                  if (_enterSends)
+                    const SingleActivator(LogicalKeyboardKey.numpadEnter):
+                        _sendAndKeepFocus,
+                },
+                child: _buildField(context),
+              ),
+            ),
+            const SizedBox(width: 8),
+            SizedBox(
+              width: ChatUiTokens.sendButtonSize,
+              height: ChatUiTokens.sendButtonSize,
+              child: IconButton.filled(
+                tooltip: widget.sendTooltip,
+                onPressed: widget.enabled ? _sendAndKeepFocus : null,
+                style: IconButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: AppColors.onPrimary,
+                  shape: const CircleBorder(),
+                  padding: EdgeInsets.zero,
+                ),
+                icon: const Icon(Icons.send, size: 20),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Web and desktop send on Enter (Shift+Enter adds a line); on phones the
+  /// keyboard's Enter always adds a line and the send button sends.
+  bool get _enterSends {
+    if (kIsWeb) {
+      return true;
+    }
+    return switch (defaultTargetPlatform) {
+      TargetPlatform.windows ||
+      TargetPlatform.macOS ||
+      TargetPlatform.linux =>
+        true,
+      _ => false,
+    };
+  }
+
+  Widget _buildField(BuildContext context) {
+    return TextField(
+                key: const ValueKey('chat-input-field'),
                 controller: widget.controller,
                 focusNode: _focus,
                 enabled: widget.enabled,
-                textInputAction: TextInputAction.send,
-                onSubmitted: (_) => _sendAndKeepFocus(),
+                keyboardType: TextInputType.multiline,
+                textInputAction: TextInputAction.newline,
+                textCapitalization: TextCapitalization.sentences,
+                minLines: 1,
+                maxLines: 6,
                 decoration: InputDecoration(
                   hintText: widget.hintText,
                   filled: true,
@@ -164,27 +221,6 @@ class _ChatInputBarState extends State<ChatInputBar> {
                   ),
                   isDense: true,
                 ),
-              ),
-            ),
-            const SizedBox(width: 8),
-            SizedBox(
-              width: ChatUiTokens.sendButtonSize,
-              height: ChatUiTokens.sendButtonSize,
-              child: IconButton.filled(
-                tooltip: widget.sendTooltip,
-                onPressed: widget.enabled ? _sendAndKeepFocus : null,
-                style: IconButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  foregroundColor: AppColors.onPrimary,
-                  shape: const CircleBorder(),
-                  padding: EdgeInsets.zero,
-                ),
-                icon: const Icon(Icons.send, size: 20),
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 }

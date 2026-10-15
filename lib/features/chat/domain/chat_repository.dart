@@ -18,6 +18,12 @@ abstract class ChatRepository {
 
   Stream<List<ChatMessage>> watchMessages(String roomId);
 
+  /// Walk invites per conversation id, kept live for every room — not only
+  /// rooms opened in ChatDetail — so scheduled walks stay visible.
+  Map<String, List<ChatMessage>> get currentWalkInvites;
+
+  Stream<Map<String, List<ChatMessage>>> watchWalkInvites();
+
   /// Starts a limited messages listener for an open conversation.
   void attachRoom(String roomId);
 

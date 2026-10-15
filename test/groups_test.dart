@@ -2,7 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vauvau/features/groups/data/local_groups_repository.dart';
+import 'package:vauvau/features/discover/presentation/widgets/dog_photo_gallery.dart';
+import 'package:vauvau/features/discover/presentation/widgets/swipe_dog_card.dart';
 import 'package:vauvau/features/groups/data/seed_breed_groups.dart';
+import 'package:vauvau/features/groups/domain/groups_models.dart';
 import 'package:vauvau/features/groups/presentation/group_chat_screen.dart';
 import 'package:vauvau/features/groups/presentation/groups_controller.dart';
 import 'package:vauvau/features/groups/presentation/groups_list_screen.dart';
@@ -95,11 +98,96 @@ void main() {
 
     expect(find.byType(GroupChatScreen), findsOneWidget);
     expect(find.text(GroupsStrings.composeHint), findsOneWidget);
+    await tester.pump(const Duration(seconds: 1));
     await tester.enterText(find.byType(TextField), 'Cao copore');
-    await tester.testTextInput.receiveAction(TextInputAction.send);
+    await tester.tap(find.byIcon(Icons.send));
     await tester.pump();
     await tester.pump();
     expect(find.text('Cao copore'), findsWidgets);
+  });
+
+  testWidgets('tapping a member avatar in group chat opens their profile',
+      (tester) async {
+    await tester.binding.setSurfaceSize(const Size(412, 892));
+    addTearDown(() async {
+      await tester.binding.setSurfaceSize(null);
+    });
+
+    final repo = LocalGroupsRepository(currentUserId: 'local-user');
+    addTearDown(repo.dispose);
+    final groupId = SeedBreedGroups.all.first.id;
+    final peerMessage = GroupMessage(
+      id: 'g-1',
+      senderId: 'user-marko',
+      senderName: 'Marko',
+      senderAvatarUrl: '',
+      text: 'Ko je za šetnju?',
+      imageUrl: '',
+      createdAt: DateTime.now(),
+      isMine: false,
+    );
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          groupsRepositoryProvider.overrideWith((ref) => repo),
+          groupMessagesProvider(groupId)
+              .overrideWith((ref) => Stream.value([peerMessage])),
+        ],
+        child: MaterialApp(home: GroupChatScreen(groupId: groupId)),
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+
+    await tester.tap(find.text('Ko je za šetnju?'));
+    await tester.pumpAndSettle();
+    expect(find.byType(DogDetailSheet), findsNothing);
+
+    await tester.tap(find.byKey(const ValueKey('group-sender-avatar')));
+    await tester.pumpAndSettle();
+    expect(find.byType(DogDetailSheet), findsOneWidget);
+    expect(find.textContaining('Marko'), findsWidgets);
+  });
+
+  testWidgets('tapping a photo in group chat opens it full screen',
+      (tester) async {
+    await tester.binding.setSurfaceSize(const Size(412, 892));
+    addTearDown(() async {
+      await tester.binding.setSurfaceSize(null);
+    });
+
+    final repo = LocalGroupsRepository(currentUserId: 'local-user');
+    addTearDown(repo.dispose);
+    final groupId = SeedBreedGroups.all.first.id;
+    final photo = GroupMessage(
+      id: 'g-photo',
+      senderId: 'user-marko',
+      senderName: 'Marko',
+      senderAvatarUrl: '',
+      text: '',
+      imageUrl: 'https://example.com/dog.jpg',
+      createdAt: DateTime.now(),
+      isMine: false,
+    );
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          groupsRepositoryProvider.overrideWith((ref) => repo),
+          groupMessagesProvider(groupId)
+              .overrideWith((ref) => Stream.value([photo])),
+        ],
+        child: MaterialApp(home: GroupChatScreen(groupId: groupId)),
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+
+    await tester.tap(find.byKey(const ValueKey('group-message-image')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(find.byType(DogPhotoViewer), findsOneWidget);
   });
 
   testWidgets('create group shows pending review dialog', (tester) async {

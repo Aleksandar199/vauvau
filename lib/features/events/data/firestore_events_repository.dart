@@ -427,7 +427,7 @@ class FirestoreEventsRepository implements EventsRepository {
 
   List<String> _stringList(Object? value) {
     if (value is! List) {
-      return const [];
+      return <String>[];
     }
     return [
       for (final item in value)

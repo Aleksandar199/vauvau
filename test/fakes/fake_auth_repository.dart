@@ -60,7 +60,10 @@ class FakeAuthRepository implements AuthRepository {
   Future<void> sendPasswordResetEmail(String email) async {}
 
   @override
-  Future<void> deleteAccount() async {
+  bool get deleteAccountRequiresPassword => false;
+
+  @override
+  Future<void> deleteAccount({String? password}) async {
     user = null;
   }
 

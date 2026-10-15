@@ -161,12 +161,18 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
-  Future<void> deleteAccount() async {
+  bool get deleteAccountRequiresPassword => _datasource.currentUserHasPassword;
+
+  @override
+  Future<void> deleteAccount({String? password}) async {
     final uid = _datasource.currentUser?.uid;
     if (uid == null || uid.isEmpty) {
       throw AuthException(AuthErrorCode.unknown);
     }
     try {
+      // Re-auth first: otherwise user.delete() can fail with
+      // requires-recent-login after the data is already gone.
+      await _datasource.reauthenticate(password: password);
       await _deleteOwnedData(uid);
       await _datasource.deleteCurrentUser();
     } on FirebaseAuthException catch (error) {

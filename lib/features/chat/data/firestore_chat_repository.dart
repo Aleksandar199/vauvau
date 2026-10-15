@@ -35,6 +35,13 @@ class FirestoreChatRepository implements ChatRepository {
       _messageSubs = {};
   /// Messages that arrived before the parent room was in [_inbox].
   final Map<String, List<ChatMessage>> _pendingMessages = {};
+  /// Walk-invite-only listeners for every room (independent of attachRoom).
+  final Map<String, StreamSubscription<QuerySnapshot<Map<String, dynamic>>>>
+      _walkInviteSubs = {};
+  final Map<String, List<ChatMessage>> _walkInvites = {};
+  final StreamController<Map<String, List<ChatMessage>>>
+      _walkInvitesController =
+      StreamController<Map<String, List<ChatMessage>>>.broadcast();
   var _hasLoadedInbox = false;
   var _localMessageSeq = 0;
   Timer? _cacheHoldTimer;
@@ -93,6 +100,7 @@ class FirestoreChatRepository implements ChatRepository {
 
   void _publishEmptyInbox() {
     _inbox = const [];
+    _syncWalkInviteSubs(const {});
     if (!_hasLoadedInbox) {
       _hasLoadedInbox = true;
       if (!_loadedController.isClosed) {
@@ -131,6 +139,7 @@ class FirestoreChatRepository implements ChatRepository {
         _roomAttachCounts.remove(id);
       }
     }
+    _syncWalkInviteSubs(keep);
     // Messages are hydrated only for rooms opened in ChatDetail (attachRoom).
 
     // Avoid flashing a partial cached inbox (often 1 room) before the
@@ -178,6 +187,67 @@ class FirestoreChatRepository implements ChatRepository {
             },
           ),
     );
+  }
+
+  @override
+  Map<String, List<ChatMessage>> get currentWalkInvites => {
+        for (final entry in _walkInvites.entries)
+          entry.key: List<ChatMessage>.from(entry.value),
+      };
+
+  @override
+  Stream<Map<String, List<ChatMessage>>> watchWalkInvites() async* {
+    yield currentWalkInvites;
+    yield* _walkInvitesController.stream;
+  }
+
+  void _syncWalkInviteSubs(Set<String> roomIds) {
+    var changed = false;
+    for (final id in _walkInviteSubs.keys.toList()) {
+      if (!roomIds.contains(id)) {
+        _walkInviteSubs.remove(id)?.cancel();
+        changed = _walkInvites.remove(id) != null || changed;
+      }
+    }
+    for (final id in roomIds) {
+      _walkInviteSubs.putIfAbsent(
+        id,
+        () => _rooms
+            .doc(id)
+            .collection('messages')
+            .where('type', isEqualTo: 'walk_invite')
+            .snapshots()
+            .listen(
+          (snapshot) {
+            _walkInvites[id] = snapshot.docs.map(_messageFromDoc).toList();
+            _emitWalkInvites();
+          },
+          onError: (Object error, StackTrace stack) {
+            if (FirestoreAuthGuard.isPermissionDenied(error)) {
+              FirestoreAuthGuard.logPermissionDenied(
+                error,
+                stack,
+                label: 'chat.watchWalkInvites',
+              );
+              return;
+            }
+            developer.log(
+              'chat.watchWalkInvites($id): $error',
+              stackTrace: stack,
+            );
+          },
+        ),
+      );
+    }
+    if (changed) {
+      _emitWalkInvites();
+    }
+  }
+
+  void _emitWalkInvites() {
+    if (!_walkInvitesController.isClosed) {
+      _walkInvitesController.add(currentWalkInvites);
+    }
   }
 
   @override
@@ -407,6 +477,14 @@ class FirestoreChatRepository implements ChatRepository {
 
   @override
   void markRead(String conversationId) {
+    final chat = _byId(conversationId);
+    if (chat != null && chat.unreadCount > 0) {
+      _inbox = [
+        for (final item in _inbox)
+          if (item.id == conversationId) item.copyWith(unreadCount: 0) else item,
+      ];
+      _emitNow();
+    }
     unawaited(
       _rooms.doc(conversationId).set({
         'unreadCount': 0,
@@ -679,7 +757,8 @@ class FirestoreChatRepository implements ChatRepository {
       }
     }
     final nextLikes = <String>[...(previous ?? const <String>[])];
-    if (nextLikes.contains(currentUserId)) {
+    final liking = !nextLikes.contains(currentUserId);
+    if (!liking) {
       nextLikes.remove(currentUserId);
     } else {
       nextLikes.add(currentUserId);
@@ -705,7 +784,12 @@ class FirestoreChatRepository implements ChatRepository {
           .doc(conversationId)
           .collection('messages')
           .doc(messageId)
-          .update({'likes': nextLikes});
+          // Atomic array ops so a concurrent like from the peer is not lost.
+          .update({
+            'likes': liking
+                ? FieldValue.arrayUnion([currentUserId])
+                : FieldValue.arrayRemove([currentUserId]),
+          });
     } catch (error, stack) {
       if (previous != null) {
         _inbox = [
@@ -810,6 +894,12 @@ class FirestoreChatRepository implements ChatRepository {
       sub.cancel();
     }
     _messageSubs.clear();
+    for (final sub in _walkInviteSubs.values) {
+      sub.cancel();
+    }
+    _walkInviteSubs.clear();
+    _walkInvites.clear();
+    _walkInvitesController.close();
     _roomAttachCounts.clear();
     _pendingMessages.clear();
     _inboxController.close();
@@ -841,8 +931,11 @@ class FirestoreChatRepository implements ChatRepository {
         'lastMessage': preview,
         'lastMessageTimestamp': FieldValue.serverTimestamp(),
         'isNewMatch': false,
-        if (peerId.isNotEmpty)
-          'unreadByUser': {peerId: FieldValue.increment(1)},
+        // Replying means everything before it was seen.
+        'unreadByUser': {
+          currentUserId: 0,
+          if (peerId.isNotEmpty) peerId: FieldValue.increment(1),
+        },
       }, SetOptions(merge: true));
     } catch (error, stack) {
       developer.log(

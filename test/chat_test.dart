@@ -219,7 +219,7 @@ void main() {
     expect(container.read(scheduledWalksProvider), isNotEmpty);
   });
 
-  testWidgets('tapping a peer message opens the sender profile sheet',
+  testWidgets('tapping the peer avatar (not the message) opens the profile',
       (tester) async {
     await _pump(
       tester,
@@ -244,6 +244,10 @@ void main() {
     );
 
     await tester.tap(find.text('Ćao iz parka'));
+    await tester.pumpAndSettle();
+    expect(find.byType(DogDetailSheet), findsNothing);
+
+    await tester.tap(find.byKey(const ValueKey('message-sender-avatar')));
     await tester.pumpAndSettle();
 
     expect(find.byType(DogDetailSheet), findsOneWidget);

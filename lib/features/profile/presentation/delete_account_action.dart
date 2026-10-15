@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/constants/app_strings.dart';
 import '../../auth/domain/auth_exception.dart';
 import '../../auth/presentation/auth_controller.dart';
 import '../../legal/presentation/legal_document_screen.dart';
@@ -13,6 +14,9 @@ Future<void> confirmAndDeleteAccount(
   BuildContext context,
   WidgetRef ref,
 ) async {
+  final auth = ref.read(authControllerProvider.notifier);
+  final needsPassword = auth.deleteAccountRequiresPassword;
+  final passwordController = TextEditingController();
   final confirmed = await showDialog<bool>(
     context: context,
     barrierDismissible: true,
@@ -26,6 +30,21 @@ Future<void> confirmAndDeleteAccount(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(ProfileStrings.deleteAccountBody),
+            if (needsPassword) ...[
+              const SizedBox(height: 16),
+              Text(ProfileStrings.deleteAccountPasswordHint),
+              const SizedBox(height: 8),
+              TextField(
+                controller: passwordController,
+                obscureText: true,
+                autofocus: true,
+                autofillHints: const [AutofillHints.password],
+                decoration: InputDecoration(
+                  labelText: AppStrings.passwordLabel,
+                  border: const OutlineInputBorder(),
+                ),
+              ),
+            ],
             const SizedBox(height: 12),
             TextButton(
               style: TextButton.styleFrom(
@@ -59,15 +78,22 @@ Future<void> confirmAndDeleteAccount(
     },
   );
 
+  final password = passwordController.text;
+  // Let the dialog's exit animation finish before disposing its controller.
+  Future<void>.delayed(
+    const Duration(milliseconds: 500),
+    passwordController.dispose,
+  );
   if (confirmed != true || !context.mounted) {
     return;
   }
 
-  final auth = ref.read(authControllerProvider.notifier);
   final navigator = Navigator.of(context, rootNavigator: true);
   final messenger = ScaffoldMessenger.maybeOf(context);
 
-  final result = await auth.deleteAccount();
+  final result = await auth.deleteAccount(
+    password: needsPassword ? password : null,
+  );
   // Never use WidgetRef after await — Profile/Settings may already be disposed.
   if (!context.mounted) {
     if (result.success) {

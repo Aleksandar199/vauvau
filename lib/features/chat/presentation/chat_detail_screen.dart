@@ -198,10 +198,14 @@ class _ChatDetailScreenState extends ConsumerState<ChatDetailScreen> {
           }
           then?.call();
         });
+        WidgetsBinding.instance.scheduleFrame();
         return;
       }
       then?.call();
     });
+    // A short, non-scrollable chat triggers no further frames on its own,
+    // so the callback (and markRead after it) would otherwise never run.
+    WidgetsBinding.instance.scheduleFrame();
   }
 
   void _finishInitialScroll(int messageCount) {
@@ -211,6 +215,18 @@ class _ChatDetailScreenState extends ConsumerState<ChatDetailScreen> {
     _initialScrollDone = true;
     _unreadAnchorIndex = null;
     _lastKnownMessageCount = messageCount;
+    _inbox?.markRead(widget.conversationId);
+  }
+
+  /// Messages that arrive while this chat is on screen are already seen.
+  void _clearUnreadWhileViewing(ChatConversation chat) {
+    if (!_initialScrollDone || chat.unreadCount <= 0) {
+      return;
+    }
+    final lifecycle = WidgetsBinding.instance.lifecycleState;
+    if (lifecycle != null && lifecycle != AppLifecycleState.resumed) {
+      return;
+    }
     _inbox?.markRead(widget.conversationId);
   }
 
@@ -294,6 +310,7 @@ class _ChatDetailScreenState extends ConsumerState<ChatDetailScreen> {
       for (final item in next) {
         if (item.id == widget.conversationId) {
           _onMessagesUpdated(item.messages);
+          _clearUnreadWhileViewing(item);
           return;
         }
       }
@@ -426,7 +443,7 @@ class _ChatDetailScreenState extends ConsumerState<ChatDetailScreen> {
                     fallbackAvatarUrl: message.isMine ? myAvatar : '',
                     fallbackSenderName:
                         message.isMine ? myName : open.ownerName,
-                    onTap: message.isMine
+                    onAvatarTap: message.isMine
                         ? null
                         : () => _openSenderProfile(context, open),
                     onLongPress: () => _onMessageLongPress(message, open),

@@ -31,6 +31,26 @@ class LocalChatRepository implements ChatRepository {
   bool get hasLoadedInbox => true;
 
   @override
+  Map<String, List<ChatMessage>> get currentWalkInvites =>
+      _walkInvitesOf(_inbox);
+
+  @override
+  Stream<Map<String, List<ChatMessage>>> watchWalkInvites() =>
+      watchInbox().map(_walkInvitesOf);
+
+  static Map<String, List<ChatMessage>> _walkInvitesOf(
+    List<ChatConversation> inbox,
+  ) {
+    return {
+      for (final chat in inbox)
+        chat.id: [
+          for (final message in chat.messages)
+            if (message.isWalkInvite) message,
+        ],
+    };
+  }
+
+  @override
   Stream<List<ChatConversation>> watchInbox() async* {
     yield currentInbox;
     yield* _inboxController.stream;

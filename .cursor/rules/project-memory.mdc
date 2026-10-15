@@ -1,0 +1,7 @@
+---
+description: Projektna memorija
+alwaysApply: true
+---
+Pre svakog zadatka pročitaj CLAUDE.md u root folderu.
+Posle svake izmene ažuriraj CLAUDE.md (dnevnik izmena, stanje, TODO).
+Ne analiziraj ceo projekat ako informacija postoji u CLAUDE.md.

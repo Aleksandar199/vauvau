@@ -81,7 +81,10 @@ class LocalAuthRepository implements AuthRepository {
   Future<void> sendPasswordResetEmail(String email) async {}
 
   @override
-  Future<void> deleteAccount() async {
+  bool get deleteAccountRequiresPassword => false;
+
+  @override
+  Future<void> deleteAccount({String? password}) async {
     _user = null;
     _controller.add(null);
   }

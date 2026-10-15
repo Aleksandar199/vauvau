@@ -1,13 +1,15 @@
+import 'dart:typed_data';
+
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../../../core/constants/app_strings.dart';
 import '../../../core/constants/serbia_locations.dart';
 import '../../../core/network/network_failure.dart';
 import '../../../core/widgets/brand_mark.dart';
 import '../../../core/widgets/city_neighborhood_fields.dart';
-import '../../../core/widgets/feed_state.dart';
 import '../../../core/widgets/primary_button.dart';
 import '../../../services/storage_service.dart';
 import '../../legal/presentation/legal_consent_text.dart';
@@ -44,7 +46,10 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
   final _customNeighborhoodController = TextEditingController();
   String _cityId = SerbiaLocations.cities.first.id;
   String? _neighborhoodId;
-  String _ownerPhotoUrl = '';
+  // Picked locally; uploaded only after the account exists, because Storage
+  // paths are scoped to the signed-in uid.
+  XFile? _ownerPhotoFile;
+  Uint8List? _ownerPhotoBytes;
   var _uploadingOwnerPhoto = false;
   bool _obscureSignInPassword = true;
   bool _obscurePassword = true;
@@ -139,8 +144,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
         )
         ? SerbiaLocations.customNeighborhoodId
         : neighborhoodId;
-    final ownerPhoto =
-        _ownerPhotoUrl.startsWith('http') ? _ownerPhotoUrl.trim() : '';
+    final ownerPhotoFile = _ownerPhotoFile;
     final success = await ref.read(authControllerProvider.notifier).register(
           name: _nameController.text.trim(),
           email: _signUpEmailController.text.trim(),
@@ -150,29 +154,38 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
           neighborhoodId: storedHoodId,
           neighborhoodName: neighborhoodName,
           bio: '',
-          customPhotoUrl: ownerPhoto,
         );
     if (!mounted || !success) {
       return;
     }
-    // Belt-and-suspenders: ensure photo is persisted even if signup write
-    // raced ahead of Auth user creation.
-    if (ownerPhoto.isNotEmpty) {
+    if (ownerPhotoFile != null) {
+      setState(() => _uploadingOwnerPhoto = true);
       try {
         final uid = ref.read(authStateProvider).asData?.value?.uid ??
             FirebaseAuth.instance.currentUser?.uid;
         if (uid != null && uid.isNotEmpty) {
-          await ref.read(authRepositoryProvider).saveOwnerCustomPhoto(
-                uid: uid,
-                customPhotoUrl: ownerPhoto,
-              );
+          final url = await StorageService().uploadXFile(
+            file: ownerPhotoFile,
+            folderName: 'users',
+            ownerId: uid,
+          );
+          if (url != null && url.startsWith('http')) {
+            await ref.read(authRepositoryProvider).saveOwnerCustomPhoto(
+                  uid: uid,
+                  customPhotoUrl: url,
+                );
+          }
         }
       } catch (error) {
-        debugPrint('Owner photo save after register: $error');
+        debugPrint('Owner photo upload after register: $error');
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text(AppStrings.photoUploadFailed)),
           );
+        }
+      } finally {
+        if (mounted) {
+          setState(() => _uploadingOwnerPhoto = false);
         }
       }
     }
@@ -188,19 +201,24 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
     }
     setState(() => _uploadingOwnerPhoto = true);
     try {
-      final storage = StorageService();
-      final previous = _ownerPhotoUrl;
-      final url = await storage.uploadImageFromGallery(folderName: 'users');
-      if (url == null) {
+      final file = await ImagePicker().pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 70,
+        maxWidth: 1080,
+      );
+      if (file == null) {
         return;
       }
-      if (!url.startsWith('http')) {
+      final bytes = await file.readAsBytes();
+      if (bytes.isEmpty) {
         throw StateError(AppStrings.photoUploadFailed);
       }
       if (mounted) {
-        setState(() => _ownerPhotoUrl = url);
+        setState(() {
+          _ownerPhotoFile = file;
+          _ownerPhotoBytes = bytes;
+        });
       }
-      await storage.tryDeleteImageByUrl(previous);
     } catch (error) {
       if (mounted) {
         showNetworkErrorSnackBar(
@@ -284,7 +302,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
               customNeighborhoodController: _customNeighborhoodController,
               cityId: _cityId,
               neighborhoodId: _neighborhoodId,
-              ownerPhotoUrl: _ownerPhotoUrl,
+              ownerPhotoBytes: _ownerPhotoBytes,
               uploadingOwnerPhoto: _uploadingOwnerPhoto,
               obscurePassword: _obscurePassword,
               obscureConfirm: _obscureConfirm,
@@ -419,7 +437,7 @@ class _SignUpForm extends StatelessWidget {
     required this.customNeighborhoodController,
     required this.cityId,
     required this.neighborhoodId,
-    required this.ownerPhotoUrl,
+    required this.ownerPhotoBytes,
     required this.uploadingOwnerPhoto,
     required this.obscurePassword,
     required this.obscureConfirm,
@@ -441,7 +459,7 @@ class _SignUpForm extends StatelessWidget {
   final TextEditingController customNeighborhoodController;
   final String cityId;
   final String? neighborhoodId;
-  final String ownerPhotoUrl;
+  final Uint8List? ownerPhotoBytes;
   final bool uploadingOwnerPhoto;
   final bool obscurePassword;
   final bool obscureConfirm;
@@ -482,24 +500,13 @@ class _SignUpForm extends StatelessWidget {
                                   strokeWidth: 2.4,
                                 ),
                               )
-                            : ownerPhotoUrl.startsWith('http')
+                            : ownerPhotoBytes != null
                                 ? ClipOval(
-                                    child: Image.network(
-                                      ownerPhotoUrl,
+                                    child: Image.memory(
+                                      ownerPhotoBytes!,
                                       width: 72,
                                       height: 72,
                                       fit: BoxFit.cover,
-                                      loadingBuilder:
-                                          (context, child, progress) {
-                                        if (progress == null) {
-                                          return child;
-                                        }
-                                        return const SoftPlaceholder(
-                                          width: 72,
-                                          height: 72,
-                                          borderRadius: 36,
-                                        );
-                                      },
                                       errorBuilder: (context, error, stack) {
                                         return const Icon(
                                           Icons.person,
@@ -513,7 +520,7 @@ class _SignUpForm extends StatelessWidget {
                     ),
                     SizedBox(height: 8),
                     Text(
-                      ownerPhotoUrl.startsWith('http')
+                      ownerPhotoBytes != null
                           ? AppStrings.ownerPhotoLabel
                           : AppStrings.addOwnerPhoto,
                       style: Theme.of(context).textTheme.bodyMedium,

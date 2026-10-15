@@ -348,7 +348,6 @@ class _ChatListScreenState extends ConsumerState<ChatListScreen> {
   }
 
   void _openChat(BuildContext context, WidgetRef ref, String id) {
-    ref.read(chatInboxProvider.notifier).markRead(id);
     Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder: (context) => ChatDetailScreen(conversationId: id),
@@ -357,7 +356,6 @@ class _ChatListScreenState extends ConsumerState<ChatListScreen> {
   }
 
   void _openEvent(BuildContext context, WidgetRef ref, String eventId) {
-    unawaited(ref.read(eventsControllerProvider.notifier).markRead(eventId));
     Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder: (context) => GroupChatScreen(eventId: eventId),
@@ -366,7 +364,6 @@ class _ChatListScreenState extends ConsumerState<ChatListScreen> {
   }
 
   void _openGroup(BuildContext context, WidgetRef ref, String groupId) {
-    unawaited(ref.read(groupsControllerProvider.notifier).markRead(groupId));
     Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder: (context) => GroupChatScreen(groupId: groupId),

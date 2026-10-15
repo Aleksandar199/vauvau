@@ -106,14 +106,21 @@ class AuthController extends Notifier<AsyncValue<void>> {
     );
   }
 
-  Future<({bool success, Object? error})> deleteAccount() async {
+  bool get deleteAccountRequiresPassword =>
+      ref.read(authRepositoryProvider).deleteAccountRequiresPassword;
+
+  Future<({bool success, Object? error})> deleteAccount({
+    String? password,
+  }) async {
     try {
       await ref.read(walkControllerProvider.notifier).stopForSignOut();
     } catch (_) {}
     final ok = await _run(
       AuthBusy.email,
       () async {
-        await ref.read(authRepositoryProvider).deleteAccount();
+        await ref
+            .read(authRepositoryProvider)
+            .deleteAccount(password: password);
         ref.read(sessionSignedOutProvider.notifier).setSignedOut(true);
       },
     );

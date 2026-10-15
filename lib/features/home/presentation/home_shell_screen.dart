@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../chat/presentation/chat_inbox.dart';
 import '../../chat/presentation/chat_strings.dart';
+import '../../chat/presentation/incoming_message_sound.dart';
 import '../../chat/presentation/matches_screen.dart';
 import '../../chat/presentation/widgets/scheduled_walks_banner.dart';
 import '../../discover/presentation/discover_screen.dart';
@@ -37,6 +38,7 @@ class HomeShellScreen extends ConsumerWidget {
     ref.watch(appSettingsProvider.select((s) => s.language));
     final showScheduledWalks = tabIndex == 1 || tabIndex == 2;
     ref.watch(groupUnreadAlertsProvider);
+    ref.watch(incomingMessageSoundProvider);
 
     final titles = [
       '',

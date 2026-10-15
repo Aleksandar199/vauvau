@@ -1,0 +1,160 @@
+# CLAUDE.md – projektna memorija VauVau
+
+> **Pravila rada:**
+> 1. Na početku svakog zadatka PRVO pročitaj ovaj fajl, pa otvaraj samo fajlove potrebne za zadatak.
+> 2. Posle svake završene izmene ažuriraj ovaj fajl: „Dnevnik izmena“, pomeri stavke između U toku / Završeno / TODO, ispravi Strukturu/Bazu ako su se promenile.
+> 3. Drži fajl kratkim. Kad dnevnik postane dugačak, starije unose sažmi u nekoliko redova.
+> 4. Detalji (puna šema polja, ekrani, modeli, konfiguracija platformi) su u `docs/TEHNICKI_PREGLED.md` – otvaraj ciljanu sekciju (grep po `^##`), ne ceo fajl (9000+ linija).
+
+---
+
+# Projekat
+- **VauVau** (paket `vauvau`, verzija `1.0.0+7`) – društvena mreža za vlasnike pasa u Srbiji (Novi Sad, Beograd, Niš, Kragujevac): discover/swipe/meč, 1:1 čet sa pozivom na šetnju, grupe i događaji, mapa mesta za pse + praćenje šetnje, priče (24h), izgubljeni psi, udomljavanje, zdravstveni karton/podsetnici, SOS/saveti, prijave/blokiranje, admin panel.
+- **UI jezik:** srpski (latinica) podrazumevano, delimično engleski (sopstveni `L10n`).
+- **Platforme:** Android primarna (`com.vauvau.app`, release potpisivanje, R8). iOS nije spreman (`com.example.vauvau`, nema push/entitlements). Web radi uz ograničenja (Android Firebase opcije, push isključen). Desktop = neizmenjen šablon.
+- **Tehnologije:** Flutter 3.44.1 / Dart 3.12.1, flutter_riverpod 3.4.3 (bez code-gen-a), Firebase (`vauvau-3195a`): Auth, Firestore, Storage, FCM, Crashlytics, Hosting. flutter_map + OSM, geolocator, flutter_local_notifications + timezone, image_picker, cached_network_image, shared_preferences, audioplayers, http (Nominatim). Dev: flutter_lints, fake_cloud_firestore, flutter_native_splash, flutter_launcher_icons.
+- Android: AGP 9.0.1, Gradle 9.1.0, Kotlin 2.3.20, Java 17. iOS: target 13.0, SPM (bez Podfile-a).
+
+# Struktura
+- `lib/main.dart` – init (Crashlytics handleri, lokalne notifikacije, Firebase, Firestore offline keš, FCM bg handler) → `ProviderScope(VauVauApp)`; greška → `FirebaseInitErrorApp`.
+- `lib/app/` – `app.dart` (MaterialApp, tema, locale, `navigatorKey`), `routes.dart` (neiskorišćen), `firebase_init_error_app.dart`.
+- `lib/core/` – zajedničko: `constants/` (stringovi, rase, `serbia_locations.dart` gradovi/kvartovi), `crash/`, `firebase/` (`firebase_status.dart` → `isFirebaseReady`, `firestore_auth_guard.dart`), `geo/`, `images/` (`image_upload_service.dart`, web prikaz slika, fallback slike), `l10n/` (`L10n`, `AppLanguage`), `services/` (`notification_service.dart`, `message_sound_player.dart`), `theme/`, `utils/` (`content_validation_service.dart`, `external_link_launcher.dart`), `widgets/`.
+- `lib/services/storage_service.dart` – upload/brisanje slika u Storage (`{root}/{uid}/...`).
+- `lib/features/<feature>/{domain,data,presentation}` – feature moduli:
+  - `auth` – login/registracija, `AuthGate`, `AccountDeletionService`, `user_document.dart`.
+  - `splash`, `welcome`, `legal` (pravne stranice/linkovi), `location` (GPS, `home_city_provider`).
+  - `home` – `HomeShellScreen` (4 taba), `HomeDrawer`, `AppDrawerCatalog`.
+  - `discover` – swipe, lajk/super lajk/meč, filteri, kompatibilnost.
+  - `dogs` – model psa, onboarding, zdravstveni karton, podsetnici.
+  - `profile` – profil vlasnika/psa, podešavanja (`AppSettingsStore`), matching filteri, odjava/brisanje.
+  - `chat` – 1:1 inbox i čet (tekst, slika, lokacija, walk invite, lajkovi, unread, zvuk).
+  - `groups` – grupe po rasama + grupni čet (`GroupChatScreen` koriste i događaji).
+  - `events` – događaji/šetnje + čet.
+  - `map` – OSM mapa, POI/places, seed mesta po gradovima, šetnja + presence, istorija šetnji, dodavanje mesta (admin).
+  - `moments` – priče 24h, komentari, istaknute priče.
+  - `lost_dogs` – izgubljeni/pronađeni psi, hitni popup.
+  - `adoption` – oglasi za udomljavanje.
+  - `moderation` – prijave sadržaja, blokiranje.
+  - `notifications` – in-app notifikacije, push gateway/kontroler, rutiranje sa push-a.
+  - `support` – pravila, saveti, SOS, feedback adminu.
+  - `admin` – dashboard (prijave, grupe na odobrenju, feedback, korisnici, mesta).
+  - `emergency` – prazni folderi.
+- `test/` – ~42 test fajla + `test/fakes/`.
+- `tool/` – PowerShell skripte i JSON za geokodiranje seed mesta (Photon/Nominatim/Overpass).
+- `scripts/build_release.{ps1,sh}` – release build (pravi APK, ne AAB).
+- `docs/` – `TEHNICKI_PREGLED.md` (pun tehnički pregled), `play-launch-checklist.md`, privacy/terms HTML, `reels/` (marketing).
+- `public/` – Firebase Hosting (samo `/privacy`, `/terms`).
+- Root: `firestore.rules`, `storage.rules`, `firestore.indexes.json`, `firebase.json`, `.firebaserc`, `storage-cors.json`.
+
+### Ključni fajlovi
+- `lib/features/auth/presentation/auth_gate.dart` – rutira: login / onboarding psa / `HomeShellScreen`.
+- `lib/features/auth/data/auth_repository_impl.dart` – Firebase Auth + upis `users/{uid}`.
+- `lib/features/home/presentation/home_shell_screen.dart` – tabovi Otkrij/Mapa/Poruke/Profil, globalni watcheri (push token, lost-dog popup, zvuk poruke, unread badge).
+- `lib/features/chat/data/firestore_chat_repository.dart` – najsloženiji Firestore sloj (inbox, attach/detachRoom, optimističke poruke, unread).
+- `lib/features/chat/presentation/chat_inbox.dart` – `ChatInboxController`, unread/walk-invite provideri.
+- `lib/features/chat/presentation/incoming_message_sound.dart` – detektor dolazne poruke → zvuk.
+- `lib/features/groups/data/firestore_groups_repository.dart` / `events/data/firestore_events_repository.dart` – grupe/događaji + seed.
+- `lib/features/discover/data/firestore_discover_repository.dart` – swipe, lajkovi, mečevi, kreiranje četa.
+- `lib/features/dogs/data/dogs_repository_impl.dart` – CRUD psa.
+- `lib/features/map/presentation/walk_controller.dart` – šetnja, presence, spajanje mesta (`mapPlacesProvider`).
+- `lib/features/map/data/places_repository.dart` – admin mesta (`places` SoT + kopija u `pois`, atomski batch).
+- `lib/features/notifications/presentation/push_controller.dart` – slanje push/lokalnih notifikacija.
+- `lib/features/profile/data/app_settings_store.dart` – SharedPreferences podešavanja.
+
+# Arhitektura
+- **Feature-first** + **Riverpod 3**: `Provider` (repo/servisi), `NotifierProvider` (kontroleri), `StreamProvider` (Firestore tokovi), `.family` (po ID-ju).
+- **Repository pattern:** apstraktna klasa u `domain/` + `Firestore…Repository` (produkcija) i `Local…Repository` (in-memory/seed; testovi). Izbor u provideru preko `isFirebaseReady`. Nema use-case sloja.
+- Neki widgeti direktno koriste `FirebaseFirestore.instance` (`swipe_dog_card.dart`, `notification_controller.dart`, `poi_report_controller.dart`).
+- **Navigacija:** samo imperativni `Navigator.push(MaterialPageRoute)`; nema imenovanih ruta, go_router-a ni deep linkova. Push tap → `appNavigatorKey`.
+- **Tok:** `main` → `SplashScreen` (2 s) → `AuthGate` → Login / `DogOnboardingScreen` / `HomeShellScreen`. Drawer: Grupe, Događaji, Moments, Izgubljeni psi, Udomi, Pravila & Podrška, Podešavanja, Admin (samo `role == 'admin'`).
+- **Podaci:** UI → Notifier/izvedeni provideri → repozitorijum → Firestore `snapshots()` (realtime, offline keš neograničen) / Storage.
+- **Nema servera ni Cloud Functions:** mečevi, brojači (`unreadByUser`, `memberCount`, `likesCount`), notifikacije i brisanje naloga rade se sa klijenta. Push sa zatvorenom aplikacijom NE stiže (klijent samo piše `notifications` / `users/{uid}/fcmInbox`).
+- **Unread:** 1:1 = `chats.unreadByUser` mapa (increment na serveru); grupe/događaji = `members/{uid}.lastReadTimestamp` vs `createdAt` poruka (klijentski).
+- **Lokalizacija:** `L10n` mape sr/en (bez `.arb`); jezik/tema iz `AppSettingsController` (SharedPreferences).
+
+# Baza podataka (Firestore)
+Pun spisak polja: `docs/TEHNICKI_PREGLED.md` sekcija 5 „Firestore struktura po modulima“.
+- `users/{uid}` – email, name, photoUrl/customPhotoUrl, city/cityId/cityName, neighborhoodId/Name, bio, role (`user`/`admin`), dog (Map), primaryDogId, fcmToken, presence (isWalking, lastKnownLocation GeoPoint, geohash, latitude/longitude, walkStatus), walkHistory[], contentReports[], placeChangeRequests[], createdAt/updatedAt.
+  - podkolekcije: `fcmInbox` (niko ne čita), `blocked_users/{uid}` (blockedAt), `walks` (distanceKm, durationSeconds, startedAt/endedAt), `place_change_requests` (samo u pravilima).
+- `dogs/{dogId}` – ownerId, name, breed, gender, age/ageYears/ageMonths, size, bio, isVaccinated/isMicrochipped/isSterilized, weightKg, energyLevel, temperament/likesTags/dislikesTags[], location + cityId/neighborhoodId, foto polja (photoUrl, imageUrl, photos, photoUrls, galleryUrls, primaryPhotoUrl), likesCount, superLikesCount, presence polja, storyHighlights (Map).
+  - `likes/{uid}` (type, createdAt), `health_records` (category, title, administeredDate, nextDueDate, notes, notificationId), `reminders` (title, type, category, date, repeatType, reminderOffset, isCompleted, custom interval…).
+- `swipes/{uid}_{dogId}` (fromUserId, fromDogId, toDogId, type), `super_likes` (fromUserId, targetDogId, targetOwnerId), `matches/{uidA}_{uidB}` (dogIds, userIds).
+- `chats/{uidA}_{uidB}` – participantIds, dogIds, dogNames/ownerNames/breeds/photoUrls (Map po uid), lastMessage, lastMessageTimestamp, unreadByUser (Map<uid,int>), unreadCount (legacy), isNewMatch.
+  - `messages` – senderId, receiverId, senderName, senderAvatarUrl, text, imageUrl, type (`text`/`walk_invite`/`location_pin`), status, walkTime, walkLocationName, replyTo*, likes[], timestamp.
+- `breed_groups/{id}` – title, description, imageUrl, memberIds[], memberCount, sortOrder, isApproved, createdBy, lastMessage/lastMessageAt; `members/{uid}` (lastReadTimestamp); `messages` (senderId, text, imageUrl, type, walk invite polja, acceptedBy/declinedByUserIds, likes, createdAt).
+- `events/{id}` – title, locationName, dateTime, description, imageUrl, organizerUserId/Name, participantUserIds[], cityId, lastMessage; `members`, `messages` (šema kao grupe).
+- `moments/{id}` – authorUserId, dog*, momentPhotoUrl, caption, locationName, likes[], commentsCount, createdAt; `comments`.
+- `lost_dogs/{id}` – dogName, breed, type (`lost`/`found`), city, neighborhood, lostDate/foundDate, imageUrl, contactPhone, uploaderUserId, status (`active`/`resolved`), comments[] (niz u dokumentu!), commentLikes, commentsCount.
+- `adoption_dogs/{id}` – name, breed, age, gender, size, location, imageUrls[], contactPhone, uploaderUserId, status (`available`/`adopted`).
+- `pois/{id}` (sva mesta za mapu: category, address, lat/lng, phone, openingHours, verificationStatus, sponsor polja…), `places/{id}` (admin izvor istine, kopija u `pois`), `cities/{id}` (name, lat, lng, radiusKm, isActive).
+- `notifications/{id}` (toUserId/recipientId, type, title, body, isRead, createdAt…), `reports`, `admin_notifications`, `admin_feedback` (status `new`/`resolved`), `change_requests`. Legacy: `highlights`, `support` (samo pravila).
+- **Storage:** `{pets|users|moments|events|groups|adoption|lost_dogs|uploads|chats}/{uid}/{millis}.ext`, limit 8 MB.
+- **Pravila (rizici):** `users` čitljiv svim prijavljenim (email, fcmToken, lokacija); svako može da menja `events`/`breed_groups` (i `isApproved`), da pravi `notifications`/`matches`/`swipes`; učesnik menja bilo koje polje `chats`; `lost_dogs` komentari prepisivi; Storage sve javno čitljivo (i `chats/`), CORS `*`. `isAdmin()` = `get()` na `users/{uid}.role`, bez custom claims.
+- **Pravila/indeksi se NE deployuju bez eksplicitnog odobrenja.**
+
+# Servisi i eksterni API-ji
+- Firebase Auth (email/lozinka aktivno; Google implementiran ali dugme sakriveno), Firestore, Storage, FCM (samo klijent), Crashlytics, Hosting (`https://vauvau-3195a.web.app/privacy|terms`).
+- OSM tile-ovi (`tile.openstreetmap.org`), Nominatim geokodiranje (`address_geocoder.dart`), linkovi ka Google/Apple Maps za navigaciju.
+- Lokalne notifikacije: kanali `vauvau_alerts`, `vauvau_health`; podsetnici u 09:00 lokalno.
+- Geolocator foreground servis za šetnju (Android).
+- Unsplash fallback slike (`fallback_image_helper.dart`).
+- Ključevi su u `lib/firebase_options.dart` – ne prikazivati, ne komitovati `android/key.properties`, `*.jks`, `*.keystore`.
+
+# Konvencije
+- Fajlovi `snake_case.dart`; klase `PascalCase`; provideri `camelCaseProvider`.
+- Feature-first: `domain/` (modeli, apstraktni repo), `data/` (`firestore_*`, `local_*`, seed/mock), `presentation/` (ekrani, kontroleri, `*_strings.dart`, `widgets/`).
+- Svaki feature ima `*_strings.dart` za UI tekst (srpski latinica); novi stringovi idu tamo / kroz `L10n`.
+- Novi repozitorijum = apstraktna klasa + Firestore + Local implementacija, izbor u provideru po `isFirebaseReady`.
+- Slike: upload kroz `ImageUploadService`/`StorageService` + `ContentValidationService.validateImage`.
+- Testovi u `test/<feature>_test.dart`, Firestore preko `fake_cloud_firestore` ili Local repozitorijuma; ne menjati očekivanja testova bez razloga.
+- Ne menjati produkcione podatke radi testiranja; ne izmišljati podatke o mestima (adrese, telefoni, radno vreme); čuvati admin i korisničke lokacije; migracije samo uz odobrenje.
+- Commit poruke na srpskom; ne pushovati na `master` bez odobrenja.
+
+# Stanje
+## Završeno
+- Auth (email), onboarding psa, profil i podešavanja (tema, jezik, notifikacije, radijus).
+- Discover: swipe, lajk/super lajk (dnevni limit), meč dijalog, filteri, kompatibilnost.
+- 1:1 čet: tekst, slika, lokacija, poziv na šetnju (accept/decline), reply, lajkovi, unread.
+- Grupe i događaji sa četom; izbor grada u događajima/šetnjama i pričama.
+- Mapa: Novi Sad, Beograd (prošireni), Niš, Kragujevac; POI, admin mesta (`places`↔`pois` atomski batch), šetnja + presence + istorija.
+- Priče 24h + istaknute; izgubljeni psi (hitni popup); udomljavanje; zdravstveni karton + prilagođeni podsetnici.
+- Prijave/blokiranje, admin panel, pravila/saveti/SOS, feedback.
+- Pravne stranice na Hosting-u, privacy policy.
+
+## U toku (nekomitovano, ~25 fajlova)
+- Multiline unos u čet, zvuk dolazne poruke (`assets/sounds/message.wav`, `audioplayers`), popravke unread brojača, avatar → profil, zakazane šetnje (banner), full-screen slike u četu + novi testovi (`chat_unread_test`, `incoming_message_sound_test`, `message_bubble_avatar_test`, `scheduled_walks_test`).
+
+## Poznati bagovi
+1. Push ne stiže kad je app zatvorena (nema Cloud Functions).
+2. Admin „Obriši“ na prijavi ne briše korisnika/poruku/psa/čet (samo moment).
+3. `notifyMatch` se nigde ne poziva; prijava sadržaja pravi notifikaciju samom prijaviocu.
+4. Seed grupe/događaji se upisuju sa klijenta u produkciju (lažni `memberCount`, `isApproved: true`).
+- Testovi (2026-10-15): 177 prolazi, 18 pada – isti skup kao pre popravki (admin, events, map, safety, chat walk invite, notifications, settings, widget, discover, moments – `moments_test` „owner creates a highlight“ visi 10 min). `profile_test` „opens settings and search filters“ pada (discover mock nema pse za Beograd) – ranije se nije ni kompajlirao. `flutter analyze` čist.
+
+## TODO (po prioritetu)
+1. Komitovati trenutni rad (bez keystore/`key.properties`).
+2. Pregledati pale testove (ne menjati očekivanja bez razloga).
+3. Ručno na uređaju proveriti: registraciju sa slikom, brisanje naloga (email + lozinka).
+4. Zameniti 7 `print()` poziva sa `debugPrint`/Crashlytics.
+5. Pooštriti Firestore/Storage pravila (testirati u emulatoru, deploy samo uz odobrenje).
+6. Cloud Functions (push iz `fcmInbox`, serverski mečevi/notifikacije, kaskadno brisanje, admin custom claims) – traži Blaze plan.
+7. Bagovi 2–4 iz liste iznad.
+8. Seed grupa/događaja prebaciti u jednokratnu admin skriptu.
+9. iOS (bundle id, GoogleService-Info.plist, push, DEVELOPMENT_TEAM, URL scheme); Android AAB build + ažurirati Play checklistu; web Firebase config.
+10. Sopstveni tile provajder; keš/rate-limit za Nominatim.
+11. Dugoročno: ujednačiti šemu lokacije/slika, ukloniti duple izvore istine i mrtav kod (`AppRoutes`, `dog_photo_persist*`, `highlights`), `.arb` lokalizacija, go_router + deep linkovi, čišćenje repoa (~7 MB splash slika, `Gist`, `docs/reels/`), CI.
+
+# Dnevnik izmena
+- [2026-09-17 – 2026-10-07] Faze 1–7: shell i brending, filteri/notifikacije/UI, Firebase Auth/Firestore/Storage, Google prijava, sinhronizacija profil/pas, priče/istaknute, saveti/SOS, safety, mapa, zdravstveni podsetnici, admin, stabilizacija testova, privacy policy.
+- [2026-10-14] Gradovi Niš i Kragujevac na mapi, izbor grada u događajima/šetnjama/pričama, ručni unos kvarta, prošireni Beograd; ignorisani Firebase CLI binarni fajlovi.
+- [2026-10-15] Nekomitovano: multiline čet, zvuk poruke, unread popravke, avatar → profil, zakazane šetnje, full-screen slike, novi testovi. Napravljen `docs/TEHNICKI_PREGLED.md`.
+- [2026-10-15] Napravljeni `CLAUDE.md` i `.cursor/rules/project-memory.mdc` (projektna memorija).
+- [2026-10-15] Popravke bagova (nekomitovano):
+  - prvi lajk na grupnoj/event poruci (`_stringList` vraća promenljivu listu) – `firestore_groups_repository.dart`, `firestore_events_repository.dart`, novi `test/group_message_like_test.dart`;
+  - grupni čet `scheduleFrame()` u `_jumpToEndWithRetry` – `group_chat_screen.dart`;
+  - lista četova više ne zove `markRead` pre otvaranja (to radi detaljni ekran) – `chat_list_screen.dart`;
+  - `totalUnreadChatCountProvider` broji iz `visibleConversationsProvider` (bez blokiranih) – `chat_inbox.dart`;
+  - 1:1 lajk preko `arrayUnion`/`arrayRemove` – `firestore_chat_repository.dart`;
+  - registracija: slika se bira lokalno, upload tek posle kreiranja naloga – `auth_screen.dart`;
+  - brisanje naloga: reautentikacija (lozinka u dijalogu ili Google) → brisanje podataka → `user.delete()` – `firebase_auth_datasource.dart`, `auth_repository(_impl).dart`, `local_auth_repository.dart`, `auth_controller.dart`, `delete_account_action.dart`, `profile_strings.dart`, `test/fakes/fake_auth_repository.dart`;
+  - `test/profile_test.dart:41` ponovo kompajlira.

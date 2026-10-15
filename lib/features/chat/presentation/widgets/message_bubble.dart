@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../../core/images/dog_image.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/comment_like_button.dart';
+import '../../../discover/presentation/widgets/dog_photo_gallery.dart';
 import '../../domain/chat_message.dart';
 import '../../domain/chat_time.dart';
 import 'chat_ui.dart';
@@ -17,7 +18,7 @@ class MessageBubble extends StatelessWidget {
     this.fallbackSenderName = '',
     this.currentUserId = '',
     this.onLongPress,
-    this.onTap,
+    this.onAvatarTap,
     this.onToggleLike,
   });
 
@@ -27,7 +28,8 @@ class MessageBubble extends StatelessWidget {
   final String fallbackSenderName;
   final String currentUserId;
   final VoidCallback? onLongPress;
-  final VoidCallback? onTap;
+  /// Opens the sender's profile; only the peer's avatar is tappable.
+  final VoidCallback? onAvatarTap;
   final VoidCallback? onToggleLike;
 
   @override
@@ -54,7 +56,12 @@ class MessageBubble extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           if (!isMine) ...[
-            SenderAvatar(url: avatarUrl, name: senderName),
+            GestureDetector(
+              key: const ValueKey('message-sender-avatar'),
+              behavior: HitTestBehavior.opaque,
+              onTap: onAvatarTap,
+              child: SenderAvatar(url: avatarUrl, name: senderName),
+            ),
             const SizedBox(width: 8),
           ],
           Flexible(
@@ -62,7 +69,6 @@ class MessageBubble extends StatelessWidget {
               alignment: isMine ? Alignment.centerRight : Alignment.centerLeft,
               child: GestureDetector(
                 behavior: HitTestBehavior.opaque,
-                onTap: message.isMine ? null : onTap,
                 onLongPress: onLongPress,
                 child: ConstrainedBox(
                   constraints: BoxConstraints(
@@ -91,14 +97,22 @@ class MessageBubble extends StatelessWidget {
                           ),
                         if (message.hasImage) ...[
                           const SizedBox(height: 2),
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(12),
-                            child: SizedBox(
-                              height: 160,
-                              width: double.infinity,
-                              child: buildDogImage(
-                                message.imageUrl,
-                                seed: message.id,
+                          GestureDetector(
+                            key: const ValueKey('message-image'),
+                            onTap: () => showDogPhotoViewer(
+                              context,
+                              photos: [message.imageUrl],
+                              seed: message.id,
+                            ),
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(12),
+                              child: SizedBox(
+                                height: 160,
+                                width: double.infinity,
+                                child: buildDogImage(
+                                  message.imageUrl,
+                                  seed: message.id,
+                                ),
                               ),
                             ),
                           ),

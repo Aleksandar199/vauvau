@@ -13,6 +13,10 @@ import '../../chat/presentation/schedule_walk_sheet.dart';
 import '../../chat/presentation/widgets/chat_ui.dart';
 import '../../chat/presentation/widgets/message_reply.dart';
 import '../../chat/presentation/widgets/walk_invite_card.dart';
+import '../../discover/data/load_discover_profile.dart';
+import '../../discover/domain/discover_profile.dart';
+import '../../discover/presentation/widgets/dog_photo_gallery.dart';
+import '../../discover/presentation/widgets/swipe_dog_card.dart';
 import '../../events/presentation/events_controller.dart';
 import '../domain/groups_models.dart';
 import 'groups_controller.dart';
@@ -225,10 +229,14 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen> {
           }
           then?.call();
         });
+        WidgetsBinding.instance.scheduleFrame();
         return;
       }
       then?.call();
     });
+    // A short, non-scrollable chat triggers no further frames on its own,
+    // so the callback (and markRead after it) would otherwise never run.
+    WidgetsBinding.instance.scheduleFrame();
   }
 
   void _finishInitialScroll(int messageCount) {
@@ -449,6 +457,41 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen> {
     _inputFocus.requestFocus();
   }
 
+  Future<void> _openSenderProfile(GroupMessage message) async {
+    final senderId = message.senderId.trim();
+    DiscoverProfile? profile;
+    if (senderId.isNotEmpty) {
+      try {
+        profile = await loadDiscoverProfile(ownerId: senderId);
+      } catch (_) {
+        profile = null;
+      }
+    }
+    final avatar = message.senderAvatarUrl.trim();
+    profile ??= DiscoverProfile(
+      id: senderId.isEmpty ? message.id : senderId,
+      ownerId: senderId,
+      name: message.senderName,
+      ownerName: message.senderName,
+      breed: '',
+      ageYears: 0,
+      gender: '',
+      size: 'srednji',
+      location: 'Srbija',
+      bio: '',
+      photoUrls: avatar.isEmpty ? const [] : [avatar],
+    );
+    if (!mounted) {
+      return;
+    }
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => DogDetailSheet(profile: profile!),
+    );
+  }
+
   Future<void> _toggleLike(String messageId) async {
     try {
       if (widget.isEvent) {
@@ -587,6 +630,9 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen> {
                           message: message,
                           now: now,
                           currentUserId: memberId,
+                          onAvatarTap: message.isMine
+                              ? null
+                              : () => _openSenderProfile(message),
                           onLongPress: () => _onMessageLongPress(message),
                           onToggleLike: message.isMine
                               ? null
@@ -654,6 +700,7 @@ class _GroupMessageBubble extends StatelessWidget {
     required this.message,
     required this.now,
     this.currentUserId = '',
+    this.onAvatarTap,
     this.onLongPress,
     this.onToggleLike,
   });
@@ -661,6 +708,7 @@ class _GroupMessageBubble extends StatelessWidget {
   final GroupMessage message;
   final DateTime now;
   final String currentUserId;
+  final VoidCallback? onAvatarTap;
   final VoidCallback? onLongPress;
   final VoidCallback? onToggleLike;
 
@@ -679,9 +727,14 @@ class _GroupMessageBubble extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           if (!mine) ...[
-            SenderAvatar(
-              url: message.senderAvatarUrl,
-              name: message.senderName,
+            GestureDetector(
+              key: const ValueKey('group-sender-avatar'),
+              behavior: HitTestBehavior.opaque,
+              onTap: onAvatarTap,
+              child: SenderAvatar(
+                url: message.senderAvatarUrl,
+                name: message.senderName,
+              ),
             ),
             const SizedBox(width: 8),
           ],
@@ -721,14 +774,22 @@ class _GroupMessageBubble extends StatelessWidget {
                           ),
                         if (message.hasImage) ...[
                           const SizedBox(height: 6),
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(12),
-                            child: SizedBox(
-                              height: 160,
-                              width: double.infinity,
-                              child: buildDogImage(
-                                message.imageUrl,
-                                seed: message.id,
+                          GestureDetector(
+                            key: const ValueKey('group-message-image'),
+                            onTap: () => showDogPhotoViewer(
+                              context,
+                              photos: [message.imageUrl],
+                              seed: message.id,
+                            ),
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(12),
+                              child: SizedBox(
+                                height: 160,
+                                width: double.infinity,
+                                child: buildDogImage(
+                                  message.imageUrl,
+                                  seed: message.id,
+                                ),
                               ),
                             ),
                           ),
