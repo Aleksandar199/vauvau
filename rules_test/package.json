@@ -1,0 +1,13 @@
+{
+  "name": "vauvau-rules-test",
+  "private": true,
+  "description": "Testovi Firestore pravila (firestore.rules) nad lokalnim emulatorom.",
+  "scripts": {
+    "test": "firebase emulators:exec --only firestore --project demo-vauvau \"node --test firestore.rules.test.mjs\"",
+    "test:only": "node --test firestore.rules.test.mjs"
+  },
+  "devDependencies": {
+    "@firebase/rules-unit-testing": "^4.0.1",
+    "firebase": "^11.10.0"
+  }
+}

@@ -44,6 +44,7 @@
 - `scripts/build_release.{ps1,sh}` – release build (pravi APK, ne AAB).
 - `docs/` – `TEHNICKI_PREGLED.md` (pun tehnički pregled), `play-launch-checklist.md`, privacy/terms HTML, `reels/` (marketing).
 - `public/` – Firebase Hosting (samo `/privacy`, `/terms`).
+- `rules_test/` – testovi `firestore.rules` nad emulatorom (`@firebase/rules-unit-testing` + `node --test`). Iz `rules_test/`, posle `npm install`: `firebase emulators:exec --only firestore --project demo-vauvau "node --test firestore.rules.test.mjs"` (Node i firebase-tools su u `%USERPROFILE%\.cache\firebase`, vidi `firebase.cmd`).
 - Root: `firestore.rules`, `storage.rules`, `firestore.indexes.json`, `firebase.json`, `.firebaserc`, `storage-cors.json`.
 
 ### Ključni fajlovi
@@ -89,7 +90,8 @@ Pun spisak polja: `docs/TEHNICKI_PREGLED.md` sekcija 5 „Firestore struktura po
 - `pois/{id}` (sva mesta za mapu: category, address, lat/lng, phone, openingHours, verificationStatus, sponsor polja…), `places/{id}` (admin izvor istine, kopija u `pois`), `cities/{id}` (name, lat, lng, radiusKm, isActive).
 - `notifications/{id}` (toUserId/recipientId, type, title, body, isRead, createdAt…), `reports`, `admin_notifications`, `admin_feedback` (status `new`/`resolved`), `change_requests`. Legacy: `highlights`, `support` (samo pravila).
 - **Storage:** `{pets|users|moments|events|groups|adoption|lost_dogs|uploads|chats}/{uid}/{millis}.ext`, limit 8 MB.
-- **Pravila (rizici):** `users` čitljiv svim prijavljenim (email, fcmToken, lokacija); svako može da menja `events`/`breed_groups` (i `isApproved`), da pravi `notifications`/`matches`/`swipes`; učesnik menja bilo koje polje `chats`; `lost_dogs` komentari prepisivi; Storage sve javno čitljivo (i `chats/`), CORS `*`. `isAdmin()` = `get()` na `users/{uid}.role`, bez custom claims.
+- **Pooštreno 2026-10-15 (NIJE deployovano, testovi u `rules_test/`):** `chats` create samo par `[pozivalac, peer]` sa id-jem `sortedUid0_sortedUid1`, update samo učesnici, `participantIds` isti skup ili bez sebe; `events`/`breed_groups` menja samo organizator/kreator ili admin, ostali samo svoje članstvo (+`memberCount` ±1) i `lastMessage*` kao članovi; `isApproved: true` (i seed grupe/događaji) samo admin; `notifications`/`fcmInbox`/`swipes` create traže `fromUserId == auth.uid`; `matches` create: pozivalac u `userIds`, id sortiran par, update samo učesnici; `dogs.likesCount`/`superLikesCount` samo ±1.
+- **Pravila (preostali rizici):** `users` čitljiv svim prijavljenim (email, fcmToken, lokacija); učesnik menja bilo koje polje `chats` osim članstva; `notifications`/`fcmInbox` – pošiljalac proveren, primalac/sadržaj ne (spam); `likesCount` ±1 nije vezan za `likes/{uid}` (ponavljanjem se naduvava); kreator grupe/organizator sme da doda tuđe uid-ove u članstvo; `lost_dogs` komentari prepisivi; Storage sve javno čitljivo (i `chats/`), CORS `*`. `isAdmin()` = `get()` na `users/{uid}.role`, bez custom claims.
 - **Pravila/indeksi se NE deployuju bez eksplicitnog odobrenja.**
 
 # Servisi i eksterni API-ji
@@ -130,7 +132,7 @@ Pun spisak polja: `docs/TEHNICKI_PREGLED.md` sekcija 5 „Firestore struktura po
 1. Push ne stiže kad je app zatvorena (nema Cloud Functions).
 2. Admin „Obriši“ na prijavi ne briše korisnika/poruku/psa/čet (samo moment).
 3. `notifyMatch` se nigde ne poziva; prijava sadržaja pravi notifikaciju samom prijaviocu.
-4. Seed grupe/događaji se upisuju sa klijenta u produkciju (lažni `memberCount`, `isApproved: true`).
+4. Seed grupe/događaji se upisuju sa klijenta u produkciju (lažni `memberCount`, `isApproved: true`). Po novim pravilima to sme samo admin; `ensureSeeded` kod ostalih preskače odbijen upis.
 - Testovi (2026-10-15): 177 prolazi, 18 pada – isti skup kao pre popravki (admin, events, map, safety, chat walk invite, notifications, settings, widget, discover, moments – `moments_test` „owner creates a highlight“ visi 10 min). `profile_test` „opens settings and search filters“ pada (discover mock nema pse za Beograd) – ranije se nije ni kompajlirao. `flutter analyze` čist.
 
 ## TODO (po prioritetu)
@@ -138,7 +140,7 @@ Pun spisak polja: `docs/TEHNICKI_PREGLED.md` sekcija 5 „Firestore struktura po
 2. Pregledati pale testove (ne menjati očekivanja bez razloga).
 3. Ručno na uređaju proveriti: registraciju sa slikom, brisanje naloga (email + lozinka).
 4. Zameniti 7 `print()` poziva sa `debugPrint`/Crashlytics.
-5. Pooštriti Firestore/Storage pravila (testirati u emulatoru, deploy samo uz odobrenje).
+5. Deploy pooštrenih `firestore.rules` samo uz odobrenje; pre toga na uređaju proveriti meč → čet, grupe/događaje (join, poruka), lajk. Zatim Storage pravila i preostali rizici iz „Pravila (preostali rizici)“.
 6. Cloud Functions (push iz `fcmInbox`, serverski mečevi/notifikacije, kaskadno brisanje, admin custom claims) – traži Blaze plan.
 7. Bagovi 2–4 iz liste iznad.
 8. Seed grupa/događaja prebaciti u jednokratnu admin skriptu.
@@ -160,3 +162,4 @@ Pun spisak polja: `docs/TEHNICKI_PREGLED.md` sekcija 5 „Firestore struktura po
   - registracija: slika se bira lokalno, upload tek posle kreiranja naloga – `auth_screen.dart`;
   - brisanje naloga: reautentikacija (lozinka u dijalogu ili Google) → brisanje podataka → `user.delete()` – `firebase_auth_datasource.dart`, `auth_repository(_impl).dart`, `local_auth_repository.dart`, `auth_controller.dart`, `delete_account_action.dart`, `profile_strings.dart`, `test/fakes/fake_auth_repository.dart`;
   - `test/profile_test.dart:41` ponovo kompajlira.
+- [2026-10-15] Pooštrena `firestore.rules` (nije deployovano): `chats` članstvo/create, `events`/`breed_groups` (organizator/kreator/admin; ostali samo svoje članstvo i `lastMessage*`; `isApproved` samo admin), `fromUserId` za `notifications`/`fcmInbox`/`swipes`, `matches` (pozivalac u `userIds`; update za učesnike – ranije je ponovni meč posle unlike/like pucao), `dogs` brojači ±1. Novi `rules_test/` (32 testa u emulatoru, svi prolaze). `ensureSeeded` u `firestore_groups_repository.dart`/`firestore_events_repository.dart` hvata odbijene seed upise da stream ne pukne. `flutter analyze` čist.

@@ -32,6 +32,16 @@ class FirestoreEventsRepository implements EventsRepository {
       return;
     }
     _seedStarted = true;
+    // Rules allow seed / foreign-event writes only for admins; others must
+    // still get the events stream, so a rejected write is skipped.
+    try {
+      await _seedEvents();
+    } catch (error) {
+      debugPrint('events seed skipped: $error');
+    }
+  }
+
+  Future<void> _seedEvents() async {
     final existing = await _col.limit(1).get();
     if (existing.docs.isEmpty) {
       final batch = firestore.batch();

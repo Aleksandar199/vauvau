@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 
 import '../../../core/firebase/firestore_auth_guard.dart';
 import 'seed_breed_groups.dart';
@@ -27,6 +28,16 @@ class FirestoreGroupsRepository implements GroupsRepository {
     }
     _seedStarted = true;
 
+    // Rules allow seed writes only for admins; others must still get the
+    // groups stream, so a rejected seed write is skipped.
+    try {
+      await _seedGroups();
+    } catch (error) {
+      debugPrint('groups seed skipped: $error');
+    }
+  }
+
+  Future<void> _seedGroups() async {
     for (final group in SeedBreedGroups.all) {
       final ref = _col.doc(group.id);
       final snap = await ref.get();
@@ -52,7 +63,12 @@ class FirestoreGroupsRepository implements GroupsRepository {
         patch['memberCount'] = group.memberCount;
         patch['memberIds'] = const <String>[];
       }
-      await ref.set(patch, SetOptions(merge: true));
+      try {
+        await ref.set(patch, SetOptions(merge: true));
+      } catch (error) {
+        // Non-admins may not change seed fields; an unchanged patch passes.
+        debugPrint('groups seed patch ${group.id} skipped: $error');
+      }
     }
 
     final removed = await _col.doc(SeedBreedGroups.removedSmallDogsId).get();
