@@ -34,22 +34,43 @@ service cloud.firestore {
       return affected().hasOnly(keys);
     }
 
-    // Caller added exactly their own uid to the array `field`.
-    function selfJoined(field) {
-      let before = resource.data.get(field, []);
-      let after = request.resource.data.get(field, []);
-      return !(request.auth.uid in before) &&
+    // List `after` = `before` plus exactly the caller's uid.
+    function addedSelf(before, after) {
+      return after is list &&
+        !(request.auth.uid in before) &&
         after.size() == before.size() + 1 &&
         after.toSet() == before.toSet().union([request.auth.uid].toSet());
     }
 
-    // Caller removed exactly their own uid from the array `field`.
-    function selfLeft(field) {
-      let before = resource.data.get(field, []);
-      let after = request.resource.data.get(field, []);
-      return request.auth.uid in before &&
+    // List `after` = `before` minus exactly the caller's uid.
+    function removedSelf(before, after) {
+      return after is list &&
+        request.auth.uid in before &&
         after.size() == before.size() - 1 &&
         after.toSet() == before.toSet().difference([request.auth.uid].toSet());
+    }
+
+    // Caller added exactly their own uid to the array `field`.
+    function selfJoined(field) {
+      return addedSelf(resource.data.get(field, []),
+        request.resource.data.get(field, []));
+    }
+
+    // Caller removed exactly their own uid from the array `field`.
+    function selfLeft(field) {
+      return removedSelf(resource.data.get(field, []),
+        request.resource.data.get(field, []));
+    }
+
+    // Like / unlike: only `field` changes, by the caller's own uid.
+    function ownToggle(field) {
+      return onlyChanged([field]) && (selfJoined(field) || selfLeft(field));
+    }
+
+    // Counter `field` changed by exactly ±1 (missing counts as 0).
+    function stepByOne(field) {
+      return request.resource.data[field] is int &&
+        (request.resource.data[field] - resource.data.get(field, 0)) in [1, -1];
     }
 
     // Inbox preview: short string (client clips to 200 runes) and a server
@@ -90,20 +111,72 @@ service cloud.firestore {
         );
     }
 
+    // Notification sender = caller; recipient has not blocked the caller;
+    // bounded text, unread, server time (no spam, no faked ordering).
+    function notificationOk(toUid) {
+      let d = request.resource.data;
+      return d.fromUserId == request.auth.uid &&
+        toUid is string &&
+        d.get('isRead', false) == false &&
+        d.createdAt == request.time &&
+        d.get('title', '') is string && d.get('title', '').size() <= 500 &&
+        d.get('body', '') is string && d.get('body', '').size() <= 1000 &&
+        d.get('message', '') is string && d.get('message', '').size() <= 1000 &&
+        (
+          toUid == request.auth.uid ||
+          !exists(/databases/$(database)/documents/users/$(toUid)/blocked_users/$(request.auth.uid))
+        );
+    }
+
+    // Must live in users/{uid}/private/account, never on the public profile
+    // (mirrors userPrivateFields in lib/features/auth/data/user_document.dart).
+    function userPrivateFields() {
+      return [
+        'email',
+        'fcmToken',
+        'fcmTokenUpdatedAt',
+        'contentReports',
+        'placeChangeRequests',
+        'isWalking',
+        'walkStatus',
+        'walkStartedAt',
+        'lastKnownLocation',
+        'geohash',
+        'latitude',
+        'longitude',
+      ];
+    }
+
+    // Admin reads all private docs (reports list, user emails).
+    match /{path=**}/private/{docId} {
+      allow read: if isAdmin();
+    }
 
     match /users/{userId} {
+      // Public profile: every signed-in user may read it.
       allow read: if isAuthenticated();
       allow create: if isOwner(userId)
-        && request.resource.data.role == 'user';
+        && request.resource.data.role == 'user'
+        && !request.resource.data.keys().hasAny(userPrivateFields());
+      // Legacy private fields may only be removed, never added or changed.
       allow update: if isOwner(userId)
-        && request.resource.data.role == resource.data.role;
+        && request.resource.data.role == resource.data.role
+        && request.resource.data.keys().toSet()
+          .intersection(affected())
+          .intersection(userPrivateFields().toSet())
+          .size() == 0;
       allow update: if isAdmin();
       allow delete: if isOwner(userId) || isAdmin();
 
+      // email, FCM token, own location, own reports: owner + admin only.
+      match /private/{docId} {
+        allow read, write: if isOwner(userId);
+        allow read, update: if isAdmin();
+      }
+
       match /fcmInbox/{msgId} {
         allow read, update, delete: if isOwner(userId);
-        allow create: if isAuthenticated() &&
-          request.resource.data.fromUserId == request.auth.uid;
+        allow create: if isAuthenticated() && notificationOk(userId);
       }
 
       match /blocked_users/{blockedUserId} {
@@ -132,18 +205,74 @@ service cloud.firestore {
         (resource.data.toUserId == request.auth.uid ||
           resource.data.recipientId == request.auth.uid);
       allow create: if isAuthenticated() &&
-        request.resource.data.fromUserId == request.auth.uid;
+        notificationOk(request.resource.data.toUserId) &&
+        request.resource.data.get('recipientId', request.resource.data.toUserId) ==
+          request.resource.data.toUserId;
     }
 
+    // --- Dog like counters ---------------------------------------------------
+    // likesCount == number of dogs/{dogId}/likes/{uid} docs; superLikesCount ==
+    // number of super_likes/{uid}_{dogId} markers. A counter may change only
+    // in the same batch as the caller's own like doc / marker, by exactly ±1,
+    // so nobody can inflate it by repeating likes or super likes.
+    function dogPath(dogId) {
+      return /databases/$(database)/documents/dogs/$(dogId);
+    }
+
+    function myLikePath(dogId) {
+      return /databases/$(database)/documents/dogs/$(dogId)/likes/$(request.auth.uid);
+    }
+
+    function mySuperMarkerPath(dogId) {
+      return /databases/$(database)/documents/super_likes/$(request.auth.uid + '_' + dogId);
+    }
+
+    // `delta` must equal after-state minus before-state of the flag.
+    function stepMatches(delta, before, after) {
+      return (before == after && delta == 0) ||
+        (!before && after && delta == 1) ||
+        (before && !after && delta == -1);
+    }
+
+    function dogCountersMatch(dogId, dLikes, dSuper) {
+      return stepMatches(dLikes,
+          exists(myLikePath(dogId)), existsAfter(myLikePath(dogId))) &&
+        stepMatches(dSuper,
+          exists(mySuperMarkerPath(dogId)), existsAfter(mySuperMarkerPath(dogId)));
+    }
+
+    // Same check from the like doc / marker side (dog exists before + after).
+    function dogCountersMatchAfter(dogId) {
+      let before = get(dogPath(dogId)).data;
+      let after = getAfter(dogPath(dogId)).data;
+      return dogCountersMatch(
+        dogId,
+        after.get('likesCount', 0) - before.get('likesCount', 0),
+        after.get('superLikesCount', 0) - before.get('superLikesCount', 0)
+      );
+    }
+
+    // Marker id = {fromUserId}_{targetDogId}: one counted super like per user
+    // per dog. Legacy auto-id docs are not markers and may just be deleted.
     match /super_likes/{superLikeId} {
       allow read: if isAuthenticated() &&
-        (resource.data.fromUserId == request.auth.uid ||
+        (resource == null ||
+          resource.data.fromUserId == request.auth.uid ||
           resource.data.targetOwnerId == request.auth.uid ||
           isAdmin());
       allow create: if isAuthenticated() &&
-        request.resource.data.fromUserId == request.auth.uid;
+        request.resource.data.fromUserId == request.auth.uid &&
+        request.resource.data.targetDogId is string &&
+        superLikeId == request.auth.uid + '_' + request.resource.data.targetDogId &&
+        request.resource.data.createdAt == request.time &&
+        dogCountersMatchAfter(request.resource.data.targetDogId);
       allow delete: if isAuthenticated() &&
-        resource.data.fromUserId == request.auth.uid;
+        resource.data.fromUserId == request.auth.uid &&
+        (
+          superLikeId != request.auth.uid + '_' + resource.data.targetDogId ||
+          !exists(dogPath(resource.data.targetDogId)) ||
+          dogCountersMatchAfter(resource.data.targetDogId)
+        );
       allow update, delete: if isAdmin();
     }
 
@@ -198,50 +327,6 @@ service cloud.firestore {
       allow read: if isAuthenticated();
       allow create: if isAuthenticated() &&
         request.resource.data.ownerId == request.auth.uid;
-      // --- Like counters ---------------------------------------------------
-      // likesCount / superLikesCount change only together with the caller's
-      // likes/{uid} doc, in one batch: none→like (+1/0), none→superLike
-      // (+1/+1), like→superLike (0/+1), like→none (-1/0), superLike→none
-      // (-1/-1). superLike→like is forbidden (would allow re-super-liking).
-      function dogPath() {
-        return /databases/$(database)/documents/dogs/$(dogId);
-      }
-
-      function myLikePath() {
-        return /databases/$(database)/documents/dogs/$(dogId)/likes/$(request.auth.uid);
-      }
-
-      function wasLiked() {
-        return exists(myLikePath());
-      }
-
-      function isLiked() {
-        return existsAfter(myLikePath());
-      }
-
-      function wasSuper() {
-        return wasLiked() &&
-          get(myLikePath()).data.get('type', '') == 'superLike';
-      }
-
-      function isSuper() {
-        return isLiked() &&
-          getAfter(myLikePath()).data.get('type', '') == 'superLike';
-      }
-
-      // `delta` must equal after-state minus before-state of the flag.
-      function stepMatches(delta, before, after) {
-        return (before == after && delta == 0) ||
-          (!before && after && delta == 1) ||
-          (before && !after && delta == -1);
-      }
-
-      function likeCountersMatch(dLikes, dSuper) {
-        return !(wasSuper() && isLiked() && !isSuper()) &&
-          stepMatches(dLikes, wasLiked(), isLiked()) &&
-          stepMatches(dSuper, wasSuper(), isSuper());
-      }
-
       // Owner edits the dog but not its like counters; admin anything.
       allow update: if isAuthenticated() &&
         resource.data.ownerId == request.auth.uid &&
@@ -250,10 +335,11 @@ service cloud.firestore {
       allow delete: if isAuthenticated() &&
         resource.data.ownerId == request.auth.uid;
       allow update, delete: if isAdmin();
-      // Likers: counters only, matching their like doc transition.
+      // Likers: counters only, matching their like doc / super-like marker.
       allow update: if isAuthenticated() &&
         onlyChanged(['likesCount', 'superLikesCount']) &&
-        likeCountersMatch(
+        dogCountersMatch(
+          dogId,
           request.resource.data.get('likesCount', 0) -
             resource.data.get('likesCount', 0),
           request.resource.data.get('superLikesCount', 0) -
@@ -265,25 +351,12 @@ service cloud.firestore {
         // Liker writes their own like doc + dog counters in the same batch.
         allow create, update: if isOwner(userId) &&
           request.resource.data.type in ['like', 'superLike'] &&
-          likeCountersMatch(
-            getAfter(dogPath()).data.get('likesCount', 0) -
-              get(dogPath()).data.get('likesCount', 0),
-            getAfter(dogPath()).data.get('superLikesCount', 0) -
-              get(dogPath()).data.get('superLikesCount', 0)
-          );
+          dogCountersMatchAfter(dogId);
         allow delete: if isOwner(userId) &&
-          (
-            !exists(dogPath()) ||
-            likeCountersMatch(
-              getAfter(dogPath()).data.get('likesCount', 0) -
-                get(dogPath()).data.get('likesCount', 0),
-              getAfter(dogPath()).data.get('superLikesCount', 0) -
-                get(dogPath()).data.get('superLikesCount', 0)
-            )
-          );
+          (!exists(dogPath(dogId)) || dogCountersMatchAfter(dogId));
         // Dog owner cleans up likes when deleting the dog / account.
         allow delete: if isAuthenticated() &&
-          get(dogPath()).data.ownerId == request.auth.uid;
+          get(dogPath(dogId)).data.ownerId == request.auth.uid;
       }
 
       match /health_records/{recordId} {
@@ -302,21 +375,58 @@ service cloud.firestore {
     }
 
     match /chats/{chatId} {
-      allow read: if isAuthenticated() && request.auth.uid in resource.data.participantIds;
+      // Entry `p` of unreadByUser: caller may reset own count to 0 (or drop it
+      // when leaving); a peer's count may only go up by exactly 1 (new message).
+      function unreadEntryOk(p, before, after, keys) {
+        return !(p in keys) ||
+          (p == request.auth.uid &&
+            (!(p in after) || after[p] == 0)) ||
+          (p != request.auth.uid &&
+            after.get(p, 0) == before.get(p, 0) + 1);
+      }
+
+      function unreadByUserOk() {
+        let ps = resource.data.participantIds;
+        let before = resource.data.get('unreadByUser', {});
+        let after = request.resource.data.get('unreadByUser', {});
+        let keys = after.diff(before).affectedKeys();
+        return !changed('unreadByUser') || (
+          after is map &&
+          keys.hasOnly(ps) &&
+          unreadEntryOk(ps[0], before, after, keys) &&
+          (ps.size() < 2 || unreadEntryOk(ps[1], before, after, keys))
+        );
+      }
+
+      // A missing room may be probed (create-if-absent); it reveals nothing.
+      allow read: if isAuthenticated() &&
+        (resource == null || request.auth.uid in resource.data.participantIds);
       // 1:1 room: exactly the caller + one peer, id = sortedUid0_sortedUid1.
       allow create: if isAuthenticated() &&
         isSortedPair(chatId, request.resource.data.participantIds);
-      // Only existing participants may update. participantIds may keep the
-      // same members (order may change on set-merge) or drop the caller only
-      // (account deletion leaves the room) — nobody can add themselves.
+      // Only existing participants may update, and only the inbox fields:
+      // preview, unread counters, isNewMatch → false, or leaving. Room
+      // metadata (names, photos, dogIds) is fixed at create. participantIds
+      // may keep the same members or drop the caller only (account deletion).
       allow update: if isAuthenticated() &&
         request.auth.uid in resource.data.participantIds &&
+        onlyChanged([
+          'participantIds',
+          'unreadByUser',
+          'unreadCount',
+          'lastMessage',
+          'lastMessageTimestamp',
+          'isNewMatch',
+        ]) &&
         (
           request.resource.data.participantIds.toSet() ==
             resource.data.participantIds.toSet() ||
           selfLeft('participantIds')
         ) &&
-        previewOk('lastMessageTimestamp');
+        previewOk('lastMessageTimestamp') &&
+        unreadByUserOk() &&
+        (!changed('unreadCount') || request.resource.data.unreadCount == 0) &&
+        (!changed('isNewMatch') || request.resource.data.isNewMatch == false);
       allow delete: if isAdmin();
 
       match /messages/{messageId} {
@@ -335,8 +445,7 @@ service cloud.firestore {
         // Participants may like / unlike any message (likes array only).
         allow update: if isAuthenticated() &&
           request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participantIds &&
-          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likes']) &&
-          request.resource.data.likes is list;
+          ownToggle('likes');
         // Sender may delete own messages (account deletion cascade).
         allow delete: if isAuthenticated() &&
           resource.data.senderId == request.auth.uid;
@@ -386,48 +495,54 @@ service cloud.firestore {
     }
 
     match /lost_dogs/{dogId} {
+      // Exactly one comment appended at the end, authored by the caller.
+      function lostDogCommentAppended() {
+        let before = resource.data.get('comments', []);
+        let after = request.resource.data.comments;
+        let added = after[after.size() - 1];
+        return after is list &&
+          after.size() == before.size() + 1 &&
+          after[0:before.size()] == before &&
+          added.authorUserId == request.auth.uid &&
+          added.text is string &&
+          added.text.size() > 0 &&
+          added.text.size() <= 2000 &&
+          added.authorName is string &&
+          added.authorName.size() <= 100;
+      }
+
+      function commentLikeToggled() {
+        let k = request.resource.data.commentLikeTarget;
+        let before = resource.data.get('commentLikes', {});
+        let after = request.resource.data.commentLikes;
+        return k is string &&
+          after is map &&
+          after.diff(before).affectedKeys().hasOnly([k]) &&
+          (
+            addedSelf(before.get(k, []), after.get(k, [])) ||
+            removedSelf(before.get(k, []), after.get(k, []))
+          );
+      }
+
       allow read: if true;
       allow create: if isAuthenticated() &&
         request.resource.data.uploaderUserId == request.auth.uid;
       // Owner or admin may update (e.g. mark resolved).
       allow update: if isAuthenticated() &&
         (request.auth.uid == resource.data.uploaderUserId || isAdmin());
-      // Anyone signed in may append sighting comments (array + count only).
+      // Anyone signed in may append one sighting comment as themselves:
+      // existing comments stay identical (no rewriting others' text) and
+      // commentsCount goes up by exactly 1.
       allow update: if isAuthenticated() &&
-        request.resource.data.diff(resource.data).affectedKeys()
-          .hasOnly(['comments', 'commentsCount']) &&
-        request.resource.data.comments is list &&
-        (
-          !('comments' in resource.data) ||
-          request.resource.data.comments.size() ==
-            resource.data.comments.size() + 1
-        );
+        onlyChanged(['comments', 'commentsCount']) &&
+        lostDogCommentAppended() &&
+        request.resource.data.commentsCount ==
+          resource.data.get('commentsCount', 0) + 1;
+      // Comment likes: map commentId -> [uids]. The caller toggles only their
+      // own uid in the single entry named by commentLikeTarget.
       allow update: if isAuthenticated() &&
-        request.resource.data.diff(resource.data).affectedKeys()
-          .hasOnly(['comments']) &&
-        request.resource.data.comments is list &&
-        (
-          !('comments' in resource.data) ||
-          request.resource.data.comments.size() ==
-            resource.data.comments.size() + 1
-        );
-      // Anyone signed in may toggle likes on existing comments (same array size).
-      allow update: if isAuthenticated() &&
-        request.resource.data.diff(resource.data).affectedKeys()
-          .hasOnly(['comments']) &&
-        request.resource.data.comments is list &&
-        ('comments' in resource.data) &&
-        resource.data.comments is list &&
-        request.resource.data.comments.size() ==
-          resource.data.comments.size();
-      // Preferred like storage: map commentId -> [userIds] (avoids rewriting comments).
-      allow update: if isAuthenticated() &&
-        request.resource.data.diff(resource.data).affectedKeys()
-          .hasOnly(['commentLikes']) &&
-        request.resource.data.commentLikes is map;
-      allow update: if isAuthenticated() &&
-        request.resource.data.diff(resource.data).affectedKeys()
-          .hasOnly(['commentsCount']);
+        onlyChanged(['commentLikes', 'commentLikeTarget']) &&
+        commentLikeToggled();
       // Only admins may permanently delete listings.
       allow delete: if isAdmin();
 
@@ -436,8 +551,7 @@ service cloud.firestore {
         allow create: if isAuthenticated() &&
           request.resource.data.authorUserId == request.auth.uid;
         allow update: if isAuthenticated() &&
-          request.resource.data.diff(resource.data).affectedKeys()
-            .hasOnly(['likes']);
+          ownToggle('likes');
         allow update, delete: if isAuthenticated() &&
           resource.data.authorUserId == request.auth.uid;
         allow delete: if isAdmin();
@@ -523,8 +637,7 @@ service cloud.firestore {
         // Members may like / unlike any message (likes array only).
         allow update: if isAuthenticated() &&
           request.auth.uid in get(/databases/$(database)/documents/breed_groups/$(groupId)).data.memberIds &&
-          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likes']) &&
-          request.resource.data.likes is list;
+          ownToggle('likes');
         allow delete: if isAuthenticated() &&
           resource.data.senderId == request.auth.uid;
         allow update, delete: if isAdmin();
@@ -596,8 +709,7 @@ service cloud.firestore {
         // Participants may like / unlike any message (likes array only).
         allow update: if isAuthenticated() &&
           request.auth.uid in get(/databases/$(database)/documents/events/$(eventId)).data.participantUserIds &&
-          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likes']) &&
-          request.resource.data.likes is list;
+          ownToggle('likes');
         allow delete: if isAuthenticated() &&
           resource.data.senderId == request.auth.uid;
         allow update, delete: if isAdmin();
@@ -625,8 +737,8 @@ service cloud.firestore {
       allow update: if isAuthenticated() &&
         request.resource.data.authorUserId == resource.data.authorUserId &&
         (resource.data.authorUserId == request.auth.uid || isAdmin() ||
-          request.resource.data.diff(resource.data).affectedKeys()
-            .hasOnly(['likes', 'commentsCount']));
+          ownToggle('likes') ||
+          (onlyChanged(['commentsCount']) && stepByOne('commentsCount')));
       allow delete: if isAuthenticated() &&
         (resource.data.authorUserId == request.auth.uid || isAdmin());
 
@@ -635,8 +747,7 @@ service cloud.firestore {
         allow create: if isAuthenticated() &&
           request.resource.data.authorUserId == request.auth.uid;
         allow update: if isAuthenticated() &&
-          request.resource.data.diff(resource.data).affectedKeys()
-            .hasOnly(['likes']);
+          ownToggle('likes');
         allow update, delete: if isAuthenticated() &&
           resource.data.authorUserId == request.auth.uid;
         allow delete: if isAdmin();

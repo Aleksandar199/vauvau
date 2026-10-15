@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../../../core/firebase/firestore_auth_guard.dart';
+import '../../auth/data/user_document.dart';
 import '../../map/data/places_repository.dart';
 import '../../map/domain/models/poi_model.dart';
 import '../domain/admin_models.dart';
@@ -42,8 +43,11 @@ class FirestoreAdminRepository implements AdminRepository {
     return FirestoreAuthGuard.guardedStream<List<AdminUserEntry>>(
       label: 'admin.users',
       empty: const [],
-      create: () => _users.snapshots().map((snapshot) {
-        final users = snapshot.docs.map(_userFromDoc).toList()
+      create: () => _users.snapshots().asyncMap((snapshot) async {
+        final emails = await _privateEmails();
+        final users = [
+          for (final doc in snapshot.docs) _userFromDoc(doc, emails),
+        ]
           ..sort((a, b) {
             final left = a.createdAt;
             final right = b.createdAt;
@@ -100,13 +104,33 @@ class FirestoreAdminRepository implements AdminRepository {
     );
   }
 
-  AdminUserEntry _userFromDoc(QueryDocumentSnapshot<Map<String, dynamic>> doc) {
+  /// uid → email from `users/{uid}/private/account` (admin-only read).
+  Future<Map<String, String>> _privateEmails() async {
+    try {
+      final snapshot =
+          await firestore.collectionGroup(userPrivateCollection).get();
+      return {
+        for (final doc in snapshot.docs)
+          if (doc.reference.parent.parent != null)
+            doc.reference.parent.parent!.id:
+                doc.data()['email'] as String? ?? '',
+      };
+    } catch (_) {
+      return const {};
+    }
+  }
+
+  AdminUserEntry _userFromDoc(
+    QueryDocumentSnapshot<Map<String, dynamic>> doc,
+    Map<String, String> emails,
+  ) {
     final data = doc.data();
     final name = (data['name'] as String? ?? '').trim();
     return AdminUserEntry(
       uid: data['uid'] as String? ?? doc.id,
       name: name.isEmpty ? 'Korisnik' : name,
-      email: data['email'] as String? ?? '',
+      // Legacy docs may still carry email until the owner's next sign-in.
+      email: emails[doc.id] ?? data['email'] as String? ?? '',
       role: data['role'] as String? ?? 'user',
       createdAt: _date(data['createdAt']),
     );

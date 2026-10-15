@@ -5,6 +5,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 
 import '../../../core/firebase/firestore_auth_guard.dart';
+import '../../auth/data/user_document.dart';
 import '../domain/content_report.dart';
 
 class FirestoreReportRepository implements ReportRepository {
@@ -17,8 +18,13 @@ class FirestoreReportRepository implements ReportRepository {
 
   CollectionReference<Map<String, dynamic>> get _reports =>
       _firestore.collection('reports');
-  CollectionReference<Map<String, dynamic>> get _users =>
-      _firestore.collection('users');
+  // users/{uid}/private/account docs (owner + admin only).
+  Query<Map<String, dynamic>> get _privateDocs =>
+      _firestore.collectionGroup(userPrivateCollection);
+  // Legacy reports on the public profile, until the owner signs in again
+  // and moveUserPrivateFields moves them.
+  CollectionReference<Map<String, dynamic>> get _legacyUsers =>
+      _firestore.collection(userCollection);
 
   @override
   Stream<List<ContentReport>> watchAll() {
@@ -32,13 +38,14 @@ class FirestoreReportRepository implements ReportRepository {
 
       var fromReports = <ContentReport>[];
       var fromUsers = <ContentReport>[];
+      var fromLegacy = <ContentReport>[];
 
       void emit() {
         if (controller.isClosed) {
           return;
         }
         final byId = <String, ContentReport>{};
-        for (final report in [...fromUsers, ...fromReports]) {
+        for (final report in [...fromLegacy, ...fromUsers, ...fromReports]) {
           byId[report.id] = report;
         }
         for (final entry in _statusOverrides.entries) {
@@ -73,7 +80,7 @@ class FirestoreReportRepository implements ReportRepository {
         cancelOnError: false,
       );
 
-      final usersSub = _users.snapshots().listen(
+      final usersSub = _privateDocs.snapshots().listen(
         (snapshot) {
           fromUsers = _reportsFromUsers(snapshot);
           emit();
@@ -86,11 +93,25 @@ class FirestoreReportRepository implements ReportRepository {
         cancelOnError: false,
       );
 
+      final legacySub = _legacyUsers.snapshots().listen(
+        (snapshot) {
+          fromLegacy = _reportsFromUsers(snapshot);
+          emit();
+        },
+        onError: (Object error, StackTrace stack) {
+          onWatchError(error, stack, 'reports.legacyUsers');
+          fromLegacy = [];
+          emit();
+        },
+        cancelOnError: false,
+      );
+
       final overrideSub = _overrideTick.stream.listen((_) => emit());
 
       controller.onCancel = () async {
         await reportsSub.cancel();
         await usersSub.cancel();
+        await legacySub.cancel();
         await overrideSub.cancel();
       };
     });
@@ -124,13 +145,10 @@ class FirestoreReportRepository implements ReportRepository {
     };
 
     // Fast path — return as soon as the reliable write succeeds.
-    await _users.doc(uid).set(
-      {
-        'contentReports': FieldValue.arrayUnion([entry]),
-      },
-      SetOptions(merge: true),
-    );
-    debugPrint('Content report saved on users/$uid');
+    await setUserPrivateFields(_firestore, uid, {
+      'contentReports': FieldValue.arrayUnion([entry]),
+    });
+    debugPrint('Content report saved on users/$uid/private');
 
     // Best-effort mirrors — do not block the UI.
     unawaited(_mirrorReport(
@@ -252,22 +270,28 @@ class FirestoreReportRepository implements ReportRepository {
   }
 
   Future<String?> _findReporterId(String reportId) async {
-    try {
-      final snapshot = await _users.get();
-      for (final doc in snapshot.docs) {
-        final data = doc.data();
-        for (final field in const ['contentReports', 'placeChangeRequests']) {
-          final raw = data[field];
-          if (raw is! List) continue;
-          for (final item in raw) {
-            if (item is Map && (item['id'] as String? ?? '') == reportId) {
-              return doc.id;
+    for (final source in <Query<Map<String, dynamic>>>[
+      _privateDocs,
+      _legacyUsers,
+    ]) {
+      try {
+        final snapshot = await source.get();
+        for (final doc in snapshot.docs) {
+          final data = doc.data();
+          for (final field in const ['contentReports', 'placeChangeRequests']) {
+            final raw = data[field];
+            if (raw is! List) continue;
+            for (final item in raw) {
+              if (item is Map && (item['id'] as String? ?? '') == reportId) {
+                // Private doc → owner uid is the parent of `private`.
+                return doc.reference.parent.parent?.id ?? doc.id;
+              }
             }
           }
         }
+      } catch (error) {
+        debugPrint('findReporterId failed: $error');
       }
-    } catch (error) {
-      debugPrint('findReporterId failed: $error');
     }
     return null;
   }
@@ -278,28 +302,40 @@ class FirestoreReportRepository implements ReportRepository {
     required String reportId,
     required String status,
   }) async {
-    final ref = _users.doc(userId);
-    final snap = await ref.get();
-    final data = snap.data();
-    if (data == null) return false;
-    final raw = data[field];
-    if (raw is! List) return false;
-
-    var changed = false;
-    final next = <Map<String, Object?>>[];
-    for (final item in raw) {
-      if (item is! Map) continue;
-      final map = Map<String, Object?>.from(item);
-      if ((map['id'] as String? ?? '') == reportId) {
-        map['status'] = status;
-        map['reviewedAt'] = Timestamp.now();
-        changed = true;
+    // Private doc first; legacy public profile until the owner's next sign-in.
+    var patchedAny = false;
+    for (final ref in [
+      userPrivateDoc(_firestore, userId),
+      _legacyUsers.doc(userId),
+    ]) {
+      final DocumentSnapshot<Map<String, dynamic>> snap;
+      try {
+        snap = await ref.get();
+      } catch (error) {
+        // Private docs are denied while the previous rules are deployed.
+        debugPrint('report status read ${ref.path} skipped: $error');
+        continue;
       }
-      next.add(map);
+      final raw = snap.data()?[field];
+      if (raw is! List) continue;
+
+      var changed = false;
+      final next = <Map<String, Object?>>[];
+      for (final item in raw) {
+        if (item is! Map) continue;
+        final map = Map<String, Object?>.from(item);
+        if ((map['id'] as String? ?? '') == reportId) {
+          map['status'] = status;
+          map['reviewedAt'] = Timestamp.now();
+          changed = true;
+        }
+        next.add(map);
+      }
+      if (!changed) continue;
+      await ref.set({field: next}, SetOptions(merge: true));
+      patchedAny = true;
     }
-    if (!changed) return false;
-    await ref.set({field: next}, SetOptions(merge: true));
-    return true;
+    return patchedAny;
   }
 
   List<ContentReport> _reportsFromUsers(
@@ -315,7 +351,7 @@ class FirestoreReportRepository implements ReportRepository {
           if (item is! Map) continue;
           final report = _fromMap(
             Map<String, dynamic>.from(item),
-            fallbackReporterId: doc.id,
+            fallbackReporterId: doc.reference.parent.parent?.id ?? doc.id,
             fromPlaceChange: field == 'placeChangeRequests',
           );
           if (report != null) {

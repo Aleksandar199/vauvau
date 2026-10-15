@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../core/firebase/firestore_auth_guard.dart';
 import '../../../core/geo/firestore_geo.dart';
 import '../../../core/geo/geo.dart';
+import '../../auth/data/user_document.dart';
 import '../../discover/data/dog_profile_mapper.dart';
 import '../domain/walk_presence_repository.dart';
 
@@ -10,9 +11,6 @@ class FirestoreWalkPresenceRepository implements WalkPresenceRepository {
   FirestoreWalkPresenceRepository(this._firestore);
 
   final FirebaseFirestore _firestore;
-
-  CollectionReference<Map<String, dynamic>> get _users =>
-      _firestore.collection('users');
 
   CollectionReference<Map<String, dynamic>> get _dogs =>
       _firestore.collection('dogs');
@@ -80,7 +78,15 @@ class FirestoreWalkPresenceRepository implements WalkPresenceRepository {
     required String? dogId,
     required Map<String, dynamic> payload,
   }) async {
-    await _users.doc(userId).set(payload, SetOptions(merge: true));
+    // Owner's own copy goes to the private doc (public users/{uid} is
+    // readable by everyone). Nothing reads it — the map reads walkers from
+    // dogs — so a rejected write must not stop the dog presence update.
+    try {
+      await userPrivateDoc(_firestore, userId).set(
+        payload,
+        SetOptions(merge: true),
+      );
+    } catch (_) {}
     if (dogId != null && dogId.isNotEmpty) {
       await _dogs.doc(dogId).set(payload, SetOptions(merge: true));
       return;

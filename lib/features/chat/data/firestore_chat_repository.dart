@@ -445,6 +445,18 @@ class FirestoreChatRepository implements ChatRepository {
     required String peerId,
     required DiscoverProfile peerProfile,
   }) async {
+    try {
+      // Never rewrite an existing room: that would wipe lastMessage / unread,
+      // and rules only let participants change those fields anyway.
+      if ((await _rooms.doc(id).get()).exists) {
+        return;
+      }
+    } catch (error) {
+      developer.log(
+        'createRoom existence check failed: $error',
+        name: 'FirestoreChatRepository',
+      );
+    }
     final myDogSnap = await _firestore.collection('dogs').doc(myDogId).get();
     final myDogData = myDogSnap.data() ?? <String, dynamic>{};
     final myDogName = myDogData['name'] as String? ?? '';

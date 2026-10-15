@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/firebase/firebase_status.dart';
+import '../../auth/data/user_document.dart';
 
 class PoiReports extends Notifier<Set<String>> {
   @override
@@ -68,13 +69,11 @@ class PoiReports extends Notifier<Set<String>> {
     final firestore = FirebaseFirestore.instance;
 
     // Fast path — unblock UI immediately after this write.
-    await firestore.collection('users').doc(uid).set(
-      {
-        'placeChangeRequests': FieldValue.arrayUnion([entry]),
-      },
-      SetOptions(merge: true),
-    );
-    debugPrint('POI change report saved on users/$uid');
+    // Private doc: the public users/{uid} is readable by everyone.
+    await setUserPrivateFields(firestore, uid, {
+      'placeChangeRequests': FieldValue.arrayUnion([entry]),
+    });
+    debugPrint('POI change report saved on users/$uid/private');
 
     if (markAsReported) {
       report(trimmedPlaceId);

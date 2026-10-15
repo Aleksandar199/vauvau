@@ -134,7 +134,8 @@ class DiscoverController extends Notifier<DiscoverState> {
     final uid = user?.uid ?? 'local-user';
     final name = user?.displayName?.trim().isNotEmpty == true
         ? user!.displayName!.trim()
-        : (user?.email ?? 'Neko');
+        // Never the email: the name is shown to the dog's owner.
+        : 'Neko';
     return ref
         .read(discoverRepositoryProvider)
         .swipe(
@@ -151,7 +152,8 @@ class DiscoverController extends Notifier<DiscoverState> {
     final uid = user?.uid ?? 'local-user';
     final name = user?.displayName?.trim().isNotEmpty == true
         ? user!.displayName!.trim()
-        : (user?.email ?? 'Neko');
+        // Never the email: the name is shown to the dog's owner.
+        : 'Neko';
     return ref
         .read(discoverRepositoryProvider)
         .sendSuperLike(

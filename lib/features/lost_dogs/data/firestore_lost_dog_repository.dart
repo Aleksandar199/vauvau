@@ -114,7 +114,8 @@ class FirestoreLostDogRepository implements LostDogRepository {
     if (name.isEmpty) {
       name = user.displayName?.trim() ?? '';
       if (name.isEmpty) {
-        name = user.email?.trim() ?? 'Korisnik';
+        // Never the email: lost-dog comments are public.
+        name = 'Korisnik';
       }
     }
     final now = DateTime.now();
@@ -153,33 +154,54 @@ class FirestoreLostDogRepository implements LostDogRepository {
     }
     final ref = _col.doc(dogId);
     try {
-      // Store likes in commentLikes map so we don't rewrite the comments array
-      // (array rewrites are fragile with Timestamps and often hit rule denials).
-      await firestore.runTransaction((tx) async {
-        final snap = await tx.get(ref);
-        if (!snap.exists) {
-          return;
-        }
-        final data = snap.data() ?? const <String, dynamic>{};
-        final likesByComment = _commentLikesFromData(data);
-        final current = [...(likesByComment[trimmedId] ?? const <String>[])];
-        if (current.contains(uid)) {
-          current.remove(uid);
-        } else {
-          current.add(uid);
-        }
-        likesByComment[trimmedId] = current;
+      await _toggleCommentLikeTx(ref, trimmedId, uid, legacyFormat: false);
+    } on FirebaseException catch (error) {
+      if (error.code != 'permission-denied') {
+        debugPrint('Lost dog comment like failed: $error');
+        rethrow;
+      }
+      // Previous firestore.rules only accept the whole commentLikes map.
+      await _toggleCommentLikeTx(ref, trimmedId, uid, legacyFormat: true);
+    }
+  }
+
+  Future<void> _toggleCommentLikeTx(
+    DocumentReference<Map<String, dynamic>> ref,
+    String commentId,
+    String uid, {
+    required bool legacyFormat,
+  }) {
+    // Store likes in commentLikes map so we don't rewrite the comments array
+    // (array rewrites are fragile with Timestamps and often hit rule denials).
+    return firestore.runTransaction((tx) async {
+      final snap = await tx.get(ref);
+      if (!snap.exists) {
+        return;
+      }
+      final data = snap.data() ?? const <String, dynamic>{};
+      final likesByComment = _commentLikesFromData(data);
+      final current = [...(likesByComment[commentId] ?? const <String>[])];
+      if (current.contains(uid)) {
+        current.remove(uid);
+      } else {
+        current.add(uid);
+      }
+      if (legacyFormat) {
+        likesByComment[commentId] = current;
         tx.update(ref, {
           'commentLikes': {
             for (final entry in likesByComment.entries) entry.key: entry.value,
           },
         });
+        return;
+      }
+      // Only this comment's list changes; commentLikeTarget tells the rules
+      // which entry to check (caller may add/remove only their own uid).
+      tx.update(ref, {
+        FieldPath(['commentLikes', commentId]): current,
+        'commentLikeTarget': commentId,
       });
-    } catch (error, stack) {
-      debugPrint('Lost dog comment like failed: $error');
-      debugPrint('$stack');
-      rethrow;
-    }
+    });
   }
 
   @override

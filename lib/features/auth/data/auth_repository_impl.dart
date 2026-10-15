@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
@@ -42,7 +44,12 @@ class AuthRepositoryImpl implements AuthRepository {
             if (_datasource.currentUser?.uid != firebaseUser.uid) {
               return;
             }
-            controller.add(_mapAuthUser(firebaseUser, doc.data()));
+            final data = doc.data();
+            if (data != null && userPrivateFields.any(data.containsKey)) {
+              // Sessions restored without sign-in still move legacy fields.
+              unawaited(_syncPrivateDoc(firebaseUser.uid, firebaseUser.email));
+            }
+            controller.add(_mapAuthUser(firebaseUser, data));
           },
           onError: (Object error, StackTrace stackTrace) {
             debugPrint('User profile stream: $error');
@@ -425,6 +432,33 @@ class AuthRepositoryImpl implements AuthRepository {
       }
       transaction.set(ref, payload, SetOptions(merge: true));
     });
+    await _syncPrivateDoc(user.uid, user.email);
+  }
+
+  bool _privateSyncRunning = false;
+
+  /// Keeps email in `users/{uid}/private/account` and moves legacy private
+  /// fields off the public profile. Best-effort: never blocks sign-in.
+  Future<void> _syncPrivateDoc(String uid, String? email) async {
+    final firestore = _firestore;
+    if (firestore == null || _privateSyncRunning) {
+      return;
+    }
+    _privateSyncRunning = true;
+    try {
+      final trimmed = (email ?? '').trim();
+      if (trimmed.isNotEmpty) {
+        await userPrivateDoc(firestore, uid).set(
+          {'email': trimmed},
+          SetOptions(merge: true),
+        );
+      }
+      await moveUserPrivateFields(firestore, uid, authEmail: email);
+    } catch (error) {
+      debugPrint('User private sync skipped: $error');
+    } finally {
+      _privateSyncRunning = false;
+    }
   }
 
   Future<void> _createDefaultProfileIfNew(AppUser user) async {
@@ -434,17 +468,17 @@ class AuthRepositoryImpl implements AuthRepository {
     }
     final ref = firestore.collection(userCollection).doc(user.uid);
     final snapshot = await ref.get();
-    if (snapshot.exists) {
-      return;
+    if (!snapshot.exists) {
+      await ref.set(
+        userDocumentPayload(
+          user,
+          includeCreatedAt: true,
+          includeRole: true,
+          includeDog: true,
+          includeOwnerPhoto: false,
+        ),
+      );
     }
-    await ref.set(
-      userDocumentPayload(
-        user,
-        includeCreatedAt: true,
-        includeRole: true,
-        includeDog: true,
-        includeOwnerPhoto: false,
-      ),
-    );
+    await _syncPrivateDoc(user.uid, user.email);
   }
 }

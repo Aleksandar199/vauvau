@@ -8,7 +8,9 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/firebase/firebase_status.dart';
+import '../../../core/utils/message_preview.dart';
 import '../../../core/services/notification_service.dart';
+import '../../auth/data/user_document.dart';
 import '../../auth/presentation/auth_providers.dart';
 import '../domain/push_payload.dart';
 import 'push_platform.dart';
@@ -145,7 +147,8 @@ class FcmPushNotificationGateway implements PushNotificationGateway {
   }
 
   Future<void> _writeToken(String uid, String token) {
-    return _firestore.collection('users').doc(uid).set(
+    // Private doc: the public users/{uid} is readable by every signed-in user.
+    return userPrivateDoc(_firestore, uid).set(
       {
         'fcmToken': token,
         'fcmTokenUpdatedAt': FieldValue.serverTimestamp(),
@@ -173,8 +176,9 @@ class FcmPushNotificationGateway implements PushNotificationGateway {
     final senderId = FirebaseAuth.instance.currentUser?.uid ?? '';
     final doc = <String, dynamic>{
       'type': payload.typeName,
-      'title': payload.title,
-      'body': payload.body,
+      // Rules cap notification text; long chat messages are clipped here.
+      'title': clipLastMessagePreview(payload.title),
+      'body': clipLastMessagePreview(payload.body),
       'dogId': payload.dogId,
       'fromUserId': senderId.isEmpty ? null : senderId,
       'senderUserId': senderId.isEmpty ? null : senderId,

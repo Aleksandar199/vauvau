@@ -101,7 +101,6 @@ class DogsRepositoryImpl implements DogsRepository {
           {
             'uid': owner.uid,
             'name': owner.displayName,
-            'email': owner.email,
             'city': owner.cityName,
             'cityId': owner.cityId,
             'cityName': owner.cityName,

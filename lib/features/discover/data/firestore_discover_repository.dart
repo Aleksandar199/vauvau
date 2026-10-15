@@ -205,14 +205,26 @@ class FirestoreDiscoverRepository implements DiscoverRepository {
       throw const SuperLikeDailyLimitException();
     }
 
-    await _firestore.collection('super_likes').add({
-      'fromUserId': userId,
-      'targetDogId': target.id,
-      'targetOwnerId': target.ownerId,
-      'createdAt': FieldValue.serverTimestamp(),
-    });
+    // One counted super like per user per dog: marker super_likes/{uid}_{dog}
+    // and superLikesCount +1 go in one batch (rules check both together).
+    final marker =
+        _firestore.collection('super_likes').doc('${userId}_${target.id}');
+    if (!await _existsSafely(marker)) {
+      final batch = _firestore.batch()
+        ..set(marker, {
+          'fromUserId': userId,
+          'targetDogId': target.id,
+          'targetOwnerId': target.ownerId,
+          'createdAt': FieldValue.serverTimestamp(),
+        })
+        ..set(
+          _firestore.collection('dogs').doc(target.id),
+          {'superLikesCount': FieldValue.increment(1)},
+          SetOptions(merge: true),
+        );
+      await batch.commit();
+    }
 
-    // superLikesCount is bumped by _recordLike together with the like doc.
     await _recordLike(
       userId: userId,
       myDogId: myDogId,
@@ -246,7 +258,8 @@ class FirestoreDiscoverRepository implements DiscoverRepository {
       final data = userDoc.data();
       senderName = (data?['name'] as String?)?.trim() ?? '';
       if (senderName.isEmpty) {
-        senderName = (data?['email'] as String?)?.trim() ?? 'Neko';
+        // Never fall back to email: it would be shown to the recipient.
+        senderName = 'Neko';
       }
     }
     final title = '⭐ Super Like!';
@@ -269,6 +282,17 @@ class FirestoreDiscoverRepository implements DiscoverRepository {
       });
     } catch (error) {
       debugPrint('Super Like obaveštenje nije upisano: $error');
+    }
+  }
+
+  /// Reading a missing chat room / super-like marker is denied by the
+  /// previous firestore.rules; treat that as "does not exist yet".
+  Future<bool> _existsSafely(DocumentReference<Map<String, dynamic>> ref) async {
+    try {
+      return (await ref.get()).exists;
+    } catch (error) {
+      debugPrint('existence check ${ref.path} failed: $error');
+      return false;
     }
   }
 
@@ -298,7 +322,12 @@ class FirestoreDiscoverRepository implements DiscoverRepository {
         'userIds': [userId, target.ownerId],
         'createdAt': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
-      await _chats.doc(matchId).set({
+      // Re-match must not reset an existing room's lastMessage / unread.
+      final room = _chats.doc(matchId);
+      if (await _existsSafely(room)) {
+        return true;
+      }
+      await room.set({
         'id': matchId,
         'participantIds': [userId, target.ownerId],
         'dogIds': [myDogId, target.id],
@@ -355,16 +384,13 @@ class FirestoreDiscoverRepository implements DiscoverRepository {
         .doc(userId);
     final likeSnap = await likeRef.get();
     if (likeSnap.exists) {
-      // Rules require the like doc and its counters to change in one batch.
-      final wasSuper = likeSnap.data()?['type'] == 'superLike';
+      // Rules require the like doc and likesCount to change in one batch.
+      // The super-like marker (and superLikesCount) stays: it counts once.
       final batch = _firestore.batch()
         ..delete(likeRef)
         ..set(
           _firestore.collection('dogs').doc(dogId),
-          {
-            'likesCount': FieldValue.increment(-1),
-            if (wasSuper) 'superLikesCount': FieldValue.increment(-1),
-          },
+          {'likesCount': FieldValue.increment(-1)},
           SetOptions(merge: true),
         );
       try {
@@ -400,23 +426,22 @@ class FirestoreDiscoverRepository implements DiscoverRepository {
     final dogRef = _firestore.collection('dogs').doc(dogId);
     final likeRef = dogRef.collection('likes').doc(userId);
     final likeExisting = await likeRef.get();
-    final wasSuper = likeExisting.data()?['type'] == 'superLike';
-    // A super like is never downgraded to a plain like (rules forbid it).
-    final likeType = wasSuper ? 'superLike' : type;
-    // Rules only accept counter changes in the same batch as the like doc.
-    final counters = <String, Object>{
-      if (!likeExisting.exists) 'likesCount': FieldValue.increment(1),
-      if (likeType == 'superLike' && !wasSuper)
-        'superLikesCount': FieldValue.increment(1),
-    };
+    // Keep a super like marked as such when the user later swipes like.
+    final likeType =
+        likeExisting.data()?['type'] == 'superLike' ? 'superLike' : type;
+    // Rules only accept likesCount changes in the same batch as the like doc.
     final batch = _firestore.batch()
       ..set(likeRef, {
         'userId': userId,
         'type': likeType,
         'createdAt': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
-    if (counters.isNotEmpty) {
-      batch.set(dogRef, counters, SetOptions(merge: true));
+    if (!likeExisting.exists) {
+      batch.set(
+        dogRef,
+        {'likesCount': FieldValue.increment(1)},
+        SetOptions(merge: true),
+      );
     }
     await batch.commit();
 
@@ -451,7 +476,8 @@ class FirestoreDiscoverRepository implements DiscoverRepository {
       final data = userDoc.data();
       senderName = (data?['name'] as String?)?.trim() ?? '';
       if (senderName.isEmpty) {
-        senderName = (data?['email'] as String?)?.trim() ?? 'Neko';
+        // Never fall back to email: it would be shown to the recipient.
+        senderName = 'Neko';
       }
     }
     final payload = <String, dynamic>{

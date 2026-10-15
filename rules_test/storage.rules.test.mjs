@@ -71,8 +71,9 @@ describe('storage: slike iz četa', () => {
     await assertFails(getMetadata(ref(anon(), 'chats/alice/1.jpg')));
   });
 
-  test('prijavljen korisnik čita pojedinačnu sliku', async () => {
-    await assertSucceeds(getMetadata(ref(as('bob'), 'chats/alice/1.jpg')));
+  test('po putanji sliku čita samo onaj ko ju je poslao (putanje su pogodive)', async () => {
+    await assertFails(getMetadata(ref(as('bob'), 'chats/alice/1.jpg')));
+    await assertSucceeds(getMetadata(ref(as('alice'), 'chats/alice/1.jpg')));
   });
 
   test('niko osim vlasnika ne lista slike iz četa', async () => {

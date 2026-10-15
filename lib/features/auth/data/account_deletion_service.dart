@@ -78,9 +78,7 @@ class AccountDeletionService {
     await _deleteQuery(
       firestore.collection('swipes').where('fromUserId', isEqualTo: trimmed),
     );
-    await _deleteQuery(
-      firestore.collection('super_likes').where('fromUserId', isEqualTo: trimmed),
-    );
+    await _deleteSuperLikes(trimmed);
     await _deleteQuery(
       firestore.collection('matches').where('userIds', arrayContains: trimmed),
     );
@@ -169,11 +167,36 @@ class AccountDeletionService {
     await _deleteSubcollection(userRef, 'blocked_users');
     await _deleteSubcollection(userRef, 'walks');
     await _deleteSubcollection(userRef, 'place_change_requests');
+    await _deleteSubcollection(userRef, 'private');
     await userRef.delete();
 
     // Best-effort Storage cleanup (public HTTPS / gs:// URLs only).
     for (final url in photoUrls) {
       await _storage.tryDeleteImageByUrl(url);
+    }
+  }
+
+  /// Marker docs `super_likes/{uid}_{dogId}` are counted in the dog's
+  /// superLikesCount, so rules require the -1 in the same batch.
+  Future<void> _deleteSuperLikes(String uid) async {
+    final snap = await firestore
+        .collection('super_likes')
+        .where('fromUserId', isEqualTo: uid)
+        .get();
+    for (final doc in snap.docs) {
+      final dogId = (doc.data()['targetDogId'] as String? ?? '').trim();
+      final batch = firestore.batch()..delete(doc.reference);
+      if (dogId.isNotEmpty && doc.id == '${uid}_$dogId') {
+        final dogRef = firestore.collection('dogs').doc(dogId);
+        if ((await dogRef.get()).exists) {
+          batch.update(dogRef, {'superLikesCount': FieldValue.increment(-1)});
+        }
+      }
+      try {
+        await batch.commit();
+      } catch (error) {
+        debugPrint('AccountDeletion super like ${doc.id}: $error');
+      }
     }
   }
 

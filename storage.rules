@@ -4,7 +4,7 @@ service firebase.storage {
     // Images are shown via download URLs (?token=…), which bypass these
     // rules. Rules cover SDK/REST access by path: single objects of public
     // roots are readable, but only the owner may list a folder (no
-    // enumeration of other users' uploads). Chat images need sign-in.
+    // enumeration of other users' uploads). Chat images: uploader only.
     // Writes require auth + image content type + max 8MB.
     // Deletes/writes are owner-scoped: {root}/{userId}/...
     function isSignedIn() {
@@ -80,8 +80,11 @@ service firebase.storage {
       allow delete: if isOwner(userId);
     }
 
+    // Chat images: by path only the uploader (paths are guessable:
+    // {uid}/{millis}). The peer loads the ?token= URL stored in the message,
+    // which only chat participants can read in Firestore.
     match /chats/{userId}/{allPaths=**} {
-      allow get: if isSignedIn();
+      allow get: if isOwner(userId);
       allow list: if isOwner(userId);
       allow create, update: if ownerImageWrite(userId);
       allow delete: if isOwner(userId);
