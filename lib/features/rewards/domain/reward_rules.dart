@@ -87,6 +87,65 @@ abstract final class RewardRules {
         walk.recognizedMeters >= 100;
   }
 
+  /// Marker in the partner name of coupon templates; such a coupon can't be
+  /// activated until the admin enters the real partner.
+  static const String placeholderPartner = 'Partner (upiši naziv)';
+
+  static bool isPlaceholderPartner(String partnerName) =>
+      partnerName.trim().isEmpty || partnerName.contains('(upiši naziv)');
+
+  /// Coupon templates an admin adds with one tap: INACTIVE, placeholder
+  /// partner, valid 60 days. Prices fit the scoring (≈ 30 points a day max).
+  static List<Coupon> defaultCoupons(DateTime now) {
+    final start = DateTime(now.year, now.month, now.day);
+    final end = DateTime(now.year, now.month, now.day + 60, 23, 59);
+    Coupon template(
+      String id,
+      String title,
+      String discount,
+      int cost,
+      int quantity,
+    ) => Coupon(
+      id: id,
+      partnerName: placeholderPartner,
+      title: title,
+      description:
+          'Šablon – pre aktivacije upiši pravog partnera, '
+          'uslove i rok.',
+      discountLabel: discount,
+      pointsCost: cost,
+      startsAt: start,
+      expiresAt: end,
+      maxQuantity: quantity,
+      terms: 'Jednokratni kupon, ne kombinuje se sa drugim popustima.',
+    );
+    return [
+      template(
+        'default_treat',
+        'Poslastica za psa',
+        'Besplatna poslastica',
+        40,
+        50,
+      ),
+      template('default_10', 'Hrana i oprema', '10% popusta', 60, 50),
+      template('default_15', 'Hrana i oprema', '15% popusta', 100, 30),
+      template(
+        'default_grooming',
+        'Šišanje i kupanje',
+        '15% na šišanje',
+        150,
+        20,
+      ),
+      template(
+        'default_20',
+        'Oprema (povodac, ogrlica, krevet)',
+        '20% popusta na opremu',
+        200,
+        10,
+      ),
+    ];
+  }
+
   /// Seeds an admin can add with one tap (ids are stable).
   static const List<Challenge> defaultChallenges = [
     Challenge(

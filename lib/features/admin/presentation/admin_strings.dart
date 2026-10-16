@@ -208,6 +208,18 @@ abstract final class AdminStrings {
   static String rewardsRange(int max) =>
       L10n.tr('Dozvoljeno: 1–$max', 'Allowed: 1–$max');
   static String get rewardsNewCoupon => L10n.tr('Novi kupon', 'New coupon');
+  static String get rewardsSeedCoupons => L10n.tr(
+        'Dodaj predefinisane kupone (neaktivne šablone)',
+        'Add predefined coupons (inactive templates)',
+      );
+  static String get rewardsTemplatesExist => L10n.tr(
+        'Svi predefinisani kuponi su već dodati.',
+        'All predefined coupons are already added.',
+      );
+  static String get rewardsNeedPartner => L10n.tr(
+        'Pre aktivacije upiši naziv pravog partnera (pet shop-a).',
+        'Enter the real partner (pet shop) before activating.',
+      );
   static String get rewardsEditCoupon => L10n.tr('Izmeni kupon', 'Edit coupon');
   static String get rewardsNoCoupons => L10n.tr(
         'Nema kupona. Unesite samo stvarne, dogovorene partnerske ponude.',

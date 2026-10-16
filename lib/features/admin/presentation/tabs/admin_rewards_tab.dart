@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../rewards/domain/reward_rules.dart';
 import '../../../rewards/domain/rewards_models.dart';
+import '../../../rewards/domain/rewards_repository.dart';
 import '../../../rewards/presentation/rewards_controller.dart';
 import '../../../rewards/presentation/rewards_strings.dart';
 import '../admin_strings.dart';
@@ -377,32 +378,87 @@ class _CouponsAdmin extends ConsumerWidget {
         icon: const Icon(Icons.add),
         label: Text(AdminStrings.rewardsNewCoupon),
       ),
-      body: _asyncList<Coupon>(
-        ref.watch(_adminCouponsProvider),
-        empty: AdminStrings.rewardsNoCoupons,
-        data: (items) => ListView(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
-          children: [
-            for (final c in items)
-              Card(
-                child: ListTile(
-                  title: Text('${c.partnerName} · ${c.discountLabel}'),
-                  subtitle: Text(
-                    '${RewardsStrings.cost(c.pointsCost)} · '
-                    '${c.claimedCount}/${c.maxQuantity} · '
-                    '${RewardsStrings.validUntil(c.expiresAt)} · '
-                    '${RewardsStrings.availability(c.availability(now))}',
-                  ),
-                  onTap: () => _editCoupon(context, ref, c),
-                  trailing: Switch(
-                    value: c.isActive,
-                    onChanged: (v) =>
-                        _guard(context, () => repo.setCouponActive(c.id, v)),
-                  ),
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+            child: OutlinedButton.icon(
+              onPressed: () => _addTemplates(context, ref),
+              icon: const Icon(Icons.playlist_add),
+              label: Text(AdminStrings.rewardsSeedCoupons),
+            ),
+          ),
+          Expanded(child: _list(context, ref, repo, now)),
+        ],
+      ),
+    );
+  }
+
+  /// Adds the missing templates (fixed ids, so nothing is duplicated and
+  /// edited coupons are not overwritten).
+  Future<void> _addTemplates(BuildContext context, WidgetRef ref) async {
+    final repo = ref.read(rewardsRepositoryProvider);
+    final existing = {
+      for (final c in ref.read(_adminCouponsProvider).value ?? const <Coupon>[])
+        c.id,
+    };
+    final missing = [
+      for (final c in RewardRules.defaultCoupons(DateTime.now()))
+        if (!existing.contains(c.id)) c,
+    ];
+    if (missing.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(AdminStrings.rewardsTemplatesExist)),
+      );
+      return;
+    }
+    await _guard(context, () async {
+      for (final c in missing) {
+        await repo.saveCoupon(c);
+      }
+    });
+  }
+
+  Widget _list(
+    BuildContext context,
+    WidgetRef ref,
+    RewardsRepository repo,
+    DateTime now,
+  ) {
+    return _asyncList<Coupon>(
+      ref.watch(_adminCouponsProvider),
+      empty: AdminStrings.rewardsNoCoupons,
+      data: (items) => ListView(
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
+        children: [
+          for (final c in items)
+            Card(
+              child: ListTile(
+                title: Text('${c.partnerName} · ${c.discountLabel}'),
+                subtitle: Text(
+                  '${RewardsStrings.cost(c.pointsCost)} · '
+                  '${c.claimedCount}/${c.maxQuantity} · '
+                  '${RewardsStrings.validUntil(c.expiresAt)} · '
+                  '${RewardsStrings.availability(c.availability(now))}',
+                ),
+                onTap: () => _editCoupon(context, ref, c),
+                trailing: Switch(
+                  value: c.isActive,
+                  onChanged: (v) {
+                    if (v && RewardRules.isPlaceholderPartner(c.partnerName)) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(AdminStrings.rewardsNeedPartner),
+                        ),
+                      );
+                      return;
+                    }
+                    _guard(context, () => repo.setCouponActive(c.id, v));
+                  },
                 ),
               ),
-          ],
-        ),
+            ),
+        ],
       ),
     );
   }
@@ -577,6 +633,12 @@ class _CouponDialogState extends State<_CouponDialog> {
         FilledButton(
           onPressed: () {
             if (!(_form.currentState?.validate() ?? false)) return;
+            if (_active && RewardRules.isPlaceholderPartner(_partner.text)) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text(AdminStrings.rewardsNeedPartner)),
+              );
+              return;
+            }
             if (!_expiresAt.isAfter(_startsAt)) {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(content: Text(AdminStrings.rewardsDates)),

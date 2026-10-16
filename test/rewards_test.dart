@@ -452,6 +452,35 @@ void main() {
     });
   });
 
+  group('Predefinisani kuponi (šabloni)', () {
+    test(
+      'neaktivni, privremeni partner, stabilni id-jevi i ispravni rokovi',
+      () {
+        final templates = RewardRules.defaultCoupons(_now);
+        expect(templates, isNotEmpty);
+        expect(templates.map((c) => c.id).toSet(), hasLength(templates.length));
+        for (final c in templates) {
+          expect(c.isActive, isFalse);
+          expect(RewardRules.isPlaceholderPartner(c.partnerName), isTrue);
+          expect(c.pointsCost, greaterThan(0));
+          expect(c.maxQuantity, greaterThan(0));
+          expect(c.expiresAt.isAfter(c.startsAt), isTrue);
+          expect(c.availability(_now), CouponAvailability.inactive);
+        }
+        expect(RewardRules.isPlaceholderPartner('Pet shop Šapa'), isFalse);
+      },
+    );
+
+    test('šablon se ne prikazuje korisnicima dok nije aktiviran', () async {
+      final repo = LocalRewardsRepository(challenges: const []);
+      for (final c in RewardRules.defaultCoupons(_now)) {
+        await repo.saveCoupon(c);
+      }
+      expect(await repo.watchCoupons().first, isEmpty);
+      expect(await repo.watchCoupons(activeOnly: false).first, hasLength(5));
+    });
+  });
+
   group('Kompatibilnost sa postojećim profilima', () {
     test('korisnik bez dokumenata nagrada = 0 XP, Šapica', () {
       final summary = RewardSummary.fromMap(null);
