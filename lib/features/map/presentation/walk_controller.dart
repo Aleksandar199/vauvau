@@ -139,7 +139,8 @@ class WalkController extends Notifier<WalkSession> {
     final now = _now();
     final startCoord = ref.read(userLocationProvider).coord;
     final dog = ref.read(currentDiscoverDogProvider);
-    final rand = math.Random().nextInt(1 << 32).toRadixString(36);
+    // Not `1 << 32`: on web that is 0 and nextInt(0) throws.
+    final rand = math.Random().nextInt(0x7fffffff).toRadixString(36);
     state = WalkSession(
       isActive: true,
       now: now,
