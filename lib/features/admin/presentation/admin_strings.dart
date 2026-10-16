@@ -170,6 +170,71 @@ abstract final class AdminStrings {
     );
   }
 
+  // --- Nagrade (izazovi, kuponi, evidencija) ---
+  static String get rewardsTab => L10n.tr('Nagrade', 'Rewards');
+  static String get rewardsChallenges => L10n.tr('Izazovi', 'Challenges');
+  static String get rewardsCoupons => L10n.tr('Kuponi', 'Coupons');
+  static String get rewardsLedger => L10n.tr('Evidencija poena', 'Points log');
+  static String get rewardsClaims => L10n.tr('Preuzeti kuponi', 'Claimed coupons');
+  static String get save => L10n.tr('Sačuvaj', 'Save');
+  static String get rewardsSaved => L10n.tr('Sačuvano.', 'Saved.');
+  static String get rewardsSaveFailed =>
+      L10n.tr('Čuvanje nije uspelo', 'Save failed');
+  static String get rewardsNewChallenge => L10n.tr('Novi izazov', 'New challenge');
+  static String get rewardsEditChallenge =>
+      L10n.tr('Izmeni izazov', 'Edit challenge');
+  static String get rewardsSeedChallenges => L10n.tr(
+        'Dodaj podrazumevane izazove (neaktivne)',
+        'Add default challenges (inactive)',
+      );
+  static String get rewardsNoChallenges =>
+      L10n.tr('Nema izazova.', 'No challenges.');
+  static String get rewardsDaily => L10n.tr('Dnevni', 'Daily');
+  static String get rewardsWeekly => L10n.tr('Nedeljni', 'Weekly');
+  static String get rewardsWalksUnit => L10n.tr('šetnje', 'walks');
+  static String get rewardsTitleField => L10n.tr('Naziv', 'Title');
+  static String get rewardsDescriptionField => L10n.tr('Opis', 'Description');
+  static String get rewardsPeriod => L10n.tr('Period', 'Period');
+  static String get rewardsMetric => L10n.tr('Cilj', 'Goal');
+  static String get rewardsMetricKm => L10n.tr('Kilometri', 'Kilometres');
+  static String get rewardsMetricWalks =>
+      L10n.tr('Broj šetnji (≥ 1 km)', 'Walks (≥ 1 km)');
+  static String get rewardsTarget => L10n.tr('Ciljna vrednost', 'Target');
+  static String get rewardsPointsField => L10n.tr('Poeni', 'Points');
+  static String get rewardsSort => L10n.tr('Redosled', 'Order');
+  static String get rewardsActive => L10n.tr('Aktivno', 'Active');
+  static String get rewardsRequired => L10n.tr('Obavezno polje', 'Required');
+  static String get rewardsNumber => L10n.tr('Unesite broj', 'Enter a number');
+  static String rewardsRange(int max) =>
+      L10n.tr('Dozvoljeno: 1–$max', 'Allowed: 1–$max');
+  static String get rewardsNewCoupon => L10n.tr('Novi kupon', 'New coupon');
+  static String get rewardsEditCoupon => L10n.tr('Izmeni kupon', 'Edit coupon');
+  static String get rewardsNoCoupons => L10n.tr(
+        'Nema kupona. Unesite samo stvarne, dogovorene partnerske ponude.',
+        'No coupons. Enter only real, agreed partner offers.',
+      );
+  static String get rewardsPartner => L10n.tr('Partner (pet shop)', 'Partner');
+  static String get rewardsDiscount =>
+      L10n.tr('Popust (npr. 15% popusta)', 'Discount (e.g. 15% off)');
+  static String get rewardsCost => L10n.tr('Cena u poenima', 'Price in points');
+  static String get rewardsQuantity =>
+      L10n.tr('Maksimalna količina', 'Max quantity');
+  static String rewardsBelowClaimed(int n) => L10n.tr(
+        'Već je preuzeto $n – količina ne može biti manja.',
+        '$n already claimed – cannot be lower.',
+      );
+  static String get rewardsTerms => L10n.tr('Uslovi', 'Terms');
+  static String get rewardsStart => L10n.tr('Početak', 'Start');
+  static String get rewardsEnd => L10n.tr('Istek', 'Expiry');
+  static String get rewardsDates =>
+      L10n.tr('Istek mora biti posle početka.', 'Expiry must be after start.');
+  static String get rewardsNoLedger =>
+      L10n.tr('Još nema dodeljenih poena.', 'No points awarded yet.');
+  static String get rewardsSearchCode =>
+      L10n.tr('Pretraga po kodu (VV-…)', 'Search by code (VV-…)');
+  static String get rewardsNoClaims =>
+      L10n.tr('Još nema preuzetih kupona.', 'No claimed coupons yet.');
+
   static String _date(DateTime value) {
     return '${value.day}.${value.month}.${value.year}.';
   }

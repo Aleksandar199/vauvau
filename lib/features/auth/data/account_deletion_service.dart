@@ -169,6 +169,14 @@ class AccountDeletionService {
     await _deleteSubcollection(userRef, 'place_change_requests');
     await _deleteSubcollection(userRef, 'private');
     await userRef.delete();
+    // Rules allow deleting rewards/ledger only once the profile is gone (so
+    // nobody can wipe the ledger and claim the same walks again).
+    try {
+      await _deleteSubcollection(userRef, 'rewards');
+      await _deleteSubcollection(userRef, 'reward_ledger');
+    } catch (error) {
+      debugPrint('Rewards cleanup skipped: $error');
+    }
 
     // Best-effort Storage cleanup (public HTTPS / gs:// URLs only).
     for (final url in photoUrls) {

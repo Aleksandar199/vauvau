@@ -30,7 +30,8 @@
   - `chat` – 1:1 inbox i čet (tekst, slika, lokacija, walk invite, lajkovi, unread, zvuk).
   - `groups` – grupe po rasama + grupni čet (`GroupChatScreen` koriste i događaji).
   - `events` – događaji/šetnje + čet.
-  - `map` – OSM mapa, POI/places, seed mesta po gradovima, šetnja + presence, istorija šetnji, dodavanje mesta (admin).
+  - `map` – OSM mapa, POI/places, seed mesta po gradovima, šetnja + presence, istorija šetnji, dodavanje mesta (admin). GPS filter šetnje: `domain/walk_tracking.dart` (`WalkTrackingRules`, `WalkTracker`), oporavak: `data/walk_session_store.dart`.
+  - `rewards` – „Dnevni VauVau izazov“: XP/nivoi/poeni/izazovi/kuponi. Sva pravila bodovanja i nivoa u `domain/reward_rules.dart` (`RewardRules`, `LevelRules`), dan/nedelja po Beogradu u `domain/belgrade_calendar.dart` (isti algoritam je u `firestore.rules`), repo `data/firestore_rewards_repository.dart` + `local_rewards_repository.dart`, ekran `presentation/challenge_hub_screen.dart` (ulaz: `ChallengeEntryCard` na mapi), admin tab `admin/presentation/tabs/admin_rewards_tab.dart`.
   - `moments` – priče 24h, komentari, istaknute priče.
   - `lost_dogs` – izgubljeni/pronađeni psi, hitni popup.
   - `adoption` – oglasi za udomljavanje.
@@ -44,7 +45,7 @@
 - `scripts/build_release.{ps1,sh}` – release build (pravi APK, ne AAB).
 - `docs/` – `TEHNICKI_PREGLED.md` (pun tehnički pregled), `play-launch-checklist.md`, privacy/terms HTML, `reels/` (marketing).
 - `public/` – Firebase Hosting (samo `/privacy`, `/terms`).
-- `rules_test/` – testovi `firestore.rules` i `storage.rules` nad emulatorom (`@firebase/rules-unit-testing` + `node --test`). Iz `rules_test/`, posle `npm install`: `firebase emulators:exec --only firestore,storage --project demo-vauvau "node --test firestore.rules.test.mjs storage.rules.test.mjs"` (Node i firebase-tools su u `%USERPROFILE%\.cache\firebase`, vidi `firebase.cmd`).
+- `rules_test/` – testovi `firestore.rules` i `storage.rules` nad emulatorom (`@firebase/rules-unit-testing` + `node --test`). Iz `rules_test/`, posle `npm install`: `firebase emulators:exec --only firestore,storage --project demo-vauvau "node --test firestore.rules.test.mjs storage.rules.test.mjs rewards.rules.test.mjs"` (Node i firebase-tools su u `%USERPROFILE%\.cache\firebase`, vidi `firebase.cmd`).
 - Root: `firestore.rules`, `storage.rules`, `firestore.indexes.json`, `firebase.json`, `.firebaserc`, `storage-cors.json`.
 
 ### Ključni fajlovi
@@ -58,7 +59,8 @@
 - `lib/features/discover/data/firestore_discover_repository.dart` – feed (live prva strana + `fetchProfilesPage`), swipe, lajkovi, mečevi, kreiranje četa.
 - `lib/features/discover/presentation/discover_controller.dart` – `DiscoverFeedController` (paginacija, 8 po strani, zadržava kartice pri osvežavanju), `discoverAreaProvider`, `discoverFeedProvider` (blokirani/sakriveni/sopstveni psi).
 - `lib/features/dogs/data/dogs_repository_impl.dart` – CRUD psa.
-- `lib/features/map/presentation/walk_controller.dart` – šetnja, presence, spajanje mesta (`mapPlacesProvider`).
+- `lib/features/map/presentation/walk_controller.dart` – šetnja (start/pauza/nastavak/kraj, jedna aktivna, oporavak posle prekida procesa), presence, spajanje mesta (`mapPlacesProvider`).
+- `lib/features/map/presentation/map_screen.dart` – markeri mesta se memoizuju (`_placeMarkersFor`); nova lista markera = MarkerClusterLayer ponovo klasteruje sve (to je bilo „stalno osvežavanje“).
 - `lib/features/map/data/places_repository.dart` – admin mesta (`places` SoT + kopija u `pois`, atomski batch).
 - `lib/features/notifications/presentation/push_controller.dart` – slanje push/lokalnih notifikacija.
 - `lib/features/profile/data/app_settings_store.dart` – SharedPreferences podešavanja.
@@ -78,7 +80,7 @@
 Pun spisak polja: `docs/TEHNICKI_PREGLED.md` sekcija 5 „Firestore struktura po modulima“.
 - `users/{uid}` (javni, čitaju svi prijavljeni) – uid, name, photoUrl/customPhotoUrl, city/cityId/cityName, neighborhoodId/Name, bio, role (`user`/`admin`), dog (Map), primaryDogId, walkHistory[], createdAt/updatedAt. Privatna polja (`userPrivateFields` u `user_document.dart`) pravila dozvoljavaju samo da se uklone.
   - opciona javna „o meni“ polja (`OwnerDetails` u `auth/domain/owner_details.dart`, deo `AppUser.details`; izbori su stabilni ključevi iz `OwnerDetailOptions`): ageGroup, occupation (≤60), interests[], languages[], lookingFor[], favoriteActivities[], walkTimes[], walkPace, groupWalks, dogExperience, sharesAdvice, volunteerInterest (bool – čuva se samo `true`), favoriteBreed (≤60), favoriteWalkSpot (≤80), instagram (korisničko ime bez `@`). Prazna vrednost = `FieldValue.delete()` (`ownerDetailsPayload`); upisuje ih samo „Izmeni profil“ (`saveUserProfile(details:)`).
-  - podkolekcije: `private/account` (samo vlasnik + admin: email, fcmToken, presence kopija, contentReports[], placeChangeRequests[]; vlasnikov klijent pri prijavi seli stara polja iz javnog dokumenta – `moveUserPrivateFields`), `fcmInbox` (niko ne čita), `blocked_users/{uid}` (blockedAt), `walks` (distanceKm, durationSeconds, startedAt/endedAt), `place_change_requests` (samo u pravilima).
+  - podkolekcije: `private/account` (samo vlasnik + admin: email, fcmToken, presence kopija, contentReports[], placeChangeRequests[]; vlasnikov klijent pri prijavi seli stara polja iz javnog dokumenta – `moveUserPrivateFields`), `fcmInbox` (niko ne čita), `blocked_users/{uid}` (blockedAt), `walks` (samo vlasnik; distanceKm, recognizedMeters, excludedMeters, durationSeconds, startedAt/endedAt, route [{points:[{lat,lng,t,acc}]}] ≤ 600 tačaka, flags {vehicle, mock, approximate, recovered}; vlasnik ne menja), `rewards/summary` (xp, points, lastEntryId), `rewards/d{yyyymmdd}` i `rewards/w{ponedeljak}` (meters, walks, walkPoints), `reward_ledger/{walk_|ch_|coupon_…}` (nepromenljiva evidencija: type, xp, points, reason, createdAt…), `place_change_requests` (samo u pravilima).
 - `dogs/{dogId}` – ownerId, name, breed, gender, age/ageYears/ageMonths, size, bio, isVaccinated/isMicrochipped/isSterilized, weightKg, energyLevel, temperament/likesTags/dislikesTags[], location + cityId/neighborhoodId, foto polja (photoUrl, imageUrl, photos, photoUrls, galleryUrls, primaryPhotoUrl), likesCount, superLikesCount, presence polja, storyHighlights (Map).
   - `likes/{uid}` (type, createdAt), `health_records` (category, title, administeredDate, nextDueDate, notes, notificationId), `reminders` (title, type, category, date, repeatType, reminderOffset, isCompleted, custom interval…).
 - `swipes/{uid}_{dogId}` (fromUserId, fromDogId, toDogId, type), `super_likes/{uid}_{dogId}` (marker: fromUserId, targetDogId, targetOwnerId, createdAt; stari dokumenti imaju auto-id), `matches/{uidA}_{uidB}` (dogIds, userIds).
@@ -91,6 +93,7 @@ Pun spisak polja: `docs/TEHNICKI_PREGLED.md` sekcija 5 „Firestore struktura po
 - `adoption_dogs/{id}` – name, breed, age, gender, size, location, imageUrls[], contactPhone, uploaderUserId, status (`available`/`adopted`).
 - `pois/{id}` (sva mesta za mapu: category, address, lat/lng, phone, openingHours, verificationStatus, sponsor polja…), `places/{id}` (admin izvor istine, kopija u `pois`), `cities/{id}` (name, lat, lng, radiusKm, isActive).
 - `notifications/{id}` (toUserId/recipientId, fromUserId, type, title, body, conversationId, isRead, createdAt…; nove čet poruke – `message`/`group`/`event` – se NE upisuju ovde, samo u `fcmInbox` + lokalna notifikacija na telefonu), `reports`, `admin_notifications`, `admin_feedback` (status `new`/`resolved`), `change_requests`. Legacy: `highlights`, `support` (samo pravila).
+- `reward_challenges/{id}` (admin: title, description, period daily/weekly, metric distance/walks, target, rewardXp, rewardPoints, isActive, sortOrder), `reward_coupons/{id}` (admin: partnerName, title, description, discountLabel, pointsCost, startsAt, expiresAt, maxQuantity, claimedCount, terms, isActive), `coupon_claims/{couponId}_{uid}` (userId, code `VV-XXXXXXXX`, status claimed/redeemed/cancelled, pointsCost, expiresAt, claimedAt…). Indeks: collection group `reward_ledger.createdAt` (fieldOverride, nije deployovan).
 - **Storage:** `{pets|users|moments|events|groups|adoption|lost_dogs|uploads|chats}/{uid}/{millis}.ext`, limit 8 MB.
 - **Pooštreno 2026-10-15 (NIJE deployovano, testovi u `rules_test/`, 64):**
   - `users`: privatna polja samo u `private/account`; `{path=**}/private` čita samo admin (lista prijava, email-ovi).
@@ -101,6 +104,7 @@ Pun spisak polja: `docs/TEHNICKI_PREGLED.md` sekcija 5 „Firestore struktura po
   - `dogs`: `likesCount` = broj `likes/{uid}`, `superLikesCount` = broj markera `super_likes/{uid}_{dogId}`; brojač se menja samo ±1 u istom batch-u sa svojim like doc-om / markerom (super lajk se broji jednom po korisniku i psu, unlike ga ne briše). Vlasnik ne menja brojače, ali briše tuđe lajkove (brisanje naloga).
   - `lost_dogs`: komentar se samo dodaje na kraj (postojeći ostaju isti, autor = pozivalac, tekst ≤ 2000), `commentsCount` +1; lajk komentara = samo svoj uid u jednom unosu `commentLikes` (`commentLikeTarget`). Lajkovi poruka/priča/komentara: samo svoj uid; `moments.commentsCount` ±1.
   - Storage: `list` samo vlasnik foldera; `chats/` po putanji čita samo pošiljalac (sagovornik koristi `?token=` URL iz poruke, koju čitaju samo učesnici).
+- **Nagrade u pravilima (2026-10-16, NIJE deployovano, `rules_test/rewards.rules.test.mjs`, 13):** saldo (`rewards/summary`) se menja samo u istom batch-u sa NOVIM unosom u `reward_ledger` i tačno za njegov iznos, poeni ≥ 0; unos za šetnju pravila sama preračunavaju iz `walks` dokumenta (5 po celom km, max 30 dnevno po Beogradu, prosek ≤ 7 km/h, ≤ 4 h, završena u poslednjih 48 h, dayKey/weekKey tačni); izazov = iznosi iz `reward_challenges`, jednom po periodu, samo kad `d…`/`w…` napredak ispunjava cilj; kupon = −cena uz novi `coupon_claims` dokument i `claimedCount` +1 ≤ max, aktivan i u roku; korisnik samo `claimed → redeemed`, admin i `cancelled`. Evidenciju/saldo vlasnik briše tek kad nema javnog profila (brisanje naloga). Pravila NE mogu da dokažu da je šetnja stvarna (izmenjen klijent može poslati lažnu ali uverljivu šetnju) – to traži Cloud Functions (Blaze).
 - **Pravila (preostali rizici):** javni profil i psi su vidljivi svim prijavljenim (ime, grad, kvart; lokacija psa za discover/mapu – svesna funkcija); član može da upiše `lastMessage` koji ne odgovara poslatoj poruci; dnevni limit super lajka je samo na klijentu (ali se broji jednom po psu); `?token=` URL slike je trajni link za svakog ko ga dobije; CORS `*` u `storage-cors.json` (ne štiti podatke – to rade pravila/token). `isAdmin()` = `get()` na `users/{uid}.role`, bez custom claims.
 - **Pravila/indeksi se NE deployuju bez eksplicitnog odobrenja.**
 
@@ -135,6 +139,7 @@ Pun spisak polja: `docs/TEHNICKI_PREGLED.md` sekcija 5 „Firestore struktura po
 
 - Čet: multiline unos, zvuk dolazne poruke (`assets/sounds/message.wav`, `audioplayers`), unread popravke, avatar → profil, zakazane šetnje (banner), full-screen slike (komit `a0e5c3f`).
 - Prošireni profil vlasnika (opciona polja) + popup vlasnika iz Otkrij (tap na ime vlasnika).
+- „Dnevni VauVau izazov“ (komitovano lokalno, pravila nisu deployovana): GPS šetnja sa filterom (preciznost, zastarele/lažne tačke, skokovi, vožnja), pauza/nastavak, oporavak posle prekida, XP/nivoi/poeni, dnevni/nedeljni izazovi, kuponi, admin tab „Nagrade“; mapa se više ne osvežava stalno.
 
 ## U toku
 - Ništa.
@@ -145,7 +150,8 @@ Pun spisak polja: `docs/TEHNICKI_PREGLED.md` sekcija 5 „Firestore struktura po
 3. `notifyMatch` se nigde ne poziva; prijava sadržaja pravi notifikaciju samom prijaviocu.
 4. Seed grupe/događaji se upisuju sa klijenta u produkciju (lažni `memberCount`, `isApproved: true`). Po novim pravilima to sme samo admin; `ensureSeeded` kod ostalih preskače odbijen upis.
 5. Čet (prijavljeno, nije menjano): pošiljalac poziva ne dobija obaveštenje kad sagovornik prihvati/odbije šetnju; pravila ne proveravaju blokadu za `chats/*/messages` (blokirani i dalje može da piše, primalac to samo ne vidi u listi; ekran otvoren iz push-a/obaveštenja blokiranog korisnika i dalje radi); poziv sa vremenom u prošlosti se tiho ignoriše (`sendWalkInvite`); stari `notifications` dokumenti tipa `message` ostaju u listi dok se razgovor ne otvori.
-- Testovi (2026-10-15, posle spajanja svih grana): 219 prolazi, 13 pada bez `moments_test` (admin, chat walk invite, discover „detail sheet“, events, map, notifications ×2, profile, safety, settings ×2, widget ×2 – isti skup kao pre spajanja; `moments_test` „owner creates a highlight“ visi 10 min). `rules_test/` 68/68. `flutter analyze` čist.
+- Testovi (2026-10-16, posle izazova): 265 prolazi, 13 pada bez `moments_test` (admin, chat walk invite, discover „detail sheet“, events, map „renders map pins“, notifications ×2, profile, safety, settings ×2, widget ×2 – isti skup kao pre; `moments_test` „owner creates a highlight“ visi 10 min). `rules_test/` 81/81 (68 + 13 nagrade). `flutter analyze` čist.
+6. Nagrade (MVP, samo klijent + pravila): grupne šetnje se NE boduju (učešće ne može pouzdano da se potvrdi); GPS sa zaključanim ekranom nije proveren na uređaju (Android FGS je konfigurisan, iOS nije spreman); klijentska validacija nije zaštita od zloupotrebe.
 
 ## TODO (po prioritetu)
 1. Push na `master` (komit `a0e5c3f` je lokalan na `main`) – samo uz odobrenje.
@@ -153,7 +159,8 @@ Pun spisak polja: `docs/TEHNICKI_PREGLED.md` sekcija 5 „Firestore struktura po
 3. Ručno na uređaju proveriti: registraciju sa slikom, brisanje naloga (email + lozinka).
 4. Zameniti 7 `print()` poziva sa `debugPrint`/Crashlytics.
 5. Deploy pooštrenih `firestore.rules` i `storage.rules` samo uz odobrenje. Redosled: prvo izdati novu verziju aplikacije (radi i sa starim pravilima – privatni upisi imaju fallback, provere postojanja sobe/markera i lajk komentara takođe), pa deploy pravila kad većina korisnika ima novu verziju (stari klijent: lajk/super lajk bez batch-a, email/fcmToken/lokacija/prijave u javni profil, `commentLikes` ceo map, ponovno pisanje postojeće sobe – sve to nova pravila odbijaju). Pre toga na uređaju proveriti: registracija/prijava (nastaje `private/account`, javni profil bez email-a), meč → čet, slanje poruke + unread, grupe/događaje (join, poruka), lajk/super lajk/unlike, komentar i lajk komentara na izgubljenom psu, prijava sadržaja + admin lista prijava i korisnika, brisanje naloga.
-6. Cloud Functions (push iz `fcmInbox`, serverski mečevi/notifikacije, kaskadno brisanje, admin custom claims) – traži Blaze plan.
+6. Cloud Functions (push iz `fcmInbox`, serverski mečevi/notifikacije, kaskadno brisanje, admin custom claims, serverska provera šetnji/nagrada i kupona) – traži Blaze plan.
+6a. Izazovi – sledeća faza: na uređaju proveriti šetnju sa zaključanim ekranom (Android, uklj. Xiaomi/Samsung štednju baterije) i vožnju kolima; deploy pravila + indeksa (`reward_ledger` collection group) uz odobrenje; admin da doda/aktivira izazove („Dodaj podrazumevane izazove“) i STVARNE kupone partnera; QR kod kupona (paket `qr_flutter`, traži `pub get`); provera učešća u grupnoj šetnji (server); ukloniti fallback `walkHistory` niz u javnom profilu kad se deployuju nova pravila.
 7. Bagovi 2–4 iz liste iznad.
 8. Seed grupa/događaja prebaciti u jednokratnu admin skriptu.
 9. iOS (bundle id, GoogleService-Info.plist, push, DEVELOPMENT_TEAM, URL scheme); ažurirati Play checklistu; web Firebase config.
@@ -213,3 +220,8 @@ Pun spisak polja: `docs/TEHNICKI_PREGLED.md` sekcija 5 „Firestore struktura po
   - testovi: novi `test/discover_feed_pagination_test.dart` (5); `discover_test.dart` helper čeka prvu stranu → „directory cards“ i „tapping a card“ sad prolaze. Ceo paket (bez `moments_test`): 183 prolazi, 13 pada (pre: 176/15, nijedan novi pad). `flutter analyze` čist.
   - uočeno, nije menjano: slika `https://i.ibb.co/HpYqtHSn/22f8b762bec3.jpg` u bazi vraća 404 (pokvaren URL fotografije psa).
 - [2026-10-15] Sve grane spojene u `main` (pravila, Poruke, Profil, Otkrij), Konflikt samo u `CLAUDE.md`; posle spajanja: 219 prolazi, 13 pada (isti skup), `rules_test/` 68/68, `flutter analyze` čist. Verzija `1.0.0+8` je u `pubspec.yaml` glavnog foldera (nekomitovano).
+- [2026-10-16] Dnevni VauVau izazov + sređena mapa (pravila/indeksi NISU deployovani):
+  - uzrok stalnog osvežavanja mape: `MapScreen` se rebuild-uje na svaku promenu presence-a drugih šetača, GPS tačku i tick šetnje, a svaki build je pravio NOVU listu markera → `MarkerClusterLayer.didUpdateWidget` (`markers !=`) ponovo klasteruje sve; `liveWalkingDogsProvider` je gledao ceo `authStateProvider` (svaki snapshot `users/{uid}` → resubscribe, pinovi šetača nestanu/pojave se, `asData` null); pulsirajuća tačka je prefarbavala celu mapu 60×/s; `MapRegionSelection` bez `==`. Ispravke: memoizacija markera (`MapScreen.placeMarkerBuilds` za test), `select` na uid/coord/radius, `.value` umesto `asData`, `RepaintBoundary` oko tačke, `==` na `MapRegionSelection`, select na segmente rute (ne na 1 s tick);
+  - GPS: `LocationClient.watchWalkFixes()` (vreme, preciznost, brzina, `isMocked`), `WalkTracker` (odbacuje > 30 m preciznost, > 20 s stare, lažne, neuređene; šum < max(3 m, acc/2); > 9 km/h se ne računa; > 15 km/h = vozilo + 60 s zadrške; gap > 60 s sa skokom > 150 m), ruta u segmentima, „≈ km“ kad je signal slab; `WalkController`: jedna aktivna šetnja, pauza prekida segment, oporavak iz SharedPreferences (vraća se pauzirana, > 6 h = odbačena), odjava = bez nagrade, izbor psa i objašnjenje praćenja u dijalogu;
+  - bodovanje/nivoi/izazovi/kuponi: `rewards` feature (vidi Strukturu/Bazu), pravila u `firestore.rules` + `rules_test/rewards.rules.test.mjs`, brisanje naloga briše i `rewards`/`reward_ledger` posle profila; admin tab „Nagrade“ (izazovi, kuponi, evidencija, preuzeti kuponi);
+  - testovi: novi `walk_tracking_test` (13), `rewards_test` (23), `walk_controller_test` (7), `map_refresh_test` (3); 265/13 (isti padovi), rules 81/81, analyze čist. GPS testiran samo simuliranim tačkama.

@@ -158,6 +158,63 @@ abstract final class MapStrings {
         'Šetnja je pauzirana • GPS praćenje na čekanju',
         'Walk paused • GPS tracking on hold',
       );
+  static String get walkTrackingDisclosure => L10n.tr(
+        'Lokacija se prati samo dok je šetnja aktivna (vidi se obaveštenje '
+            '„Šetnja u toku“). Pauza i kraj šetnje zaustavljaju praćenje. '
+            'Precizna ruta se čuva samo na vašem nalogu i nije javna; vožnja i '
+            'nagli skokovi signala se ne računaju u kilometražu.',
+        'Location is tracked only while the walk is active (a “Walk in '
+            'progress” notification is shown). Pause and end stop tracking. '
+            'The precise route stays on your account and is not public; '
+            'driving and signal jumps do not count.',
+      );
+  static String get chooseDog => L10n.tr('Sa kojim psom šetate?', 'Which dog?');
+  static String get walkAlreadyActive => L10n.tr(
+        'Šetnja je već u toku – završite je pre nove.',
+        'A walk is already running – end it first.',
+      );
+  static String get walkRestored => L10n.tr(
+        'Šetnja je obnovljena posle prekida aplikacije i pauzirana. '
+            'Nastavite je ili završite.',
+        'Your walk was restored after the app stopped and is paused. '
+            'Resume or end it.',
+      );
+  static String get walkDiscarded => L10n.tr(
+        'Prekinuta šetnja je bila prestara i odbačena (ne donosi poene).',
+        'An interrupted walk was too old and was discarded (no points).',
+      );
+  static String get gpsSearching =>
+      L10n.tr('Tražim GPS signal…', 'Searching for GPS…');
+  static String get gpsGood => L10n.tr('GPS signal dobar', 'GPS signal good');
+  static String get gpsWeak => L10n.tr(
+        'Slab GPS signal – kilometraža je približna',
+        'Weak GPS – distance is approximate',
+      );
+  static String get gpsLost => L10n.tr(
+        'Nema GPS signala – udaljenost se ne meri',
+        'No GPS signal – distance not measured',
+      );
+  static String get gpsPermissionIssue => L10n.tr(
+        'Lokacija nije dozvoljena – kilometraža se ne meri.',
+        'Location not allowed – distance is not measured.',
+      );
+  static String get gpsServicesIssue => L10n.tr(
+        'GPS je isključen – uključite lokaciju na telefonu.',
+        'GPS is off – turn on location services.',
+      );
+  static String get gpsUnavailableIssue => L10n.tr(
+        'GPS nije dostupan na ovom uređaju.',
+        'GPS is not available on this device.',
+      );
+  static String get gpsStreamIssue => L10n.tr(
+        'Praćenje lokacije je prekinuto.',
+        'Location tracking stopped.',
+      );
+  static String get gpsRetry => L10n.tr('Pokušaj ponovo', 'Retry');
+  static String get vehicleDetected => L10n.tr(
+        'Deo puta je bio brži od hoda (vozilo?) – ne računa se.',
+        'Part of the route was faster than walking (vehicle?) – not counted.',
+      );
   static String get walking => L10n.tr('U šetnji', 'On a walk');
   static String get statusHint => L10n.tr(
         'Npr. U šetnji, Odmaram, Tražim društvo za igru',

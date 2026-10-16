@@ -4,6 +4,7 @@ import 'package:geolocator/geolocator.dart';
 import '../../../core/geo/geo.dart';
 import '../domain/location_access.dart';
 import '../domain/location_client.dart';
+import '../domain/location_fix.dart';
 
 class GeolocatorLocationClient implements LocationClient {
   static const _walkNotification = ForegroundNotificationConfig(
@@ -76,6 +77,25 @@ class GeolocatorLocationClient implements LocationClient {
   @override
   Stream<GeoCoord> watchWalkPosition() {
     return _watch(_walkSettings());
+  }
+
+  @override
+  Stream<LocationFix> watchWalkFixes() {
+    try {
+      return Geolocator.getPositionStream(locationSettings: _walkSettings())
+          .map(
+            (position) => LocationFix(
+              latitude: position.latitude,
+              longitude: position.longitude,
+              timestamp: position.timestamp,
+              accuracyM: position.accuracy,
+              speedMps: position.speed,
+              isMocked: position.isMocked,
+            ),
+          );
+    } catch (_) {
+      return const Stream.empty();
+    }
   }
 
   Stream<GeoCoord> _watch(LocationSettings settings) {
@@ -194,6 +214,9 @@ class FallbackLocationClient implements LocationClient {
 
   @override
   Stream<GeoCoord> watchWalkPosition() => const Stream.empty();
+
+  @override
+  Stream<LocationFix> watchWalkFixes() => const Stream.empty();
 
   @override
   Future<void> openAppSettings() async {}

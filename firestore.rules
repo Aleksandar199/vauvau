@@ -215,11 +215,261 @@ service cloud.firestore {
         allow update, delete: if isAdmin();
       }
 
-      // Completed walk sessions (duration + distance) for the owner.
+      // Completed walks (+ precise route) – owner only, never public.
+      // Immutable for the owner: the reward is recomputed from this record.
       match /walks/{walkId} {
         allow read, create: if isOwner(userId);
-        allow update, delete: if isOwner(userId) || isAdmin();
+        allow delete: if isOwner(userId) || isAdmin();
+        allow update: if isAdmin();
       }
+
+      // XP / points: summary + day (d{key}) / week (w{key}) progress. Only
+      // written together with a NEW ledger entry that matches the change.
+      match /rewards/{docId} {
+        allow read: if isOwner(userId) || isAdmin();
+        allow create, update: if isOwner(userId) &&
+          (docId == 'summary' ? summaryWriteOk(userId) : progressWriteOk(userId, docId));
+        // Cleanup only after the public profile is deleted (account deletion).
+        allow delete: if isAdmin() || (isOwner(userId) && !exists(userDocPath(userId)));
+      }
+
+      // Immutable log of every balance change; deterministic ids make a
+      // repeated request (same walk / challenge period / coupon) fail.
+      match /reward_ledger/{entryId} {
+        allow read: if isOwner(userId) || isAdmin();
+        allow create: if isOwner(userId) && ledgerEntryOk(userId, entryId);
+        allow delete: if isAdmin() || (isOwner(userId) && !exists(userDocPath(userId)));
+      }
+    }
+
+    // --- Rewards (Dnevni VauVau izazov) -------------------------------------
+    // No Cloud Functions (Spark plan): the client writes, the rules recompute
+    // and cross-check every number (RewardRules in lib/features/rewards/domain/
+    // reward_rules.dart – keep the constants in sync). They CANNOT prove that
+    // a walk really happened: a modified client can still submit a fake but
+    // plausible walk; the daily km cap limits what that is worth.
+
+    function userDocPath(uid) {
+      return /databases/$(database)/documents/users/$(uid);
+    }
+
+    function rewardPath(uid, docId) {
+      return /databases/$(database)/documents/users/$(uid)/rewards/$(docId);
+    }
+
+    function ledgerPath(uid, entryId) {
+      return /databases/$(database)/documents/users/$(uid)/reward_ledger/$(entryId);
+    }
+
+    function couponPath(couponId) {
+      return /databases/$(database)/documents/reward_coupons/$(couponId);
+    }
+
+    function claimPath(couponId, uid) {
+      return /databases/$(database)/documents/coupon_claims/$(couponId + '_' + uid);
+    }
+
+    function newLedgerEntry(uid, entryId) {
+      return entryId is string &&
+        !exists(ledgerPath(uid, entryId)) &&
+        existsAfter(ledgerPath(uid, entryId));
+    }
+
+    // Europe/Belgrade offset (mirrors BelgradeCalendar): UTC+2 from the last
+    // Sunday of March 01:00 UTC to the last Sunday of October 01:00 UTC.
+    function belgradeOffsetH(t) {
+      let m = t.month();
+      let d = t.day();
+      let s = d - (t.dayOfWeek() % 7);
+      let pastSwitch = s >= 25 && (d > s || t.hours() >= 1);
+      return ((m > 3 && m < 10) || (m == 3 && pastSwitch) || (m == 10 && !pastSwitch)) ? 2 : 1;
+    }
+
+    function dayKeyOf(l) {
+      return l.year() * 10000 + l.month() * 100 + l.day();
+    }
+
+    function belgradeDayKey(t) {
+      return dayKeyOf(t + duration.value(belgradeOffsetH(t), 'h'));
+    }
+
+    // Day key of the Monday of the Belgrade week.
+    function belgradeWeekKey(t) {
+      let l = t + duration.value(belgradeOffsetH(t), 'h');
+      return dayKeyOf(l - duration.value(l.dayOfWeek() - 1, 'd'));
+    }
+
+    // summary: deltas == the one new ledger entry; points never negative.
+    function summaryWriteOk(uid) {
+      let d = request.resource.data;
+      let e = getAfter(ledgerPath(uid, d.lastEntryId)).data;
+      let oldXp = resource == null ? 0 : resource.data.get('xp', 0);
+      let oldPoints = resource == null ? 0 : resource.data.get('points', 0);
+      return d.keys().hasOnly(['xp', 'points', 'lastEntryId', 'updatedAt']) &&
+        newLedgerEntry(uid, d.lastEntryId) &&
+        d.xp is int && d.points is int &&
+        d.xp == oldXp + e.xp &&
+        d.points == oldPoints + e.points &&
+        d.points >= 0 &&
+        d.updatedAt == request.time;
+    }
+
+    // Day/week progress: only beside a new walk entry for this period (the
+    // walk entry rule checks the numbers).
+    function progressWriteOk(uid, docId) {
+      let d = request.resource.data;
+      let e = getAfter(ledgerPath(uid, d.lastEntryId)).data;
+      return d.keys().hasOnly(['meters', 'walks', 'walkPoints', 'lastEntryId', 'updatedAt']) &&
+        newLedgerEntry(uid, d.lastEntryId) &&
+        e.type == 'walk' &&
+        (docId == 'd' + string(e.dayKey) || docId == 'w' + string(e.weekKey)) &&
+        d.updatedAt == request.time;
+    }
+
+    function ledgerEntryOk(uid, entryId) {
+      let e = request.resource.data;
+      return e.createdAt == request.time &&
+        e.xp is int && e.points is int &&
+        e.reason is string && e.reason.size() <= 200 &&
+        getAfter(rewardPath(uid, 'summary')).data.lastEntryId == entryId &&
+        (
+          (e.type == 'walk' && walkEntryOk(uid, entryId, e)) ||
+          (e.type == 'challenge' && challengeEntryOk(uid, entryId, e)) ||
+          (e.type == 'coupon' && couponEntryOk(uid, entryId, e))
+        );
+    }
+
+    function periodBefore(uid, docId) {
+      return exists(rewardPath(uid, docId))
+        ? get(rewardPath(uid, docId)).data
+        : {'meters': 0, 'walks': 0, 'walkPoints': 0};
+    }
+
+    function periodAdded(before, after, meters, counted, pts, entryId) {
+      return after.meters == before.get('meters', 0) + meters &&
+        after.walks == before.get('walks', 0) + counted &&
+        after.walkPoints == before.get('walkPoints', 0) + pts &&
+        after.lastEntryId == entryId;
+    }
+
+    // Walk reward = 5 per whole recognized km, at most 30 per Belgrade day
+    // (RewardRules.pointsPerKm / dailyKmPointsCap), only for a plausible
+    // walk (≤ 7 km/h average, ≤ 4 h) that ended within the last 48 h.
+    function walkEntryOk(uid, entryId, e) {
+      let w = getAfter(/databases/$(database)/documents/users/$(uid)/walks/$(e.walkId)).data;
+      let dayId = 'd' + string(e.dayKey);
+      let weekId = 'w' + string(e.weekKey);
+      let dayB = periodBefore(uid, dayId);
+      let weekB = periodBefore(uid, weekId);
+      let km = math.floor(w.recognizedMeters / 1000);
+      let room = 30 - dayB.get('walkPoints', 0);
+      let pts = km * 5 < room ? km * 5 : room;
+      let counted = km >= 1 ? 1 : 0;
+      return entryId == 'walk_' + e.walkId &&
+        e.keys().hasOnly(['type', 'walkId', 'km', 'dayKey', 'weekKey', 'xp', 'points', 'reason', 'createdAt']) &&
+        w.recognizedMeters is int && w.recognizedMeters >= 100 && w.recognizedMeters <= 40000 &&
+        w.durationSeconds is int && w.durationSeconds > 0 && w.durationSeconds <= 14400 &&
+        w.recognizedMeters * 3600 <= w.durationSeconds * 7000 &&
+        w.startedAt is timestamp && w.endedAt is timestamp &&
+        w.endedAt.toMillis() - w.startedAt.toMillis() >= w.durationSeconds * 1000 - 5000 &&
+        w.endedAt <= request.time + duration.value(5, 'm') &&
+        w.endedAt > request.time - duration.value(48, 'h') &&
+        e.dayKey == belgradeDayKey(w.endedAt) &&
+        e.weekKey == belgradeWeekKey(w.endedAt) &&
+        e.km == km && e.points == pts && e.xp == pts &&
+        periodAdded(dayB, getAfter(rewardPath(uid, dayId)).data, w.recognizedMeters, counted, pts, entryId) &&
+        periodAdded(weekB, getAfter(rewardPath(uid, weekId)).data, w.recognizedMeters, counted, pts, entryId);
+    }
+
+    // Challenge bonus = the admin-set amounts, once per challenge per period
+    // (entry id), only when the period's progress meets the target, for the
+    // current or a recent period.
+    function challengeEntryOk(uid, entryId, e) {
+      let c = get(/databases/$(database)/documents/reward_challenges/$(e.challengeId)).data;
+      let daily = c.period == 'daily';
+      let p = get(rewardPath(uid, (daily ? 'd' : 'w') + string(e.periodKey))).data;
+      let earliest = request.time - duration.value(48, 'h');
+      return entryId == 'ch_' + e.challengeId + '_' + string(e.periodKey) &&
+        e.keys().hasOnly(['type', 'challengeId', 'periodKey', 'xp', 'points', 'reason', 'createdAt']) &&
+        c.isActive == true &&
+        e.xp == c.rewardXp && e.points == c.rewardPoints &&
+        e.periodKey is int &&
+        e.periodKey <= (daily ? belgradeDayKey(request.time) : belgradeWeekKey(request.time)) &&
+        e.periodKey >= (daily ? belgradeDayKey(earliest) : belgradeWeekKey(earliest)) &&
+        (c.metric == 'distance' ? p.meters >= c.target * 1000 : p.walks >= c.target);
+    }
+
+    // Coupon purchase: exactly -price, together with the caller's new claim.
+    function couponEntryOk(uid, entryId, e) {
+      let c = get(couponPath(e.couponId)).data;
+      return entryId == 'coupon_' + e.couponId &&
+        e.keys().hasOnly(['type', 'couponId', 'xp', 'points', 'reason', 'createdAt']) &&
+        e.xp == 0 && e.points == -c.pointsCost &&
+        !exists(claimPath(e.couponId, uid)) &&
+        existsAfter(claimPath(e.couponId, uid));
+    }
+
+    // Admin review of all points across users.
+    match /{path=**}/reward_ledger/{entryId} {
+      allow read: if isAdmin();
+    }
+
+    match /reward_challenges/{challengeId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdmin();
+    }
+
+    // Partner coupons: admin manages; a claim may only bump claimedCount by 1
+    // (never above maxQuantity, only while active and in date range) in the
+    // same write as the caller's new claim document.
+    match /reward_coupons/{couponId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdmin();
+      allow update: if isAuthenticated() &&
+        onlyChanged(['claimedCount']) &&
+        resource.data.isActive == true &&
+        request.time >= resource.data.startsAt &&
+        request.time < resource.data.expiresAt &&
+        request.resource.data.claimedCount == resource.data.get('claimedCount', 0) + 1 &&
+        request.resource.data.claimedCount <= resource.data.maxQuantity &&
+        !exists(claimPath(couponId, request.auth.uid)) &&
+        existsAfter(claimPath(couponId, request.auth.uid));
+    }
+
+    // A user's coupon: id {couponId}_{uid} (one per user per offer), random
+    // code, paid by the matching ledger entry. The user may only mark it
+    // redeemed (one way); admin may redeem or cancel. Nobody deletes it.
+    match /coupon_claims/{claimId} {
+      allow read: if isAuthenticated() &&
+        (resource == null || resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isAuthenticated() && couponClaimOk(claimId);
+      allow update: if isAuthenticated() &&
+        resource.data.userId == request.auth.uid &&
+        resource.data.status == 'claimed' &&
+        onlyChanged(['status', 'redeemedAt']) &&
+        request.resource.data.status == 'redeemed' &&
+        request.resource.data.redeemedAt == request.time;
+      allow update: if isAdmin() &&
+        resource.data.status == 'claimed' &&
+        onlyChanged(['status', 'redeemedAt', 'cancelledAt']) &&
+        request.resource.data.status in ['redeemed', 'cancelled'];
+    }
+
+    function couponClaimOk(claimId) {
+      let d = request.resource.data;
+      let before = get(couponPath(d.couponId)).data;
+      let after = getAfter(couponPath(d.couponId)).data;
+      return claimId == d.couponId + '_' + request.auth.uid &&
+        d.keys().hasOnly(['userId', 'couponId', 'code', 'status', 'pointsCost',
+          'partnerName', 'title', 'discountLabel', 'expiresAt', 'claimedAt']) &&
+        d.userId == request.auth.uid &&
+        d.status == 'claimed' &&
+        d.claimedAt == request.time &&
+        d.code is string && d.code.matches('^VV-[A-HJ-NP-Z2-9]{8}$') &&
+        d.pointsCost == before.pointsCost &&
+        d.expiresAt == before.expiresAt &&
+        after.claimedCount == before.get('claimedCount', 0) + 1 &&
+        existsAfter(ledgerPath(request.auth.uid, 'coupon_' + d.couponId));
     }
 
     match /notifications/{notificationId} {

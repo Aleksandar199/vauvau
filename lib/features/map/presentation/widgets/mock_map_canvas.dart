@@ -12,7 +12,7 @@ class VauInteractiveMap extends StatefulWidget {
     required this.controller,
     required this.placeMarkers,
     required this.overlayMarkers,
-    this.routePoints = const [],
+    this.routeSegments = const [],
     this.routeColor = const Color(0xFFEA580C),
     this.initialCenter,
     this.initialZoom,
@@ -24,7 +24,8 @@ class VauInteractiveMap extends StatefulWidget {
   final double? initialZoom;
   final List<Marker> placeMarkers;
   final List<Marker> overlayMarkers;
-  final List<LatLng> routePoints;
+  /// Walk route; separate segments where counting stopped (pause, vehicle).
+  final List<List<LatLng>> routeSegments;
   final Color routeColor;
 
   @override
@@ -66,17 +67,19 @@ class _VauInteractiveMapState extends State<VauInteractiveMap> {
           options: _mapOptions,
           children: [
             buildOsmTileLayer(),
-            if (widget.routePoints.length >= 2)
+            if (widget.routeSegments.any((segment) => segment.length >= 2))
               PolylineLayer(
                 polylines: [
-                  Polyline(
-                    points: widget.routePoints,
-                    color: widget.routeColor,
-                    strokeWidth: 5,
-                    strokeCap: StrokeCap.round,
-                    strokeJoin: StrokeJoin.round,
-                    borderStrokeWidth: 0,
-                  ),
+                  for (final segment in widget.routeSegments)
+                    if (segment.length >= 2)
+                      Polyline(
+                        points: segment,
+                        color: widget.routeColor,
+                        strokeWidth: 5,
+                        strokeCap: StrokeCap.round,
+                        strokeJoin: StrokeJoin.round,
+                        borderStrokeWidth: 0,
+                      ),
                 ],
               ),
             if (widget.placeMarkers.isNotEmpty)

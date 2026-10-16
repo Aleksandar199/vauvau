@@ -23,6 +23,8 @@ import '../domain/map_city.dart';
 import '../domain/map_place.dart';
 import '../domain/map_place_type.dart';
 import '../domain/walking_dog_pin.dart';
+import '../../profile/presentation/profile_controller.dart';
+import '../../rewards/presentation/widgets/challenge_entry_card.dart';
 import 'add_place_screen.dart';
 import 'cities_controller.dart';
 import 'map_strings.dart';
@@ -38,6 +40,11 @@ import 'widgets/walker_sheet.dart';
 
 class MapScreen extends ConsumerStatefulWidget {
   const MapScreen({super.key});
+
+  /// How many times place markers were rebuilt (tests: the map must not
+  /// re-cluster on unrelated rebuilds).
+  @visibleForTesting
+  static int placeMarkerBuilds = 0;
 
   @override
   ConsumerState<MapScreen> createState() => _MapScreenState();
@@ -109,9 +116,22 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     final walkPaused = ref.watch(
       walkControllerProvider.select((session) => session.isPaused),
     );
-    final walkPath = ref.watch(
-      walkControllerProvider.select((session) => session.path),
+    // Segments list only changes when a GPS point is added (not on the 1 s
+    // walk timer tick).
+    final walkSegments = ref.watch(
+      walkControllerProvider.select((session) => session.track.segments),
     );
+    ref.listen<WalkRecoveryNotice>(walkRecoveryNoticeProvider, (_, notice) {
+      final text = switch (notice) {
+        WalkRecoveryNotice.restoredPaused => MapStrings.walkRestored,
+        WalkRecoveryNotice.discardedTooOld => MapStrings.walkDiscarded,
+        WalkRecoveryNotice.none => null,
+      };
+      if (text == null) return;
+      ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+        SnackBar(content: Text(text), duration: const Duration(seconds: 6)),
+      );
+    });
     final userCoord = ref.watch(
       userLocationProvider.select((location) => location.coord),
     );
@@ -123,9 +143,12 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     final walkers = _visibleWalkers(ref.watch(walkingDogsProvider), region);
 
     final walkRoute = [
-      for (final point in walkPath) LatLng(point.latitude, point.longitude),
+      for (final segment in walkSegments)
+        [for (final point in segment) LatLng(point.latitude, point.longitude)],
     ];
-    final walkStart = walkPath.isNotEmpty ? walkPath.first : null;
+    final walkStart = walkSegments.isNotEmpty && walkSegments.first.isNotEmpty
+        ? walkSegments.first.first.coord
+        : null;
 
     return Stack(
       children: [
@@ -139,22 +162,9 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                     return LatLng(center.latitude, center.longitude);
                   }(),
             initialZoom: region.isMyLocation ? null : region.zoom,
-            routePoints: walkActive ? walkRoute : const [],
+            routeSegments: walkActive ? walkRoute : const [],
             routeColor: Theme.of(context).colorScheme.primary,
-            placeMarkers: [
-              for (final place in places)
-                Marker(
-                  point: LatLng(place.latitude, place.longitude),
-                  width: 44,
-                  height: 52,
-                  alignment: Alignment.bottomCenter,
-                  child: PlacePin(
-                    place: place,
-                    selected: _selectedId == place.id,
-                    onTap: () => _selectPlace(place),
-                  ),
-                ),
-            ],
+            placeMarkers: _placeMarkersFor(places),
             overlayMarkers: [
               if (walkActive && walkStart != null)
                 Marker(
@@ -432,6 +442,13 @@ class _MapScreenState extends ConsumerState<MapScreen> {
             ],
           ),
         ),
+        if (!walkActive && !_showList)
+          const Positioned(
+            left: 16,
+            right: 72,
+            bottom: 82,
+            child: ChallengeEntryCard(),
+          ),
         if (walkActive)
           const Positioned(
             left: 0,
@@ -490,6 +507,51 @@ class _MapScreenState extends ConsumerState<MapScreen> {
           ),
       ],
     );
+  }
+
+  List<MapPlace>? _markerPlaces;
+  String? _markerSelectedId;
+  List<Marker> _placeMarkers = const [];
+
+  /// Same list instance while the visible places are unchanged.
+  ///
+  /// MarkerClusterLayer re-clusters every marker whenever it gets a new
+  /// list (`oldWidget.markers != widget.markers`). The screen rebuilds on
+  /// every walker presence update, GPS point and walk tick, so a fresh list
+  /// each build made the clusters/pins redraw constantly ("the map keeps
+  /// refreshing").
+  List<Marker> _placeMarkersFor(List<MapPlace> places) {
+    final previous = _markerPlaces;
+    if (previous != null &&
+        _markerSelectedId == _selectedId &&
+        previous.length == places.length) {
+      var same = true;
+      for (var i = 0; i < places.length; i++) {
+        if (!identical(previous[i], places[i])) {
+          same = false;
+          break;
+        }
+      }
+      if (same) return _placeMarkers;
+    }
+    MapScreen.placeMarkerBuilds++;
+    _markerPlaces = places;
+    _markerSelectedId = _selectedId;
+    _placeMarkers = [
+      for (final place in places)
+        Marker(
+          point: LatLng(place.latitude, place.longitude),
+          width: 44,
+          height: 52,
+          alignment: Alignment.bottomCenter,
+          child: PlacePin(
+            place: place,
+            selected: _selectedId == place.id,
+            onTap: () => _selectPlace(place),
+          ),
+        ),
+    ];
+    return _placeMarkers;
   }
 
   List<MapPlace> _visiblePlaces(
@@ -936,6 +998,8 @@ class _MapScreenState extends ConsumerState<MapScreen> {
 
   Future<void> _promptStartWalk(BuildContext context, {String? preset}) async {
     final controller = TextEditingController(text: preset ?? '');
+    final dogs = ref.read(profileControllerProvider).dogs;
+    var dogId = ref.read(currentDiscoverDogProvider).id;
     final status = await showDialog<String>(
       context: context,
       builder: (dialogContext) {
@@ -971,10 +1035,32 @@ class _MapScreenState extends ConsumerState<MapScreen> {
 
             return AlertDialog(
               title: Text(MapStrings.startWalk),
-              content: Column(
+              content: SingleChildScrollView(
+                child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  if (dogs.length > 1) ...[
+                    Text(
+                      MapStrings.chooseDog,
+                      style: const TextStyle(fontWeight: FontWeight.w700),
+                    ),
+                    const SizedBox(height: 6),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        for (final dog in dogs)
+                          ChoiceChip(
+                            label: Text(dog.name),
+                            selected: dogId == dog.id,
+                            onSelected: (_) =>
+                                setLocalState(() => dogId = dog.id),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                  ],
                   TextField(
                     controller: controller,
                     maxLines: 3,
@@ -996,7 +1082,13 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                       statusChip(MapStrings.statusLookingForPlay),
                     ],
                   ),
+                  const SizedBox(height: 14),
+                  Text(
+                    MapStrings.walkTrackingDisclosure,
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
                 ],
+              ),
               ),
               actions: [
                 TextButton(
@@ -1018,9 +1110,20 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     if (status == null) {
       return;
     }
-    ref.read(walkControllerProvider.notifier).start(
+    String? dogName;
+    for (final dog in dogs) {
+      if (dog.id == dogId) dogName = dog.name;
+    }
+    final result = ref.read(walkControllerProvider.notifier).start(
           statusMessage: status.isEmpty ? null : status,
+          dogId: dogName == null ? null : dogId,
+          dogName: dogName,
         );
+    if (result == WalkStartResult.alreadyActive && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(MapStrings.walkAlreadyActive)),
+      );
+    }
   }
 }
 
@@ -1372,7 +1475,9 @@ class _UserDot extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const _PulsingUserDot();
+    // Own layer: the endless pulse would otherwise repaint the whole map
+    // (tiles included) 60 times a second.
+    return const RepaintBoundary(child: _PulsingUserDot());
   }
 }
 

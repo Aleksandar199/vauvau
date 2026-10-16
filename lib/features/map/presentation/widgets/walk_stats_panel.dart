@@ -1,7 +1,14 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/theme/app_cards.dart';
+import '../../../location/domain/location_access.dart';
+import '../../../location/presentation/location_controller.dart';
+import '../../../rewards/presentation/widgets/walk_result_dialog.dart';
+import '../../domain/walk_session.dart';
+import '../../domain/walk_tracking.dart';
 import '../map_strings.dart';
 import '../walk_controller.dart';
 import 'walk_history_sheet.dart';
@@ -12,8 +19,7 @@ class WalkStatsPanel extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final walk = ref.watch(walkControllerProvider);
-    final distanceKm = walk.distanceKm;
-    final distance = distanceKm.toStringAsFixed(2);
+    final distance = walk.distanceLabel;
     return Material(
       color: Colors.transparent,
       child: Container(
@@ -58,6 +64,8 @@ class WalkStatsPanel extends ConsumerWidget {
                   ),
                 ],
               ),
+              const SizedBox(height: 8),
+              WalkTrackingStatus(walk: walk),
               Align(
                 alignment: Alignment.centerRight,
                 child: TextButton(
@@ -184,10 +192,18 @@ class WalkStatsPanel extends ConsumerWidget {
     );
     if (ok == true) {
       final session = ref.read(walkControllerProvider);
-      final distance = session.distanceKm.toStringAsFixed(2);
+      final distance = session.distanceLabel;
       final duration = session.elapsedLabel;
-      ref.read(walkControllerProvider.notifier).end();
+      final saving = ref.read(walkControllerProvider.notifier).end();
       if (!context.mounted) return;
+      // Reward dialog once Firestore answers (or the write is queued).
+      unawaited(
+        saving.then((result) {
+          if (result != null && context.mounted) {
+            showWalkResultIfNeeded(context, result);
+          }
+        }),
+      );
       final messenger = ScaffoldMessenger.of(context);
       messenger
         ..hideCurrentSnackBar()
@@ -281,6 +297,122 @@ class _PrimaryStat extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// GPS state under the walk stats: signal, permission/GPS problems and the
+/// "vehicle" warning, so a poor signal is never shown as precise km.
+class WalkTrackingStatus extends ConsumerWidget {
+  const WalkTrackingStatus({super.key, required this.walk});
+
+  final WalkSession walk;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final issue = walk.issue;
+    final rows = <Widget>[];
+    if (issue != WalkTrackingIssue.none) {
+      final text = switch (issue) {
+        WalkTrackingIssue.permissionDenied => MapStrings.gpsPermissionIssue,
+        WalkTrackingIssue.servicesDisabled => MapStrings.gpsServicesIssue,
+        WalkTrackingIssue.unavailable => MapStrings.gpsUnavailableIssue,
+        _ => MapStrings.gpsStreamIssue,
+      };
+      rows.add(
+        _StatusRow(
+          icon: Icons.location_disabled,
+          color: const Color(0xFFB91C1C),
+          text: text,
+          action: issue == WalkTrackingIssue.unavailable
+              ? null
+              : TextButton(
+                  onPressed: () async {
+                    final access = await ref
+                        .read(userLocationProvider.notifier)
+                        .requestPermission();
+                    if (!access.canTrack) {
+                      await ref.read(locationClientProvider).openAppSettings();
+                      return;
+                    }
+                    ref.read(walkControllerProvider.notifier).retryGps();
+                  },
+                  child: Text(MapStrings.gpsRetry),
+                ),
+        ),
+      );
+    } else if (!walk.isPaused) {
+      final (icon, color, text) = switch (walk.signal) {
+        GpsSignal.searching => (
+            Icons.gps_not_fixed,
+            const Color(0xFF92400E),
+            MapStrings.gpsSearching,
+          ),
+        GpsSignal.good => (
+            Icons.gps_fixed,
+            const Color(0xFF15803D),
+            MapStrings.gpsGood,
+          ),
+        GpsSignal.weak => (
+            Icons.gps_not_fixed,
+            const Color(0xFFB45309),
+            MapStrings.gpsWeak,
+          ),
+        GpsSignal.lost => (
+            Icons.gps_off,
+            const Color(0xFFB91C1C),
+            MapStrings.gpsLost,
+          ),
+      };
+      rows.add(_StatusRow(icon: icon, color: color, text: text));
+    }
+    if (walk.track.vehicleDetected) {
+      rows.add(
+        _StatusRow(
+          icon: Icons.directions_car,
+          color: const Color(0xFFB45309),
+          text: MapStrings.vehicleDetected,
+        ),
+      );
+    }
+    return Column(mainAxisSize: MainAxisSize.min, children: rows);
+  }
+}
+
+class _StatusRow extends StatelessWidget {
+  const _StatusRow({
+    required this.icon,
+    required this.color,
+    required this.text,
+    this.action,
+  });
+
+  final IconData icon;
+  final Color color;
+  final String text;
+  final Widget? action;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 4),
+      child: Row(
+        children: [
+          Icon(icon, size: 16, color: color),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(
+              text,
+              style: TextStyle(
+                fontSize: 12,
+                color: color,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          ?action,
+        ],
+      ),
     );
   }
 }

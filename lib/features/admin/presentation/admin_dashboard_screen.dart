@@ -15,6 +15,7 @@ import 'tabs/admin_feedback_tab.dart';
 import 'tabs/admin_groups_tab.dart';
 import 'tabs/admin_moments_tab.dart';
 import 'tabs/admin_reports_tab.dart';
+import 'tabs/admin_rewards_tab.dart';
 import 'tabs/admin_users_tab.dart';
 import 'widgets/admin_edit_poi_dialog.dart';
 
@@ -32,7 +33,7 @@ class AdminDashboardScreen extends ConsumerWidget {
 
     final primary = Theme.of(context).colorScheme.primary;
     return DefaultTabController(
-      length: 5,
+      length: 6,
       child: Scaffold(
         appBar: AppBar(
           title: Text(AdminStrings.title),
@@ -50,6 +51,7 @@ class AdminDashboardScreen extends ConsumerWidget {
               Tab(text: AdminStrings.reportsTab),
               Tab(text: AdminStrings.contentTab),
               Tab(text: AdminStrings.groupsTab),
+              Tab(text: AdminStrings.rewardsTab),
             ],
           ),
         ),
@@ -60,6 +62,7 @@ class AdminDashboardScreen extends ConsumerWidget {
             AdminReportsTab(),
             _ContentTab(),
             AdminGroupsTab(),
+            AdminRewardsTab(),
           ],
         ),
       ),

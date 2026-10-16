@@ -43,6 +43,15 @@
   ],
   "fieldOverrides": [
     {
+      "collectionGroup": "reward_ledger",
+      "fieldPath": "createdAt",
+      "indexes": [
+        { "order": "ASCENDING", "queryScope": "COLLECTION" },
+        { "order": "DESCENDING", "queryScope": "COLLECTION" },
+        { "order": "DESCENDING", "queryScope": "COLLECTION_GROUP" }
+      ]
+    },
+    {
       "collectionGroup": "comments",
       "fieldPath": "authorUserId",
       "indexes": [

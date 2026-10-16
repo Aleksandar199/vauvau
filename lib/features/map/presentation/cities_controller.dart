@@ -29,6 +29,17 @@ class MapRegionSelection {
   double get radiusKm => isMyLocation ? 25 : (city?.radiusKm ?? 15);
 
   double get zoom => isMyLocation ? 14.5 : 13.0;
+
+  // Value equality: a rebuilt but identical selection must not fly the
+  // camera back to the city center (MapScreen listens for changes).
+  @override
+  bool operator ==(Object other) =>
+      other is MapRegionSelection &&
+      other.isMyLocation == isMyLocation &&
+      other.city?.id == city?.id;
+
+  @override
+  int get hashCode => Object.hash(isMyLocation, city?.id);
 }
 
 class MapRegionController extends Notifier<MapRegionSelection> {
