@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../app_update/presentation/app_update_host.dart';
 import '../../chat/presentation/chat_inbox.dart';
 import '../../chat/presentation/chat_strings.dart';
 import '../../chat/presentation/incoming_message_sound.dart';
@@ -47,96 +48,98 @@ class HomeShellScreen extends ConsumerWidget {
       ProfileStrings.title,
     ];
 
-    return PushBootstrap(
-      child: LostDogEmergencyHost(
-        child: Scaffold(
-        drawer: const HomeDrawer(),
-        appBar: tabIndex == 0
-            ? const DiscoverAppBar()
-            : AppBar(
-                title: Text(titles[tabIndex]),
-                leading: Builder(
-                  builder: (context) {
-                    return IconButton(
-                      tooltip: AppDrawerCatalog.menuTooltip,
-                      icon: const Icon(Icons.menu),
-                      onPressed: () => Scaffold.of(context).openDrawer(),
-                    );
-                  },
-                ),
-                actions: [
-                  if (tabIndex == 3)
-                    IconButton(
-                      tooltip: ProfileStrings.moreActions,
-                      onPressed: () => showProfileSystemSheet(context, ref),
-                      icon: const Icon(Icons.settings_outlined),
+    return AppUpdateHost(
+      child: PushBootstrap(
+        child: LostDogEmergencyHost(
+          child: Scaffold(
+            drawer: const HomeDrawer(),
+            appBar: tabIndex == 0
+                ? const DiscoverAppBar()
+                : AppBar(
+                    title: Text(titles[tabIndex]),
+                    leading: Builder(
+                      builder: (context) {
+                        return IconButton(
+                          tooltip: AppDrawerCatalog.menuTooltip,
+                          icon: const Icon(Icons.menu),
+                          onPressed: () => Scaffold.of(context).openDrawer(),
+                        );
+                      },
                     ),
-                  IconButton(
-                    tooltip: NotificationStrings.tooltip,
-                    onPressed: () => showNotificationsSheet(context),
-                    icon: Badge(
-                      isLabelVisible: unread > 0,
-                      backgroundColor: const Color(0xFFE11D48),
-                      label: Text('$unread'),
-                      child: const Icon(Icons.notifications_outlined),
-                    ),
+                    actions: [
+                      if (tabIndex == 3)
+                        IconButton(
+                          tooltip: ProfileStrings.moreActions,
+                          onPressed: () => showProfileSystemSheet(context, ref),
+                          icon: const Icon(Icons.settings_outlined),
+                        ),
+                      IconButton(
+                        tooltip: NotificationStrings.tooltip,
+                        onPressed: () => showNotificationsSheet(context),
+                        icon: Badge(
+                          isLabelVisible: unread > 0,
+                          backgroundColor: const Color(0xFFE11D48),
+                          label: Text('$unread'),
+                          child: const Icon(Icons.notifications_outlined),
+                        ),
+                      ),
+                    ],
                   ),
-                ],
-              ),
-        body: Column(
-          children: [
-            if (showScheduledWalks)
-              ScheduledWalksBanner(walks: scheduledWalks),
-            Expanded(
-              child: IndexedStack(
-                index: tabIndex,
-                children: const [
-                  DiscoverScreen(),
-                  MapScreen(),
-                  MatchesScreen(),
-                  ProfileScreen(),
-                ],
-              ),
+            body: Column(
+              children: [
+                if (showScheduledWalks)
+                  ScheduledWalksBanner(walks: scheduledWalks),
+                Expanded(
+                  child: IndexedStack(
+                    index: tabIndex,
+                    children: const [
+                      DiscoverScreen(),
+                      MapScreen(),
+                      MatchesScreen(),
+                      ProfileScreen(),
+                    ],
+                  ),
+                ),
+              ],
             ),
-          ],
+            bottomNavigationBar: NavigationBar(
+              selectedIndex: tabIndex,
+              onDestinationSelected: (index) {
+                ref.read(homeTabIndexProvider.notifier).setIndex(index);
+              },
+              destinations: [
+                NavigationDestination(
+                  icon: Icon(Icons.pets_outlined),
+                  selectedIcon: Icon(Icons.pets),
+                  label: DiscoverStrings.title,
+                ),
+                NavigationDestination(
+                  icon: Icon(Icons.map_outlined),
+                  selectedIcon: Icon(Icons.map),
+                  label: MapStrings.tabLabel,
+                ),
+                NavigationDestination(
+                  icon: Badge(
+                    isLabelVisible: unreadChats > 0,
+                    label: Text('$unreadChats'),
+                    child: const Icon(Icons.chat_bubble_outline),
+                  ),
+                  selectedIcon: Badge(
+                    isLabelVisible: unreadChats > 0,
+                    label: Text('$unreadChats'),
+                    child: const Icon(Icons.chat_bubble),
+                  ),
+                  label: ChatStrings.tabLabel,
+                ),
+                NavigationDestination(
+                  icon: Icon(Icons.person_outline),
+                  selectedIcon: Icon(Icons.person),
+                  label: ProfileStrings.tabLabel,
+                ),
+              ],
+            ),
+          ),
         ),
-        bottomNavigationBar: NavigationBar(
-          selectedIndex: tabIndex,
-          onDestinationSelected: (index) {
-            ref.read(homeTabIndexProvider.notifier).setIndex(index);
-          },
-          destinations: [
-            NavigationDestination(
-              icon: Icon(Icons.pets_outlined),
-              selectedIcon: Icon(Icons.pets),
-              label: DiscoverStrings.title,
-            ),
-            NavigationDestination(
-              icon: Icon(Icons.map_outlined),
-              selectedIcon: Icon(Icons.map),
-              label: MapStrings.tabLabel,
-            ),
-            NavigationDestination(
-              icon: Badge(
-                isLabelVisible: unreadChats > 0,
-                label: Text('$unreadChats'),
-                child: const Icon(Icons.chat_bubble_outline),
-              ),
-              selectedIcon: Badge(
-                isLabelVisible: unreadChats > 0,
-                label: Text('$unreadChats'),
-                child: const Icon(Icons.chat_bubble),
-              ),
-              label: ChatStrings.tabLabel,
-            ),
-            NavigationDestination(
-              icon: Icon(Icons.person_outline),
-              selectedIcon: Icon(Icons.person),
-              label: ProfileStrings.tabLabel,
-            ),
-          ],
-        ),
-      ),
       ),
     );
   }

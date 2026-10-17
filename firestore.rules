@@ -554,6 +554,12 @@ service cloud.firestore {
       allow update, delete: if isAdmin();
     }
 
+    // App update prompt: app_config/android {minBuild, latestBuild}.
+    match /app_config/{docId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
     // Dynamic map cities (Novi Sad, Beograd, …).
     match /cities/{cityId} {
       allow read: if true;

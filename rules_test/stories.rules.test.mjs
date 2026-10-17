@@ -102,6 +102,17 @@ beforeEach(async () => {
 const db = (uid) => env.authenticatedContext(uid).firestore();
 const st = (uid) => env.authenticatedContext(uid).storage();
 
+describe('app_config', () => {
+  test('prijavljeni čitaju, samo admin piše', async () => {
+    await assertSucceeds(getDoc(doc(db('bob'), 'app_config/android')));
+    await assertFails(getDoc(doc(env.unauthenticatedContext().firestore(), 'app_config/android')));
+    await assertFails(setDoc(doc(db('bob'), 'app_config/android'), { minBuild: 99 }));
+    await assertSucceeds(setDoc(doc(db('admin'), 'app_config/android'), {
+      minBuild: 7, latestBuild: 8,
+    }));
+  });
+});
+
 describe('follows', () => {
   test('praćenje: kreira se jednom, sa ispravnim id-jem', async () => {
     await assertSucceeds(setDoc(doc(db('carol'), 'follows/carol_alice'), {
