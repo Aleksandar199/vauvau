@@ -10,6 +10,7 @@ import '../../../core/services/notification_service.dart';
 import '../../auth/presentation/auth_providers.dart';
 import '../../chat/presentation/open_chats.dart';
 import '../data/conversation_notifications.dart';
+import '../data/social_notifications.dart';
 import '../domain/app_notification.dart';
 
 class NotificationController extends Notifier<List<AppNotification>> {
@@ -77,6 +78,7 @@ class NotificationController extends Notifier<List<AppNotification>> {
           _string(data['matchId']),
       groupId: _string(data['groupId']),
       eventId: _string(data['eventId']),
+      storyId: _string(data['storyId']),
     );
   }
 
@@ -103,6 +105,12 @@ class NotificationController extends Notifier<List<AppNotification>> {
         return NotificationKind.superLike;
       case 'like':
         return NotificationKind.like;
+      case SocialNotificationType.follow:
+        return NotificationKind.follow;
+      case SocialNotificationType.storyLike:
+        return NotificationKind.storyLike;
+      case SocialNotificationType.storyReply:
+        return NotificationKind.storyReply;
       default:
         return NotificationKind.like;
     }

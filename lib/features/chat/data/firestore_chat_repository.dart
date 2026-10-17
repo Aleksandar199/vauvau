@@ -14,6 +14,7 @@ import '../domain/chat_conversation.dart';
 import '../domain/chat_message.dart';
 import '../domain/chat_repository.dart';
 import '../domain/chat_room.dart';
+import '../domain/story_reference.dart';
 
 class FirestoreChatRepository implements ChatRepository {
   FirestoreChatRepository({
@@ -429,15 +430,28 @@ class FirestoreChatRepository implements ChatRepository {
     );
     _inbox = [placeholder, ..._inbox];
     _emitNow();
-    unawaited(_createRoom(
+    // Kept so a message sent right away (story reply) waits for the room:
+    // message rules require the room to exist with the caller in it.
+    final creation = _createRoom(
       id: id,
       myUserId: myUserId,
       myDogId: myDogId,
       peerId: peerId,
       peerProfile: profile,
-    ));
+    );
+    _roomCreations[id] = creation;
+    unawaited(
+      creation.catchError((Object error) {
+        developer.log(
+          'createRoom failed: $error',
+          name: 'FirestoreChatRepository',
+        );
+      }).whenComplete(() => _roomCreations.remove(id)),
+    );
     return id;
   }
+
+  final Map<String, Future<void>> _roomCreations = {};
 
   Future<void> _createRoom({
     required String id,
@@ -512,6 +526,7 @@ class FirestoreChatRepository implements ChatRepository {
     String conversationId,
     String rawText, {
     ChatMessage? replyTo,
+    StoryReference? story,
   }) async {
     final text = rawText.trim();
     if (text.isEmpty) {
@@ -519,6 +534,9 @@ class FirestoreChatRepository implements ChatRepository {
     }
     final peerId = _byId(conversationId)?.peerUserId ?? '';
     final replyFields = _replyFields(conversationId, replyTo);
+    final storyFields = story != null && story.isValid
+        ? story.toFields()
+        : const <String, String>{};
     final localId = _nextLocalId();
     _appendOptimistic(
       conversationId,
@@ -535,6 +553,9 @@ class FirestoreChatRepository implements ChatRepository {
         replyToMessageId: replyFields['replyToMessageId'] ?? '',
         replyToText: replyFields['replyToText'] ?? '',
         replyToSenderName: replyFields['replyToSenderName'] ?? '',
+        storyId: storyFields['storyId'] ?? '',
+        storyAuthorId: storyFields['storyAuthorId'] ?? '',
+        storyCaption: storyFields['storyCaption'] ?? '',
       ),
     );
     await _writeMessage(
@@ -547,8 +568,10 @@ class FirestoreChatRepository implements ChatRepository {
         'text': text,
         'timestamp': FieldValue.serverTimestamp(),
         'isRead': false,
+        // Stays 'text' so older app versions still show the reply.
         'type': 'text',
         ...replyFields,
+        ...storyFields,
       },
       text,
       localMessageId: localId,
@@ -949,6 +972,10 @@ class FirestoreChatRepository implements ChatRepository {
       throw error;
     }
     try {
+      final creating = _roomCreations[conversationId];
+      if (creating != null) {
+        await creating;
+      }
       await _rooms.doc(conversationId).collection('messages').add(payload);
       final peerId = _byId(conversationId)?.peerUserId ?? '';
       await _rooms.doc(conversationId).set({
@@ -1060,6 +1087,9 @@ class FirestoreChatRepository implements ChatRepository {
       replyToText: data['replyToText'] as String? ?? '',
       replyToSenderName: data['replyToSenderName'] as String? ?? '',
       likes: ChatMessage.likesFrom(data['likes']),
+      storyId: data['storyId'] as String? ?? '',
+      storyAuthorId: data['storyAuthorId'] as String? ?? '',
+      storyCaption: data['storyCaption'] as String? ?? '',
     );
   }
 

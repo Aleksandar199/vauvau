@@ -79,6 +79,7 @@ class AccountDeletionService {
       firestore.collection('swipes').where('fromUserId', isEqualTo: trimmed),
     );
     await _deleteSuperLikes(trimmed);
+    await _deleteFollowsAndStories(trimmed);
     await _deleteQuery(
       firestore.collection('matches').where('userIds', arrayContains: trimmed),
     );
@@ -186,6 +187,38 @@ class AccountDeletionService {
 
   /// Marker docs `super_likes/{uid}_{dogId}` are counted in the dog's
   /// superLikesCount, so rules require the -1 in the same batch.
+  /// Follows in both directions, then my stories with their views, likes
+  /// and private media. Best effort: rules that are not deployed yet must
+  /// not block the account deletion itself.
+  Future<void> _deleteFollowsAndStories(String uid) async {
+    for (final field in const ['followerUserId', 'followedUserId']) {
+      try {
+        await _deleteQuery(
+          firestore.collection('follows').where(field, isEqualTo: uid),
+        );
+      } catch (error) {
+        debugPrint('AccountDeletion follows($field): $error');
+      }
+    }
+    try {
+      final stories = await firestore
+          .collection('stories')
+          .where('authorUserId', isEqualTo: uid)
+          .get();
+      for (final doc in stories.docs) {
+        await _deleteSubcollection(doc.reference, 'story_views');
+        await _deleteSubcollection(doc.reference, 'story_likes');
+        final path = (doc.data()['mediaPath'] as String? ?? '').trim();
+        await doc.reference.delete();
+        if (path.isNotEmpty) {
+          await _storage.deletePrivatePath(path);
+        }
+      }
+    } catch (error) {
+      debugPrint('AccountDeletion stories: $error');
+    }
+  }
+
   Future<void> _deleteSuperLikes(String uid) async {
     final snap = await firestore
         .collection('super_likes')

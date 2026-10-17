@@ -22,6 +22,7 @@ import '../data/local_chat_repository.dart';
 import '../data/mock_conversations.dart';
 import '../domain/chat_conversation.dart';
 import '../domain/chat_message.dart';
+import '../domain/story_reference.dart';
 import '../domain/chat_repository.dart';
 import '../domain/scheduled_walk.dart';
 
@@ -88,8 +89,14 @@ class ChatInboxController extends Notifier<List<ChatConversation>> {
     String conversationId,
     String rawText, {
     ChatMessage? replyTo,
+    StoryReference? story,
   }) async {
-    await _repo.sendMessage(conversationId, rawText, replyTo: replyTo);
+    await _repo.sendMessage(
+      conversationId,
+      rawText,
+      replyTo: replyTo,
+      story: story,
+    );
     state = _repo.currentInbox;
     final preview = rawText.trim();
     if (preview.isEmpty) {

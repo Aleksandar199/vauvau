@@ -6,6 +6,9 @@ enum NotificationKind {
   superLike,
   groupMessage,
   eventMessage,
+  follow,
+  storyLike,
+  storyReply,
 }
 
 class AppNotification {
@@ -21,6 +24,7 @@ class AppNotification {
     this.conversationId,
     this.groupId,
     this.eventId,
+    this.storyId,
   });
 
   final String id;
@@ -34,6 +38,7 @@ class AppNotification {
   final String? conversationId;
   final String? groupId;
   final String? eventId;
+  final String? storyId;
 
   AppNotification copyWith({bool? isRead}) {
     return AppNotification(
@@ -48,6 +53,7 @@ class AppNotification {
       conversationId: conversationId,
       groupId: groupId,
       eventId: eventId,
+      storyId: storyId,
     );
   }
 }

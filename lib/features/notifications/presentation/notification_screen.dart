@@ -215,6 +215,9 @@ IconData _iconFor(NotificationKind kind) {
     NotificationKind.superLike => Icons.star,
     NotificationKind.groupMessage => Icons.groups_outlined,
     NotificationKind.eventMessage => Icons.event_outlined,
+    NotificationKind.follow => Icons.person_add_alt_1_rounded,
+    NotificationKind.storyLike => Icons.favorite_rounded,
+    NotificationKind.storyReply => Icons.auto_stories_outlined,
   };
 }
 

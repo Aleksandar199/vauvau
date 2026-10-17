@@ -7,6 +7,7 @@ import '../../../core/widgets/ui_bits.dart';
 import '../../auth/domain/owner_details.dart';
 import '../../discover/domain/discover_profile.dart';
 import '../../discover/presentation/widgets/swipe_dog_card.dart';
+import '../../stories/presentation/widgets/owner_social_actions.dart';
 import '../data/owner_public_profile.dart';
 import 'profile_strings.dart';
 
@@ -87,6 +88,10 @@ class _OwnerProfileSheetState extends State<OwnerProfileSheet> {
         final notFound =
             !loading && !failed && loaded == null && name.isEmpty;
         return _OwnerProfileBody(
+          social: OwnerSocialActions(
+            ownerId: widget.userId,
+            ownerName: name.isEmpty ? ProfileStrings.ownerUnknown : name,
+          ),
           name: name.isEmpty ? ProfileStrings.ownerUnknown : name,
           photoUrl: photo,
           location: loaded?.location ?? '',
@@ -113,10 +118,13 @@ class _OwnerProfileBody extends StatelessWidget {
     required this.details,
     required this.dogs,
     required this.loading,
+    required this.social,
     this.message,
     this.onRetry,
   });
 
+  /// Follow button + the owner's stories (stories feature).
+  final Widget social;
   final String name;
   final String photoUrl;
   final String location;
@@ -152,6 +160,7 @@ class _OwnerProfileBody extends StatelessWidget {
                     fontWeight: FontWeight.w800,
                   ),
                 ),
+                social,
                 if (location.isNotEmpty) ...[
                   const SizedBox(height: 4),
                   Row(

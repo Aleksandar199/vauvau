@@ -90,6 +90,43 @@ service firebase.storage {
       allow delete: if isOwner(userId);
     }
 
+    // Story media: stories/{uid}/{storyId}/media. Never handed out as a
+    // ?token= URL by the app; every read goes through these rules, which
+    // check the story document (cross-service): author, or active story +
+    // audience + not blocked by the author. Upload once, never overwritten.
+    function storyDoc(storyId) {
+      return firestore.get(/databases/(default)/documents/stories/$(storyId)).data;
+    }
+
+    function followExists(followerUid, followedUid) {
+      return firestore.exists(
+        /databases/(default)/documents/follows/$(followerUid + '_' + followedUid));
+    }
+
+    function storyMediaReadable(userId, storyId) {
+      let d = storyDoc(storyId);
+      let me = request.auth.uid;
+      return d.authorUserId == userId &&
+        d.expiresAt > request.time &&
+        !firestore.exists(
+          /databases/(default)/documents/users/$(userId)/blocked_users/$(me)) &&
+        (
+          d.audience == 'all' ||
+          (d.audience == 'followers' && followExists(me, userId)) ||
+          (d.audience == 'following' && followExists(userId, me))
+        );
+    }
+
+    match /stories/{userId}/{storyId}/{fileName} {
+      allow get: if isOwner(userId) ||
+        (isSignedIn() && storyMediaReadable(userId, storyId));
+      allow list: if false;
+      allow create: if ownerImageWrite(userId) && fileName == 'media' &&
+        resource == null;
+      allow update: if false;
+      allow delete: if isOwner(userId);
+    }
+
     match /{allPaths=**} {
       allow read, write: if false;
     }

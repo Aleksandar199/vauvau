@@ -14,6 +14,12 @@ import '../../events/presentation/events_controller.dart';
 import '../../groups/presentation/group_chat_screen.dart';
 import '../../groups/presentation/groups_controller.dart';
 import '../../home/presentation/home_tab.dart';
+import '../../profile/data/owner_public_profile.dart';
+import '../../profile/presentation/owner_profile_sheet.dart';
+import '../../stories/domain/story.dart';
+import '../../stories/presentation/stories_strings.dart';
+import '../../stories/presentation/story_player_screen.dart';
+import '../../stories/presentation/story_providers.dart';
 import '../domain/app_notification.dart';
 import '../domain/push_payload.dart';
 import 'push_navigation.dart';
@@ -32,6 +38,7 @@ Future<void> openAppNotification(
     conversationId: item.conversationId,
     groupId: item.groupId,
     eventId: item.eventId,
+    storyId: item.storyId,
   );
 }
 
@@ -67,6 +74,7 @@ Future<void> _open(
   String? conversationId,
   String? groupId,
   String? eventId,
+  String? storyId,
 }) async {
   T read<T>(dynamic provider) => ref.read(provider) as T;
 
@@ -124,9 +132,40 @@ Future<void> _open(
         builder: (_) => DogDetailSheet(profile: profile),
       );
       return;
+    case NotificationKind.follow:
+      final follower = fromUserId?.trim() ?? '';
+      final host = appNavigatorKey.currentContext ?? context;
+      _popSheetIfNeeded(context);
+      if (follower.isEmpty || !host.mounted) {
+        return;
+      }
+      await showOwnerProfileSheet(
+        host,
+        userId: follower,
+        loader: read<OwnerProfileLoader>(ownerProfileLoaderProvider),
+      );
+      return;
+    case NotificationKind.storyLike:
+      final host = appNavigatorKey.currentContext ?? context;
+      _popSheetIfNeeded(context);
+      // Re-read through the rules: an expired / deleted story is not shown.
+      final story = await read<StoryActions>(storyActionsProvider)
+          .fetch(storyId?.trim() ?? '');
+      if (!host.mounted) {
+        return;
+      }
+      if (story == null) {
+        ScaffoldMessenger.maybeOf(host)?.showSnackBar(
+          SnackBar(content: Text(StoriesStrings.unavailable)),
+        );
+        return;
+      }
+      await openStoryPlayer(host, groups: [StoryAuthorGroup.of([story])]);
+      return;
     case NotificationKind.match:
     case NotificationKind.chatMessage:
     case NotificationKind.walkRequest:
+    case NotificationKind.storyReply:
       final chatId = await _resolveConversationId(
         ref,
         conversationId: conversationId,

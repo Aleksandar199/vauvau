@@ -268,6 +268,100 @@ class StorageService {
     }
   }
 
+  // --- Private media (stories) -------------------------------------------
+  // Story media is never exposed as a ?token= download URL: the object path
+  // is stored instead, and every read goes through the Storage SDK so
+  // storage.rules (audience, block, expiry) decide on each request.
+
+  static final Map<String, Uint8List> _privateCache = {};
+
+  /// Uploads [bytes] to exactly [path] (must be `{root}/{signedInUid}/...`)
+  /// and returns [path]. [onProgress] gets 0..1.
+  Future<String> uploadPrivateBytes({
+    required String path,
+    required Uint8List bytes,
+    String? mimeType,
+    void Function(double progress)? onProgress,
+  }) async {
+    final uid = _currentUserId()?.trim() ?? '';
+    final parts = path.split('/');
+    if (uid.isEmpty || parts.length < 3 || parts[1] != uid) {
+      throw StateError('Storage putanja mora uključivati vlasnika (userId).');
+    }
+    if (bytes.isEmpty) {
+      throw StateError('Prazna fotografija.');
+    }
+    try {
+      final task = _storage.ref(path).putData(
+            bytes,
+            SettableMetadata(
+              contentType: _contentTypeFor('media', mimeType, bytes),
+              // Private: browsers / proxies must not keep a shared copy.
+              cacheControl: 'private,max-age=3600',
+            ),
+          );
+      final sub = task.snapshotEvents.listen((snapshot) {
+        final total = snapshot.totalBytes;
+        if (total > 0) {
+          onProgress?.call(snapshot.bytesTransferred / total);
+        }
+      }, onError: (_) {});
+      try {
+        final snapshot = await task;
+        if (snapshot.state != TaskState.success) {
+          throw StateError('Storage upload nije uspeo (${snapshot.state}).');
+        }
+      } finally {
+        await sub.cancel();
+      }
+      onProgress?.call(1);
+      _privateCache[path] = bytes;
+      return path;
+    } on FirebaseException catch (error) {
+      debugPrint('StorageService.uploadPrivateBytes code=${error.code}');
+      throw StateError(_userMessageForFirebase(error));
+    }
+  }
+
+  /// Authenticated read of a private object (rules are checked every time;
+  /// only bytes this session was allowed to read are cached in memory).
+  Future<Uint8List> downloadPrivateBytes(String path) async {
+    final cached = _privateCache[path];
+    if (cached != null) {
+      return cached;
+    }
+    try {
+      final bytes = await _storage.ref(path).getData(_maxDownloadBytes);
+      if (bytes == null || bytes.isEmpty) {
+        throw StateError('Storage fajl je prazan.');
+      }
+      if (_privateCache.length >= _maxCachedImages) {
+        _privateCache.remove(_privateCache.keys.first);
+      }
+      _privateCache[path] = bytes;
+      return bytes;
+    } on FirebaseException catch (error) {
+      debugPrint('StorageService.downloadPrivateBytes code=${error.code}');
+      throw StateError(_userMessageForFirebase(error));
+    }
+  }
+
+  /// Best-effort delete of a private object (missing objects are fine).
+  Future<void> deletePrivatePath(String path) async {
+    _privateCache.remove(path);
+    if (path.trim().isEmpty) {
+      return;
+    }
+    try {
+      await _storage.ref(path).delete();
+    } catch (error) {
+      debugPrint('StorageService.deletePrivatePath failed: $error');
+    }
+  }
+
+  /// Forget cached private bytes (e.g. after access to a story was lost).
+  static void forgetPrivate(String path) => _privateCache.remove(path);
+
   Future<String?> _pickAndUpload({
     required String folderName,
     required ImageSource source,

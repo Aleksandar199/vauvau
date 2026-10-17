@@ -26,6 +26,9 @@ class ChatMessage {
     this.replyToText = '',
     this.replyToSenderName = '',
     this.likes = const [],
+    this.storyId = '',
+    this.storyAuthorId = '',
+    this.storyCaption = '',
   });
 
   final String id;
@@ -48,6 +51,13 @@ class ChatMessage {
 
   /// User ids that liked this message.
   final List<String> likes;
+
+  /// Set when the message replies to a story (see StoryReference).
+  final String storyId;
+  final String storyAuthorId;
+  final String storyCaption;
+
+  bool get isStoryReply => storyId.isNotEmpty;
 
   DateTime get timestamp => sentAt;
 
@@ -116,6 +126,9 @@ class ChatMessage {
       replyToText: replyToText,
       replyToSenderName: replyToSenderName,
       likes: likes ?? this.likes,
+      storyId: storyId,
+      storyAuthorId: storyAuthorId,
+      storyCaption: storyCaption,
     );
   }
 

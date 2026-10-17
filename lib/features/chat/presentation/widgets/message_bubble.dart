@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../../core/images/dog_image.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../discover/presentation/widgets/dog_photo_gallery.dart';
+import '../../../stories/presentation/widgets/story_reply_quote.dart';
 import '../../domain/chat_message.dart';
 import '../../domain/chat_time.dart';
 import 'chat_ui.dart';
@@ -93,6 +94,12 @@ class MessageBubble extends StatelessWidget {
                             ? CrossAxisAlignment.end
                             : CrossAxisAlignment.start,
                         children: [
+                          if (message.isStoryReply)
+                            StoryReplyQuote(
+                              storyId: message.storyId,
+                              caption: message.storyCaption,
+                              isMine: isMine,
+                            ),
                           if (message.hasReply)
                             ReplyQuote(
                               senderName: message.replyToSenderName,

@@ -7,6 +7,7 @@ import '../domain/chat_conversation.dart';
 import '../domain/chat_message.dart';
 import '../domain/chat_repository.dart';
 import '../domain/chat_room.dart';
+import '../domain/story_reference.dart';
 
 class LocalChatRepository implements ChatRepository {
   LocalChatRepository({
@@ -144,11 +145,15 @@ class LocalChatRepository implements ChatRepository {
     String conversationId,
     String rawText, {
     ChatMessage? replyTo,
+    StoryReference? story,
   }) async {
     final text = rawText.trim();
     if (text.isEmpty) {
       return;
     }
+    final storyFields = story != null && story.isValid
+        ? story.toFields()
+        : const <String, String>{};
     final replyName = replyTo == null
         ? ''
         : (replyTo.senderName.trim().isNotEmpty
@@ -171,6 +176,9 @@ class LocalChatRepository implements ChatRepository {
             ? ''
             : ChatMessage.clipReplyText(replyTo.previewText),
         replyToSenderName: replyName,
+        storyId: storyFields['storyId'] ?? '',
+        storyAuthorId: storyFields['storyAuthorId'] ?? '',
+        storyCaption: storyFields['storyCaption'] ?? '',
       ),
     );
   }

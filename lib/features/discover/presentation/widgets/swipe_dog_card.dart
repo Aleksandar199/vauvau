@@ -9,6 +9,7 @@ import '../../../../core/widgets/ui_bits.dart';
 import '../../../auth/presentation/auth_providers.dart';
 import '../../../chat/presentation/chat_inbox.dart';
 import '../../../chat/presentation/chat_screen.dart';
+import '../../../follows/presentation/follow_button.dart';
 import '../../../moderation/domain/content_report.dart';
 import '../../../moderation/presentation/safety_menu.dart';
 import '../../../moments/presentation/widgets/story_widgets.dart';
@@ -16,7 +17,6 @@ import '../../../profile/data/owner_public_profile.dart';
 import '../../../profile/presentation/owner_profile_sheet.dart';
 import '../../../profile/presentation/profile_strings.dart';
 import '../../domain/discover_profile.dart';
-import '../../domain/discover_repository.dart';
 import '../discover_controller.dart';
 import '../discover_strings.dart';
 import 'compatibility_card.dart';
@@ -242,6 +242,22 @@ class DogDetailSheet extends StatelessWidget {
                         ),
                       ),
                     ),
+                    // Closing the sheet (drag down / back also work). Not a
+                    // "pass" action: Discover has no reject swipe.
+                    Positioned(
+                      top: 10,
+                      left: 10,
+                      child: Material(
+                        color: Colors.black.withValues(alpha: 0.4),
+                        shape: const CircleBorder(),
+                        child: IconButton(
+                          tooltip: DiscoverStrings.close,
+                          color: Colors.white,
+                          onPressed: () => Navigator.of(context).pop(),
+                          icon: const Icon(Icons.keyboard_arrow_down_rounded),
+                        ),
+                      ),
+                    ),
                     Positioned(
                       top: 10,
                       right: 10,
@@ -260,10 +276,7 @@ class DogDetailSheet extends StatelessWidget {
                   ],
                 ),
               ),
-              _ProfileActionBar(
-                profile: profile,
-                onClose: () => Navigator.of(context).pop(),
-              ),
+              _ProfileActionBar(profile: profile),
             ],
           ),
         );
@@ -675,10 +688,9 @@ class _HealthBadge extends StatelessWidget {
 }
 
 class _ProfileActionBar extends ConsumerWidget {
-  const _ProfileActionBar({required this.profile, required this.onClose});
+  const _ProfileActionBar({required this.profile});
 
   final DiscoverProfile profile;
-  final VoidCallback onClose;
 
   bool _isOwnProfile(WidgetRef ref) {
     final uid = ref.watch(authStateProvider).asData?.value?.uid ?? '';
@@ -738,16 +750,16 @@ class _ProfileActionBar extends ConsumerWidget {
             padding: const EdgeInsets.fromLTRB(8, 8, 8, 8),
             child: Row(
               children: [
-                IconButton.filledTonal(
-                  tooltip: DiscoverStrings.close,
-                  onPressed: onClose,
-                  icon: const Icon(Icons.close_rounded),
+                _LikeButton(profile: profile),
+                const SizedBox(width: 6),
+                // Follow replaces the old X / Super Like actions: it follows
+                // the owner account (not this dog) and never touches likes
+                // or matches.
+                FollowButton(
+                  ownerId: profile.ownerId.trim(),
+                  ownerName: profile.ownerName,
                 ),
                 const SizedBox(width: 8),
-                _LikeButton(profile: profile),
-                SizedBox(width: 4),
-                _SuperLikeButton(profile: profile),
-                SizedBox(width: 8),
                 Expanded(
                   child: FilledButton.icon(
                     // Always non-null — own-profile/missing-owner handled in tap.
@@ -1034,173 +1046,6 @@ class _LikeButtonState extends ConsumerState<_LikeButton> {
         visualDensity: VisualDensity.compact,
       ),
       icon: Icon(_liked ? Icons.favorite : Icons.favorite_border),
-    );
-  }
-}
-
-class _SuperLikeButton extends ConsumerStatefulWidget {
-  const _SuperLikeButton({required this.profile});
-
-  final DiscoverProfile profile;
-
-  @override
-  ConsumerState<_SuperLikeButton> createState() => _SuperLikeButtonState();
-}
-
-class _SuperLikeButtonState extends ConsumerState<_SuperLikeButton> {
-  var _busy = false;
-  var _mine = false;
-  var _sent = false;
-
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final uid = ref.read(authStateProvider).asData?.value?.uid ?? '';
-      final mine =
-          uid.isNotEmpty &&
-          (widget.profile.ownerId == uid ||
-              widget.profile.id ==
-                  ref.read(discoverControllerProvider).myDog.id);
-      if (mounted) {
-        setState(() => _mine = mine);
-      }
-    });
-  }
-
-  Future<void> _showDailyLimitDialog() {
-    return showDialog<void>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text(DiscoverStrings.superLikeDailyLimitTitle),
-        content: Text(DiscoverStrings.superLikeDailyLimitBody),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(),
-            child: Text(DiscoverStrings.close),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Future<void> _showSuccessPopup() async {
-    showDialog<void>(
-      context: context,
-      barrierDismissible: true,
-      builder: (dialogContext) {
-        Future<void>.delayed(const Duration(milliseconds: 2500), () {
-          if (dialogContext.mounted) {
-            Navigator.of(dialogContext).pop();
-          }
-        });
-        return Dialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.star, color: Colors.amber, size: 48),
-                SizedBox(height: 12),
-                Text(
-                  DiscoverStrings.superLikeSuccessTitle,
-                  textAlign: TextAlign.center,
-                  style: Theme.of(dialogContext).textTheme.titleMedium
-                      ?.copyWith(fontWeight: FontWeight.w700),
-                ),
-                SizedBox(height: 8),
-                Text(
-                  DiscoverStrings.superLikedDog(widget.profile.name),
-                  textAlign: TextAlign.center,
-                  style: Theme.of(dialogContext).textTheme.bodyMedium,
-                ),
-                SizedBox(height: 8),
-                Text(
-                  DiscoverStrings.superLikeSuccessHint,
-                  textAlign: TextAlign.center,
-                  style: Theme.of(dialogContext).textTheme.bodySmall?.copyWith(
-                    color: Theme.of(
-                      dialogContext,
-                    ).colorScheme.onSurface.withValues(alpha: 0.7),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  Future<void> _tap() async {
-    if (_busy || _mine || _sent) {
-      return;
-    }
-    setState(() => _busy = true);
-    try {
-      final isMatch = await ref
-          .read(discoverControllerProvider.notifier)
-          .sendSuperLike(widget.profile);
-      if (!mounted) {
-        return;
-      }
-      setState(() => _sent = true);
-      if (isMatch) {
-        await showMatchDialogIfNeeded(
-          context: context,
-          ref: ref,
-          matched: widget.profile,
-          isMatch: true,
-        );
-      } else {
-        await _showSuccessPopup();
-      }
-    } on SuperLikeDailyLimitException {
-      if (mounted) {
-        await _showDailyLimitDialog();
-      }
-    } catch (_) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(DiscoverStrings.superLikeFailed)),
-        );
-      }
-    } finally {
-      if (mounted) {
-        setState(() => _busy = false);
-      }
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    if (_mine) {
-      return const SizedBox.shrink();
-    }
-    final active = _sent;
-    return IconButton.filled(
-      tooltip: DiscoverStrings.superLike,
-      onPressed: (_busy || active) ? null : _tap,
-      style: IconButton.styleFrom(
-        backgroundColor: active ? Colors.amber : Colors.amber.shade600,
-        disabledBackgroundColor: Colors.amber,
-        foregroundColor: Colors.white,
-        disabledForegroundColor: Colors.white,
-        visualDensity: VisualDensity.compact,
-      ),
-      icon: _busy
-          ? const SizedBox(
-              width: 18,
-              height: 18,
-              child: CircularProgressIndicator(
-                strokeWidth: 2,
-                color: Colors.white,
-              ),
-            )
-          : Icon(active ? Icons.star : Icons.star_border),
     );
   }
 }

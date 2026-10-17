@@ -2,6 +2,7 @@ import '../../discover/domain/discover_profile.dart';
 import '../domain/chat_conversation.dart';
 import '../domain/chat_message.dart';
 import '../domain/chat_room.dart';
+import 'story_reference.dart';
 
 abstract class ChatRepository {
   List<ChatConversation> get currentInbox;
@@ -38,10 +39,12 @@ abstract class ChatRepository {
 
   void markRead(String conversationId);
 
+  /// [story] marks the message as a reply to that story (Inbox shows it).
   Future<void> sendMessage(
     String conversationId,
     String rawText, {
     ChatMessage? replyTo,
+    StoryReference? story,
   });
 
   Future<void> sendWalkInvite({

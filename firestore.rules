@@ -1026,6 +1026,153 @@ service cloud.firestore {
       }
     }
 
+    // --- Follows ------------------------------------------------------------
+    // follows/{followerUid}_{followedUid}: one owner account following
+    // another. The id makes duplicates impossible; only create / delete.
+    // Each side may read its own edges (my followers / who I follow); nobody
+    // can list another user's followers.
+    function followPath(followerUid, followedUid) {
+      return /databases/$(database)/documents/follows/$(followerUid + '_' + followedUid);
+    }
+
+    match /follows/{followId} {
+      // A missing edge may be probed by its follower (follow transaction).
+      allow get: if isAuthenticated() &&
+        (resource == null
+          ? followId.split('_')[0] == request.auth.uid
+          : request.auth.uid in [resource.data.followerUserId,
+                                 resource.data.followedUserId]);
+      allow list: if isAuthenticated() &&
+        (resource.data.followerUserId == request.auth.uid ||
+          resource.data.followedUserId == request.auth.uid);
+      allow create: if isAuthenticated() &&
+        request.resource.data.keys().hasOnly(
+          ['followerUserId', 'followedUserId', 'createdAt']) &&
+        request.resource.data.followerUserId == request.auth.uid &&
+        request.resource.data.followedUserId is string &&
+        request.resource.data.followedUserId.size() > 0 &&
+        request.resource.data.followedUserId != request.auth.uid &&
+        followId == request.auth.uid + '_' + request.resource.data.followedUserId &&
+        request.resource.data.createdAt == request.time &&
+        !exists(/databases/$(database)/documents/users/$(request.resource.data.followedUserId)/blocked_users/$(request.auth.uid));
+      // The follower unfollows; the followed person may remove a follower.
+      allow delete: if isAuthenticated() &&
+        (resource.data.followerUserId == request.auth.uid ||
+          resource.data.followedUserId == request.auth.uid);
+      allow delete: if isAdmin();
+    }
+
+    // --- Stories (24h, audience) -------------------------------------------
+    // audience: 'all' (Svi korisnici), 'followers' (Moji pratioci = who
+    // follows the author), 'following' (Osobe koje ja pratim = whom the
+    // author follows). The author is never audience-checked.
+    function storyAudienceOk(d) {
+      return d.authorUserId == request.auth.uid ||
+        (
+          !exists(/databases/$(database)/documents/users/$(d.authorUserId)/blocked_users/$(request.auth.uid)) &&
+          (
+            d.audience == 'all' ||
+            (d.audience == 'followers' && exists(followPath(request.auth.uid, d.authorUserId))) ||
+            (d.audience == 'following' && exists(followPath(d.authorUserId, request.auth.uid)))
+          )
+        );
+    }
+
+    // Single reads also need the story to be active. List queries cannot
+    // check the expiry (rules cannot prove a range filter against
+    // request.time), so the app always filters expiresAt > now, and media,
+    // single reads and interactions are denied after expiry.
+    function storyVisible(d) {
+      return storyAudienceOk(d) &&
+        (d.authorUserId == request.auth.uid || d.expiresAt > request.time);
+    }
+
+    function storyPath(storyId) {
+      return /databases/$(database)/documents/stories/$(storyId);
+    }
+
+    // A viewer may interact: story active, visible to them, not their own.
+    function canInteractWithStory(storyId) {
+      let d = get(storyPath(storyId)).data;
+      return d.authorUserId != request.auth.uid &&
+        d.expiresAt > request.time &&
+        storyAudienceOk(d);
+    }
+
+    function isStoryAuthor(storyId) {
+      return get(storyPath(storyId)).data.authorUserId == request.auth.uid;
+    }
+
+    match /stories/{storyId} {
+      allow get: if isAuthenticated() && storyVisible(resource.data);
+      allow list: if isAuthenticated() && storyAudienceOk(resource.data);
+      allow create: if isAuthenticated() &&
+        request.resource.data.keys().hasOnly([
+          'authorUserId', 'authorName', 'authorPhotoUrl',
+          'dogId', 'dogName', 'dogPhotoUrl',
+          'mediaType', 'mediaPath', 'caption', 'audience', 'status',
+          'createdAt', 'expiresAt',
+        ]) &&
+        request.resource.data.authorUserId == request.auth.uid &&
+        request.resource.data.authorName is string &&
+        request.resource.data.authorName.size() <= 80 &&
+        request.resource.data.get('authorPhotoUrl', '') is string &&
+        request.resource.data.get('authorPhotoUrl', '').size() <= 2048 &&
+        request.resource.data.get('dogId', '') is string &&
+        request.resource.data.get('dogName', '') is string &&
+        request.resource.data.get('dogName', '').size() <= 80 &&
+        request.resource.data.get('dogPhotoUrl', '') is string &&
+        request.resource.data.get('dogPhotoUrl', '').size() <= 2048 &&
+        request.resource.data.mediaType == 'image' &&
+        request.resource.data.mediaPath ==
+          'stories/' + request.auth.uid + '/' + storyId + '/media' &&
+        request.resource.data.caption is string &&
+        request.resource.data.caption.size() <= 500 &&
+        request.resource.data.audience in ['all', 'followers', 'following'] &&
+        request.resource.data.status == 'published' &&
+        request.resource.data.createdAt == request.time &&
+        request.resource.data.expiresAt is timestamp &&
+        // 24h after publishing (client clock skew tolerated), never longer.
+        request.resource.data.expiresAt > request.time + duration.value(22, 'h') &&
+        request.resource.data.expiresAt < request.time + duration.value(26, 'h');
+      // Stories are never edited after publishing.
+      allow update: if false;
+      allow delete: if isAuthenticated() &&
+        (resource.data.authorUserId == request.auth.uid || isAdmin());
+
+      // One view per viewer (doc id = viewer uid); only the author lists them.
+      match /story_views/{viewerId} {
+        allow get: if isAuthenticated() &&
+          (viewerId == request.auth.uid || isStoryAuthor(storyId));
+        allow list: if isAuthenticated() && isStoryAuthor(storyId);
+        allow create: if isAuthenticated() &&
+          viewerId == request.auth.uid &&
+          request.resource.data.keys().hasOnly(['viewerUserId', 'viewedAt', 'expiresAt']) &&
+          request.resource.data.viewerUserId == request.auth.uid &&
+          request.resource.data.viewedAt == request.time &&
+          request.resource.data.expiresAt == get(storyPath(storyId)).data.expiresAt &&
+          canInteractWithStory(storyId);
+        allow delete: if isAuthenticated() &&
+          (viewerId == request.auth.uid || isStoryAuthor(storyId) || isAdmin());
+      }
+
+      // One like per user (doc id = uid); only the author lists them.
+      match /story_likes/{likerId} {
+        allow get: if isAuthenticated() &&
+          (likerId == request.auth.uid || isStoryAuthor(storyId));
+        allow list: if isAuthenticated() && isStoryAuthor(storyId);
+        allow create: if isAuthenticated() &&
+          likerId == request.auth.uid &&
+          request.resource.data.keys().hasOnly(['userId', 'createdAt', 'expiresAt']) &&
+          request.resource.data.userId == request.auth.uid &&
+          request.resource.data.createdAt == request.time &&
+          request.resource.data.expiresAt == get(storyPath(storyId)).data.expiresAt &&
+          canInteractWithStory(storyId);
+        allow delete: if isAuthenticated() &&
+          (likerId == request.auth.uid || isStoryAuthor(storyId) || isAdmin());
+      }
+    }
+
     // Highlights are stored on dogs/{dogId}.storyHighlights (owner update
     // rules on /dogs cover writes). Kept for any legacy top-level docs.
     match /highlights/{highlightId} {
