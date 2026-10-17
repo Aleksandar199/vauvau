@@ -24,6 +24,13 @@ class FirestoreStoryRepository implements StoryRepository {
   final StorageService _storage;
   final Set<String> _viewed = {};
 
+  /// Exact expiresAt as stored (rules require views / likes to copy it
+  /// unchanged; a DateTime round trip can lose precision).
+  final Map<String, Timestamp> _rawExpiry = {};
+
+  Timestamp _storedExpiry(Story story) =>
+      _rawExpiry[story.id] ?? Timestamp.fromDate(story.expiresAt);
+
   CollectionReference<Map<String, dynamic>> get _stories =>
       _firestore.collection('stories');
 
@@ -210,6 +217,21 @@ class FirestoreStoryRepository implements StoryRepository {
     try {
       return await _storage.downloadPrivateBytes(story.mediaPath);
     } catch (error) {
+      debugPrint(
+        'story media denied id=${story.id} audience=${story.audience.key}: $error',
+      );
+      throw StoryAccessException('$error');
+    }
+  }
+
+  @override
+  Future<String> loadMediaUrl(Story story) async {
+    try {
+      return await _storage.privateDownloadUrl(story.mediaPath);
+    } catch (error) {
+      debugPrint(
+        'story media denied id=${story.id} audience=${story.audience.key}: $error',
+      );
       throw StoryAccessException('$error');
     }
   }
@@ -223,7 +245,7 @@ class FirestoreStoryRepository implements StoryRepository {
       await _stories.doc(story.id).collection('story_views').doc(me).set({
         'viewerUserId': me,
         'viewedAt': FieldValue.serverTimestamp(),
-        'expiresAt': Timestamp.fromDate(story.expiresAt),
+        'expiresAt': _storedExpiry(story),
       });
     } catch (error) {
       // Already recorded (rules allow create only) or no longer visible.
@@ -262,7 +284,7 @@ class FirestoreStoryRepository implements StoryRepository {
       tx.set(ref, {
         'userId': me,
         'createdAt': FieldValue.serverTimestamp(),
-        'expiresAt': Timestamp.fromDate(story.expiresAt),
+        'expiresAt': _storedExpiry(story),
       });
       return true;
     });
@@ -343,6 +365,10 @@ class FirestoreStoryRepository implements StoryRepository {
         ? created.add(Story.lifetime)
         : _date(data['expiresAt']);
     final author = data['authorUserId'] as String? ?? '';
+    final rawExpiry = data['expiresAt'];
+    if (rawExpiry is Timestamp) {
+      _rawExpiry[id] = rawExpiry;
+    }
     return Story(
       id: id,
       authorUserId: author,
@@ -358,10 +384,9 @@ class FirestoreStoryRepository implements StoryRepository {
       caption: data['caption'] as String? ?? '',
       audience: StoryAudience.fromKey(data['audience'] as String?),
       createdAt: created,
-      // Never trust a later expiry than 24h after creation.
-      expiresAt: expires.isAfter(created.add(Story.lifetime))
-          ? created.add(Story.lifetime)
-          : expires,
+      // The stored value, as the rules see it (create rules cap it at
+      // publish time + 26h, so it cannot be pushed out).
+      expiresAt: expires,
     );
   }
 

@@ -164,6 +164,12 @@ class LocalStoryRepository implements StoryRepository {
   }
 
   @override
+  Future<String> loadMediaUrl(Story story) async {
+    final bytes = await loadMedia(story);
+    return Uri.dataFromBytes(bytes, mimeType: 'image/jpeg').toString();
+  }
+
+  @override
   Future<void> markViewed(Story story, String me) async {
     if (me.isEmpty || me == story.authorUserId || !canView(story, me)) {
       return;

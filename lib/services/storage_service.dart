@@ -346,6 +346,18 @@ class StorageService {
     }
   }
 
+  /// Web only: the browser shows Storage images with an HTML <img>, which
+  /// needs a URL (fetching bytes would need bucket CORS). Storage rules are
+  /// checked on this request; the URL is kept in memory only, never stored.
+  Future<String> privateDownloadUrl(String path) async {
+    try {
+      return await _storage.ref(path).getDownloadURL();
+    } on FirebaseException catch (error) {
+      debugPrint('StorageService.privateDownloadUrl code=${error.code}');
+      throw StateError(_userMessageForFirebase(error));
+    }
+  }
+
   /// Best-effort delete of a private object (missing objects are fine).
   Future<void> deletePrivatePath(String path) async {
     _privateCache.remove(path);

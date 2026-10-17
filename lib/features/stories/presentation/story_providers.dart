@@ -375,3 +375,9 @@ final ownerStoriesProvider = FutureProvider.autoDispose
           if (story.isActive(now)) story,
       ];
     });
+
+/// Web: media URL for an HTML <img> (no bucket CORS needed). No retry.
+final storyMediaUrlProvider = FutureProvider.autoDispose.family<String, Story>(
+  (ref, story) => ref.read(storyRepositoryProvider).loadMediaUrl(story),
+  retry: (_, _) => null,
+);

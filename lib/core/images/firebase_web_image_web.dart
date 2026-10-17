@@ -14,9 +14,11 @@ Widget buildFirebaseWebImage({
   required BoxFit fit,
   Widget? placeholder,
   Widget? errorWidget,
+  bool passThroughPointer = false,
 }) {
   final viewType =
-      'vauvau-fb-img-${url.hashCode.toRadixString(16)}-${fit.name}';
+      'vauvau-fb-img-${url.hashCode.toRadixString(16)}-${fit.name}'
+      '${passThroughPointer ? '-np' : ''}';
 
   if (!_registeredViews.contains(viewType)) {
     ui_web.platformViewRegistry.registerViewFactory(viewType, (int viewId) {
@@ -31,6 +33,10 @@ Widget buildFirebaseWebImage({
         ..setProperty('object-position', 'center')
         ..setProperty('border', '0')
         ..setProperty('display', 'block');
+      if (passThroughPointer) {
+        // Let Flutter gestures (story taps / long press) reach the app.
+        img.style.setProperty('pointer-events', 'none');
+      }
       return img;
     });
     _registeredViews.add(viewType);

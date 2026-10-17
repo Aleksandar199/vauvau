@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/images/dog_image.dart';
+import '../../../core/images/firebase_web_image.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../follows/presentation/follow_controller.dart';
 import '../../moments/presentation/pointer_safe.dart';
@@ -413,12 +414,15 @@ class _StoryGroupPlayerState extends ConsumerState<_StoryGroupPlayer>
     }
     final mine = _isMine;
     final now = DateTime.now();
-    final bytes = ref.watch(storyMediaProvider(story));
-    if (bytes.hasValue) {
+    // Web shows an HTML <img> from a URL; mobile decodes the bytes.
+    final webUrl = kIsWeb ? ref.watch(storyMediaUrlProvider(story)) : null;
+    final bytes = kIsWeb ? null : ref.watch(storyMediaProvider(story));
+    final media = (webUrl ?? bytes)!;
+    if (media.hasValue) {
       WidgetsBinding.instance.addPostFrameCallback(
         (_) => _onMediaLoaded(story),
       );
-    } else if (bytes.hasError) {
+    } else if (media.hasError) {
       // Not allowed / deleted media: no view is recorded, the item still
       // times out so the player moves on.
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -459,28 +463,45 @@ class _StoryGroupPlayerState extends ConsumerState<_StoryGroupPlayer>
       child: Stack(
         fit: StackFit.expand,
         children: [
-          bytes.when(
-            data: (data) => Stack(
-              fit: StackFit.expand,
-              children: [
-                // Blurred fill + the whole photo on top: portrait fills the
-                // screen, landscape is letterboxed, nothing is stretched.
-                ImageFiltered(
-                  imageFilter: ui.ImageFilter.blur(sigmaX: 24, sigmaY: 24),
-                  child: Image.memory(data, fit: BoxFit.cover),
-                ),
-                Image.memory(
-                  data,
-                  key: ValueKey('story-media-${story.id}'),
+          if (kIsWeb)
+            webUrl!.when(
+              // HTML <img> (no bucket CORS needed), photo kept whole.
+              data: (url) => KeyedSubtree(
+                key: ValueKey('story-media-${story.id}'),
+                child: buildFirebaseWebImage(
+                  url: url,
                   fit: BoxFit.contain,
+                  passThroughPointer: true,
                 ),
-              ],
+              ),
+              loading: () => const Center(
+                child: CircularProgressIndicator(color: Colors.white70),
+              ),
+              error: (_, _) => const _Unavailable(),
+            )
+          else
+            bytes!.when(
+              data: (data) => Stack(
+                fit: StackFit.expand,
+                children: [
+                  // Blurred fill + the whole photo on top: portrait fills the
+                  // screen, landscape is letterboxed, nothing is stretched.
+                  ImageFiltered(
+                    imageFilter: ui.ImageFilter.blur(sigmaX: 24, sigmaY: 24),
+                    child: Image.memory(data, fit: BoxFit.cover),
+                  ),
+                  Image.memory(
+                    data,
+                    key: ValueKey('story-media-${story.id}'),
+                    fit: BoxFit.contain,
+                  ),
+                ],
+              ),
+              loading: () => const Center(
+                child: CircularProgressIndicator(color: Colors.white70),
+              ),
+              error: (_, _) => const _Unavailable(),
             ),
-            loading: () => const Center(
-              child: CircularProgressIndicator(color: Colors.white70),
-            ),
-            error: (_, _) => const _Unavailable(),
-          ),
           const IgnorePointer(
             child: DecoratedBox(
               decoration: BoxDecoration(

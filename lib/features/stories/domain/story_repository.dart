@@ -63,6 +63,10 @@ abstract class StoryRepository {
   /// Story media bytes; throws [StoryAccessException] when not allowed.
   Future<Uint8List> loadMedia(Story story);
 
+  /// Web: a URL for an HTML <img> (rules are checked when it is issued).
+  /// Throws [StoryAccessException] when not allowed.
+  Future<String> loadMediaUrl(Story story);
+
   /// Records that [me] viewed [story] (idempotent, never for the author).
   Future<void> markViewed(Story story, String me);
 

@@ -1,6 +1,8 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/images/firebase_web_image.dart';
 import '../../domain/story.dart';
 import '../stories_strings.dart';
 import '../story_providers.dart';
@@ -25,6 +27,23 @@ class StoryMediaImage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    if (kIsWeb) {
+      // Bytes via fetch would need bucket CORS; an HTML <img> does not.
+      return ref.watch(storyMediaUrlProvider(story)).when(
+            data: (url) {
+              if (onLoaded != null) {
+                WidgetsBinding.instance.addPostFrameCallback((_) => onLoaded!());
+              }
+              return buildFirebaseWebImage(
+                url: url,
+                fit: fit,
+                passThroughPointer: true,
+              );
+            },
+            loading: () => _Loading(compact: compact),
+            error: (_, _) => _Unavailable(compact: compact),
+          );
+    }
     final media = ref.watch(storyMediaProvider(story));
     return media.when(
       data: (bytes) {
@@ -40,17 +59,28 @@ class StoryMediaImage extends ConsumerWidget {
           errorBuilder: (context, _, _) => _Unavailable(compact: compact),
         );
       },
-      loading: () => Center(
-        child: SizedBox(
-          width: compact ? 16 : 28,
-          height: compact ? 16 : 28,
-          child: const CircularProgressIndicator(
-            strokeWidth: 2,
-            color: Colors.white70,
-          ),
+      loading: () => _Loading(compact: compact),
+      error: (_, _) => _Unavailable(compact: compact),
+    );
+  }
+}
+
+class _Loading extends StatelessWidget {
+  const _Loading({required this.compact});
+
+  final bool compact;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: SizedBox(
+        width: compact ? 16 : 28,
+        height: compact ? 16 : 28,
+        child: const CircularProgressIndicator(
+          strokeWidth: 2,
+          color: Colors.white70,
         ),
       ),
-      error: (_, _) => _Unavailable(compact: compact),
     );
   }
 }

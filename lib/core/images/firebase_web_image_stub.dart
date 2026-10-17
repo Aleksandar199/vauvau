@@ -6,6 +6,7 @@ Widget buildFirebaseWebImage({
   required BoxFit fit,
   Widget? placeholder,
   Widget? errorWidget,
+  bool passThroughPointer = false,
 }) {
   throw UnsupportedError('Firebase web image is only available on web.');
 }
