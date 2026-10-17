@@ -208,7 +208,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                   Expanded(
                     child: Material(
                       elevation: 4,
-                      borderRadius: BorderRadius.circular(18),
+                      borderRadius: BorderRadius.circular(14),
                       color: const Color(0xFF2A2A38),
                       child: TextField(
                         controller: _search,
@@ -216,6 +216,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                         style: const TextStyle(
                           color: Color(0xFFF8FAFC),
                           fontWeight: FontWeight.w500,
+                          fontSize: 14,
                         ),
                         cursorColor: const Color(0xFFF8FAFC),
                         decoration: InputDecoration(
@@ -225,19 +226,25 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                           ),
                           prefixIcon: Icon(
                             Icons.search,
+                            size: 20,
                             color: const Color(0xFFF8FAFC).withValues(alpha: 0.85),
                           ),
                           filled: true,
                           fillColor: const Color(0xFF2A2A38),
-                          contentPadding: const EdgeInsets.symmetric(vertical: 14),
+                          isDense: true,
+                          prefixIconConstraints: const BoxConstraints(
+                            minWidth: 40,
+                            minHeight: 38,
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(vertical: 9),
                           enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(18),
+                            borderRadius: BorderRadius.circular(14),
                             borderSide: BorderSide(
                               color: const Color(0xFFF8FAFC).withValues(alpha: 0.28),
                             ),
                           ),
                           focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(18),
+                            borderRadius: BorderRadius.circular(14),
                             borderSide: const BorderSide(
                               color: Color(0xFFF8FAFC),
                               width: 1.4,
@@ -408,8 +415,8 @@ class _MapScreenState extends ConsumerState<MapScreen> {
           Positioned(
             left: 12,
             right: 12,
-            top: 210,
-            bottom: walkActive ? 220 : 88,
+            top: 196,
+            bottom: walkActive ? 160 : 88,
             child: _PlacesListPanel(
               places: places,
               userCoord: userCoord,
@@ -419,7 +426,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
           ),
         Positioned(
           right: 12,
-          bottom: walkActive ? 220 : 88,
+          bottom: walkActive ? 160 : 88,
           child: Column(
             children: [
               _MapFab(

@@ -20,29 +20,27 @@ class WalkStatsPanel extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final walk = ref.watch(walkControllerProvider);
     final distance = walk.distanceLabel;
+    // Compact panel: the map stays visible behind it during a walk.
+    final buttonStyle = FilledButton.styleFrom(
+      minimumSize: const Size(0, 42),
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+    );
     return Material(
       color: Colors.transparent,
       child: Container(
         decoration: BoxDecoration(
           color: Theme.of(context).colorScheme.surface,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
           boxShadow: AppCardTokens.softShadow(0.12),
         ),
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+        padding: const EdgeInsets.fromLTRB(14, 8, 14, 10),
         child: SafeArea(
           top: false,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.outlineVariant,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-              SizedBox(height: 12),
               Row(
                 children: [
                   Expanded(
@@ -53,7 +51,7 @@ class WalkStatsPanel extends ConsumerWidget {
                   ),
                   Container(
                     width: 1,
-                    height: 44,
+                    height: 30,
                     color: Theme.of(context).dividerColor,
                   ),
                   Expanded(
@@ -62,72 +60,55 @@ class WalkStatsPanel extends ConsumerWidget {
                       label: MapStrings.walkDistance,
                     ),
                   ),
+                  IconButton(
+                    tooltip: MapStrings.walkHistory,
+                    visualDensity: VisualDensity.compact,
+                    onPressed: () => showWalkHistorySheet(context),
+                    icon: const Icon(Icons.history),
+                  ),
                 ],
               ),
-              const SizedBox(height: 8),
               WalkTrackingStatus(walk: walk),
-              Align(
-                alignment: Alignment.centerRight,
-                child: TextButton(
-                  onPressed: () => showWalkHistorySheet(context),
-                  child: Text(MapStrings.walkHistory),
-                ),
-              ),
+              const SizedBox(height: 8),
               Row(
                 children: [
                   Expanded(
-                    child: SizedBox(
-                      height: 54,
-                      child: FilledButton.tonalIcon(
-                        style: FilledButton.styleFrom(
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          textStyle: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        onPressed: () {
-                          final notifier =
-                              ref.read(walkControllerProvider.notifier);
-                          if (walk.isPaused) {
-                            notifier.resume();
-                          } else {
-                            notifier.pause();
-                          }
-                        },
-                        icon: Icon(
-                          walk.isPaused ? Icons.play_arrow : Icons.pause,
-                        ),
-                        label: Text(
-                          walk.isPaused
-                              ? MapStrings.resumeWalk
-                              : MapStrings.pauseWalk,
-                        ),
+                    child: FilledButton.tonalIcon(
+                      style: buttonStyle,
+                      onPressed: () {
+                        final notifier =
+                            ref.read(walkControllerProvider.notifier);
+                        if (walk.isPaused) {
+                          notifier.resume();
+                        } else {
+                          notifier.pause();
+                        }
+                      },
+                      icon: Icon(
+                        walk.isPaused ? Icons.play_arrow : Icons.pause,
+                        size: 20,
+                      ),
+                      label: Text(
+                        walk.isPaused
+                            ? MapStrings.resumeWalk
+                            : MapStrings.pauseWalk,
                       ),
                     ),
                   ),
-                  const SizedBox(width: 10),
+                  const SizedBox(width: 8),
                   Expanded(
-                    child: SizedBox(
-                      height: 54,
-                      child: FilledButton.icon(
-                        style: FilledButton.styleFrom(
-                          backgroundColor: const Color(0xFFB91C1C),
-                          foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          textStyle: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                          ),
+                    child: FilledButton.icon(
+                      style: buttonStyle.copyWith(
+                        backgroundColor: const WidgetStatePropertyAll(
+                          Color(0xFFB91C1C),
                         ),
-                        onPressed: () => _confirmEnd(context, ref),
-                        icon: const Icon(Icons.stop),
-                        label: Text(MapStrings.endWalk),
+                        foregroundColor: const WidgetStatePropertyAll(
+                          Colors.white,
+                        ),
                       ),
+                      onPressed: () => _confirmEnd(context, ref),
+                      icon: const Icon(Icons.stop, size: 20),
+                      label: Text(MapStrings.endWalk),
                     ),
                   ),
                 ],
@@ -282,16 +263,15 @@ class _PrimaryStat extends StatelessWidget {
         Text(
           value,
           style: const TextStyle(
-            fontSize: 24,
+            fontSize: 20,
             fontWeight: FontWeight.bold,
             height: 1.1,
           ),
         ),
-        const SizedBox(height: 2),
         Text(
           label,
           style: TextStyle(
-            fontSize: 12,
+            fontSize: 11,
             color: Colors.grey.shade600,
             fontWeight: FontWeight.w500,
           ),
