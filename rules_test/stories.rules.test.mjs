@@ -131,6 +131,12 @@ describe('follows', () => {
     }));
   });
 
+  test('ne može se zapratiti neko koga sam blokirao', async () => {
+    await assertFails(setDoc(doc(db('alice'), 'follows/alice_dave'), {
+      followerUserId: 'alice', followedUserId: 'dave', createdAt: serverTimestamp(),
+    }));
+  });
+
   test('liste pratilaca vide samo učesnici', async () => {
     await assertSucceeds(getDocs(query(collection(db('alice'), 'follows'),
       where('followedUserId', '==', 'alice'))));

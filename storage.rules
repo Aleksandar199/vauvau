@@ -103,15 +103,20 @@ service firebase.storage {
         /databases/(default)/documents/follows/$(followerUid + '_' + followedUid));
     }
 
+    // Storage allows at most 2 Firestore document reads per request, so each
+    // branch reads the story + one more doc. A follow edge never exists
+    // between users where one blocked the other (blocking removes both
+    // edges; firestore.rules refuse new ones), so for the follower
+    // audiences the follow check also covers the block.
     function storyMediaReadable(userId, storyId) {
       let d = storyDoc(storyId);
       let me = request.auth.uid;
       return d.authorUserId == userId &&
         d.expiresAt > request.time &&
-        !firestore.exists(
-          /databases/(default)/documents/users/$(userId)/blocked_users/$(me)) &&
         (
-          d.audience == 'all' ||
+          (d.audience == 'all' &&
+            !firestore.exists(
+              /databases/(default)/documents/users/$(userId)/blocked_users/$(me))) ||
           (d.audience == 'followers' && followExists(me, userId)) ||
           (d.audience == 'following' && followExists(userId, me))
         );

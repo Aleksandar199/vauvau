@@ -1054,7 +1054,10 @@ service cloud.firestore {
         request.resource.data.followedUserId != request.auth.uid &&
         followId == request.auth.uid + '_' + request.resource.data.followedUserId &&
         request.resource.data.createdAt == request.time &&
-        !exists(/databases/$(database)/documents/users/$(request.resource.data.followedUserId)/blocked_users/$(request.auth.uid));
+        // No follow edge between users where either blocked the other
+        // (storage.rules rely on this for follower-only story media).
+        !exists(/databases/$(database)/documents/users/$(request.resource.data.followedUserId)/blocked_users/$(request.auth.uid)) &&
+        !exists(/databases/$(database)/documents/users/$(request.auth.uid)/blocked_users/$(request.resource.data.followedUserId));
       // The follower unfollows; the followed person may remove a follower.
       allow delete: if isAuthenticated() &&
         (resource.data.followerUserId == request.auth.uid ||

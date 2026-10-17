@@ -36,6 +36,15 @@ class FirestoreBlockedUsersRepository implements BlockedUsersRepository {
     await _blocked.doc(userId).set({
       'blockedAt': FieldValue.serverTimestamp(),
     });
+    // Blocking ends following in both directions: follower-only stories
+    // (storage.rules) treat a follow edge as "not blocked".
+    for (final edge in ['${_currentUserId}_$userId', '${userId}_$_currentUserId']) {
+      try {
+        await _firestore.collection('follows').doc(edge).delete();
+      } catch (_) {
+        // Missing edge or older rules: blocking itself already succeeded.
+      }
+    }
   }
 
   @override

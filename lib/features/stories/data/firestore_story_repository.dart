@@ -242,7 +242,12 @@ class FirestoreStoryRepository implements StoryRepository {
       return;
     }
     try {
-      await _stories.doc(story.id).collection('story_views').doc(me).set({
+      final ref = _stories.doc(story.id).collection('story_views').doc(me);
+      // Already viewed (earlier session): rules allow create only.
+      if ((await ref.get()).exists) {
+        return;
+      }
+      await ref.set({
         'viewerUserId': me,
         'viewedAt': FieldValue.serverTimestamp(),
         'expiresAt': _storedExpiry(story),
