@@ -45,4 +45,29 @@ abstract final class ModerationStrings {
       L10n.tr('Blokiranje nije uspelo. Pokušajte ponovo.', 'Blocking failed. Try again.');
   static String get blockUnavailable =>
       L10n.tr('Korisnik nije dostupan za blokiranje.', 'User is not available to block.');
+
+  // Blocked users screen
+  static String get blockedUsers => L10n.tr('Blokirani korisnici', 'Blocked users');
+  static String get blockedUsersHint => L10n.tr(
+        'Pogledajte koga ste blokirali i odblokirajte ga.',
+        'See who you blocked and unblock them.',
+      );
+  static String get blockedEmpty =>
+      L10n.tr('Niste blokirali nijednog korisnika.', 'You have not blocked anyone.');
+  static String get unblock => L10n.tr('Odblokiraj', 'Unblock');
+  static String get unblockTitle =>
+      L10n.tr('Odblokirati korisnika?', 'Unblock this user?');
+  static String unblockBody(String name) => L10n.tr(
+        '$name će ponovo moći da vidi vaše objave i da vam piše. '
+            'Praćenje se ne vraća automatski.',
+        '$name will be able to see your posts and message you again. '
+            'Following is not restored automatically.',
+      );
+  static String get unblockDone =>
+      L10n.tr('Korisnik je odblokiran.', 'User unblocked.');
+  static String get unblockFailed => L10n.tr(
+        'Odblokiranje nije uspelo. Pokušajte ponovo.',
+        'Unblocking failed. Try again.',
+      );
+  static String get unknownUser => L10n.tr('Korisnik', 'User');
 }

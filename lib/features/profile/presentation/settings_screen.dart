@@ -8,6 +8,8 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_theme_preference.dart';
 import '../../legal/presentation/legal_document_screen.dart';
 import '../../legal/presentation/legal_strings.dart';
+import '../../moderation/presentation/blocked_users_screen.dart';
+import '../../moderation/presentation/moderation_strings.dart';
 import '../../notifications/data/push_platform.dart';
 import '../../notifications/presentation/push_controller.dart';
 import '../domain/app_settings.dart';
@@ -273,6 +275,22 @@ class SettingsScreen extends ConsumerWidget {
                 value: settings.showLocationOnMap,
                 onChanged: (value) =>
                     edit((s) => s.copyWith(showLocationOnMap: value)),
+              ),
+            ],
+          ),
+          SizedBox(height: 20),
+          _SectionLabel(ModerationStrings.blockedUsers),
+          _SettingsGroup(
+            children: [
+              _SettingsTile(
+                icon: Icons.block_outlined,
+                title: ModerationStrings.blockedUsers,
+                subtitle: ModerationStrings.blockedUsersHint,
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => const BlockedUsersScreen(),
+                  ),
+                ),
               ),
             ],
           ),

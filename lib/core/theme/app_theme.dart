@@ -47,6 +47,7 @@ abstract final class AppTheme {
       onError: AppColors.onPrimary,
       surface: background,
       onSurface: onBackground,
+      onSurfaceVariant: onBackground.withValues(alpha: 0.72),
       outline: outline,
     );
 
@@ -162,7 +163,12 @@ abstract final class AppTheme {
         backgroundColor: card,
         disabledColor: card,
         side: BorderSide(color: outline),
-        labelStyle: const TextStyle(fontWeight: FontWeight.w600),
+        // Explicit colour: a colourless chip label inherited whatever text
+        // colour the surrounding widget had (white on a white card).
+        labelStyle: TextStyle(
+          fontWeight: FontWeight.w600,
+          color: onBackground,
+        ),
         secondaryLabelStyle: const TextStyle(
           color: AppColors.onPrimary,
           fontWeight: FontWeight.w700,
