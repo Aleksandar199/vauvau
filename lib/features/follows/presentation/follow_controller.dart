@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/firebase/firebase_status.dart';
+import '../../../core/firebase/firestore_auth_guard.dart';
 import '../../auth/presentation/auth_providers.dart';
 import '../../notifications/data/social_notifications.dart';
 import '../data/firestore_follow_repository.dart';
@@ -10,14 +11,20 @@ import '../domain/follow_repository.dart';
 import 'follows_strings.dart';
 
 /// Signed-in uid ('local-user' without Firebase, like chat / moments).
+///
+/// With Firebase it stays '' until the ID token is ready: follow / story
+/// listeners opened earlier were denied and then stayed empty all session.
 final socialUserIdProvider = Provider<String>((ref) {
   final uid = ref.watch(
     authStateProvider.select((auth) => auth.value?.uid ?? ''),
   );
-  if (uid.isNotEmpty) {
-    return uid;
+  if (!isFirebaseReady) {
+    return uid.isEmpty ? 'local-user' : uid;
   }
-  return isFirebaseReady ? '' : 'local-user';
+  final authReady = ref.watch(
+    firestoreAuthReadyProvider.select((ready) => ready.value ?? false),
+  );
+  return authReady ? uid : '';
 });
 
 /// Name shown to others in follow / story notifications (never the email).

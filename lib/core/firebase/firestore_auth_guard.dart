@@ -183,6 +183,75 @@ abstract final class FirestoreAuthGuard {
 
     return controller.stream;
   }
+
+  /// Like [guardedStream], but a `permission-denied` right after sign-in /
+  /// restart (listener opened before the ID token reached Firestore) does not
+  /// end the stream for the whole session: the token is refreshed and the
+  /// query re-opened up to [maxRetries] times. Other errors emit [empty].
+  static Stream<T> retryingStream<T>({
+    required Stream<T> Function() create,
+    required T empty,
+    String label = 'firestore',
+    int maxRetries = 3,
+    Duration baseDelay = const Duration(seconds: 2),
+  }) {
+    late StreamController<T> controller;
+    StreamSubscription<T>? sub;
+    Timer? retryTimer;
+    var cancelled = false;
+    var attempt = 0;
+
+    Future<void> open({bool refreshToken = false}) async {
+      final user = await ensureReady(forceRefresh: refreshToken);
+      if (cancelled) {
+        return;
+      }
+      if (user == null) {
+        controller.add(empty);
+        return;
+      }
+      await sub?.cancel();
+      sub = create().listen(
+        (value) {
+          attempt = 0;
+          controller.add(value);
+        },
+        onError: (Object error, StackTrace stack) {
+          if (isPermissionDenied(error) && attempt < maxRetries) {
+            attempt++;
+            debugPrint('$label permission-denied, retry $attempt/$maxRetries');
+            retryTimer?.cancel();
+            retryTimer = Timer(baseDelay * attempt, () {
+              if (!cancelled) {
+                unawaited(open(refreshToken: true));
+              }
+            });
+            return;
+          }
+          if (isPermissionDenied(error)) {
+            logPermissionDenied(error, stack, label: label);
+          } else {
+            debugPrint('$label stream error: $error');
+          }
+          if (!controller.isClosed) {
+            controller.add(empty);
+          }
+        },
+        cancelOnError: false,
+      );
+    }
+
+    controller = StreamController<T>(
+      onListen: () => unawaited(open()),
+      onCancel: () async {
+        cancelled = true;
+        retryTimer?.cancel();
+        await sub?.cancel();
+        sub = null;
+      },
+    );
+    return controller.stream;
+  }
 }
 
 /// True only when Riverpod auth has a user **and** FirebaseAuth has an ID token.

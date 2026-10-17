@@ -32,7 +32,7 @@ class FirestoreStoryRepository implements StoryRepository {
     if (me.isEmpty) {
       return Stream.value(const []);
     }
-    return FirestoreAuthGuard.guardedStream<List<Story>>(
+    return FirestoreAuthGuard.retryingStream<List<Story>>(
       label: 'stories.mine',
       empty: const [],
       create: () => _stories

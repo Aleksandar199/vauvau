@@ -43,7 +43,7 @@ class FirestoreFollowRepository implements FollowRepository {
     if (userId.isEmpty) {
       return Stream.value(const <String>{});
     }
-    return FirestoreAuthGuard.guardedStream<Set<String>>(
+    return FirestoreAuthGuard.retryingStream<Set<String>>(
       label: label,
       empty: const <String>{},
       create: () => _follows

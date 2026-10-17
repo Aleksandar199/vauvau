@@ -208,11 +208,15 @@ class StoryActions {
       mimeType: mimeType,
       onProgress: onProgress,
     );
+    // Re-open my stories: the bar must show the new story even if the
+    // earlier listener ended (e.g. denied before the token was ready).
+    _ref.invalidate(myStoriesProvider);
     return story;
   }
 
   Future<void> delete(Story story) async {
     await _repo.delete(story);
+    _ref.invalidate(myStoriesProvider);
   }
 
   void markViewed(Story story) {
