@@ -7,6 +7,7 @@ import '../../../rewards/domain/rewards_models.dart';
 import '../../../rewards/domain/rewards_repository.dart';
 import '../../../rewards/presentation/rewards_controller.dart';
 import '../../../rewards/presentation/rewards_strings.dart';
+import '../admin_controller.dart';
 import '../admin_strings.dart';
 
 final _adminChallengesProvider = StreamProvider.autoDispose<List<Challenge>>(
@@ -701,6 +702,8 @@ class _LedgerAdmin extends ConsumerWidget {
   }
 }
 
+/// Coupons users claimed. The admin marks a coupon used when the partner
+/// confirms the purchase (or cancels it); the user then sees it crossed out.
 class _ClaimsAdmin extends ConsumerStatefulWidget {
   const _ClaimsAdmin();
 
@@ -710,6 +713,7 @@ class _ClaimsAdmin extends ConsumerStatefulWidget {
 
 class _ClaimsAdminState extends ConsumerState<_ClaimsAdmin> {
   final _search = TextEditingController();
+  var _activeOnly = true;
 
   @override
   void dispose() {
@@ -717,22 +721,75 @@ class _ClaimsAdminState extends ConsumerState<_ClaimsAdmin> {
     super.dispose();
   }
 
+  Future<void> _setStatus(CouponClaim claim, ClaimStatus status) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(claim.code),
+        content: Text(
+          status == ClaimStatus.redeemed
+              ? AdminStrings.rewardsConfirmRedeem(claim)
+              : AdminStrings.rewardsConfirmCancel(claim),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: Text(AdminStrings.cancel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: Text(RewardsStrings.claimStatus(status)),
+          ),
+        ],
+      ),
+    );
+    if (ok != true || !mounted) return;
+    await _guard(
+      context,
+      () => ref
+          .read(rewardsRepositoryProvider)
+          .adminSetClaimStatus(claim.id, status),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final repo = ref.read(rewardsRepositoryProvider);
     final now = DateTime.now();
     final query = _search.text.trim().toUpperCase();
+    final names = {
+      for (final u in ref.watch(adminUsersProvider).value ?? const [])
+        u.uid: u.name.isNotEmpty ? u.name : u.email,
+    };
     return Column(
       children: [
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
           child: TextField(
             controller: _search,
+            textCapitalization: TextCapitalization.characters,
             onChanged: (_) => setState(() {}),
             decoration: InputDecoration(
               prefixIcon: const Icon(Icons.search),
               hintText: AdminStrings.rewardsSearchCode,
             ),
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+          child: Row(
+            children: [
+              ChoiceChip(
+                label: Text(AdminStrings.rewardsFilterActive),
+                selected: _activeOnly,
+                onSelected: (_) => setState(() => _activeOnly = true),
+              ),
+              const SizedBox(width: 8),
+              ChoiceChip(
+                label: Text(AdminStrings.rewardsFilterAll),
+                selected: !_activeOnly,
+                onSelected: (_) => setState(() => _activeOnly = false),
+              ),
+            ],
           ),
         ),
         Expanded(
@@ -742,46 +799,24 @@ class _ClaimsAdminState extends ConsumerState<_ClaimsAdmin> {
             data: (all) {
               final items = [
                 for (final c in all)
-                  if (query.isEmpty || c.code.contains(query)) c,
+                  if ((query.isEmpty || c.code.contains(query)) &&
+                      (!_activeOnly ||
+                          c.effectiveStatus(now) == ClaimStatus.claimed))
+                    c,
               ];
+              if (items.isEmpty) {
+                return Center(child: Text(AdminStrings.rewardsNoMatch));
+              }
               return ListView(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
                 children: [
                   for (final c in items)
-                    Card(
-                      child: ListTile(
-                        title: Text('${c.code} · ${c.partnerName}'),
-                        subtitle: Text(
-                          '${c.discountLabel} · ${c.userId} · '
-                          '${RewardsStrings.claimStatus(c.effectiveStatus(now))}',
-                        ),
-                        trailing: c.status == ClaimStatus.claimed
-                            ? PopupMenuButton<ClaimStatus>(
-                                onSelected: (status) => _guard(
-                                  context,
-                                  () => repo.adminSetClaimStatus(c.id, status),
-                                ),
-                                itemBuilder: (_) => [
-                                  PopupMenuItem(
-                                    value: ClaimStatus.redeemed,
-                                    child: Text(
-                                      RewardsStrings.claimStatus(
-                                        ClaimStatus.redeemed,
-                                      ),
-                                    ),
-                                  ),
-                                  PopupMenuItem(
-                                    value: ClaimStatus.cancelled,
-                                    child: Text(
-                                      RewardsStrings.claimStatus(
-                                        ClaimStatus.cancelled,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              )
-                            : null,
-                      ),
+                    _ClaimAdminCard(
+                      claim: c,
+                      now: now,
+                      userName: names[c.userId] ?? c.userId,
+                      onRedeem: () => _setStatus(c, ClaimStatus.redeemed),
+                      onCancel: () => _setStatus(c, ClaimStatus.cancelled),
                     ),
                 ],
               );
@@ -789,6 +824,113 @@ class _ClaimsAdminState extends ConsumerState<_ClaimsAdmin> {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _ClaimAdminCard extends StatelessWidget {
+  const _ClaimAdminCard({
+    required this.claim,
+    required this.now,
+    required this.userName,
+    required this.onRedeem,
+    required this.onCancel,
+  });
+
+  final CouponClaim claim;
+  final DateTime now;
+  final String userName;
+  final VoidCallback onRedeem;
+  final VoidCallback onCancel;
+
+  @override
+  Widget build(BuildContext context) {
+    final status = claim.effectiveStatus(now);
+    final active = status == ClaimStatus.claimed;
+    final color = switch (status) {
+      ClaimStatus.claimed => const Color(0xFF15803D),
+      ClaimStatus.redeemed => const Color(0xFF475569),
+      ClaimStatus.expired => const Color(0xFFB45309),
+      ClaimStatus.cancelled => const Color(0xFFB91C1C),
+    };
+    String date(DateTime? d) {
+      if (d == null) return '–';
+      final l = d.toLocal();
+      return '${l.day}.${l.month}.${l.year}. '
+          '${l.hour}:${l.minute.toString().padLeft(2, '0')}';
+    }
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: SelectableText(
+                    claim.code,
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 2,
+                    ),
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: color.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    RewardsStrings.claimStatus(status),
+                    style: TextStyle(color: color, fontWeight: FontWeight.w800),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Text('${claim.partnerName} · ${claim.discountLabel}'),
+            Text(AdminStrings.rewardsClaimUser(userName)),
+            Text(
+              AdminStrings.rewardsClaimDates(
+                date(claim.claimedAt),
+                date(claim.expiresAt),
+              ),
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+            if (claim.redeemedAt != null)
+              Text(
+                AdminStrings.rewardsRedeemedAt(date(claim.redeemedAt)),
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+            if (active) ...[
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  Expanded(
+                    child: FilledButton.icon(
+                      onPressed: onRedeem,
+                      icon: const Icon(Icons.check),
+                      label: Text(AdminStrings.rewardsMarkRedeemed),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  TextButton(
+                    onPressed: onCancel,
+                    child: Text(AdminStrings.rewardsCancelClaim),
+                  ),
+                ],
+              ),
+            ],
+          ],
+        ),
+      ),
     );
   }
 }

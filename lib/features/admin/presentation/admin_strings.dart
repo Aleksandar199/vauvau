@@ -1,4 +1,5 @@
 import '../../../core/l10n/l10n.dart';
+import '../../rewards/domain/rewards_models.dart';
 
 abstract final class AdminStrings {
   static String get panel => L10n.tr('Administracija', 'Administration');
@@ -246,6 +247,32 @@ abstract final class AdminStrings {
       L10n.tr('Pretraga po kodu (VV-…)', 'Search by code (VV-…)');
   static String get rewardsNoClaims =>
       L10n.tr('Još nema preuzetih kupona.', 'No claimed coupons yet.');
+  static String get rewardsNoMatch =>
+      L10n.tr('Nema kupona za ovaj filter.', 'No coupons for this filter.');
+  static String get rewardsFilterActive =>
+      L10n.tr('Neiskorišćeni', 'Unused');
+  static String get rewardsFilterAll => L10n.tr('Svi', 'All');
+  static String get rewardsMarkRedeemed =>
+      L10n.tr('Označi kao iskorišćen', 'Mark as used');
+  static String get rewardsCancelClaim => L10n.tr('Otkaži kupon', 'Cancel');
+  static String rewardsClaimUser(String name) =>
+      L10n.tr('Korisnik: $name', 'User: $name');
+  static String rewardsClaimDates(String claimed, String expires) => L10n.tr(
+        'Preuzet: $claimed · važi do: $expires',
+        'Claimed: $claimed · valid until: $expires',
+      );
+  static String rewardsRedeemedAt(String at) =>
+      L10n.tr('Iskorišćen: $at', 'Used: $at');
+  static String rewardsConfirmRedeem(CouponClaim c) => L10n.tr(
+        'Kupon ${c.code} (${c.partnerName}, ${c.discountLabel}) označiti kao '
+            'iskorišćen? Korisnik ga više neće moći da koristi. Ovo ne može da '
+            'se poništi.',
+        'Mark coupon ${c.code} as used? This cannot be undone.',
+      );
+  static String rewardsConfirmCancel(CouponClaim c) => L10n.tr(
+        'Otkazati kupon ${c.code}? Poeni se NE vraćaju korisniku.',
+        'Cancel coupon ${c.code}? Points are NOT refunded.',
+      );
 
   static String _date(DateTime value) {
     return '${value.day}.${value.month}.${value.year}.';
