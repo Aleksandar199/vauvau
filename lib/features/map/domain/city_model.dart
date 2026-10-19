@@ -81,7 +81,34 @@ abstract final class SeedCities {
     sortOrder: 4,
   );
 
-  static const List<CityModel> all = [noviSad, belgrade, nis, kragujevac];
+  // Centers: OpenStreetMap / Nominatim place of the city
+  // (Zrenjanin relation 9853233, Subotica node 1547830258).
+  static const zrenjanin = CityModel(
+    id: 'zrenjanin',
+    name: 'Zrenjanin',
+    latitude: 45.3803,
+    longitude: 20.3908,
+    radiusKm: 15,
+    sortOrder: 5,
+  );
+
+  static const subotica = CityModel(
+    id: 'subotica',
+    name: 'Subotica',
+    latitude: 46.1002,
+    longitude: 19.6653,
+    radiusKm: 15,
+    sortOrder: 6,
+  );
+
+  static const List<CityModel> all = [
+    noviSad,
+    belgrade,
+    nis,
+    kragujevac,
+    zrenjanin,
+    subotica,
+  ];
 
   /// City with [id] from [available] (Firestore), else the built-in one.
   static CityModel? byId(String id, [List<CityModel> available = const []]) {

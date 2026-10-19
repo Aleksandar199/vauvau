@@ -354,6 +354,19 @@ abstract final class MapStrings {
   static String get cityBelgrade => L10n.tr('Beograd', 'Belgrade');
   static String get cityNis => L10n.tr('Niš', 'Nis');
   static String get cityKragujevac => L10n.tr('Kragujevac', 'Kragujevac');
+  static String get cityZrenjanin => L10n.tr('Zrenjanin', 'Zrenjanin');
+  static String get citySubotica => L10n.tr('Subotica', 'Subotica');
+  static String get duplicatePlaceTitle =>
+      L10n.tr('Mesto možda već postoji', 'Place may already exist');
+  static String duplicatePlaceBody(String name, String address) => L10n.tr(
+        'Na mapi već postoji „$name“ ($address) u istom gradu. Dodati ipak '
+            'novo mesto?',
+        '"$name" ($address) is already on the map in this city. Add a new '
+            'place anyway?',
+      );
+  static String get duplicatePlaceCancel => L10n.tr('Odustani', 'Cancel');
+  static String get duplicatePlaceAddAnyway =>
+      L10n.tr('Dodaj ipak', 'Add anyway');
   static String get cityMyLocation => L10n.tr('Moja lokacija 📍', 'My location 📍');
   static String get cityMyLocationSubtitle =>
       L10n.tr('Koristi GPS poziciju uređaja', 'Use device GPS location');

@@ -99,6 +99,8 @@ abstract final class ProfileStrings {
   static String get cityBeograd => L10n.tr('Beograd', 'Belgrade');
   static String get cityNis => L10n.tr('Niš', 'Nis');
   static String get cityKragujevac => L10n.tr('Kragujevac', 'Kragujevac');
+  static String get cityZrenjanin => L10n.tr('Zrenjanin', 'Zrenjanin');
+  static String get citySubotica => L10n.tr('Subotica', 'Subotica');
   static String get cityAll => L10n.tr('Moj grad', 'My city');
   static String get applyFilters =>
       L10n.tr('Primeni filtere', 'Apply filters');

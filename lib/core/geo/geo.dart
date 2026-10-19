@@ -1,5 +1,7 @@
 import 'dart:math' as math;
 
+import '../constants/serbia_locations.dart';
+
 class GeoCoord {
   const GeoCoord(this.latitude, this.longitude);
 
@@ -20,8 +22,16 @@ class GeoCoord {
   static const belgrade = GeoCoord(44.8176, 20.4569);
   static const nis = GeoCoord(43.3209, 21.8958);
   static const kragujevac = GeoCoord(44.0128, 20.9114);
+  // OSM/Nominatim center of the city (see SeedCities).
+  static const zrenjanin = GeoCoord(45.3803, 20.3908);
+  static const subotica = GeoCoord(46.1002, 19.6653);
 
   static GeoCoord forCityName(String location) {
+    final known = SerbiaLocations.cityIdForLabel(location);
+    if (known == SerbiaLocations.zrenjaninId ||
+        known == SerbiaLocations.suboticaId) {
+      return forCityId(known!);
+    }
     final lower = location.trim().toLowerCase();
     if (lower.startsWith('beograd')) {
       return belgrade;
@@ -40,6 +50,8 @@ class GeoCoord {
       'beograd' || 'belgrade' => belgrade,
       'nis' || 'niš' => nis,
       'kragujevac' => kragujevac,
+      'zrenjanin' => zrenjanin,
+      'subotica' => subotica,
       _ => noviSad,
     };
   }

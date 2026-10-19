@@ -21,6 +21,8 @@ abstract final class SerbiaLocations {
   static const String noviSadId = 'novi_sad';
   static const String nisId = 'nis';
   static const String kragujevacId = 'kragujevac';
+  static const String zrenjaninId = 'zrenjanin';
+  static const String suboticaId = 'subotica';
   static const String customNeighborhoodId = 'custom';
   static const String customNeighborhoodLabel = 'Ostalo / Ručni unos';
 
@@ -158,6 +160,65 @@ abstract final class SerbiaLocations {
         Neighborhood(id: 'stara_radnicka_kolonija', name: 'Stara radnička kolonija'),
       ],
     ),
+    // Gradska naselja Zrenjanina (sr.wikipedia.org, „Zrenjanin“ – gradska
+    // naselja / mesne zajednice). Okolna sela nisu gradski kvartovi.
+    CityLocation(
+      id: zrenjaninId,
+      name: 'Zrenjanin',
+      neighborhoods: [
+        Neighborhood(id: 'zr_centar', name: 'Centar'),
+        Neighborhood(id: 'zr_bagljas', name: 'Bagljaš'),
+        Neighborhood(id: 'zr_berbersko', name: 'Berbersko'),
+        Neighborhood(id: 'zr_bolnica', name: 'Bolnica'),
+        Neighborhood(id: 'zr_brigadira_ristica', name: 'Brigadira Ristića'),
+        Neighborhood(id: 'zr_budzak', name: 'Budžak'),
+        Neighborhood(id: 'zr_budzin_bulevar', name: 'Budžin bulevar'),
+        Neighborhood(id: 'zr_cetvrti_jul', name: '4. jul'),
+        Neighborhood(id: 'zr_contika', name: 'Čontika'),
+        Neighborhood(id: 'zr_dolja', name: 'Dolja'),
+        Neighborhood(id: 'zr_duvanika', name: 'Duvanika'),
+        Neighborhood(id: 'zr_gradnulica', name: 'Gradnulica'),
+        Neighborhood(id: 'zr_lesnina', name: 'Lesnina'),
+        Neighborhood(id: 'zr_mala_amerika', name: 'Mala Amerika'),
+        Neighborhood(id: 'zr_mickej', name: 'Mičkej'),
+        Neighborhood(id: 'zr_muzlja', name: 'Mužlja'),
+        Neighborhood(id: 'zr_nova_kolonija', name: 'Nova Kolonija'),
+        Neighborhood(id: 'zr_putnikovo', name: 'Putnikovo'),
+        Neighborhood(id: 'zr_ruza_sulman', name: 'Ruža Šulman'),
+        Neighborhood(id: 'zr_sumica', name: 'Šumica'),
+        Neighborhood(id: 'zr_zeleno_polje', name: 'Zeleno Polje'),
+        Neighborhood(id: 'zr_zitni_trg', name: 'Žitni Trg'),
+      ],
+    ),
+    // Gradske mesne zajednice Subotice (sr.wikipedia.org, „Subotica“ –
+    // spisak mesnih zajednica). Prigradske (Palić, Bajmok…) nisu uključene.
+    CityLocation(
+      id: suboticaId,
+      name: 'Subotica',
+      neighborhoods: [
+        Neighborhood(id: 'su_centar_1', name: 'Centar I'),
+        Neighborhood(id: 'su_centar_2', name: 'Centar II'),
+        Neighborhood(id: 'su_centar_3', name: 'Centar III'),
+        Neighborhood(id: 'su_aleksandrovo', name: 'Aleksandrovo'),
+        Neighborhood(id: 'su_bajnat', name: 'Bajnat'),
+        Neighborhood(id: 'su_dudova_suma', name: 'Dudova šuma'),
+        Neighborhood(id: 'su_gat', name: 'Gat'),
+        Neighborhood(id: 'su_ker', name: 'Ker'),
+        Neighborhood(id: 'su_kertvaros', name: 'Kertvaroš'),
+        Neighborhood(id: 'su_makova_sedmica', name: 'Makova sedmica'),
+        Neighborhood(id: 'su_mali_bajmok', name: 'Mali Bajmok'),
+        Neighborhood(id: 'su_mali_radanovac', name: 'Mali Radanovac'),
+        Neighborhood(id: 'su_novi_grad', name: 'Novi Grad'),
+        Neighborhood(id: 'su_novo_selo', name: 'Novo Selo'),
+        Neighborhood(id: 'su_pescara', name: 'Peščara'),
+        Neighborhood(id: 'su_prozivka', name: 'Prozivka'),
+        Neighborhood(id: 'su_radanovac', name: 'Radanovac'),
+        Neighborhood(id: 'su_radijalac', name: 'Radijalac'),
+        Neighborhood(id: 'su_verusic', name: 'Verušić'),
+        Neighborhood(id: 'su_zeljeznicko_naselje', name: 'Željezničko naselje'),
+        Neighborhood(id: 'su_zorka', name: 'Zorka'),
+      ],
+    ),
   ];
 
   static const List<String> adoptionCities = [
@@ -165,8 +226,17 @@ abstract final class SerbiaLocations {
     'Beograd',
     'Niš',
     'Kragujevac',
+    'Zrenjanin',
+    'Subotica',
     'Ostalo',
   ];
+
+  /// Other names of a city (Hungarian) → city id. Keys are folded
+  /// (see [_fold]); Cyrillic spellings are handled by [_fold] itself.
+  static const Map<String, String> _cityAliases = {
+    'nagybecskerek': zrenjaninId,
+    'szabadka': suboticaId,
+  };
 
   static const List<String> noviSadAdoptionNeighborhoods = [
     'Liman 1',
@@ -225,17 +295,27 @@ abstract final class SerbiaLocations {
     if (folded.isEmpty) {
       return null;
     }
+    bool startsWithName(String name) =>
+        folded == name ||
+        folded.startsWith('$name ') ||
+        folded.startsWith('$name,') ||
+        folded.startsWith('$name-');
     for (final city in cities) {
-      final name = _fold(city.name);
-      if (folded == name ||
-          folded.startsWith('$name ') ||
-          folded.startsWith('$name,') ||
-          folded.startsWith('$name-')) {
+      if (startsWithName(_fold(city.name))) {
         return city.id;
+      }
+    }
+    for (final alias in _cityAliases.entries) {
+      if (startsWithName(alias.key)) {
+        return alias.value;
       }
     }
     return null;
   }
+
+  /// Lowercase Latin form without diacritics, so „Зрењанин“, „ZRENJANIN“ and
+  /// „Zrenjanin“ compare equal (`š→s`, `č/ć→c`, `ž→z`, `đ→dj`).
+  static String foldName(String value) => _fold(value);
 
   /// Canonical city id from a stored `cityId` and/or city name.
   static String? resolveCityId(String cityId, String cityName) {
@@ -247,10 +327,23 @@ abstract final class SerbiaLocations {
         cityIdForLabel(cityId.replaceAll(RegExp(r'[_-]'), ' '));
   }
 
+  static const Map<String, String> _cyrillic = {
+    'а': 'a', 'б': 'b', 'в': 'v', 'г': 'g', 'д': 'd', 'ђ': 'dj', 'е': 'e',
+    'ж': 'z', 'з': 'z', 'и': 'i', 'ј': 'j', 'к': 'k', 'л': 'l', 'љ': 'lj',
+    'м': 'm', 'н': 'n', 'њ': 'nj', 'о': 'o', 'п': 'p', 'р': 'r', 'с': 's',
+    'т': 't', 'ћ': 'c', 'у': 'u', 'ф': 'f', 'х': 'h', 'ц': 'c', 'ч': 'c',
+    'џ': 'dz', 'ш': 's',
+  };
+
   static String _fold(String value) {
-    return value
-        .trim()
-        .toLowerCase()
+    final lower = value.trim().toLowerCase();
+    final latin = StringBuffer();
+    for (final rune in lower.runes) {
+      final char = String.fromCharCode(rune);
+      latin.write(_cyrillic[char] ?? char);
+    }
+    return latin
+        .toString()
         .replaceAll('š', 's')
         .replaceAll('č', 'c')
         .replaceAll('ć', 'c')
@@ -262,6 +355,22 @@ abstract final class SerbiaLocations {
     for (final city in cities) {
       if (city.id == id) {
         return city;
+      }
+    }
+    return null;
+  }
+
+  /// Known neighborhood id in [cityId] for a free-text name, ignoring case,
+  /// diacritics and Cyrillic („Багљаш“, „bagljas“ → `zr_bagljas`). Null when
+  /// the name is not on the list (it then stays a custom neighborhood).
+  static String? neighborhoodIdForLabel(String cityId, String raw) {
+    final folded = _fold(raw);
+    if (folded.isEmpty) {
+      return null;
+    }
+    for (final hood in cityById(cityId)?.neighborhoods ?? const <Neighborhood>[]) {
+      if (_fold(hood.name) == folded) {
+        return hood.id;
       }
     }
     return null;

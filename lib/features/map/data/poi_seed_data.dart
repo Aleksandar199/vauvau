@@ -1,8 +1,11 @@
 import '../domain/map_city.dart';
 import '../domain/models/poi_model.dart';
+import '../domain/place_duplicates.dart';
 import 'belgrade_dog_places_seed.dart';
 import 'kragujevac_dog_places_seed.dart';
 import 'nis_dog_places_seed.dart';
+import 'subotica_dog_places_seed.dart';
+import 'zrenjanin_dog_places_seed.dart';
 
 abstract final class PoiSeedData {
   static const String source = 'PetZone / VauVau Baza';
@@ -34,9 +37,22 @@ abstract final class PoiSeedData {
         if (hasValidCoordinates(poi)) poi.id: poi,
       for (final poi in KragujevacDogPlacesSeed.all)
         if (hasValidCoordinates(poi)) poi.id: poi,
+      for (final poi in verifiedZrenjanin) poi.id: poi,
+      for (final poi in verifiedSubotica) poi.id: poi,
     };
     return byId.values.toList();
   }
+
+  /// Seed of a newer city: valid coordinates only, duplicates (same city,
+  /// name and address / pin) dropped, ids kept as written.
+  static List<PoiModel> _cleanCitySeed(List<PoiModel> seed) =>
+      PlaceDuplicates.dedupe(seed.where(hasValidCoordinates));
+
+  static List<PoiModel> get verifiedZrenjanin =>
+      _cleanCitySeed(ZrenjaninDogPlacesSeed.all);
+
+  static List<PoiModel> get verifiedSubotica =>
+      _cleanCitySeed(SuboticaDogPlacesSeed.all);
 
   /// Rejects 0,0 / out-of-range points so a failed geocode never becomes a
   /// marker.

@@ -1,0 +1,16 @@
+[
+  {"id": "su-vet-veterinar", "name": "Veterinarska stanica Veterinar", "category": "vet", "query": "Trg Paje Kujundžića 2a, Subotica"},
+  {"id": "su-vet-panvet", "name": "Panvet", "category": "vet", "query": "Koste Racina 5, Subotica"},
+  {"id": "su-vet-animed", "name": "Animed", "category": "vet", "query": "Blaška Rajića 30, Subotica"},
+  {"id": "su-vet-viva", "name": "Veterinarska ambulanta Viva", "category": "vet", "query": "Pačirski put 21, Subotica"},
+  {"id": "su-shop-pet-centar", "name": "Pet Centar Subotica", "category": "petShop", "query": "Bajnatska 25, Subotica"},
+  {"id": "su-shop-pet-zone", "name": "Pet Zone", "category": "petShop", "query": "Segedinski put 88a, Subotica"},
+  {"id": "su-shop-petbox", "name": "Petbox", "category": "petShop", "query": "Somborski put 35, Subotica"},
+  {"id": "su-shop-svet-kucnih-ljubimaca", "name": "Svet kućnih ljubimaca", "category": "petShop", "query": "Ivana Milankovića 40, Subotica"},
+  {"id": "su-groom-anastazija", "name": "Anastazija Grooming", "category": "groomer", "query": "Petra Čajkovskog 12, Subotica"},
+  {"id": "su-groom-bokine-sape", "name": "Bokine šape", "category": "groomer", "query": "Šumska 9, Subotica"},
+  {"id": "su-groom-diego", "name": "Grooming salon Diego", "category": "groomer", "query": "Braće Radić 87, Subotica"},
+  {"id": "su-groom-godzi", "name": "Godži Groom", "category": "groomer", "query": "Nade Dimić 17, Subotica"},
+  {"id": "su-wash-samousluzno-kupanje", "name": "Samouslužno kupanje pasa", "category": "selfWash", "query": "Trg sinagoge 1a, Subotica"},
+  {"id": "su-shelter-prihvataliste", "name": "Prihvatilište za napuštene pse i mačke", "category": "shelter", "query": "Deveta nova 249, Subotica"}
+]

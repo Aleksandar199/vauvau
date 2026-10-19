@@ -3,7 +3,7 @@ import '../../discover/domain/discover_profile.dart';
 
 enum FilterGender { any, male, female }
 
-enum FilterCity { any, noviSad, beograd, nis, kragujevac }
+enum FilterCity { any, noviSad, beograd, nis, kragujevac, zrenjanin, subotica }
 
 enum FilterEnergy { any, low, medium, high }
 
@@ -99,6 +99,8 @@ class MatchingFilters {
         FilterCity.beograd => 'beograd',
         FilterCity.nis => SerbiaLocations.nisId,
         FilterCity.kragujevac => SerbiaLocations.kragujevacId,
+        FilterCity.zrenjanin => SerbiaLocations.zrenjaninId,
+        FilterCity.subotica => SerbiaLocations.suboticaId,
       };
 
   bool _matchesCity(String location) {

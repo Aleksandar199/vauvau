@@ -56,6 +56,8 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     SeedCities.belgrade.id,
     SeedCities.nis.id,
     SeedCities.kragujevac.id,
+    SeedCities.zrenjanin.id,
+    SeedCities.subotica.id,
   };
 
   final MapController _mapController = MapController();
@@ -288,6 +290,18 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                       label: MapStrings.cityKragujevac,
                       selected: region.cityId == SeedCities.kragujevac.id,
                       onTap: () => _selectQuickCity(SeedCities.kragujevac),
+                    ),
+                    SizedBox(width: 8),
+                    DiscoverFilterChip(
+                      label: MapStrings.cityZrenjanin,
+                      selected: region.cityId == SeedCities.zrenjanin.id,
+                      onTap: () => _selectQuickCity(SeedCities.zrenjanin),
+                    ),
+                    SizedBox(width: 8),
+                    DiscoverFilterChip(
+                      label: MapStrings.citySubotica,
+                      selected: region.cityId == SeedCities.subotica.id,
+                      onTap: () => _selectQuickCity(SeedCities.subotica),
                     ),
                     SizedBox(width: 8),
                     _CityPickerButton(

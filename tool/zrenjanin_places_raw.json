@@ -1,0 +1,11 @@
+[
+  {"id": "zr-vet-dimic", "name": "Veterina Dimić", "category": "vet", "query": "Žarka Zrenjanina 78, Zrenjanin"},
+  {"id": "zr-vet-laki-vet", "name": "Laki Vet", "category": "vet", "query": "Topličina 13a, Zrenjanin"},
+  {"id": "zr-vet-mila-vet", "name": "Mila Vet", "category": "vet", "query": "Miletićeva 20, Zrenjanin"},
+  {"id": "zr-vet-ultimate-vet", "name": "Ultimate Vet", "category": "vet", "query": "Cara Dušana 14a, Zrenjanin"},
+  {"id": "zr-vet-ultimate-vet-pancevacka", "name": "Ultimate Vet (Pančevačka)", "category": "vet", "query": "Pančevačka 38, Zrenjanin"},
+  {"id": "zr-vet-stanica-zrenjanin", "name": "Veterinarska stanica Zrenjanin", "category": "vet", "query": "Koče Kolarova 38, Zrenjanin"},
+  {"id": "zr-vet-canis", "name": "Veterinarska ambulanta Canis", "category": "vet", "query": "Knićaninova 12, Zrenjanin"},
+  {"id": "zr-shop-gama-pet", "name": "Gama Pet", "category": "petShop", "query": "Koče Kolarova 39, Zrenjanin"},
+  {"id": "zr-shop-aristo-pets", "name": "Aristo Pets", "category": "petShop", "query": "Bagljaš zapad 5, Zrenjanin"}
+]

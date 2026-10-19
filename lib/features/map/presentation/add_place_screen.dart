@@ -10,8 +10,10 @@ import '../../auth/presentation/auth_providers.dart';
 import '../data/address_geocoder.dart';
 import '../data/places_repository.dart';
 import '../domain/city_model.dart';
+import '../domain/place_duplicates.dart';
 import 'cities_controller.dart';
 import 'map_strings.dart';
+import 'walk_controller.dart';
 import 'widgets/osm_tile_layer.dart';
 
 /// Admin-only place creation with address search + pin fine-tuning.
@@ -345,6 +347,7 @@ class _AddPlaceScreenState extends ConsumerState<AddPlaceScreen> {
       setState(() => _error = MapStrings.adminOnlyPlace);
       return;
     }
+    if (!await _confirmIfDuplicate(city, pin)) return;
 
     setState(() {
       _saving = true;
@@ -383,6 +386,43 @@ class _AddPlaceScreenState extends ConsumerState<AddPlaceScreen> {
         _error = MapStrings.placeAddFailed;
       });
     }
+  }
+
+  /// Warns when the map already has this place (same city, name and
+  /// address / pin). Returns false when the admin cancels.
+  Future<bool> _confirmIfDuplicate(CityModel city, LatLng pin) async {
+    final existing = PlaceDuplicates.findDuplicate(
+      PlaceIdentity(
+        id: '',
+        name: _name.text.trim(),
+        address: _address.text.trim(),
+        cityId: city.id,
+        latitude: pin.latitude,
+        longitude: pin.longitude,
+      ),
+      ref.read(mapPlacesProvider).map(PlaceIdentity.ofPlace),
+    );
+    if (existing == null) return true;
+    final proceed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(MapStrings.duplicatePlaceTitle),
+        content: Text(
+          MapStrings.duplicatePlaceBody(existing.name, existing.address),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: Text(MapStrings.duplicatePlaceCancel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: Text(MapStrings.duplicatePlaceAddAnyway),
+          ),
+        ],
+      ),
+    );
+    return proceed == true && mounted;
   }
 }
 

@@ -104,14 +104,10 @@ class UserPoiSubmissions extends Notifier<List<PoiModel>> {
     await updatePoi(rejected);
   }
 
-  PoiModel? _byId(String id) {
-    for (final item in state) {
-      if (item.id == id) {
-        return item;
-      }
-    }
-    return null;
-  }
+  /// Live `pois` first, then the built-in seed, so an admin can verify a seed
+  /// place (e.g. a new city) — it is then written to `places` + `pois` with
+  /// the same id.
+  PoiModel? _byId(String id) => findById(id);
 
   void _assertCanWrite({required bool requireAdmin}) {
     if (!requireAdmin) {

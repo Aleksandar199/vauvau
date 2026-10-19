@@ -188,6 +188,52 @@ void main() {
     },
   );
 
+  testWidgets('čipovi Zrenjanin i Subotica menjaju grad i markere', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          discoverImageFactoryProvider.overrideWith(
+            (ref) =>
+                (_) => MemoryImage(_png),
+          ),
+          locationClientProvider.overrideWithValue(_Gps()),
+          walkSessionStoreProvider.overrideWithValue(MemoryWalkSessionStore()),
+        ],
+        child: const MaterialApp(home: Scaffold(body: MapScreen())),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 50));
+    final container = ProviderScope.containerOf(
+      tester.element(find.byType(MapScreen)),
+    );
+
+    final chipRow = find
+        .ancestor(
+          of: find.text(MapStrings.cityBelgrade),
+          matching: find.byType(Scrollable),
+        )
+        .first;
+    for (final (label, city, delta) in [
+      (MapStrings.cityZrenjanin, SeedCities.zrenjanin, 120.0),
+      (MapStrings.citySubotica, SeedCities.subotica, 120.0),
+      (MapStrings.cityNoviSad, SeedCities.noviSad, -120.0),
+    ]) {
+      final builds = MapScreen.placeMarkerBuilds;
+      final chip = find.text(label);
+      await tester.scrollUntilVisible(chip, delta, scrollable: chipRow);
+      await tester.pump();
+      await tester.tap(chip);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500));
+      expect(container.read(mapRegionProvider).cityId, city.id);
+      expect(MapScreen.placeMarkerBuilds, greaterThan(builds), reason: label);
+    }
+    await tester.pump(const Duration(seconds: 2));
+  });
+
   testWidgets('ekran izazova: nivo, izazovi, prazni kuponi i istorija', (
     tester,
   ) async {

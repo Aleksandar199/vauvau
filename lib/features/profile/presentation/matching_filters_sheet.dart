@@ -147,6 +147,21 @@ class _MatchingFiltersSheetState extends ConsumerState<MatchingFiltersSheet> {
                   ),
                 ),
                 ChoiceChip(
+                  label: Text(ProfileStrings.cityZrenjanin),
+                  selected: _draft.city == FilterCity.zrenjanin,
+                  onSelected: (_) => setState(
+                    () => _draft =
+                        _draft.copyWith(city: FilterCity.zrenjanin),
+                  ),
+                ),
+                ChoiceChip(
+                  label: Text(ProfileStrings.citySubotica),
+                  selected: _draft.city == FilterCity.subotica,
+                  onSelected: (_) => setState(
+                    () => _draft = _draft.copyWith(city: FilterCity.subotica),
+                  ),
+                ),
+                ChoiceChip(
                   label: Text(ProfileStrings.cityAll),
                   selected: _draft.city == FilterCity.any,
                   onSelected: (_) => setState(
