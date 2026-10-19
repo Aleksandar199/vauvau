@@ -96,6 +96,20 @@ abstract final class StoriesStrings {
   static String audienceBadge(StoryAudience audience) =>
       '${L10n.tr('Vidljivo', 'Visible to')}: ${audienceLabel(audience)}';
 
+  // Highlights
+  static String get addToHighlight =>
+      L10n.tr('Dodaj u istaknuto', 'Add to highlight');
+  static String get highlightPreparing =>
+      L10n.tr('Pripremam priču…', 'Preparing story…');
+  static String get highlightNeedsDog => L10n.tr(
+        'Istaknute priče su na profilu psa – prvo dodajte psa.',
+        'Highlights live on a dog profile – add a dog first.',
+      );
+  static String get highlightFailed => L10n.tr(
+        'Priča nije sačuvana u istaknuto. Pokušajte ponovo.',
+        'Could not save the story to a highlight. Try again.',
+      );
+
   // Chat
   static String get replyToStory =>
       L10n.tr('Odgovor na priču', 'Replied to a story');

@@ -178,8 +178,8 @@ abstract final class MomentsStrings {
   static String get yourStory => L10n.tr('Tvoja priča', 'Your story');
   static String get activeStories => L10n.tr('Priče iz poslednja 24h', 'Stories from the last 24h');
   static String get storiesHint => L10n.tr(
-        'Istakni svoje momente na profilu psa – ostaju koliko god želiš.',
-        'Highlight your moments on your dog\'s profile – they stay as long as you want.',
+        'Istakni svoje priče i objave na profilu psa – ostaju koliko god želiš.',
+        'Highlight your stories and posts on your dog\'s profile – they stay as long as you want.',
       );
   static String get noStories => L10n.tr('Nema aktivnih priča', 'No active stories');
   static String get noStoriesSubtitle => L10n.tr(
@@ -193,18 +193,18 @@ abstract final class MomentsStrings {
   static String get highlightName =>
       L10n.tr('Naziv (npr. Šetnje, Park, Plaža)', 'Name (e.g. Walks, Park, Beach)');
   static String get highlightNameRequired => L10n.tr('Unesi naziv.', 'Enter a name.');
-  static String get highlightPickStories => L10n.tr('Izaberi momente', 'Choose moments');
-  static String get highlightPickRequired => L10n.tr('Izaberi bar jedan momenat.', 'Pick at least one moment.');
+  static String get highlightPickStories => L10n.tr('Izaberi priče i objave', 'Choose stories and posts');
+  static String get highlightPickRequired => L10n.tr('Izaberi bar jednu priču ili objavu.', 'Pick at least one story or post.');
   static String get highlightCover => L10n.tr('Naslovna slika', 'Cover image');
   static String get highlightArchiveEmpty => L10n.tr(
-        'Još nemaš momenata sa ovim psom. Objavi ga u Momentima pa ga istakni ovde.',
-        'No moments with this dog yet. Post one in Moments, then highlight it here.',
+        'Još nemaš priča ni objava sa ovim psom. Otvori svoju priču u Otkrij i izaberi „Dodaj u istaknuto“.',
+        'No stories or posts with this dog yet. Open your story in Discover and tap “Add to highlight”.',
       );
   static String get highlightSave => L10n.tr('Sačuvaj', 'Save');
   static String get highlightDelete => L10n.tr('Obriši istaknuto', 'Delete highlight');
   static String get highlightDeleteBody => L10n.tr(
-        'Istaknuto će biti uklonjeno sa profila. Momenti ostaju u tvojoj arhivi.',
-        'The highlight will be removed from the profile. Moments stay in your archive.',
+        'Istaknuto će biti uklonjeno sa profila. Priče i objave ostaju u tvojoj arhivi.',
+        'The highlight will be removed from the profile. Stories and posts stay in your archive.',
       );
   static String get highlightSaved => L10n.tr('Istaknuto je sačuvano.', 'Highlight saved.');
   static String get highlightsEmpty => L10n.tr('Još nema istaknutih priča.', 'No highlights yet.');

@@ -119,3 +119,57 @@ class ProfileMomentsGrid extends StatelessWidget {
     );
   }
 }
+
+/// Instagram-style count next to the profile photo ("12 / Pratioci").
+class ProfileCountTile extends StatelessWidget {
+  const ProfileCountTile({
+    super.key,
+    required this.value,
+    required this.label,
+    this.onTap,
+  });
+
+  final int value;
+  final String label;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final content = Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 2),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            '$value',
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ],
+      ),
+    );
+    return Expanded(
+      child: onTap == null
+          ? content
+          : Semantics(
+              button: true,
+              child: InkWell(
+                borderRadius: BorderRadius.circular(12),
+                onTap: onTap,
+                child: content,
+              ),
+            ),
+    );
+  }
+}

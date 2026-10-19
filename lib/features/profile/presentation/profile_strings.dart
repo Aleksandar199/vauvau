@@ -119,13 +119,17 @@ abstract final class ProfileStrings {
       L10n.tr('Sterilisan ✓', 'Sterilized ✓');
   static String get contact => L10n.tr('Kontakt', 'Contact');
   static String get myDogs => L10n.tr('Moji psi', 'My dogs');
-  static String get momentsGallery => L10n.tr('Momenti', 'Moments');
+  static String get momentsGallery => L10n.tr('Objave', 'Posts');
   static String get momentsEmpty => L10n.tr(
-        'Još nema momenata za ovog psa.',
-        'No moments for this dog yet.',
+        'Još nema objava za ovog psa.',
+        'No posts for this dog yet.',
       );
   static String get metricDogs => L10n.tr('Psi', 'Dogs');
-  static String get metricMoments => L10n.tr('Momenti', 'Moments');
+  static String get metricPosts => L10n.tr('Objave', 'Posts');
+  static String get followers => L10n.tr('Pratioci', 'Followers');
+  static String get followingCount => L10n.tr('Pratim', 'Following');
+  static String get followListEmpty =>
+      L10n.tr('Ovde još nema nikoga.', 'Nobody here yet.');
   static String get metricAge => L10n.tr('Starost', 'Age');
   static String get notifications =>
       L10n.tr('Notifikacije', 'Notifications');

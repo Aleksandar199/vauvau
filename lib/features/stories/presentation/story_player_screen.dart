@@ -8,10 +8,12 @@ import '../../../core/images/dog_image.dart';
 import '../../../core/images/firebase_web_image.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../follows/presentation/follow_controller.dart';
+import '../../moments/presentation/highlight_sheets.dart';
 import '../../moments/presentation/pointer_safe.dart';
 import '../../profile/data/owner_public_profile.dart';
 import '../domain/story.dart';
 import 'stories_strings.dart';
+import 'story_highlight.dart';
 import 'story_providers.dart';
 
 const Duration kStoryItemDuration = Duration(seconds: 6);
@@ -305,6 +307,38 @@ class _StoryGroupPlayerState extends ConsumerState<_StoryGroupPlayer>
     }
   }
 
+  var _archiving = false;
+
+  /// Copies my story into a permanent moment and opens the highlight picker
+  /// (existing highlight or a new one) for that dog.
+  Future<void> _addToHighlight(Story story) async {
+    if (_archiving) {
+      return;
+    }
+    setState(() => _archiving = true);
+    await _paused(() async {
+      final messenger = ScaffoldMessenger.maybeOf(context);
+      try {
+        final moment =
+            await ref.read(storyHighlightArchiverProvider).archive(story);
+        if (mounted) {
+          await showAddToHighlightSheet(context, moment);
+        }
+      } on StateError catch (error) {
+        messenger?.showSnackBar(SnackBar(content: Text(error.message)));
+      } catch (error) {
+        debugPrint('story highlight: $error');
+        messenger?.showSnackBar(
+          SnackBar(content: Text(StoriesStrings.highlightFailed)),
+        );
+      }
+      return null;
+    });
+    if (mounted) {
+      setState(() => _archiving = false);
+    }
+  }
+
   Future<void> _toggleLike(Story story) async {
     if (_likeBusy) {
       return;
@@ -570,6 +604,26 @@ class _StoryGroupPlayerState extends ConsumerState<_StoryGroupPlayer>
                           ),
                           icon: const Icon(Icons.visibility_outlined),
                           label: Text(StoriesStrings.viewers),
+                        ),
+                        TextButton.icon(
+                          key: const ValueKey('story-add-to-highlight'),
+                          style: TextButton.styleFrom(
+                            foregroundColor: Colors.white,
+                          ),
+                          onPressed: _archiving
+                              ? null
+                              : () => _addToHighlight(story),
+                          icon: _archiving
+                              ? const SizedBox(
+                                  width: 18,
+                                  height: 18,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.white,
+                                  ),
+                                )
+                              : const Icon(Icons.bookmark_add_outlined),
+                          label: Text(StoriesStrings.addToHighlight),
                         ),
                         const Spacer(),
                         Flexible(

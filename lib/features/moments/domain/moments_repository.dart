@@ -66,7 +66,7 @@ abstract class MomentsRepository {
   /// The author's own moments (posts and legacy), newest first.
   Future<List<MomentModel>> fetchByAuthor(String userId, {int limit = 60});
 
-  /// Number of moments the author published (profile metric).
+  /// Number of feed posts (`kind: post`) the author published ("Objave").
   Future<int> countByAuthor(String userId);
 
   /// Latest [limit] comments, oldest first.
@@ -100,7 +100,8 @@ abstract class MomentsRepository {
   Future<void> deleteComment(String momentId, String commentId);
 
   /// Creates `moments/{moment.id}` (generated when empty). Retrying with the
-  /// same id is a no-op once the post exists.
+  /// same id is a no-op once the post exists. A [MomentKind.legacy] moment is
+  /// written without `kind` (highlight-only copy of a story, never in feed).
   Future<String> createMoment(MomentModel moment);
 
   /// Deletes the comments, the document and (author only) the photo.

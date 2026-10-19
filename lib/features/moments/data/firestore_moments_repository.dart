@@ -335,6 +335,7 @@ class FirestoreMomentsRepository implements MomentsRepository {
     }
     final aggregate = await _col
         .where('authorUserId', isEqualTo: userId)
+        .where('kind', isEqualTo: MomentModel.postKind)
         .count()
         .get();
     return aggregate.count ?? 0;
@@ -493,7 +494,7 @@ class FirestoreMomentsRepository implements MomentsRepository {
         : moment.authorPhotoUrl.trim();
     final dogId = moment.dogId.trim();
     await ref.set(<String, Object>{
-      'kind': MomentModel.postKind,
+      if (moment.kind == MomentKind.post) 'kind': MomentModel.postKind,
       'authorUserId': uid,
       'authorName': _resolveAuthorName(moment.authorName),
       'authorPhotoUrl': avatar,

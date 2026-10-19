@@ -5,6 +5,8 @@
 /// [legacy] = document written before the redesign (no `kind`). The old app
 /// presented those as 24h stories, so they never enter the permanent feed;
 /// they stay reachable through dog highlights and the author's archive.
+/// Copies of 24h `stories` the author saved to a highlight are written the
+/// same way (no `kind`), so they never enter the feed either.
 enum MomentKind { post, legacy }
 
 class MomentModel {

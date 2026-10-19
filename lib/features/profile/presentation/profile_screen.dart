@@ -13,6 +13,8 @@ import '../../auth/presentation/auth_providers.dart';
 import '../../discover/domain/discover_profile.dart';
 import '../../dogs/presentation/health/dog_health_tab.dart';
 import '../../dogs/presentation/onboarding/dog_onboarding_screen.dart';
+import '../../follows/presentation/follow_controller.dart';
+import '../../follows/presentation/follow_list_sheet.dart';
 import '../../moments/presentation/moments_controller.dart';
 import '../../moments/presentation/widgets/story_widgets.dart';
 import '../../partners/presentation/partner_coupons_screen.dart';
@@ -582,6 +584,8 @@ class _OwnerHeaderState extends ConsumerState<_OwnerHeader> {
         ref.watch(authStateProvider).asData?.value?.ownerAvatarUrl ?? '';
     final dogCount = profile.dogs.length;
     final momentCount = ref.watch(myMomentCountProvider).value ?? 0;
+    final followerIds = ref.watch(followerIdsProvider).value ?? const {};
+    final followingIds = ref.watch(followingIdsProvider).value ?? const {};
     final breedLabel = profile.dogs.isEmpty
         ? '—'
         : (profile.dog.breed.trim().isEmpty ? '—' : profile.dog.breed);
@@ -591,6 +595,8 @@ class _OwnerHeaderState extends ConsumerState<_OwnerHeader> {
       padding: AppCardTokens.innerPadding,
       child: Column(
         children: [
+          Row(
+            children: [
           Material(
             color: Colors.transparent,
             child: InkWell(
@@ -629,6 +635,40 @@ class _OwnerHeaderState extends ConsumerState<_OwnerHeader> {
               ),
             ),
           ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Row(
+                  children: [
+                    ProfileCountTile(
+                      key: const ValueKey('profile-count-posts'),
+                      value: momentCount,
+                      label: ProfileStrings.metricPosts,
+                    ),
+                    ProfileCountTile(
+                      key: const ValueKey('profile-count-followers'),
+                      value: followerIds.length,
+                      label: ProfileStrings.followers,
+                      onTap: () => showFollowListSheet(
+                        context,
+                        title: ProfileStrings.followers,
+                        userIds: followerIds,
+                      ),
+                    ),
+                    ProfileCountTile(
+                      key: const ValueKey('profile-count-following'),
+                      value: followingIds.length,
+                      label: ProfileStrings.followingCount,
+                      onTap: () => showFollowListSheet(
+                        context,
+                        title: ProfileStrings.followingCount,
+                        userIds: followingIds,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
           const SizedBox(height: 12),
           Text(
             profile.ownerName,
@@ -657,11 +697,6 @@ class _OwnerHeaderState extends ConsumerState<_OwnerHeader> {
               MetricStatChip(
                 value: '$dogCount',
                 label: ProfileStrings.metricDogs,
-              ),
-              SizedBox(width: 8),
-              MetricStatChip(
-                value: '$momentCount',
-                label: ProfileStrings.metricMoments,
               ),
               SizedBox(width: 8),
               MetricStatChip(value: breedLabel, label: ProfileStrings.breed),

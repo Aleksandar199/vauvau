@@ -137,7 +137,9 @@ class LocalMomentsRepository implements MomentsRepository {
 
   @override
   Future<int> countByAuthor(String userId) async =>
-      _moments.where((moment) => moment.authorUserId == userId).length;
+      _moments
+          .where((moment) => moment.authorUserId == userId && moment.isPost)
+          .length;
 
   @override
   Stream<List<MomentComment>> watchComments(
@@ -292,6 +294,7 @@ class LocalMomentsRepository implements MomentsRepository {
       0,
       MomentModel(
         id: id,
+        kind: moment.kind,
         authorUserId: currentUserId,
         authorName: moment.authorName,
         authorPhotoUrl: moment.authorPhotoUrl.isEmpty
