@@ -1,7 +1,3 @@
-/// Build number of this app (the `+N` in pubspec.yaml `version:`).
-/// Keep in sync: `test/app_update_test.dart` fails when they differ.
-const int kAppBuildNumber = 10;
-
 /// Google Play listing of the Android app.
 const String kPlayStoreWebUrl =
     'https://play.google.com/store/apps/details?id=com.vauvau.app';

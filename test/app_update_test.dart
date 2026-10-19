@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -11,7 +9,7 @@ import 'package:vauvau/features/app_update/presentation/app_update_strings.dart'
 Future<void> _pump(
   WidgetTester tester, {
   required AppUpdateConfig? config,
-  int build = 7,
+  int? build = 7,
 }) async {
   await tester.pumpWidget(
     ProviderScope(
@@ -19,7 +17,7 @@ Future<void> _pump(
         appUpdateRepositoryProvider.overrideWithValue(
           LocalAppUpdateRepository(config),
         ),
-        appBuildNumberProvider.overrideWithValue(build),
+        if (build != null) appBuildNumberProvider.overrideWithValue(build),
       ],
       child: const MaterialApp(
         home: AppUpdateHost(enabled: true, child: Scaffold(body: Text('home'))),
@@ -31,11 +29,20 @@ Future<void> _pump(
 }
 
 void main() {
-  test('kAppBuildNumber matches the +N in pubspec.yaml', () {
-    final pubspec = File('pubspec.yaml').readAsStringSync();
-    final match = RegExp(r'^version:\s*\S+\+(\d+)', multiLine: true)
-        .firstMatch(pubspec);
-    expect(int.parse(match!.group(1)!), kAppBuildNumber);
+  // Broj builda se više ne drži ručno u kodu: čita se sa telefona (+N iz
+  // pubspec.yaml koji Flutter upisuje u APK/AAB).
+  testWidgets('dijalog prikazuje instalirani build', (tester) async {
+    await _pump(tester, config: const AppUpdateConfig(latestBuild: 8));
+    expect(find.text(AppUpdateStrings.installedBuild(7)), findsOneWidget);
+  });
+
+  testWidgets('nepoznat instalirani build: nema dijaloga', (tester) async {
+    await _pump(
+      tester,
+      config: const AppUpdateConfig(minBuild: 99, latestBuild: 99),
+      build: null,
+    );
+    expect(find.byType(AlertDialog), findsNothing);
   });
 
   test('status: required beats available beats up to date', () {

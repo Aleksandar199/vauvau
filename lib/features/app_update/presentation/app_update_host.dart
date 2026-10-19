@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 
 import '../../../core/firebase/firebase_status.dart';
 import '../../../core/firebase/firestore_auth_guard.dart';
@@ -17,8 +18,26 @@ final appUpdateRepositoryProvider = Provider<AppUpdateRepository>((ref) {
   return LocalAppUpdateRepository();
 });
 
-/// Build number of the running app (overridable in tests).
-final appBuildNumberProvider = Provider<int>((ref) => kAppBuildNumber);
+/// Test override for the installed build; null = ask the platform.
+final appBuildNumberProvider = Provider<int?>((ref) => null);
+
+/// Build number of the INSTALLED app = the `+N` from pubspec.yaml `version:`
+/// (Flutter writes it into the APK/AAB as versionCode), read at runtime –
+/// nothing to keep in sync by hand. Null when the platform cannot tell (then
+/// no update prompt is shown). A hand-kept constant used before 2026-10-19
+/// drifted from the real versionCode and the required dialog never closed.
+final installedBuildNumberProvider = FutureProvider<int?>((ref) async {
+  final override = ref.watch(appBuildNumberProvider);
+  if (override != null) return override;
+  try {
+    final info = await PackageInfo.fromPlatform();
+    final build = int.tryParse(info.buildNumber.trim());
+    if (build != null && build > 0) return build;
+  } catch (error) {
+    debugPrint('installed build number unavailable: $error');
+  }
+  return null;
+});
 
 /// Update status for this build; upToDate while unknown.
 final appUpdateStatusProvider = FutureProvider<AppUpdateStatus>((ref) async {
@@ -29,8 +48,9 @@ final appUpdateStatusProvider = FutureProvider<AppUpdateStatus>((ref) async {
     return AppUpdateStatus.upToDate;
   }
   final config = await ref.watch(appUpdateRepositoryProvider).fetch();
-  return config?.statusFor(ref.watch(appBuildNumberProvider)) ??
-      AppUpdateStatus.upToDate;
+  final build = await ref.watch(installedBuildNumberProvider.future);
+  if (config == null || build == null) return AppUpdateStatus.upToDate;
+  return config.statusFor(build);
 });
 
 /// Shows the update dialog once per app start when a newer build exists;
@@ -73,6 +93,7 @@ class _AppUpdateHostState extends ConsumerState<AppUpdateHost> {
     }
     _shown = true;
     final required = status == AppUpdateStatus.required;
+    final installed = ref.read(installedBuildNumberProvider).value;
     showDialog<void>(
       context: context,
       barrierDismissible: !required,
@@ -82,8 +103,23 @@ class _AppUpdateHostState extends ConsumerState<AppUpdateHost> {
           title: Text(
             required ? AppUpdateStrings.requiredTitle : AppUpdateStrings.title,
           ),
-          content: Text(
-            required ? AppUpdateStrings.requiredBody : AppUpdateStrings.body,
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                required
+                    ? AppUpdateStrings.requiredBody
+                    : AppUpdateStrings.body,
+              ),
+              if (installed != null) ...[
+                const SizedBox(height: 12),
+                Text(
+                  AppUpdateStrings.installedBuild(installed),
+                  style: Theme.of(dialogContext).textTheme.bodySmall,
+                ),
+              ],
+            ],
           ),
           actions: [
             if (!required)

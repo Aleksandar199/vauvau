@@ -15,4 +15,6 @@ abstract final class AppUpdateStrings {
       );
   static String get update => L10n.tr('Ažuriraj', 'Update');
   static String get later => L10n.tr('Kasnije', 'Later');
+  static String installedBuild(int build) =>
+      L10n.tr('Instalirana verzija: build $build', 'Installed: build $build');
 }
