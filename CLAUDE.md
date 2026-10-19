@@ -133,7 +133,7 @@ Pun spisak polja: `docs/TEHNICKI_PREGLED.md` sekcija 5 „Firestore struktura po
 - Slike: upload kroz `ImageUploadService`/`StorageService` + `ContentValidationService.validateImage`.
 - Testovi u `test/<feature>_test.dart`, Firestore preko `fake_cloud_firestore` ili Local repozitorijuma; ne menjati očekivanja testova bez razloga.
 - Ne menjati produkcione podatke radi testiranja; ne izmišljati podatke o mestima (adrese, telefoni, radno vreme); čuvati admin i korisničke lokacije; migracije samo uz odobrenje.
-- Commit poruke na srpskom; ne pushovati na `master` bez odobrenja.
+- Commit poruke na srpskom. Posle svake završene izmene ODMAH komit i push `main` → `origin/master` (korisnik 2026-10-19: „svaki put kada nešto napravimo, push i komit“; samo fast-forward, bez force). Deploy pravila/indeksa i produkcioni podaci i dalje traže odobrenje.
 
 # Stanje
 ## Završeno
@@ -169,7 +169,7 @@ Pun spisak polja: `docs/TEHNICKI_PREGLED.md` sekcija 5 „Firestore struktura po
 6. Nagrade (MVP, samo klijent + pravila): grupne šetnje se NE boduju (učešće ne može pouzdano da se potvrdi); GPS sa zaključanim ekranom nije proveren na uređaju (Android FGS je konfigurisan, iOS nije spreman); klijentska validacija nije zaštita od zloupotrebe.
 
 ## TODO (po prioritetu)
-1. Push na `master` (komit `a0e5c3f` je lokalan na `main`) – samo uz odobrenje.
+1. Push na `master` – posle svake izmene (vidi Konvencije); ako alat odbije push, korisnik pokreće `git push origin main:master`.
 2. Pregledati pale testove (ne menjati očekivanja bez razloga).
 3. Ručno na uređaju proveriti: registraciju sa slikom, brisanje naloga (email + lozinka).
 4. Zameniti 7 `print()` poziva sa `debugPrint`/Crashlytics.
