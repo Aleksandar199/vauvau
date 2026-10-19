@@ -1,6 +1,20 @@
 import '../../../core/l10n/l10n.dart';
 
 abstract final class ChatStrings {
+  /// Chat message sent by "Pridruži se šetnji" on the map.
+  static String joinWalkRequest(String myDog, String walkerDog) {
+    final me = myDog.isEmpty ? '' : ' sa psom $myDog';
+    final meEn = myDog.isEmpty ? '' : ' with $myDog';
+    final target = walkerDog.isEmpty ? '' : ' sa psom $walkerDog';
+    final targetEn = walkerDog.isEmpty ? '' : ' with $walkerDog';
+    return L10n.tr(
+      '🐾 Zdravo! Na mapi vidim da ste u šetnji$target. Mogu li da vam se '
+          'pridružim$me? Gde ste trenutno?',
+      "🐾 Hi! I see on the map that you're out walking$targetEn. Can I join "
+          'you$meEn? Where are you now?',
+    );
+  }
+
   static String get tabLabel => L10n.tr('Poruke', 'Messages');
   static String get title => L10n.tr('Poruke', 'Messages');
   static String get newMatches => L10n.tr('Novi mečevi', 'New matches');

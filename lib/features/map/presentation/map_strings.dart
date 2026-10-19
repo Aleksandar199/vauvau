@@ -400,6 +400,10 @@ abstract final class MapStrings {
   static String get joinWalk => L10n.tr('Pridruži se u šetnji', 'Join walk');
   static String get walkRequestSent =>
       L10n.tr('Zahtev za šetnju je poslat.', 'Walk request sent.');
+  static String get walkRequestFailed => L10n.tr(
+        'Zahtev nije poslat. Proverite internet i pokušajte ponovo.',
+        'Request not sent. Check your connection and try again.',
+      );
   static String fallbackBanner(String city) => L10n.tr(
         'Koristimo centar grada: $city. Dozvolite lokaciju za tačan prikaz u blizini.',
         'Using the center of $city. Allow location for accurate nearby view.',

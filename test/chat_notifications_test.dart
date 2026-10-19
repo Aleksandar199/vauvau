@@ -457,4 +457,67 @@ void main() {
       expect(message('hers').likes, isEmpty);
     });
   });
+
+  group('Pridruži se šetnji (mapa)', () {
+    test('prva poruka čeka da se soba napravi', () async {
+      final firestore = FakeFirebaseFirestore();
+      final repo = FirestoreChatRepository(
+        firestore: firestore,
+        currentUserId: 'me',
+      );
+      addTearDown(repo.dispose);
+      final roomId = repo.openFromMatch(
+        profile: _dog(id: 'lola', name: 'Lola', owner: 'Nina', ownerId: 'nina'),
+        myUserId: 'me',
+        myDogId: 'rex',
+      );
+      // Odmah posle otvaranja, kao dugme na mapi.
+      await repo.sendMessage(roomId, 'Mogu li da vam se pridružim?');
+      final room = await firestore.collection('chats').doc(roomId).get();
+      expect(room.exists, isTrue);
+      expect(room['participantIds'], containsAll(['me', 'nina']));
+      final messages = await firestore
+          .collection('chats')
+          .doc(roomId)
+          .collection('messages')
+          .get();
+      expect(messages.docs.single['text'], 'Mogu li da vam se pridružim?');
+    });
+
+    test('šalje pravu poruku u čet i obaveštenje šetaču', () async {
+      final gateway = _RecordingGateway();
+      final container = _container(gateway);
+      container.listen(chatInboxProvider, (_, _) {});
+      await container.read(authStateProvider.future);
+      final lola =
+          _dog(id: 'lola', name: 'Lola', owner: 'Nina', ownerId: 'nina');
+
+      final chatId =
+          await container.read(chatInboxProvider.notifier).requestJoinWalk(lola);
+      await _tick();
+
+      final chat = container
+          .read(chatInboxProvider)
+          .firstWhere((c) => c.id == chatId);
+      expect(chat.messages.last.text, contains('pridružim'));
+      expect(chat.messages.last.text, contains('Rex'));
+      expect(
+        gateway.queued.where(
+          (q) => q.userId == 'nina' && q.payload.kind == PushKind.walk,
+        ),
+        hasLength(1),
+      );
+    });
+
+    test('šetač bez vlasnika: greška, ništa se ne šalje', () async {
+      final gateway = _RecordingGateway();
+      final container = _container(gateway);
+      final noOwner = _dog(id: 'x', name: 'X', owner: '', ownerId: '');
+      await expectLater(
+        container.read(chatInboxProvider.notifier).requestJoinWalk(noOwner),
+        throwsA(isA<StateError>()),
+      );
+      expect(gateway.queued, isEmpty);
+    });
+  });
 }
