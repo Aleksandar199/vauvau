@@ -303,3 +303,4 @@ Pun spisak polja: `docs/TEHNICKI_PREGLED.md` sekcija 5 „Firestore struktura po
   - pravila: `featured` pri kreiranju i izmeni samo admin (`rules_test/groups.rules.test.mjs`, 8); `rules_test/` 141/141.
   - testovi: novi `test/group_ranking_test.dart` (sortiranje, filteri, stari dokumenti, rase, seed, UI); `groups_test.dart` prilagođen (nema izmišljenih brojeva).
   - TODO (grupe): deploy `firestore.rules` uz odobrenje (do tada `featured` u klijentu nema zaštitu); admin UI za izmenu/uređivanje grupe i `locationId` picker iz `places`/`pois`; naslovna slika nije podržana u formi; stare izmišljene `memberCount` vrednosti ostaju u bazi (jednokratna admin korekcija traži odobrenje).
+- [2026-10-19] Uz odobrenje korisnika deployovan `firestore.rules` (Grupe 2.0: `featured` samo admin) na `vauvau-3195a`; indeksi i `storage.rules` nisu diran. Jedina razlika prema prethodno deployovanim pravilima bila je ta izmena.
