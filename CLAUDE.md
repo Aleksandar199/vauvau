@@ -142,7 +142,7 @@ Pun spisak polja: `docs/TEHNICKI_PREGLED.md` sekcija 5 „Firestore struktura po
 - Praćenje vlasnika + priče 24h sa publikom, sviđanjima, pregledima i odgovorima u Poruke (pravila deployovana 2026-10-17; TTL/lifecycle i provera na uređaju – TODO 6b).
 - 1:1 čet: tekst, slika, lokacija, poziv na šetnju (accept/decline), reply, lajkovi, unread.
 - Grupe i događaji sa četom; izbor grada u događajima/šetnjama i pričama.
-- Mapa: Novi Sad, Beograd (prošireni), Niš, Kragujevac, Zrenjanin, Subotica (od 2026-10-19); POI, admin mesta (`places`↔`pois` atomski batch), šetnja + presence + istorija.
+- Mapa: Novi Sad, Beograd (prošireni), Niš, Kragujevac, Zrenjanin, Subotica (od 2026-10-19); brzi čipovi na mapi samo za prva 4 grada, Zrenjanin i Subotica su u listi „Izaberi grad“; POI, admin mesta (`places`↔`pois` atomski batch), šetnja + presence + istorija.
 - Priče 24h + istaknute; izgubljeni psi (hitni popup); udomljavanje; zdravstveni karton + prilagođeni podsetnici.
 - Prijave/blokiranje, admin panel, pravila/saveti/SOS, feedback.
 - Pravne stranice na Hosting-u, privacy policy.
@@ -293,3 +293,4 @@ Pun spisak polja: `docs/TEHNICKI_PREGLED.md` sekcija 5 „Firestore struktura po
   - privatnost: tačna lokacija je bila javna – `dogs/{id}` je tokom šetnje dobijao TAČNE `latitude`/`longitude`/`lastKnownLocation`/`geohash` (čitaju svi prijavljeni). Sad `FirestoreWalkPresenceRepository` upisuje samo centar ćelije od 0,002° (~220×160 m, `SharedLocation.approximate`) i preskače upis dok se ćelija ne promeni (ređi upisi). Stari tačni podaci u `dogs` ostaju dok isti pas ne krene u novu šetnju/završi je. Obaveštenje „Rutu šetnje vidite samo vi. Drugi vide samo približnu lokaciju (oko 200 m)…“ u dijalogu „Započni šetnju“ i u traci na mapi (`map_strings.dart`);
   - uočeno, nije menjano: sa isključenim „Prikaži moju lokaciju na mapi“ `WalkController.start` i dalje objavljuje `isWalking: true` sa početnom (sad približnom) tačkom, pa se pin ipak vidi dok se ne uključi/isključi prekidač;
   - testovi: novi `test/offline_gate_test.dart`, `test/shared_location_test.dart`.
+- [2026-10-19] Mapa: Zrenjanin i Subotica više nisu brzi čipovi na početnom redu mape (zahtev korisnika) – biraju se samo iz liste „Izaberi grad“ (`city_picker_sheet.dart`, `SeedCities.mergeWith`), a dugme tada pokazuje ime izabranog grada (`map_screen.dart`, `_quickCityIds` = 4 grada). Otkrij filteri i ostale forme i dalje imaju nove gradove. Test u `map_refresh_test.dart` proverava da čipova nema i da izbor iz liste menja grad i markere.

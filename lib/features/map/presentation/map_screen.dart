@@ -56,8 +56,6 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     SeedCities.belgrade.id,
     SeedCities.nis.id,
     SeedCities.kragujevac.id,
-    SeedCities.zrenjanin.id,
-    SeedCities.subotica.id,
   };
 
   final MapController _mapController = MapController();
@@ -292,18 +290,8 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                       onTap: () => _selectQuickCity(SeedCities.kragujevac),
                     ),
                     SizedBox(width: 8),
-                    DiscoverFilterChip(
-                      label: MapStrings.cityZrenjanin,
-                      selected: region.cityId == SeedCities.zrenjanin.id,
-                      onTap: () => _selectQuickCity(SeedCities.zrenjanin),
-                    ),
-                    SizedBox(width: 8),
-                    DiscoverFilterChip(
-                      label: MapStrings.citySubotica,
-                      selected: region.cityId == SeedCities.subotica.id,
-                      onTap: () => _selectQuickCity(SeedCities.subotica),
-                    ),
-                    SizedBox(width: 8),
+                    // Zrenjanin, Subotica i ostali gradovi su samo u
+                    // listi „Izaberi grad“ (dugme pokazuje izabrani grad).
                     _CityPickerButton(
                       label: region.isMyLocation ||
                               _quickCityIds.contains(region.cityId)

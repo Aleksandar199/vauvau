@@ -188,9 +188,11 @@ void main() {
     },
   );
 
-  testWidgets('čipovi Zrenjanin i Subotica menjaju grad i markere', (
+  testWidgets('Zrenjanin i Subotica su samo u listi „Izaberi grad“', (
     tester,
   ) async {
+    await tester.binding.setSurfaceSize(const Size(412, 1000));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
@@ -209,27 +211,67 @@ void main() {
     final container = ProviderScope.containerOf(
       tester.element(find.byType(MapScreen)),
     );
-
-    final chipRow = find
+    // Element reda čipova (ostaje isti i kad se čip „Beograd“ odskroluje).
+    final chipRowElement = find
         .ancestor(
           of: find.text(MapStrings.cityBelgrade),
           matching: find.byType(Scrollable),
         )
+        .evaluate()
         .first;
-    for (final (label, city, delta) in [
-      (MapStrings.cityZrenjanin, SeedCities.zrenjanin, 120.0),
-      (MapStrings.citySubotica, SeedCities.subotica, 120.0),
-      (MapStrings.cityNoviSad, SeedCities.noviSad, -120.0),
-    ]) {
+    final chipRow = find.byElementPredicate(
+      (element) => identical(element, chipRowElement),
+    );
+
+    // Početni red mape: brzi čipovi samo za 4 grada, bez novih gradova.
+    for (final label in [MapStrings.cityZrenjanin, MapStrings.citySubotica]) {
+      expect(
+        find.descendant(of: chipRow, matching: find.text(label)),
+        findsNothing,
+        reason: label,
+      );
+    }
+
+    var pickerLabel = MapStrings.chooseCity;
+    for (final city in [SeedCities.zrenjanin, SeedCities.subotica]) {
       final builds = MapScreen.placeMarkerBuilds;
-      final chip = find.text(label);
-      await tester.scrollUntilVisible(chip, delta, scrollable: chipRow);
+      final button = find.descendant(
+        of: chipRow,
+        matching: find.text(pickerLabel),
+      );
+      await tester.scrollUntilVisible(button, 120, scrollable: chipRow);
+      await tester.ensureVisible(button);
       await tester.pump();
-      await tester.tap(chip);
+      await tester.tap(button);
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 500));
+
+      final item = find.widgetWithText(ListTile, city.name);
+      await tester.scrollUntilVisible(
+        item,
+        80,
+        scrollable: find
+            .descendant(
+              of: find.byType(BottomSheet),
+              matching: find.byType(Scrollable),
+            )
+            .last,
+      );
+      await tester.ensureVisible(item);
+      await tester.pump();
+      expect(item, findsOneWidget, reason: city.name);
+      await tester.tap(item);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500));
+
       expect(container.read(mapRegionProvider).cityId, city.id);
-      expect(MapScreen.placeMarkerBuilds, greaterThan(builds), reason: label);
+      expect(MapScreen.placeMarkerBuilds, greaterThan(builds), reason: city.id);
+      // Dugme „Izaberi grad“ sada pokazuje izabrani grad.
+      pickerLabel = city.name;
+      expect(
+        find.descendant(of: chipRow, matching: find.text(pickerLabel)),
+        findsOneWidget,
+      );
     }
     await tester.pump(const Duration(seconds: 2));
   });
