@@ -3,6 +3,7 @@ import 'dart:async';
 import '../../../core/utils/message_reactions.dart';
 
 import 'seed_breed_groups.dart';
+import '../domain/group_ranking.dart';
 import '../domain/groups_models.dart';
 
 class LocalGroupsRepository implements GroupsRepository {
@@ -90,6 +91,11 @@ class LocalGroupsRepository implements GroupsRepository {
     required String title,
     required String description,
     bool approveImmediately = false,
+    GroupScope? scope,
+    String cityId = '',
+    GroupCategory category = GroupCategory.general,
+    String locationName = '',
+    String breedKey = '',
   }) async {
     final trimmedTitle = title.trim();
     if (trimmedTitle.isEmpty) {
@@ -109,6 +115,17 @@ class LocalGroupsRepository implements GroupsRepository {
       isApproved: approveImmediately,
       createdBy: currentUserId,
       createdAt: DateTime.now(),
+      scope:
+          scope ??
+          (breedKey.isNotEmpty
+              ? GroupScope.breed
+              : cityId.isNotEmpty
+              ? GroupScope.local
+              : GroupScope.global),
+      cityId: cityId,
+      category: category,
+      locationName: locationName.trim(),
+      breedKey: breedKey,
     );
     _groups.add(group);
     _emitGroups();
@@ -182,8 +199,9 @@ class LocalGroupsRepository implements GroupsRepository {
     required String walkLocationName,
   }) async {
     final place = walkLocationName.trim();
-    final preview =
-        place.isEmpty ? 'Poziv na šetnju' : 'Poziv na šetnju: $place';
+    final preview = place.isEmpty
+        ? 'Poziv na šetnju'
+        : 'Poziv na šetnju: $place';
     _append(
       groupId,
       GroupMessage(
@@ -216,19 +234,13 @@ class LocalGroupsRepository implements GroupsRepository {
           message.copyWith(
             status: GroupWalkInviteStatus.pending,
             acceptedByUserIds: status == GroupWalkInviteStatus.accepted
-                ? {
-                    ...message.acceptedByUserIds,
-                    currentUserId,
-                  }.toList()
+                ? {...message.acceptedByUserIds, currentUserId}.toList()
                 : [
                     for (final id in message.acceptedByUserIds)
                       if (id != currentUserId) id,
                   ],
             declinedByUserIds: status == GroupWalkInviteStatus.declined
-                ? {
-                    ...message.declinedByUserIds,
-                    currentUserId,
-                  }.toList()
+                ? {...message.declinedByUserIds, currentUserId}.toList()
                 : [
                     for (final id in message.declinedByUserIds)
                       if (id != currentUserId) id,
@@ -323,9 +335,7 @@ class LocalGroupsRepository implements GroupsRepository {
   }
 
   List<BreedGroup> _approvedSorted() {
-    return SeedBreedGroups.sortByPopularity(
-      _groups.where((group) => group.isApproved),
-    );
+    return GroupRanking.sort(_groups.where((group) => group.isApproved));
   }
 
   List<BreedGroup> _pendingSorted() {

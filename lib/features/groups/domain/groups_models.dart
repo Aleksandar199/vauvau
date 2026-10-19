@@ -1,3 +1,104 @@
+/// Where a group lives: whole country, one city (optionally one location) or
+/// a dog breed. Old documents carry none of this and are derived, see
+/// [BreedGroup.tryFromMap].
+enum GroupScope { global, local, breed }
+
+/// Walk-group type; the stable [key] is what is stored in Firestore.
+enum GroupCategory {
+  general('general'),
+  parks('parks'),
+  puppies('puppies'),
+  smallDogs('small'),
+  largeDogs('large'),
+  active('active'),
+  hiking('hiking');
+
+  const GroupCategory(this.key);
+  final String key;
+
+  static GroupCategory? fromKey(Object? raw) {
+    for (final value in values) {
+      if (value.key == raw) {
+        return value;
+      }
+    }
+    return null;
+  }
+}
+
+/// Classification of the preset groups that were seeded before the optional
+/// fields existed, so old documents work without a migration.
+class LegacyGroupMeta {
+  const LegacyGroupMeta({
+    required this.scope,
+    this.cityId = '',
+    this.category = GroupCategory.general,
+    this.locationName = '',
+    this.breedKey = '',
+    this.featured = false,
+  });
+
+  final GroupScope scope;
+  final String cityId;
+  final GroupCategory category;
+  final String locationName;
+  final String breedKey;
+  final bool featured;
+
+  static const Map<String, LegacyGroupMeta> byId = {
+    'aktivne-setnje-playdate': LegacyGroupMeta(
+      scope: GroupScope.global,
+      category: GroupCategory.active,
+      featured: true,
+    ),
+    'kej-zezeljev-most': LegacyGroupMeta(
+      scope: GroupScope.local,
+      cityId: 'novi_sad',
+      category: GroupCategory.parks,
+      locationName: 'Kej / Žeželjev most',
+    ),
+    'limanski-park': LegacyGroupMeta(
+      scope: GroupScope.local,
+      cityId: 'novi_sad',
+      category: GroupCategory.parks,
+      locationName: 'Limanski park',
+    ),
+    'petrovaradinska-tvrdjava': LegacyGroupMeta(
+      scope: GroupScope.local,
+      cityId: 'novi_sad',
+      category: GroupCategory.parks,
+      locationName: 'Petrovaradinska tvrđava',
+    ),
+    'futoski-park': LegacyGroupMeta(
+      scope: GroupScope.local,
+      cityId: 'novi_sad',
+      category: GroupCategory.parks,
+      locationName: 'Futoški park',
+    ),
+    'kamenicki-park': LegacyGroupMeta(
+      scope: GroupScope.local,
+      cityId: 'novi_sad',
+      category: GroupCategory.parks,
+      locationName: 'Kamenički park',
+    ),
+    'labradori-novi-sad': LegacyGroupMeta(
+      scope: GroupScope.breed,
+      cityId: 'novi_sad',
+      breedKey: 'Labrador',
+    ),
+    'pomeranci-novi-sad': LegacyGroupMeta(
+      scope: GroupScope.breed,
+      cityId: 'novi_sad',
+      breedKey: 'Pomeranac',
+    ),
+    'francuski-buldozi-novi-sad': LegacyGroupMeta(
+      scope: GroupScope.breed,
+      cityId: 'novi_sad',
+      breedKey: 'Francuski buldog',
+    ),
+  };
+}
+
 class BreedGroup {
   const BreedGroup({
     required this.id,
@@ -12,6 +113,13 @@ class BreedGroup {
     this.isApproved = true,
     this.createdBy = '',
     this.createdAt,
+    this.scope = GroupScope.global,
+    this.cityId = '',
+    this.category = GroupCategory.general,
+    this.locationId = '',
+    this.locationName = '',
+    this.breedKey = '',
+    this.featured = false,
   });
 
   final String id;
@@ -26,6 +134,31 @@ class BreedGroup {
   final bool isApproved;
   final String createdBy;
   final DateTime? createdAt;
+
+  /// All optional, absent on old documents.
+  final GroupScope scope;
+
+  /// Canonical id from `SerbiaLocations` (`novi_sad`, `beograd`…); empty =
+  /// not tied to a city.
+  final String cityId;
+  final GroupCategory category;
+
+  /// Optional link to a `places`/`pois` document and its display name.
+  final String locationId;
+  final String locationName;
+
+  /// Canonical breed name from `DogBreeds` (breed groups only).
+  final String breedKey;
+
+  /// Highlighted global group; only admins can set it (rules).
+  final bool featured;
+
+  bool get hasLocation =>
+      locationId.trim().isNotEmpty || locationName.trim().isNotEmpty;
+
+  /// Members that can be verified: `memberIds` is the real list, while the
+  /// stored `memberCount` of old seed documents is a made-up number.
+  int get verifiedMemberCount => memberIds.length;
 
   int get displayMemberCount =>
       memberCount >= memberIds.length ? memberCount : memberIds.length;
@@ -42,11 +175,45 @@ class BreedGroup {
         for (final value in _asList(raw['memberIds']))
           if (value is String && value.isNotEmpty) value,
       ];
-      final memberCount = _asInt(raw['memberCount']) ??
+      final memberCount =
+          _asInt(raw['memberCount']) ??
           _asInt(raw['membersCount']) ??
           memberIds.length;
       final isApproved = raw['isApproved'];
+      final legacy = LegacyGroupMeta.byId[id];
+      final storedScope = switch (raw['scope']) {
+        'global' => GroupScope.global,
+        'local' => GroupScope.local,
+        'breed' => GroupScope.breed,
+        _ => null,
+      };
+      final cityId = (raw['cityId'] as String?)?.trim() ?? legacy?.cityId ?? '';
+      final breedKey =
+          (raw['breedKey'] as String?)?.trim() ?? legacy?.breedKey ?? '';
+      final scope =
+          storedScope ??
+          legacy?.scope ??
+          (breedKey.isNotEmpty
+              ? GroupScope.breed
+              : cityId.isNotEmpty
+              ? GroupScope.local
+              : GroupScope.global);
       return BreedGroup(
+        scope: scope,
+        cityId: cityId,
+        category:
+            GroupCategory.fromKey(raw['category']) ??
+            legacy?.category ??
+            GroupCategory.general,
+        locationId: (raw['locationId'] as String?)?.trim() ?? '',
+        locationName:
+            (raw['locationName'] as String?)?.trim() ??
+            legacy?.locationName ??
+            '',
+        breedKey: breedKey,
+        featured: raw['featured'] is bool
+            ? raw['featured'] as bool
+            : legacy?.featured ?? false,
         id: id,
         title: raw['title'] as String? ?? '',
         description: raw['description'] as String? ?? '',
@@ -111,8 +278,22 @@ class BreedGroup {
     String? imageUrl,
     int? sortOrder,
     DateTime? createdAt,
+    GroupScope? scope,
+    String? cityId,
+    GroupCategory? category,
+    String? locationId,
+    String? locationName,
+    String? breedKey,
+    bool? featured,
   }) {
     return BreedGroup(
+      scope: scope ?? this.scope,
+      cityId: cityId ?? this.cityId,
+      category: category ?? this.category,
+      locationId: locationId ?? this.locationId,
+      locationName: locationName ?? this.locationName,
+      breedKey: breedKey ?? this.breedKey,
+      featured: featured ?? this.featured,
       id: id,
       title: title ?? this.title,
       description: description ?? this.description,
@@ -166,6 +347,7 @@ class GroupMessage {
   final GroupWalkInviteStatus? status;
   final DateTime? walkTime;
   final String? walkLocationName;
+
   /// User ids that accepted this group walk invite (updates live on the message).
   final List<String> acceptedByUserIds;
   final List<String> declinedByUserIds;
@@ -175,8 +357,7 @@ class GroupMessage {
 
   int get likeCount => likes.length;
 
-  bool isLikedBy(String uid) =>
-      uid.isNotEmpty && likes.contains(uid);
+  bool isLikedBy(String uid) => uid.isNotEmpty && likes.contains(uid);
 
   bool get hasImage => imageUrl.trim().isNotEmpty;
 
@@ -271,7 +452,8 @@ class GroupInboxThread {
     return GroupInboxThread(
       group: group,
       lastMessage: last?.preview ?? group.lastMessage,
-      lastActivityAt: last?.createdAt ??
+      lastActivityAt:
+          last?.createdAt ??
           group.lastMessageAt ??
           DateTime.fromMillisecondsSinceEpoch(0),
       unreadCount: unread,
@@ -296,6 +478,11 @@ abstract class GroupsRepository {
     required String title,
     required String description,
     bool approveImmediately = false,
+    GroupScope? scope,
+    String cityId = '',
+    GroupCategory category = GroupCategory.general,
+    String locationName = '',
+    String breedKey = '',
   });
 
   Future<void> approveGroup(String groupId);

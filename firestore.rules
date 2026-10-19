@@ -927,7 +927,8 @@ service cloud.firestore {
             request.resource.data.isApproved == false &&
             request.resource.data.createdBy == request.auth.uid &&
             request.resource.data.memberIds == [request.auth.uid] &&
-            request.resource.data.memberCount == 1
+            request.resource.data.memberCount == 1 &&
+            request.resource.data.get('featured', false) == false
           ) ||
           isAdmin()
         );
@@ -940,6 +941,7 @@ service cloud.firestore {
           (
             resource.data.get('createdBy', '') == request.auth.uid &&
             !changed('createdBy') &&
+            !changed('featured') &&
             !changed('isApproved') &&
             !changed('memberIds') &&
             !changed('memberCount') &&

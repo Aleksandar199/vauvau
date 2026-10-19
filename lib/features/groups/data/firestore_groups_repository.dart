@@ -5,6 +5,7 @@ import '../../../core/firebase/firestore_auth_guard.dart';
 import '../../../core/utils/message_preview.dart';
 import '../../../core/utils/message_reactions.dart';
 import 'seed_breed_groups.dart';
+import '../domain/group_ranking.dart';
 import '../domain/groups_models.dart';
 
 class FirestoreGroupsRepository implements GroupsRepository {
@@ -48,10 +49,9 @@ class FirestoreGroupsRepository implements GroupsRepository {
         continue;
       }
       final data = snap.data() ?? {};
-      final ids = [
-        for (final value in data['memberIds'] as List? ?? const [])
-          if (value is String && value.isNotEmpty) value,
-      ];
+      // Member tallies are never touched (old seed documents still hold made-up
+      // counts; the UI shows only `memberIds.length`). Classification is merged
+      // so old preset documents get the optional fields.
       final patch = <String, dynamic>{
         'title': group.title,
         'description': group.description,
@@ -59,14 +59,13 @@ class FirestoreGroupsRepository implements GroupsRepository {
         'isApproved': true,
         'sortOrder': group.sortOrder,
         'createdBy': data['createdBy'] as String? ?? '',
+        ...SeedBreedGroups.classificationData(group),
       };
-      // Keep live member tallies; refresh mock counts only when nobody joined.
-      if (ids.isEmpty) {
-        patch['memberCount'] = group.memberCount;
-        patch['memberIds'] = const <String>[];
-      }
       try {
-        await ref.set(patch, SetOptions(merge: true));
+        final unchanged = patch.entries.every((e) => data[e.key] == e.value);
+        if (!unchanged) {
+          await ref.set(patch, SetOptions(merge: true));
+        }
       } catch (error) {
         // Non-admins may not change seed fields; an unchanged patch passes.
         debugPrint('groups seed patch ${group.id} skipped: $error');
@@ -85,14 +84,15 @@ class FirestoreGroupsRepository implements GroupsRepository {
     yield* FirestoreAuthGuard.guardedStream<List<BreedGroup>>(
       label: 'groups.watch',
       empty: const [],
-      create: () => _col.snapshots().map((snapshot) {
-        final List<BreedGroup> approved = snapshot.docs
-            .map((doc) => BreedGroup.tryFromMap(doc.id, doc.data()))
-            .whereType<BreedGroup>()
-            .where((group) => group.isApproved)
-            .toList();
-        return SeedBreedGroups.sortByPopularity(approved);
-      }),
+      create: () =>
+          _col.where('isApproved', isEqualTo: true).snapshots().map((snapshot) {
+            final List<BreedGroup> approved = snapshot.docs
+                .map((doc) => BreedGroup.tryFromMap(doc.id, doc.data()))
+                .whereType<BreedGroup>()
+                .where((group) => group.isApproved)
+                .toList();
+            return GroupRanking.sort(approved);
+          }),
     );
   }
 
@@ -102,19 +102,22 @@ class FirestoreGroupsRepository implements GroupsRepository {
     yield* FirestoreAuthGuard.guardedStream<List<BreedGroup>>(
       label: 'groups.pending',
       empty: const [],
-      create: () => _col.snapshots().map((snapshot) {
-        final List<BreedGroup> pending = snapshot.docs
-            .map((doc) => BreedGroup.tryFromMap(doc.id, doc.data()))
-            .whereType<BreedGroup>()
-            .where((group) => !group.isApproved)
-            .toList()
-          ..sort(
-            (BreedGroup a, BreedGroup b) {
-              final aAt = a.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
-              final bAt = b.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
-              return bAt.compareTo(aAt);
-            },
-          );
+      create: () => _col.where('isApproved', isEqualTo: false).snapshots().map((
+        snapshot,
+      ) {
+        final List<BreedGroup> pending =
+            snapshot.docs
+                .map((doc) => BreedGroup.tryFromMap(doc.id, doc.data()))
+                .whereType<BreedGroup>()
+                .where((group) => !group.isApproved)
+                .toList()
+              ..sort((BreedGroup a, BreedGroup b) {
+                final aAt =
+                    a.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+                final bAt =
+                    b.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+                return bAt.compareTo(aAt);
+              });
         return pending;
       }),
     );
@@ -130,9 +133,7 @@ class FirestoreGroupsRepository implements GroupsRepository {
           .collection('messages')
           .orderBy('createdAt')
           .snapshots()
-          .map(
-            (snapshot) => snapshot.docs.map(_messageFromDoc).toList(),
-          ),
+          .map((snapshot) => snapshot.docs.map(_messageFromDoc).toList()),
     );
   }
 
@@ -154,18 +155,15 @@ class FirestoreGroupsRepository implements GroupsRepository {
       }
       ids.add(currentUserId);
       final stored = (data['memberCount'] as num?)?.toInt() ?? ids.length - 1;
-      tx.update(ref, {
-        'memberIds': ids,
-        'memberCount': stored + 1,
-      });
+      tx.update(ref, {'memberIds': ids, 'memberCount': stored + 1});
     });
-    final memberRef =
-        _col.doc(groupId).collection('members').doc(currentUserId);
+    final memberRef = _col
+        .doc(groupId)
+        .collection('members')
+        .doc(currentUserId);
     final memberSnap = await memberRef.get();
     if (!memberSnap.exists) {
-      await memberRef.set({
-        'lastReadTimestamp': FieldValue.serverTimestamp(),
-      });
+      await memberRef.set({'lastReadTimestamp': FieldValue.serverTimestamp()});
     }
   }
 
@@ -183,9 +181,9 @@ class FirestoreGroupsRepository implements GroupsRepository {
           .doc(currentUserId)
           .snapshots()
           .map((snap) {
-        final created = snap.data()?['lastReadTimestamp'];
-        return created is Timestamp ? created.toDate() : null;
-      }),
+            final created = snap.data()?['lastReadTimestamp'];
+            return created is Timestamp ? created.toDate() : null;
+          }),
     );
   }
 
@@ -194,12 +192,9 @@ class FirestoreGroupsRepository implements GroupsRepository {
     if (currentUserId.isEmpty) {
       return;
     }
-    await _col.doc(groupId).collection('members').doc(currentUserId).set(
-      {
-        'lastReadTimestamp': FieldValue.serverTimestamp(),
-      },
-      SetOptions(merge: true),
-    );
+    await _col.doc(groupId).collection('members').doc(currentUserId).set({
+      'lastReadTimestamp': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
   }
 
   @override
@@ -207,6 +202,11 @@ class FirestoreGroupsRepository implements GroupsRepository {
     required String title,
     required String description,
     bool approveImmediately = false,
+    GroupScope? scope,
+    String cityId = '',
+    GroupCategory category = GroupCategory.general,
+    String locationName = '',
+    String breedKey = '',
   }) async {
     if (currentUserId.isEmpty) {
       throw StateError('Morate biti prijavljeni.');
@@ -221,7 +221,20 @@ class FirestoreGroupsRepository implements GroupsRepository {
     // Non-admin clients must write pending groups only.
     final approved = approveImmediately;
     final ref = _col.doc();
+    final resolvedScope =
+        scope ??
+        (breedKey.isNotEmpty
+            ? GroupScope.breed
+            : cityId.isNotEmpty
+            ? GroupScope.local
+            : GroupScope.global);
+    final place = locationName.trim();
     final data = <String, dynamic>{
+      'scope': resolvedScope.name,
+      'category': category.key,
+      if (cityId.isNotEmpty) 'cityId': cityId,
+      if (place.isNotEmpty) 'locationName': place,
+      if (breedKey.isNotEmpty) 'breedKey': breedKey,
       'title': trimmedTitle,
       'description': desc,
       'imageUrl': '',
@@ -252,15 +265,17 @@ class FirestoreGroupsRepository implements GroupsRepository {
       isApproved: approved,
       createdBy: currentUserId,
       createdAt: DateTime.now(),
+      scope: resolvedScope,
+      cityId: cityId,
+      category: category,
+      locationName: place,
+      breedKey: breedKey,
     );
   }
 
   @override
   Future<void> approveGroup(String groupId) async {
-    await _col.doc(groupId).set(
-      {'isApproved': true},
-      SetOptions(merge: true),
-    );
+    await _col.doc(groupId).set({'isApproved': true}, SetOptions(merge: true));
   }
 
   @override
@@ -299,14 +314,11 @@ class FirestoreGroupsRepository implements GroupsRepository {
             : replyTo.senderName.trim(),
       },
     });
-    await groupRef.set(
-      {
-        'lastMessage': clipLastMessagePreview(preview),
-        'lastMessageAt': FieldValue.serverTimestamp(),
-        'lastMessageSenderId': currentUserId,
-      },
-      SetOptions(merge: true),
-    );
+    await groupRef.set({
+      'lastMessage': clipLastMessagePreview(preview),
+      'lastMessageAt': FieldValue.serverTimestamp(),
+      'lastMessageSenderId': currentUserId,
+    }, SetOptions(merge: true));
   }
 
   @override
@@ -333,8 +345,9 @@ class FirestoreGroupsRepository implements GroupsRepository {
       throw StateError('Morate biti prijavljeni.');
     }
     final place = walkLocationName.trim();
-    final preview =
-        place.isEmpty ? 'Poziv na šetnju' : 'Poziv na šetnju: $place';
+    final preview = place.isEmpty
+        ? 'Poziv na šetnju'
+        : 'Poziv na šetnju: $place';
     final groupRef = _col.doc(groupId);
     await groupRef.collection('messages').add({
       'senderId': currentUserId,
@@ -350,14 +363,11 @@ class FirestoreGroupsRepository implements GroupsRepository {
       'declinedByUserIds': <String>[],
       'createdAt': FieldValue.serverTimestamp(),
     });
-    await groupRef.set(
-      {
-        'lastMessage': clipLastMessagePreview(preview),
-        'lastMessageAt': FieldValue.serverTimestamp(),
-        'lastMessageSenderId': currentUserId,
-      },
-      SetOptions(merge: true),
-    );
+    await groupRef.set({
+      'lastMessage': clipLastMessagePreview(preview),
+      'lastMessageAt': FieldValue.serverTimestamp(),
+      'lastMessageSenderId': currentUserId,
+    }, SetOptions(merge: true));
   }
 
   @override
@@ -389,7 +399,8 @@ class FirestoreGroupsRepository implements GroupsRepository {
     final data = doc.data();
     final created = data['createdAt'];
     final type = _typeFromKey(data['type'] as String?);
-    final status = _statusFromKey(data['status'] as String?) ??
+    final status =
+        _statusFromKey(data['status'] as String?) ??
         (type == GroupMessageType.walkInvite
             ? GroupWalkInviteStatus.pending
             : null);
@@ -450,11 +461,9 @@ class FirestoreGroupsRepository implements GroupsRepository {
       final snap = await tx.get(ref);
       final likes = _stringList(snap.data()?['likes']);
       final next = choose(MessageReactions.reactionOf(likes, currentUserId));
-      tx.set(
-        ref,
-        {'likes': MessageReactions.apply(likes, currentUserId, next)},
-        SetOptions(merge: true),
-      );
+      tx.set(ref, {
+        'likes': MessageReactions.apply(likes, currentUserId, next),
+      }, SetOptions(merge: true));
     });
   }
 

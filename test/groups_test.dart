@@ -6,6 +6,7 @@ import 'package:vauvau/features/groups/data/local_groups_repository.dart';
 import 'package:vauvau/features/discover/presentation/widgets/dog_photo_gallery.dart';
 import 'package:vauvau/features/discover/presentation/widgets/swipe_dog_card.dart';
 import 'package:vauvau/features/groups/data/seed_breed_groups.dart';
+import 'package:vauvau/features/groups/domain/group_ranking.dart';
 import 'package:vauvau/features/groups/domain/groups_models.dart';
 import 'package:vauvau/features/groups/presentation/group_chat_screen.dart';
 import 'package:vauvau/features/groups/presentation/groups_controller.dart';
@@ -13,7 +14,7 @@ import 'package:vauvau/features/groups/presentation/groups_list_screen.dart';
 import 'package:vauvau/features/groups/presentation/groups_strings.dart';
 
 void main() {
-  test('seed presets cover parks, drop small-dogs group, and sort by members',
+  test('seed presets cover parks and drop the small-dogs group',
       () {
     final titles = SeedBreedGroups.all.map((group) => group.title).toList();
     expect(titles, contains('🌳 Limanski park'));
@@ -23,21 +24,16 @@ void main() {
     expect(titles, contains('🏰 Petrovaradinska tvrđava'));
     expect(titles, isNot(contains('🐾 Vlasnici malih pasa Novi Sad')));
 
-    final pomeranci = SeedBreedGroups.all
-        .firstWhere((group) => group.id == 'pomeranci-novi-sad');
-    expect(pomeranci.memberCount, 34);
 
+    // No made-up popularity: preset groups start empty.
     for (final group in SeedBreedGroups.all) {
       expect(group.isApproved, isTrue);
-      expect(group.memberCount, inInclusiveRange(12, 45));
+      expect(group.memberCount, 0);
+      expect(group.memberIds, isEmpty);
     }
 
-    final sorted = SeedBreedGroups.sortByPopularity(SeedBreedGroups.all);
+    final sorted = GroupRanking.sort(SeedBreedGroups.all);
     expect(sorted.first.title, '🏃‍♂️ Aktivne šetnje & Playdate');
-    expect(
-      sorted.first.memberCount >= sorted.last.memberCount,
-      isTrue,
-    );
   });
 
   test('pending groups stay hidden until approved', () async {
@@ -89,7 +85,7 @@ void main() {
 
     expect(find.text(GroupsStrings.title), findsOneWidget);
     expect(find.text('🏃‍♂️ Aktivne šetnje & Playdate'), findsOneWidget);
-    expect(find.text('🌊 Kej / Žeželjev most'), findsOneWidget);
+    expect(find.text('Šetnje pasa — Srbija'), findsOneWidget);
     expect(find.byTooltip(GroupsStrings.createGroup), findsOneWidget);
     expect(find.text(GroupsStrings.join), findsWidgets);
 
@@ -224,6 +220,7 @@ void main() {
       find.widgetWithText(TextFormField, GroupsStrings.groupName),
       'Nova park grupa',
     );
+    await tester.ensureVisible(find.text(GroupsStrings.submitGroup));
     await tester.tap(find.text(GroupsStrings.submitGroup));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));

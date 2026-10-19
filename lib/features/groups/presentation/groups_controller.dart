@@ -10,19 +10,38 @@ import '../../auth/presentation/auth_providers.dart';
 import '../../dogs/domain/dogs_exception.dart';
 import '../data/firestore_groups_repository.dart';
 import '../data/local_groups_repository.dart';
-import '../data/seed_breed_groups.dart';
+import '../domain/group_ranking.dart';
 import '../domain/groups_models.dart';
+
+/// Whether the first groups snapshot arrived (or the stream failed), so the
+/// screen can tell „loading“ from „no groups“.
+typedef GroupsLoadState = ({bool loaded, Object? error});
+
+class GroupsLoadStateNotifier extends Notifier<GroupsLoadState> {
+  @override
+  GroupsLoadState build() => (loaded: false, error: null);
+
+  void update(GroupsLoadState value) => state = value;
+}
+
+final groupsLoadStateProvider =
+    NotifierProvider<GroupsLoadStateNotifier, GroupsLoadState>(
+      GroupsLoadStateNotifier.new,
+    );
 
 class GroupsController extends Notifier<List<BreedGroup>> {
   @override
   List<BreedGroup> build() {
     final repo = ref.watch(groupsRepositoryProvider);
-    final sub = repo.watchGroups().listen(
-      (groups) {
-        state = List<BreedGroup>.from(groups.whereType<BreedGroup>());
-      },
-      onError: (Object error) => debugPrint('Groups stream: $error'),
-    );
+    final status = ref.read(groupsLoadStateProvider.notifier);
+    Future.microtask(() => status.update((loaded: false, error: null)));
+    final sub = repo.watchGroups().listen((groups) {
+      state = List<BreedGroup>.from(groups.whereType<BreedGroup>());
+      status.update((loaded: true, error: null));
+    }, onError: (Object error) {
+      debugPrint('Groups stream: $error');
+      status.update((loaded: true, error: error));
+    });
     ref.onDispose(sub.cancel);
     return const <BreedGroup>[];
   }
@@ -38,13 +57,26 @@ class GroupsController extends Notifier<List<BreedGroup>> {
   Future<BreedGroup> createGroup({
     required String title,
     required String description,
+    GroupScope? scope,
+    String cityId = '',
+    GroupCategory category = GroupCategory.general,
+    String locationName = '',
+    String breedKey = '',
   }) {
-    // User-facing create always stays pending so Firestore rules
-    // (isApproved == false + createdBy == uid) succeed consistently.
-    return ref.read(groupsRepositoryProvider).createGroup(
+    // User-facing create stays pending (rules: isApproved == false +
+    // createdBy == uid); only an admin publishes directly, which is the
+    // controlled way to add presets such as local park groups.
+    return ref
+        .read(groupsRepositoryProvider)
+        .createGroup(
           title: title,
           description: description,
-          approveImmediately: false,
+          approveImmediately: ref.read(isAdminProvider),
+          scope: scope,
+          cityId: cityId,
+          category: category,
+          locationName: locationName,
+          breedKey: breedKey,
         );
   }
 
@@ -56,16 +88,10 @@ class GroupsController extends Notifier<List<BreedGroup>> {
     return ref.read(groupsRepositoryProvider).deleteGroup(groupId);
   }
 
-  Future<void> sendText(
-    String groupId,
-    String text, {
-    GroupMessage? replyTo,
-  }) {
-    return ref.read(groupsRepositoryProvider).sendMessage(
-          groupId: groupId,
-          text: text,
-          replyTo: replyTo,
-        );
+  Future<void> sendText(String groupId, String text, {GroupMessage? replyTo}) {
+    return ref
+        .read(groupsRepositoryProvider)
+        .sendMessage(groupId: groupId, text: text, replyTo: replyTo);
   }
 
   Future<void> sendPhoto(
@@ -77,15 +103,10 @@ class GroupsController extends Notifier<List<BreedGroup>> {
     if (error != null) {
       throw DogsException(error);
     }
-    final url = await ImageUploadService.uploadFile(
-      file,
-      folderName: 'groups',
-    );
-    await ref.read(groupsRepositoryProvider).sendPhoto(
-          groupId: groupId,
-          imageUrl: url,
-          replyTo: replyTo,
-        );
+    final url = await ImageUploadService.uploadFile(file, folderName: 'groups');
+    await ref
+        .read(groupsRepositoryProvider)
+        .sendPhoto(groupId: groupId, imageUrl: url, replyTo: replyTo);
   }
 
   Future<void> sendWalkInvite({
@@ -93,7 +114,9 @@ class GroupsController extends Notifier<List<BreedGroup>> {
     required DateTime walkTime,
     required String walkLocationName,
   }) {
-    return ref.read(groupsRepositoryProvider).sendWalkInvite(
+    return ref
+        .read(groupsRepositoryProvider)
+        .sendWalkInvite(
           groupId: groupId,
           walkTime: walkTime,
           walkLocationName: walkLocationName,
@@ -105,7 +128,9 @@ class GroupsController extends Notifier<List<BreedGroup>> {
     required String messageId,
     required GroupWalkInviteStatus status,
   }) {
-    return ref.read(groupsRepositoryProvider).respondToWalkInvite(
+    return ref
+        .read(groupsRepositoryProvider)
+        .respondToWalkInvite(
           groupId: groupId,
           messageId: messageId,
           status: status,
@@ -116,10 +141,9 @@ class GroupsController extends Notifier<List<BreedGroup>> {
     required String groupId,
     required String messageId,
   }) {
-    return ref.read(groupsRepositoryProvider).toggleMessageLike(
-          groupId: groupId,
-          messageId: messageId,
-        );
+    return ref
+        .read(groupsRepositoryProvider)
+        .toggleMessageLike(groupId: groupId, messageId: messageId);
   }
 
   Future<void> setMessageReaction({
@@ -127,7 +151,9 @@ class GroupsController extends Notifier<List<BreedGroup>> {
     required String messageId,
     String? emoji,
   }) {
-    return ref.read(groupsRepositoryProvider).setMessageReaction(
+    return ref
+        .read(groupsRepositoryProvider)
+        .setMessageReaction(
           groupId: groupId,
           messageId: messageId,
           emoji: emoji,
@@ -166,18 +192,23 @@ final pendingGroupsProvider = StreamProvider<List<BreedGroup>>((ref) {
   if (!ref.watch(isAdminProvider)) {
     return Stream<List<BreedGroup>>.value(const <BreedGroup>[]);
   }
-  return ref.watch(groupsRepositoryProvider).watchPendingGroups().map(
-        (groups) => List<BreedGroup>.from(groups.whereType<BreedGroup>()),
-      );
+  return ref
+      .watch(groupsRepositoryProvider)
+      .watchPendingGroups()
+      .map((groups) => List<BreedGroup>.from(groups.whereType<BreedGroup>()));
 });
 
-final groupMessagesProvider =
-    StreamProvider.family<List<GroupMessage>, String>((ref, groupId) {
-  return ref.watch(groupsRepositoryProvider).watchMessages(groupId).map(
-        (messages) =>
-            List<GroupMessage>.from(messages.whereType<GroupMessage>()),
-      );
-});
+final groupMessagesProvider = StreamProvider.family<List<GroupMessage>, String>(
+  (ref, groupId) {
+    return ref
+        .watch(groupsRepositoryProvider)
+        .watchMessages(groupId)
+        .map(
+          (messages) =>
+              List<GroupMessage>.from(messages.whereType<GroupMessage>()),
+        );
+  },
+);
 
 final groupsMemberIdProvider = Provider<String>((ref) {
   final uid = ref.watch(authStateProvider).asData?.value?.uid ?? '';
@@ -196,8 +227,10 @@ final groupByIdProvider = Provider.family<BreedGroup?, String>((ref, groupId) {
   return null;
 });
 
-final groupLastReadProvider =
-    StreamProvider.family<DateTime?, String>((ref, groupId) {
+final groupLastReadProvider = StreamProvider.family<DateTime?, String>((
+  ref,
+  groupId,
+) {
   return ref.watch(groupsRepositoryProvider).watchLastRead(groupId);
 });
 
@@ -232,5 +265,5 @@ final sortedGroupsProvider = Provider<List<BreedGroup>>((ref) {
   final groups = List<BreedGroup>.from(
     ref.watch(groupsControllerProvider).whereType<BreedGroup>(),
   );
-  return SeedBreedGroups.sortByPopularity(groups);
+  return GroupRanking.sort(groups);
 });
