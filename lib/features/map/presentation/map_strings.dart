@@ -161,12 +161,20 @@ abstract final class MapStrings {
   static String get walkTrackingDisclosure => L10n.tr(
         'Lokacija se prati samo dok je šetnja aktivna (vidi se obaveštenje '
             '„Šetnja u toku“). Pauza i kraj šetnje zaustavljaju praćenje. '
-            'Precizna ruta se čuva samo na vašem nalogu i nije javna; vožnja i '
-            'nagli skokovi signala se ne računaju u kilometražu.',
+            'Vožnja i nagli skokovi signala se ne računaju u kilometražu.',
         'Location is tracked only while the walk is active (a “Walk in '
             'progress” notification is shown). Pause and end stop tracking. '
-            'The precise route stays on your account and is not public; '
-            'driving and signal jumps do not count.',
+            'Driving and signal jumps do not count.',
+      );
+  static String get privacyRouteOnlyYou => L10n.tr(
+        'Rutu šetnje vidite samo vi.',
+        'Only you can see your walk route.',
+      );
+  static String get privacyOthersApprox => L10n.tr(
+        'Drugi vide samo približnu lokaciju (oko 200 m) dok ste označeni da '
+            'ste u šetnji.',
+        'Others only see an approximate location (about 200 m) while you are '
+            'marked as on a walk.',
       );
   static String get chooseDog => L10n.tr('Sa kojim psom šetate?', 'Which dog?');
   static String get walkAlreadyActive => L10n.tr(

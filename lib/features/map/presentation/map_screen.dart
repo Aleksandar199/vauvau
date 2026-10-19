@@ -1126,6 +1126,37 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                     MapStrings.walkTrackingDisclosure,
                     style: Theme.of(context).textTheme.bodySmall,
                   ),
+                  const SizedBox(height: 10),
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: AppColors.primarySoft,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Icon(
+                          Icons.lock_outline,
+                          size: 18,
+                          color: AppColors.primaryDeep,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            '${MapStrings.privacyRouteOnlyYou} '
+                            '${MapStrings.privacyOthersApprox}',
+                            style: const TextStyle(
+                              fontSize: 12,
+                              height: 1.3,
+                              color: Color(0xFF431407),
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ],
               ),
               ),

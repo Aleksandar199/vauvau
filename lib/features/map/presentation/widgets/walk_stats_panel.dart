@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/theme/app_cards.dart';
+import '../../../../core/network/connectivity_controller.dart';
+import '../../../../core/network/network_strings.dart';
 import '../../../location/domain/location_access.dart';
 import '../../../location/presentation/location_controller.dart';
 import '../../../rewards/presentation/widgets/walk_result_dialog.dart';
@@ -206,13 +208,24 @@ class WalkStatsPanel extends ConsumerWidget {
   }
 }
 
-class WalkGpsBanner extends StatelessWidget {
+/// Top banner during a walk: GPS state, privacy note, and a note when there is
+/// no internet (the walk keeps running and is saved later).
+class WalkGpsBanner extends ConsumerWidget {
   const WalkGpsBanner({super.key, required this.isPaused});
 
   final bool isPaused;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final offline = ref.watch(
+      networkStateProvider.select((state) => state.isOffline),
+    );
+    const textStyle = TextStyle(
+      fontSize: 11,
+      color: Colors.white,
+      fontWeight: FontWeight.w500,
+      height: 1.25,
+    );
     return Material(
       color: Colors.transparent,
       child: Container(
@@ -222,27 +235,57 @@ class WalkGpsBanner extends StatelessWidget {
           color: Colors.black.withValues(alpha: 0.6),
           borderRadius: BorderRadius.circular(12),
         ),
-        child: Row(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(
-              isPaused ? Icons.pause_circle_filled : Icons.gps_fixed,
-              size: 16,
-              color: isPaused ? Colors.amber : const Color(0xFF4ADE80),
-            ),
-            SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                isPaused
-                    ? MapStrings.gpsPausedBanner
-                    : MapStrings.gpsActiveBanner,
-                style: const TextStyle(
-                  fontSize: 11,
-                  color: Colors.white,
-                  fontWeight: FontWeight.w500,
-                  height: 1.25,
+            Row(
+              children: [
+                Icon(
+                  isPaused ? Icons.pause_circle_filled : Icons.gps_fixed,
+                  size: 16,
+                  color: isPaused ? Colors.amber : const Color(0xFF4ADE80),
                 ),
-              ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    isPaused
+                        ? MapStrings.gpsPausedBanner
+                        : MapStrings.gpsActiveBanner,
+                    style: textStyle,
+                  ),
+                ),
+              ],
             ),
+            const SizedBox(height: 4),
+            Row(
+              children: [
+                const Icon(Icons.lock_outline, size: 14, color: Colors.white70),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    '${MapStrings.privacyRouteOnlyYou} '
+                    '${MapStrings.privacyOthersApprox}',
+                    style: textStyle.copyWith(color: Colors.white70),
+                  ),
+                ),
+              ],
+            ),
+            if (offline) ...[
+              const SizedBox(height: 4),
+              Row(
+                children: [
+                  const Icon(Icons.wifi_off, size: 14, color: Colors.amber),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      NetworkStrings.walkOffline,
+                      style: textStyle.copyWith(color: Colors.amber),
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ],
         ),
       ),

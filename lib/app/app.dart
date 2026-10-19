@@ -13,6 +13,7 @@ import '../features/auth/presentation/auth_providers.dart';
 import '../features/notifications/presentation/push_navigation.dart';
 import '../features/profile/presentation/profile_controller.dart';
 import '../features/splash/presentation/screens/splash_screen.dart';
+import 'offline_gate.dart';
 
 class VauVauApp extends ConsumerWidget {
   const VauVauApp({super.key});
@@ -54,7 +55,7 @@ class VauVauApp extends ConsumerWidget {
       builder: (context, child) {
         return _LanguageRebuildScope(
           language: language,
-          child: child ?? const SizedBox.shrink(),
+          child: OfflineGate(child: child ?? const SizedBox.shrink()),
         );
       },
       home: const SplashScreen(),
