@@ -20,6 +20,37 @@ service cloud.firestore {
         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
 
+    function myUserPath() {
+      return /databases/$(database)/documents/users/$(request.auth.uid);
+    }
+
+    // Admin suspension (users/{uid}.isSuspended): no new content. A missing
+    // profile (just registering) is not suspended.
+    function notSuspended() {
+      return !exists(myUserPath()) ||
+        get(myUserPath()).data.get('isSuspended', false) != true;
+    }
+
+    // Partner shop account: role 'partner' + partnerId of an ACTIVE
+    // partners/{id}. Only the admin sets role / partnerId (users rules).
+    function myPartnerId() {
+      return get(myUserPath()).data.get('partnerId', '');
+    }
+
+    function isActivePartner() {
+      let u = get(myUserPath()).data;
+      return isAuthenticated() &&
+        u.get('role', '') == 'partner' &&
+        u.get('partnerId', '') is string &&
+        u.get('partnerId', '') != '' &&
+        get(/databases/$(database)/documents/partners/$(u.partnerId)).data.get('isActive', false) == true;
+    }
+
+    // Set only by the admin (role is locked separately).
+    function adminOnlyUserFields() {
+      return ['partnerId', 'isSuspended', 'suspendedReason', 'suspendedAt'];
+    }
+
     // --- Update helpers (only valid inside update rules: need `resource`) ---
 
     function affected() {
@@ -179,10 +210,14 @@ service cloud.firestore {
       allow read: if isAuthenticated();
       allow create: if isOwner(userId)
         && request.resource.data.role == 'user'
-        && !request.resource.data.keys().hasAny(userPrivateFields());
+        && !request.resource.data.keys().hasAny(userPrivateFields())
+        && !request.resource.data.keys().hasAny(adminOnlyUserFields());
       // Legacy private fields may only be removed, never added or changed.
+      // Role, partnerId and suspension are the admin's (no self-promotion
+      // to admin / partner, no lifting one's own suspension).
       allow update: if isOwner(userId)
         && request.resource.data.role == resource.data.role
+        && !affected().hasAny(adminOnlyUserFields())
         && request.resource.data.keys().toSet()
           .intersection(affected())
           .intersection(userPrivateFields().toSet())
@@ -437,22 +472,37 @@ service cloud.firestore {
     }
 
     // A user's coupon: id {couponId}_{uid} (one per user per offer), random
-    // code, paid by the matching ledger entry. The user may only mark it
-    // redeemed (one way); admin may redeem or cancel. Nobody deletes it.
+    // code, paid by the matching ledger entry, partnerId copied from the
+    // coupon. The user only shows the code: the coupon's partner shop (or
+    // the admin) marks it redeemed, one way; admin may also cancel. Nobody
+    // deletes it. (Before 2026-10-19 the user could mark it redeemed themselves
+    // – that only burned their own coupon, but a mistaken tap lost it and the
+    // "used" statistics were not confirmed by the shop.)
     match /coupon_claims/{claimId} {
       allow read: if isAuthenticated() &&
         (resource == null || resource.data.userId == request.auth.uid || isAdmin());
+      // Partner: only its own claims (list queries must filter partnerId).
+      allow read: if isActivePartner() &&
+        resource.data.partnerId == myPartnerId();
       allow create: if isAuthenticated() && couponClaimOk(claimId);
-      allow update: if isAuthenticated() &&
-        resource.data.userId == request.auth.uid &&
+      allow update: if isActivePartner() &&
+        resource.data.partnerId == myPartnerId() &&
         resource.data.status == 'claimed' &&
-        onlyChanged(['status', 'redeemedAt']) &&
+        request.time < resource.data.expiresAt &&
+        onlyChanged(['status', 'redeemedAt', 'redeemedBy']) &&
         request.resource.data.status == 'redeemed' &&
-        request.resource.data.redeemedAt == request.time;
+        request.resource.data.redeemedAt == request.time &&
+        request.resource.data.redeemedBy == request.auth.uid;
       allow update: if isAdmin() &&
         resource.data.status == 'claimed' &&
-        onlyChanged(['status', 'redeemedAt', 'cancelledAt']) &&
+        onlyChanged(['status', 'redeemedAt', 'cancelledAt', 'redeemedBy']) &&
         request.resource.data.status in ['redeemed', 'cancelled'];
+    }
+
+    // Partner shops: names are public to signed-in users, admin manages.
+    match /partners/{partnerId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdmin();
     }
 
     function couponClaimOk(claimId) {
@@ -461,7 +511,9 @@ service cloud.firestore {
       let after = getAfter(couponPath(d.couponId)).data;
       return claimId == d.couponId + '_' + request.auth.uid &&
         d.keys().hasOnly(['userId', 'couponId', 'code', 'status', 'pointsCost',
-          'partnerName', 'title', 'discountLabel', 'expiresAt', 'claimedAt']) &&
+          'partnerName', 'title', 'discountLabel', 'expiresAt', 'claimedAt',
+          'partnerId']) &&
+        d.get('partnerId', '') == before.get('partnerId', '') &&
         d.userId == request.auth.uid &&
         d.status == 'claimed' &&
         d.claimedAt == request.time &&
@@ -679,6 +731,9 @@ service cloud.firestore {
       // A missing room may be probed (create-if-absent); it reveals nothing.
       allow read: if isAuthenticated() &&
         (resource == null || request.auth.uid in resource.data.participantIds);
+      // Admin: room metadata only (dashboard count of active chats, reported
+      // conversations). Messages stay closed except a single get() below.
+      allow read: if isAdmin();
       // 1:1 room: exactly the caller + one peer, id = sortedUid0_sortedUid1.
       allow create: if isAuthenticated() &&
         isSortedPair(chatId, request.resource.data.participantIds);
@@ -712,7 +767,10 @@ service cloud.firestore {
           request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participantIds;
         allow create: if isAuthenticated() &&
           request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participantIds &&
-          request.resource.data.senderId == request.auth.uid;
+          request.resource.data.senderId == request.auth.uid &&
+          notSuspended();
+        // Admin: one reported message at a time (moderation), never a list.
+        allow get: if isAdmin();
         // Peer may accept/decline a walk invite (status only).
         allow update: if isAuthenticated() &&
           request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participantIds &&
@@ -766,7 +824,8 @@ service cloud.firestore {
     match /adoption_dogs/{dogId} {
       allow read: if true;
       allow create: if isAuthenticated() &&
-        request.resource.data.uploaderUserId == request.auth.uid;
+        request.resource.data.uploaderUserId == request.auth.uid &&
+        notSuspended();
       allow update, delete: if isAuthenticated() &&
         request.auth.uid == resource.data.uploaderUserId;
       allow update, delete: if isAdmin();
@@ -804,7 +863,8 @@ service cloud.firestore {
 
       allow read: if true;
       allow create: if isAuthenticated() &&
-        request.resource.data.uploaderUserId == request.auth.uid;
+        request.resource.data.uploaderUserId == request.auth.uid &&
+        notSuspended();
       // Owner or admin may update (e.g. mark resolved).
       allow update: if isAuthenticated() &&
         (request.auth.uid == resource.data.uploaderUserId || isAdmin());
@@ -905,7 +965,8 @@ service cloud.firestore {
           request.auth.uid in get(/databases/$(database)/documents/breed_groups/$(groupId)).data.memberIds;
         allow create: if isAuthenticated() &&
           request.auth.uid in get(/databases/$(database)/documents/breed_groups/$(groupId)).data.memberIds &&
-          request.resource.data.senderId == request.auth.uid;
+          request.resource.data.senderId == request.auth.uid &&
+          notSuspended();
         // Members may accept/decline group walk invites.
         allow update: if isAuthenticated() &&
           request.auth.uid in get(/databases/$(database)/documents/breed_groups/$(groupId)).data.memberIds &&
@@ -977,7 +1038,8 @@ service cloud.firestore {
           request.auth.uid in get(/databases/$(database)/documents/events/$(eventId)).data.participantUserIds;
         allow create: if isAuthenticated() &&
           request.auth.uid in get(/databases/$(database)/documents/events/$(eventId)).data.participantUserIds &&
-          request.resource.data.senderId == request.auth.uid;
+          request.resource.data.senderId == request.auth.uid &&
+          notSuspended();
         // Participants may accept/decline event walk invites.
         allow update: if isAuthenticated() &&
           request.auth.uid in get(/databases/$(database)/documents/events/$(eventId)).data.participantUserIds &&
@@ -1007,29 +1069,111 @@ service cloud.firestore {
       allow read, update, delete: if isAdmin();
     }
 
-    // Field is authorUserId in the app (not authorId).
+    // --- Moments (permanent community posts) ------------------------------
+    // Field is authorUserId in the app (not authorId). `kind: 'post'` =
+    // feed post (stays until the author / moderation deletes it); documents
+    // without `kind` are legacy (the old app showed them as 24h stories) and
+    // are still created by old app versions, so `kind` may be missing.
+    function optString(data, key, maxLen) {
+      return !(key in data) || (data[key] is string && data[key].size() <= maxLen);
+    }
+
+    function momentPath(momentId) {
+      return /databases/$(database)/documents/moments/$(momentId);
+    }
+
+    // Tagging a dog: only one of my own dogs (a missing dog doc is nobody's).
+    function dogIsMineOrNone(dogId) {
+      return dogId == '' ||
+        !exists(/databases/$(database)/documents/dogs/$(dogId)) ||
+        get(/databases/$(database)/documents/dogs/$(dogId)).data.get('ownerId', '') == request.auth.uid;
+    }
+
+    function momentCreateOk() {
+      let d = request.resource.data;
+      return d.keys().hasOnly(['kind', 'authorUserId', 'authorName',
+          'authorPhotoUrl', 'dogId', 'dogName', 'dogBreed', 'dogPhotoUrl',
+          'momentPhotoUrl', 'mediaType', 'caption', 'locationName', 'cityId',
+          'likes', 'commentsCount', 'createdAt']) &&
+        d.authorUserId == request.auth.uid &&
+        d.get('kind', 'post') == 'post' &&
+        d.get('mediaType', 'image') == 'image' &&
+        d.momentPhotoUrl is string &&
+        d.momentPhotoUrl.size() > 0 && d.momentPhotoUrl.size() <= 2048 &&
+        optString(d, 'caption', 2200) &&
+        optString(d, 'authorName', 100) &&
+        optString(d, 'authorPhotoUrl', 2048) &&
+        optString(d, 'dogName', 100) &&
+        optString(d, 'dogBreed', 100) &&
+        optString(d, 'dogPhotoUrl', 2048) &&
+        optString(d, 'locationName', 200) &&
+        optString(d, 'cityId', 40) &&
+        optString(d, 'dogId', 128) &&
+        d.get('likes', []) == [] &&
+        d.get('commentsCount', 0) == 0 &&
+        d.createdAt == request.time &&
+        dogIsMineOrNone(d.get('dogId', ''));
+    }
+
     match /moments/{momentId} {
       allow read: if isAuthenticated();
-      allow create: if isAuthenticated() &&
-        request.resource.data.authorUserId == request.auth.uid;
+      allow create: if isAuthenticated() && notSuspended() && momentCreateOk();
+      // Author: only the caption. Others: only their own like, or the
+      // comment counter by one (written together with a comment). Admin:
+      // moderation. Nobody changes the author.
       allow update: if isAuthenticated() &&
         request.resource.data.authorUserId == resource.data.authorUserId &&
-        (resource.data.authorUserId == request.auth.uid || isAdmin() ||
+        (isAdmin() ||
           ownToggle('likes') ||
-          (onlyChanged(['commentsCount']) && stepByOne('commentsCount')));
+          (onlyChanged(['commentsCount']) && stepByOne('commentsCount')) ||
+          (resource.data.authorUserId == request.auth.uid &&
+            onlyChanged(['caption', 'updatedAt']) &&
+            optString(request.resource.data, 'caption', 2200) &&
+            (!changed('updatedAt') || request.resource.data.updatedAt == request.time)));
       allow delete: if isAuthenticated() &&
         (resource.data.authorUserId == request.auth.uid || isAdmin());
 
       match /comments/{commentId} {
         allow read: if isAuthenticated();
-        allow create: if isAuthenticated() &&
-          request.resource.data.authorUserId == request.auth.uid;
+        // Own comment on an existing moment whose author has not blocked me.
+        allow create: if isAuthenticated() && notSuspended() &&
+          request.resource.data.keys().hasOnly(['authorUserId', 'authorName',
+            'text', 'likes', 'createdAt', 'replyToCommentId',
+            'replyToAuthorName']) &&
+          request.resource.data.authorUserId == request.auth.uid &&
+          request.resource.data.text is string &&
+          request.resource.data.text.size() > 0 &&
+          request.resource.data.text.size() <= 2000 &&
+          optString(request.resource.data, 'authorName', 100) &&
+          optString(request.resource.data, 'replyToCommentId', 128) &&
+          optString(request.resource.data, 'replyToAuthorName', 100) &&
+          request.resource.data.get('likes', []) == [] &&
+          request.resource.data.createdAt == request.time &&
+          exists(momentPath(momentId)) &&
+          !exists(/databases/$(database)/documents/users/$(get(momentPath(momentId)).data.authorUserId)/blocked_users/$(request.auth.uid));
         allow update: if isAuthenticated() &&
           ownToggle('likes');
-        allow update, delete: if isAuthenticated() &&
-          resource.data.authorUserId == request.auth.uid;
+        allow update: if isAuthenticated() &&
+          resource.data.authorUserId == request.auth.uid &&
+          onlyChanged(['text']) &&
+          request.resource.data.text is string &&
+          request.resource.data.text.size() > 0 &&
+          request.resource.data.text.size() <= 2000;
+        // Comment author, the moment's author (cleans up / deletes the post)
+        // or admin.
+        allow delete: if isAuthenticated() &&
+          (resource.data.authorUserId == request.auth.uid ||
+            (exists(momentPath(momentId)) &&
+              get(momentPath(momentId)).data.authorUserId == request.auth.uid));
         allow delete: if isAdmin();
       }
+    }
+
+    // Account deletion finds my comments on other people's moments with a
+    // collection group query; only my own comments can be listed this way.
+    match /{path=**}/comments/{commentId} {
+      allow read: if isAuthenticated() &&
+        resource.data.authorUserId == request.auth.uid;
     }
 
     // --- Follows ------------------------------------------------------------
@@ -1054,6 +1198,7 @@ service cloud.firestore {
       allow create: if isAuthenticated() &&
         request.resource.data.keys().hasOnly(
           ['followerUserId', 'followedUserId', 'createdAt']) &&
+        notSuspended() &&
         request.resource.data.followerUserId == request.auth.uid &&
         request.resource.data.followedUserId is string &&
         request.resource.data.followedUserId.size() > 0 &&
@@ -1115,7 +1260,10 @@ service cloud.firestore {
     match /stories/{storyId} {
       allow get: if isAuthenticated() && storyVisible(resource.data);
       allow list: if isAuthenticated() && storyAudienceOk(resource.data);
+      // Admin: dashboard count of active stories, moderation.
+      allow read: if isAdmin();
       allow create: if isAuthenticated() &&
+        notSuspended() &&
         request.resource.data.keys().hasOnly([
           'authorUserId', 'authorName', 'authorPhotoUrl',
           'dogId', 'dogName', 'dogPhotoUrl',

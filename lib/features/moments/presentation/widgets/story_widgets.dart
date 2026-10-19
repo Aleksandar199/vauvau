@@ -5,7 +5,6 @@ import '../../../../core/images/dog_image.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../domain/story_highlight.dart';
 import '../highlight_sheets.dart';
-import '../moments_controller.dart';
 import '../moments_strings.dart';
 import '../pointer_safe.dart';
 import '../stories_controller.dart';
@@ -87,27 +86,6 @@ class StoryRing extends StatelessWidget {
   }
 }
 
-class _AddBadge extends StatelessWidget {
-  const _AddBadge();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 24,
-      height: 24,
-      decoration: BoxDecoration(
-        color: AppColors.primary,
-        shape: BoxShape.circle,
-        border: Border.all(
-          color: Theme.of(context).colorScheme.surface,
-          width: 2.5,
-        ),
-      ),
-      child: const Icon(Icons.add, size: 16, color: Colors.white),
-    );
-  }
-}
-
 class _CircleItem extends StatelessWidget {
   const _CircleItem({
     super.key,
@@ -154,64 +132,6 @@ class _CircleItem extends StatelessWidget {
   }
 }
 
-/// Horizontal rail on top of the Moments screen.
-class StoriesRail extends ConsumerWidget {
-  const StoriesRail({super.key, required this.onAddStory});
-
-  final VoidCallback onAddStory;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final groups = ref.watch(activeStoryGroupsProvider);
-    final seen = ref.watch(seenStoriesProvider);
-    final me = ref.watch(momentsMemberIdProvider);
-    final mine = me.isEmpty
-        ? const <StoryGroup>[]
-        : [
-            for (final group in groups)
-              if (group.authorUserId == me) group,
-          ];
-    return SizedBox(
-      height: 104,
-      child: ListView(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 10),
-        children: [
-          if (mine.isEmpty)
-            _CircleItem(
-              label: MomentsStrings.yourStory,
-              onTap: onAddStory,
-              child: const StoryRing(
-                url: '',
-                seed: '',
-                unseen: false,
-                badge: _AddBadge(),
-              ),
-            ),
-          for (var i = 0; i < groups.length; i++)
-            _CircleItem(
-              key: ValueKey('story-${groups[i].dogId}'),
-              label: groups[i].authorUserId == me
-                  ? MomentsStrings.yourStory
-                  : groups[i].dogName,
-              onTap: () =>
-                  openStoryViewer(context, groups: groups, initialGroup: i),
-              onLongPress: groups[i].authorUserId == me ? onAddStory : null,
-              child: StoryRing(
-                url: groups[i].dogPhotoUrl,
-                seed: groups[i].dogId,
-                unseen: hasUnseen(groups[i], seen),
-                badge: groups[i] == (mine.isEmpty ? null : mine.first)
-                    ? const _AddBadge()
-                    : null,
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-}
-
 /// Highlights of one dog. [editable] adds "Novo", long-press edit and
 /// reordering for the owner.
 class StoryHighlightsRow extends ConsumerWidget {
@@ -231,7 +151,7 @@ class StoryHighlightsRow extends ConsumerWidget {
     final highlights =
         ref.watch(dogHighlightsProvider(dogId)).asData?.value ??
         const <StoryHighlight>[];
-    final all = ref.watch(momentsControllerProvider).asData?.value ?? const [];
+    final all = ref.watch(highlightMomentsProvider(dogId));
     final entries = <({StoryHighlight highlight, StoryGroup? group})>[
       for (final highlight in highlights)
         (highlight: highlight, group: resolveHighlight(highlight, all)),
@@ -370,8 +290,9 @@ class StoryHighlightsRow extends ConsumerWidget {
   }
 }
 
-/// "Priče" block of another dog's profile: the live story (if any) and the
-/// owner's highlights, read only.
+/// "Priče" block of another dog's profile: the owner's highlights, read only.
+/// Live 24h stories are the `stories` feature (bar on Otkrij, owner sheet);
+/// moments are no longer shown here as stories.
 class DogStoriesSection extends ConsumerWidget {
   const DogStoriesSection({super.key, required this.dogId});
 
@@ -379,13 +300,10 @@ class DogStoriesSection extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final groups = ref.watch(activeStoryGroupsProvider);
-    final seen = ref.watch(seenStoriesProvider);
-    final active = activeStoryForDog(groups, dogId);
     final highlights =
         ref.watch(dogHighlightsProvider(dogId)).asData?.value ??
         const <StoryHighlight>[];
-    final all = ref.watch(momentsControllerProvider).asData?.value ?? const [];
+    final all = ref.watch(highlightMomentsProvider(dogId));
     final resolved = [
       for (final highlight in highlights)
         if (resolveHighlight(highlight, all) case final group?)
@@ -393,7 +311,7 @@ class DogStoriesSection extends ConsumerWidget {
     ];
     final playable = [for (final entry in resolved) entry.group];
 
-    if (active == null && playable.isEmpty) {
+    if (playable.isEmpty) {
       return Text(
         MomentsStrings.highlightsEmpty,
         style: Theme.of(context).textTheme.bodyMedium,
@@ -405,17 +323,6 @@ class DogStoriesSection extends ConsumerWidget {
       child: ListView(
         scrollDirection: Axis.horizontal,
         children: [
-          if (active != null)
-            _CircleItem(
-              label: MomentsStrings.story,
-              onTap: () => openStoryViewer(context, groups: [active]),
-              child: StoryRing(
-                url: active.coverUrl,
-                seed: active.dogId,
-                unseen: hasUnseen(active, seen),
-                size: 64,
-              ),
-            ),
           for (var i = 0; i < playable.length; i++)
             _CircleItem(
               label: playable[i].title ?? '',

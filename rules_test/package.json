@@ -3,8 +3,8 @@
   "private": true,
   "description": "Testovi Firestore i Storage pravila (firestore.rules, storage.rules) nad lokalnim emulatorom.",
   "scripts": {
-    "test": "firebase emulators:exec --only firestore,storage --project demo-vauvau \"node --test firestore.rules.test.mjs storage.rules.test.mjs rewards.rules.test.mjs stories.rules.test.mjs\"",
-    "test:only": "node --test firestore.rules.test.mjs storage.rules.test.mjs rewards.rules.test.mjs stories.rules.test.mjs"
+    "test": "firebase emulators:exec --only firestore,storage --project demo-vauvau \"node --test firestore.rules.test.mjs storage.rules.test.mjs rewards.rules.test.mjs stories.rules.test.mjs admin_partner.rules.test.mjs moments.rules.test.mjs\"",
+    "test:only": "node --test firestore.rules.test.mjs storage.rules.test.mjs rewards.rules.test.mjs stories.rules.test.mjs admin_partner.rules.test.mjs moments.rules.test.mjs"
   },
   "devDependencies": {
     "@firebase/rules-unit-testing": "^4.0.1",

@@ -7,6 +7,7 @@ import '../data/local_highlights_repository.dart';
 import '../domain/highlights_repository.dart';
 import '../domain/moment_model.dart';
 import '../domain/story_highlight.dart';
+import 'moment_feed_controller.dart';
 import 'moments_controller.dart';
 
 /// Stories of one dog shown back to back in the viewer, oldest first.
@@ -46,43 +47,6 @@ class StoryGroup {
   String get coverUrl => moments.last.momentPhotoUrl;
 }
 
-final activeStoryGroupsProvider = Provider<List<StoryGroup>>((ref) {
-  final moments = ref.watch(visibleMomentsProvider).asData?.value ?? const [];
-  final me = ref.watch(momentsMemberIdProvider);
-  final now = DateTime.now();
-  final byDog = <String, List<MomentModel>>{};
-  for (final moment in moments) {
-    if (moment.isActiveStory(now)) {
-      final key = moment.dogId.isEmpty ? moment.authorUserId : moment.dogId;
-      byDog.putIfAbsent(key, () => []).add(moment);
-    }
-  }
-  final groups = [
-    for (final items in byDog.values)
-      StoryGroup.fromMoments(
-        items..sort((a, b) => a.createdAt.compareTo(b.createdAt)),
-      ),
-  ];
-  groups.sort((a, b) {
-    final aMine = me.isNotEmpty && a.authorUserId == me;
-    final bMine = me.isNotEmpty && b.authorUserId == me;
-    if (aMine != bMine) {
-      return aMine ? -1 : 1;
-    }
-    return b.latest.compareTo(a.latest);
-  });
-  return groups;
-});
-
-StoryGroup? activeStoryForDog(List<StoryGroup> groups, String dogId) {
-  for (final group in groups) {
-    if (group.dogId == dogId) {
-      return group;
-    }
-  }
-  return null;
-}
-
 class SeenStories extends Notifier<Set<String>> {
   @override
   Set<String> build() => const {};
@@ -101,20 +65,40 @@ final seenStoriesProvider = NotifierProvider<SeenStories, Set<String>>(
 bool hasUnseen(StoryGroup group, Set<String> seen) =>
     group.moments.any((moment) => !seen.contains(moment.id));
 
-/// Every story the current user posted for [dogId], newest first, including
-/// expired ones. Used to pick stories for highlights.
+/// Every moment the current user posted for [dogId], newest first (legacy
+/// stories and posts). Used to pick items for highlights.
 final storyArchiveProvider = Provider.family<List<MomentModel>, String>((
   ref,
   dogId,
 ) {
-  final moments =
-      ref.watch(momentsControllerProvider).asData?.value ?? const [];
+  final mine = ref.watch(myMomentArchiveProvider).value ?? const [];
+  return [
+    for (final moment in mine)
+      if (moment.dogId == dogId) moment,
+  ];
+});
+
+/// Moments referenced by the highlights of [dogId] (fetched by id, so old
+/// legacy stories still resolve however far back they are).
+final highlightMomentsProvider = Provider.family<List<MomentModel>, String>((
+  ref,
+  dogId,
+) {
+  final highlights = ref.watch(dogHighlightsProvider(dogId)).value ??
+      const <StoryHighlight>[];
+  final key = momentIdsKey([
+    for (final highlight in highlights) ...highlight.momentIds,
+  ]);
+  if (key.isEmpty) {
+    return const [];
+  }
+  final patches = ref.watch(momentPatchesProvider);
   final me = ref.watch(momentsMemberIdProvider);
   return [
-    for (final moment in moments)
-      if (moment.dogId == dogId && me.isNotEmpty && moment.authorUserId == me)
-        moment,
-  ]..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    for (final moment
+        in ref.watch(momentsByIdsProvider(key)).value ?? const <MomentModel>[])
+      patches.apply(moment, me),
+  ];
 });
 
 final highlightsRepositoryProvider = Provider<HighlightsRepository>((ref) {

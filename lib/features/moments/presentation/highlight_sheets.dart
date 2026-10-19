@@ -5,7 +5,6 @@ import '../../../core/images/dog_image.dart';
 import '../../../core/theme/app_colors.dart';
 import '../domain/moment_model.dart';
 import '../domain/story_highlight.dart';
-import 'moments_controller.dart';
 import 'moments_strings.dart';
 import 'pointer_safe.dart';
 import 'stories_controller.dart';
@@ -178,7 +177,7 @@ class _AddToHighlightSheet extends ConsumerWidget {
     final highlights =
         ref.watch(dogHighlightsProvider(moment.dogId)).asData?.value ??
         const <StoryHighlight>[];
-    final all = ref.watch(momentsControllerProvider).asData?.value ?? const [];
+    final all = ref.watch(highlightMomentsProvider(moment.dogId));
 
     return ListView(
       children: [
@@ -675,7 +674,7 @@ class _ArrangeHighlightsSheetState
         ref.watch(dogHighlightsProvider(widget.dogId)).asData?.value ??
         const <StoryHighlight>[];
     final items = _order ?? live;
-    final all = ref.watch(momentsControllerProvider).asData?.value ?? const [];
+    final all = ref.watch(highlightMomentsProvider(widget.dogId));
     final theme = Theme.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,

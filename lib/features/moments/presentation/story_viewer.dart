@@ -300,11 +300,9 @@ class _StoryGroupViewState extends ConsumerState<StoryGroupView>
     if (_items.isEmpty) {
       return const SizedBox.shrink();
     }
-    final all = ref.watch(momentsControllerProvider).asData?.value ?? const [];
-    final snapshot = _moment;
-    final moment = all.firstWhere(
-      (item) => item.id == snapshot.id,
-      orElse: () => snapshot,
+    final moment = ref.watch(momentPatchesProvider).apply(
+      _moment,
+      ref.watch(momentsMemberIdProvider),
     );
     final me = ref.watch(momentsMemberIdProvider);
     final isMine = me.isNotEmpty && moment.authorUserId == me;
@@ -529,15 +527,16 @@ class _StoryGroupViewState extends ConsumerState<StoryGroupView>
                         label: '${moment.likeCount}',
                         tooltip: MomentsStrings.like,
                         onTap: () => ref
-                            .read(momentsControllerProvider.notifier)
-                            .toggleLike(moment.id),
+                            .read(momentActionsProvider)
+                            .toggleLike(moment)
+                            .catchError((Object _) {}),
                       ),
                       _StoryAction(
                         icon: Icons.chat_bubble_outline,
                         label: '${moment.commentsCount}',
                         tooltip: MomentsStrings.comment,
                         onTap: () => _whilePaused(
-                          () => showMomentCommentsSheet(context, moment.id),
+                          () => showMomentCommentsSheet(context, moment),
                         ),
                       ),
                       Spacer(),

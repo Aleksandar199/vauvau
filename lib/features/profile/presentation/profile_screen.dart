@@ -15,6 +15,8 @@ import '../../dogs/presentation/health/dog_health_tab.dart';
 import '../../dogs/presentation/onboarding/dog_onboarding_screen.dart';
 import '../../moments/presentation/moments_controller.dart';
 import '../../moments/presentation/widgets/story_widgets.dart';
+import '../../partners/presentation/partner_coupons_screen.dart';
+import '../../partners/presentation/partner_strings.dart';
 import '../domain/user_profile.dart';
 import 'edit_owner_profile_screen.dart';
 import 'edit_profile_screen.dart';
@@ -39,6 +41,23 @@ class ProfileScreen extends ConsumerWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 _OwnerHeader(profile: profile),
+                if (ref.watch(isPartnerProvider)) ...[
+                  const SizedBox(height: 12),
+                  Card(
+                    child: ListTile(
+                      key: const ValueKey('profile-partner-coupons'),
+                      leading: const Icon(Icons.confirmation_number_outlined),
+                      title: Text(PartnerStrings.title),
+                      subtitle: Text(PartnerStrings.profileTileSubtitle),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: () => Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (_) => const PartnerCouponsScreen(),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
                 SizedBox(height: 20),
                 Text(
                   ProfileStrings.myDogs,
@@ -562,13 +581,7 @@ class _OwnerHeaderState extends ConsumerState<_OwnerHeader> {
     final avatarUrl =
         ref.watch(authStateProvider).asData?.value?.ownerAvatarUrl ?? '';
     final dogCount = profile.dogs.length;
-    final moments =
-        ref.watch(momentsControllerProvider).asData?.value ?? const [];
-    final uid = ref.watch(authStateProvider).asData?.value?.uid ?? '';
-    final momentCount = [
-      for (final moment in moments)
-        if (uid.isNotEmpty && moment.authorUserId == uid) moment,
-    ].length;
+    final momentCount = ref.watch(myMomentCountProvider).value ?? 0;
     final breedLabel = profile.dogs.isEmpty
         ? '—'
         : (profile.dog.breed.trim().isEmpty ? '—' : profile.dog.breed);

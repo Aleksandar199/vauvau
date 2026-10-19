@@ -221,6 +221,7 @@ class StorageService {
     required XFile file,
     required String folderName,
     String ownerId = '',
+    String fileStem = '',
   }) async {
     final bytes = await file.readAsBytes();
     if (bytes.isEmpty) {
@@ -232,17 +233,21 @@ class StorageService {
       fileName: file.name,
       mimeType: file.mimeType,
       ownerId: ownerId,
+      fileStem: fileStem,
     );
   }
 
   /// Uploads raw [bytes] under [folderName] (auto-scoped to `{root}/{uid}/`).
   /// Always returns an HTTPS download URL (never `gs://` / fullPath).
+  /// A non-empty [fileStem] replaces the timestamp in the object name, so a
+  /// retried upload of the same draft overwrites instead of adding a copy.
   Future<String> uploadBytes({
     required Uint8List bytes,
     required String folderName,
     String fileName = 'upload.jpg',
     String? mimeType,
     String ownerId = '',
+    String fileStem = '',
   }) async {
     if (bytes.isEmpty) {
       throw StateError('Prazna fotografija.');
@@ -253,6 +258,7 @@ class StorageService {
         folderName: ownerFolder(folderName, ownerId: ownerId),
         fileName: fileName,
         mimeType: mimeType,
+        fileStem: fileStem,
       );
     } on FirebaseException catch (error, stack) {
       debugPrint(
@@ -399,10 +405,13 @@ class StorageService {
     required String folderName,
     required String fileName,
     String? mimeType,
+    String fileStem = '',
   }) async {
     // [folderName] is already owner-scoped by [ownerFolder] / [uploadBytes].
     final folder = folderName.trim().replaceAll(RegExp(r'^/+|/+$'), '');
-    final stamp = DateTime.now().millisecondsSinceEpoch;
+    final safeStem = fileStem.replaceAll(RegExp(r'[^A-Za-z0-9_-]'), '');
+    final stamp =
+        safeStem.isEmpty ? '${DateTime.now().millisecondsSinceEpoch}' : safeStem;
     // Prefer real bytes / mime over a forced .jpg name (screenshots are often PNG).
     final contentType = _contentTypeFor(fileName, mimeType, bytes);
     final ext = _extensionForContentType(contentType);
