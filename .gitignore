@@ -62,3 +62,6 @@ app.*.map.json
 
 # Firestore rules tests (npm)
 /rules_test/node_modules/
+
+# Claude Code lokalna podešavanja
+.claude/settings.local.json
