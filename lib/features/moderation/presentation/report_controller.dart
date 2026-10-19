@@ -47,6 +47,8 @@ class ReportController {
     required String targetId,
     required String reason,
     String reportedUserId = '',
+    String targetName = '',
+    String contextId = '',
     String? details,
   }) {
     final uid =
@@ -57,6 +59,10 @@ class ReportController {
             id: 'report-${DateTime.now().millisecondsSinceEpoch}',
             reporterId: uid,
             reportedUserId: reportedUserId,
+            targetName: targetName.length > 200
+                ? targetName.substring(0, 200)
+                : targetName,
+            contextId: contextId,
             targetType: targetType,
             targetId: targetId,
             reason: reason,

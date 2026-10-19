@@ -568,6 +568,7 @@ class FirestoreRewardsRepository implements RewardsRepository {
               partnerName: coupon.partnerName,
               title: coupon.title,
               discountLabel: coupon.discountLabel,
+              partnerId: coupon.partnerId,
             );
           })
           .timeout(_commitTimeout);
@@ -580,16 +581,64 @@ class FirestoreRewardsRepository implements RewardsRepository {
     }
   }
 
+  // --- Partner shop ------------------------------------------------------------
+
   @override
-  Future<void> markRedeemed(String claimId) async {
+  Future<CouponClaim?> findPartnerClaim(String partnerId, String code) async {
+    if (partnerId.isEmpty) return null;
+    try {
+      // Both filters are needed: the rules only allow the partner's own list.
+      final snap = await _claims
+          .where('partnerId', isEqualTo: partnerId)
+          .where('code', isEqualTo: code)
+          .limit(1)
+          .get();
+      if (snap.docs.isEmpty) return null;
+      final doc = snap.docs.first;
+      return CouponClaim.fromMap(doc.id, plainData(doc.data()));
+    } catch (error) {
+      throw _mapError(error);
+    }
+  }
+
+  @override
+  Future<void> partnerRedeem(
+    String claimId, {
+    required String byUid,
+    DateTime? now,
+  }) async {
     try {
       await _claims.doc(claimId).update({
         'status': 'redeemed',
         'redeemedAt': FieldValue.serverTimestamp(),
+        'redeemedBy': byUid,
       });
     } catch (error) {
       throw _mapError(error);
     }
+  }
+
+  @override
+  Stream<List<CouponClaim>> watchPartnerClaims(
+    String partnerId, {
+    int limit = 50,
+  }) {
+    if (partnerId.isEmpty) return Stream.value(const []);
+    return FirestoreAuthGuard.guardedStream<List<CouponClaim>>(
+      label: 'rewards.partnerClaims',
+      empty: const [],
+      create: () => _claims
+          .where('partnerId', isEqualTo: partnerId)
+          .orderBy('claimedAt', descending: true)
+          .limit(limit)
+          .snapshots()
+          .map(
+            (snap) => [
+              for (final doc in snap.docs)
+                CouponClaim.fromMap(doc.id, plainData(doc.data())),
+            ],
+          ),
+    );
   }
 
   // --- Admin -------------------------------------------------------------------
@@ -673,13 +722,16 @@ class FirestoreRewardsRepository implements RewardsRepository {
   }
 
   @override
-  Future<void> adminSetClaimStatus(String claimId, ClaimStatus status) {
-    final field = status == ClaimStatus.cancelled
-        ? 'cancelledAt'
-        : 'redeemedAt';
+  Future<void> adminSetClaimStatus(
+    String claimId,
+    ClaimStatus status, {
+    String byUid = '',
+  }) {
+    final cancelled = status == ClaimStatus.cancelled;
     return _claims.doc(claimId).update({
       'status': status.name,
-      field: FieldValue.serverTimestamp(),
+      cancelled ? 'cancelledAt' : 'redeemedAt': FieldValue.serverTimestamp(),
+      if (!cancelled && byUid.isNotEmpty) 'redeemedBy': byUid,
     });
   }
 

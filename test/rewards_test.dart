@@ -427,13 +427,15 @@ void main() {
     test('jednokratni kupon: iskorišćen samo jednom; istekli status', () async {
       final repo = await _repoWithPoints(4, coupons: [_coupon()]);
       final claim = await repo.claimCoupon('u1', 'c1', now: _now);
-      await repo.markRedeemed(claim.id);
+      // Korisnik više sam ne označava kupon; to radi partner (ili admin).
+      await repo.partnerRedeem(claim.id, byUid: 'shop', now: _now);
       await expectLater(
-        repo.markRedeemed(claim.id),
+        repo.partnerRedeem(claim.id, byUid: 'shop', now: _now),
         throwsA(isA<RewardsException>()),
       );
       final stored = (await repo.watchClaims('u1').first).single;
       expect(stored.status, ClaimStatus.redeemed);
+      expect(stored.redeemedBy, 'shop');
 
       final unused = CouponClaim(
         id: 'x',

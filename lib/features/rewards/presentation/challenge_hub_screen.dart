@@ -879,45 +879,10 @@ class ClaimCard extends ConsumerWidget {
               RewardsStrings.showAtShop,
               style: TextStyle(color: palette.muted, fontSize: 12),
             ),
-            Align(
-              alignment: Alignment.centerRight,
-              child: TextButton(
-                onPressed: () => _markUsed(context, ref),
-                child: Text(RewardsStrings.markUsed),
-              ),
-            ),
           ],
         ],
       ),
     );
-  }
-
-  Future<void> _markUsed(BuildContext context, WidgetRef ref) async {
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        content: Text(RewardsStrings.markUsedConfirm),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: Text(RewardsStrings.cancel),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: Text(RewardsStrings.markUsed),
-          ),
-        ],
-      ),
-    );
-    if (ok != true || !context.mounted) return;
-    final messenger = ScaffoldMessenger.of(context);
-    try {
-      await ref.read(walkRewardsServiceProvider).markRedeemed(claim.id);
-    } on RewardsException catch (error) {
-      messenger.showSnackBar(
-        SnackBar(content: Text(RewardsStrings.error(error.code))),
-      );
-    }
   }
 }
 

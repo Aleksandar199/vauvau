@@ -3,16 +3,19 @@ import 'user_dog_profile.dart';
 
 import '../../../core/constants/serbia_locations.dart';
 
-enum UserRole { user, admin }
+/// `partner` = a shop that accepts VauVau coupons (`users/{uid}.partnerId`
+/// → `partners/{id}`); only the admin assigns it (firestore.rules).
+enum UserRole { user, admin, partner }
 
 extension UserRoleX on UserRole {
   String get firestoreValue => name;
 
   static UserRole fromString(String? value) {
-    if (value == 'admin') {
-      return UserRole.admin;
-    }
-    return UserRole.user;
+    return switch (value) {
+      'admin' => UserRole.admin,
+      'partner' => UserRole.partner,
+      _ => UserRole.user,
+    };
   }
 }
 
@@ -31,6 +34,8 @@ class AppUser {
     this.role = UserRole.user,
     this.dog = const UserDogProfile(),
     this.details = const OwnerDetails(),
+    this.partnerId = '',
+    this.isSuspended = false,
   });
 
   final String uid;
@@ -49,8 +54,14 @@ class AppUser {
   final UserDogProfile dog;
   /// Optional public "about me" fields (age group, interests, walks...).
   final OwnerDetails details;
+  /// `partners/{id}` for [UserRole.partner]; set only by the admin.
+  final String partnerId;
+  /// Admin suspension (`users/{uid}.isSuspended`); the owner cannot clear it.
+  final bool isSuspended;
 
   bool get isAdmin => role == UserRole.admin;
+
+  bool get isPartner => role == UserRole.partner && partnerId.isNotEmpty;
 
   String get cityName => city;
 
@@ -78,6 +89,8 @@ class AppUser {
     UserRole? role,
     UserDogProfile? dog,
     OwnerDetails? details,
+    String? partnerId,
+    bool? isSuspended,
   }) {
     return AppUser(
       uid: uid,
@@ -93,6 +106,8 @@ class AppUser {
       role: role ?? this.role,
       dog: dog ?? this.dog,
       details: details ?? this.details,
+      partnerId: partnerId ?? this.partnerId,
+      isSuspended: isSuspended ?? this.isSuspended,
     );
   }
 
@@ -151,6 +166,8 @@ class AppUser {
       role: UserRoleX.fromString(doc['role'] as String?),
       dog: UserDogProfile.fromMap(doc['dog']),
       details: OwnerDetails.fromMap(doc),
+      partnerId: (doc['partnerId'] as String? ?? '').trim(),
+      isSuspended: doc['isSuspended'] == true,
     );
   }
 }

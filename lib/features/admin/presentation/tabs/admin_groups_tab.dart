@@ -4,10 +4,47 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_cards.dart';
 import '../../../groups/domain/groups_models.dart';
 import '../../../groups/presentation/groups_controller.dart';
+import '../../domain/admin_models.dart';
 import '../admin_strings.dart';
+import '../widgets/admin_ref_widgets.dart';
+import 'admin_content_list.dart';
+import 'admin_reports_tab.dart';
 
-class AdminGroupsTab extends ConsumerWidget {
+/// Pending groups (approve / reject) and all groups (delete).
+class AdminGroupsTab extends StatelessWidget {
   const AdminGroupsTab({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final primary = Theme.of(context).colorScheme.primary;
+    return DefaultTabController(
+      length: 2,
+      child: Column(
+        children: [
+          TabBar(
+            labelColor: primary,
+            indicatorColor: primary,
+            tabs: [
+              Tab(text: AdminStrings.groupsPendingTab),
+              Tab(text: AdminStrings.groupsAllTab),
+            ],
+          ),
+          const Expanded(
+            child: TabBarView(
+              children: [
+                _PendingGroups(),
+                AdminContentList(kind: AdminContentKind.group),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PendingGroups extends ConsumerWidget {
+  const _PendingGroups();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -69,12 +106,11 @@ class _PendingGroupCard extends ConsumerWidget {
             ),
           ),
           SizedBox(height: 8),
-          Text(
-            AdminStrings.groupCreatedBy(group.createdBy),
-            style: TextStyle(
-              fontSize: 12,
-              color: Colors.grey.shade600,
-            ),
+          AdminUserLabel(
+            uid: group.createdBy,
+            prefix: AdminStrings.createdByLabel,
+            style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+            onTap: () => openAdminUser(context, group.createdBy),
           ),
           SizedBox(height: 2),
           Text(

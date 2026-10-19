@@ -11,6 +11,8 @@ Future<bool> showContentReportSheet({
   required ReportContentType targetType,
   required String targetId,
   String reportedUserId = '',
+  String targetName = '',
+  String contextId = '',
   List<String>? reasons,
 }) async {
   // Capture parent messenger before the modal opens — snackbars shown from
@@ -34,6 +36,8 @@ Future<bool> showContentReportSheet({
           targetType: targetType,
           targetId: targetId,
           reportedUserId: reportedUserId,
+          targetName: targetName,
+          contextId: contextId,
           reasons: reasons ??
               (targetType == ReportContentType.dog
                   ? ModerationStrings.dogReasons
@@ -67,12 +71,16 @@ class _ReportSheet extends ConsumerStatefulWidget {
     required this.targetType,
     required this.targetId,
     required this.reportedUserId,
+    this.targetName = '',
+    this.contextId = '',
     required this.reasons,
   });
 
   final ReportContentType targetType;
   final String targetId;
   final String reportedUserId;
+  final String targetName;
+  final String contextId;
   final List<String> reasons;
 
   @override
@@ -203,6 +211,8 @@ class _ReportSheetState extends ConsumerState<_ReportSheet> {
             targetId: widget.targetId,
             reason: _reason,
             reportedUserId: widget.reportedUserId,
+            targetName: widget.targetName,
+            contextId: widget.contextId,
             details: _details.text,
           );
       if (mounted) {

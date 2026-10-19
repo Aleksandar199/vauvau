@@ -8,6 +8,7 @@ import '../../../features/home/presentation/home_shell_screen.dart';
 import '../../../features/profile/presentation/profile_controller.dart';
 import 'auth_providers.dart';
 import 'login_screen.dart';
+import 'suspended_account_screen.dart';
 
 class AuthGate extends ConsumerWidget {
   const AuthGate({super.key});
@@ -24,6 +25,13 @@ class AuthGate extends ConsumerWidget {
       data: (user) {
         if (user == null) {
           return const LoginScreen();
+        }
+        if (user.isSuspended) {
+          return const SuspendedAccountScreen();
+        }
+        // A partner shop account does not need its own dog.
+        if (user.isPartner) {
+          return const HomeShellScreen();
         }
         final dogs = ref.watch(ownerDogsProvider);
         if (dogs.hasError && !dogs.hasValue) {

@@ -33,6 +33,7 @@ enum DrawerItemKind {
   moments,
   rules,
   admin,
+  partnerCoupons,
   settings,
   page,
 }
@@ -50,6 +51,8 @@ abstract final class AppDrawerCatalog {
   static String get moments => L10n.tr('📸 VauVau Moments', '📸 VauVau Moments');
   static String get rules => L10n.tr('❓ Pravila & Podrška', '❓ Rules & Support');
   static String get admin => L10n.tr('Admin Panel', 'Admin Panel');
+  static String get partnerCoupons =>
+      L10n.tr('🏷️ Kuponi partnera', '🏷️ Partner coupons');
   static String get profile => L10n.tr('👤 Moj Profil', '👤 My profile');
   static String get settings => L10n.tr('⚙️ Podešavanja', '⚙️ Settings');
   static String get support => L10n.tr('Podrška', 'Support');
@@ -115,6 +118,14 @@ abstract final class AppDrawerCatalog {
         label: admin,
         icon: Icons.admin_panel_settings,
         kind: DrawerItemKind.admin,
+      );
+
+  /// Rendered only for partner shop accounts ([isPartnerProvider]).
+  static AppDrawerDestination get partnerCouponsItem => AppDrawerDestination(
+        id: 'partner_coupons',
+        label: partnerCoupons,
+        icon: Icons.confirmation_number_outlined,
+        kind: DrawerItemKind.partnerCoupons,
       );
 
   /// Legacy flat lists kept for callers that still iterate all destinations.

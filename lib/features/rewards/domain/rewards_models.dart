@@ -256,6 +256,7 @@ class Coupon {
     this.claimedCount = 0,
     this.terms = '',
     this.isActive = false,
+    this.partnerId = '',
   });
 
   factory Coupon.fromMap(String id, Map<String, dynamic> data) => Coupon(
@@ -271,6 +272,7 @@ class Coupon {
     claimedCount: _int(data['claimedCount']),
     terms: _str(data['terms']),
     isActive: data['isActive'] == true,
+    partnerId: _str(data['partnerId']),
   );
 
   final String id;
@@ -287,6 +289,9 @@ class Coupon {
   final int claimedCount;
   final String terms;
   final bool isActive;
+
+  /// `partners/{id}`; that partner's shop accounts see and redeem its claims.
+  final String partnerId;
 
   int get remaining => (maxQuantity - claimedCount).clamp(0, maxQuantity);
 
@@ -317,6 +322,8 @@ class CouponClaim {
     this.partnerName = '',
     this.title = '',
     this.discountLabel = '',
+    this.partnerId = '',
+    this.redeemedBy = '',
   });
 
   factory CouponClaim.fromMap(String id, Map<String, dynamic> data) =>
@@ -337,6 +344,8 @@ class CouponClaim {
         partnerName: _str(data['partnerName']),
         title: _str(data['title']),
         discountLabel: _str(data['discountLabel']),
+        partnerId: _str(data['partnerId']),
+        redeemedBy: _str(data['redeemedBy']),
       );
 
   final String id;
@@ -353,6 +362,12 @@ class CouponClaim {
   final String partnerName;
   final String title;
   final String discountLabel;
+
+  /// Copied from the coupon at claim time (the rules check it).
+  final String partnerId;
+
+  /// uid of the partner / admin account that marked it used.
+  final String redeemedBy;
 
   static String docId(String couponId, String uid) => '${couponId}_$uid';
 

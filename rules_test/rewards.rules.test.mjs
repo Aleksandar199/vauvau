@@ -368,7 +368,7 @@ describe('nagrade: kuponi', () => {
     assert.equal(stored.claimedCount, 1);
   });
 
-  test('korisnik samo označava iskorišćen (jednom), admin otkazuje', async () => {
+  test('korisnik ne označava sam (to radi partner/admin), admin otkazuje', async () => {
     await seedCoupon('c1');
     await seedPoints('alice', 300);
     await seedPoints('bob', 300);
@@ -377,7 +377,8 @@ describe('nagrade: kuponi', () => {
     await assertFails(getDoc(ref('bob')));
     await assertSucceeds(getDoc(ref('alice')));
     await assertFails(updateDoc(ref('alice'), { status: 'cancelled' }));
-    await assertSucceeds(updateDoc(ref('alice'), { status: 'redeemed', redeemedAt: serverTimestamp() }));
+    // Od 2026-10-19 kupon označava partner ili admin, ne korisnik.
+    await assertFails(updateDoc(ref('alice'), { status: 'redeemed', redeemedAt: serverTimestamp() }));
     await assertFails(updateDoc(ref('alice'), { status: 'claimed' }));
     await assertFails(deleteDoc(ref('alice')));
 

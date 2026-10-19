@@ -314,6 +314,7 @@ class LocalRewardsRepository implements RewardsRepository {
       partnerName: coupon.partnerName,
       title: coupon.title,
       discountLabel: coupon.discountLabel,
+      partnerId: coupon.partnerId,
     );
     _claims[claimId] = claim;
     _notify();
@@ -321,14 +322,40 @@ class LocalRewardsRepository implements RewardsRepository {
   }
 
   @override
-  Future<void> markRedeemed(String claimId) async {
+  Future<CouponClaim?> findPartnerClaim(String partnerId, String code) async {
+    if (partnerId.isEmpty) return null;
+    for (final claim in _claims.values) {
+      if (claim.partnerId == partnerId && claim.code == code) return claim;
+    }
+    return null;
+  }
+
+  @override
+  Future<void> partnerRedeem(
+    String claimId, {
+    required String byUid,
+    DateTime? now,
+  }) async {
     final claim = _claims[claimId];
-    if (claim == null || claim.status != ClaimStatus.claimed) {
+    // Same as the rules: only an unused claim that has not expired.
+    if (claim == null ||
+        claim.effectiveStatus(now ?? DateTime.now()) != ClaimStatus.claimed) {
       throw const RewardsException(RewardsErrorCode.denied);
     }
-    _claims[claimId] = _withStatus(claim, ClaimStatus.redeemed);
+    _claims[claimId] = _withStatus(claim, ClaimStatus.redeemed, byUid: byUid);
     _notify();
   }
+
+  @override
+  Stream<List<CouponClaim>> watchPartnerClaims(
+    String partnerId, {
+    int limit = 50,
+  }) => _live(
+    () => sortClaims([
+      for (final c in _claims.values)
+        if (partnerId.isNotEmpty && c.partnerId == partnerId) c,
+    ]).take(limit).toList(),
+  );
 
   @override
   Future<void> saveChallenge(Challenge challenge) async {
@@ -393,16 +420,24 @@ class LocalRewardsRepository implements RewardsRepository {
       _live(() => sortClaims(_claims.values.toList()).take(limit).toList());
 
   @override
-  Future<void> adminSetClaimStatus(String claimId, ClaimStatus status) async {
+  Future<void> adminSetClaimStatus(
+    String claimId,
+    ClaimStatus status, {
+    String byUid = '',
+  }) async {
     final claim = _claims[claimId];
     if (claim == null || claim.status != ClaimStatus.claimed) {
       throw const RewardsException(RewardsErrorCode.denied);
     }
-    _claims[claimId] = _withStatus(claim, status);
+    _claims[claimId] = _withStatus(claim, status, byUid: byUid);
     _notify();
   }
 
-  CouponClaim _withStatus(CouponClaim c, ClaimStatus status) => CouponClaim(
+  CouponClaim _withStatus(
+    CouponClaim c,
+    ClaimStatus status, {
+    String byUid = '',
+  }) => CouponClaim(
     id: c.id,
     couponId: c.couponId,
     userId: c.userId,
@@ -415,9 +450,12 @@ class LocalRewardsRepository implements RewardsRepository {
     partnerName: c.partnerName,
     title: c.title,
     discountLabel: c.discountLabel,
+    partnerId: c.partnerId,
+    redeemedBy: status == ClaimStatus.redeemed ? byUid : '',
   );
 
   Map<String, dynamic> _couponMap(Coupon c) => {
+    'partnerId': c.partnerId,
     'partnerName': c.partnerName,
     'title': c.title,
     'description': c.description,

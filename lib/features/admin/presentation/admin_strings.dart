@@ -1,12 +1,14 @@
 import '../../../core/l10n/l10n.dart';
+import '../../moderation/domain/content_report.dart';
 import '../../rewards/domain/rewards_models.dart';
+import '../domain/admin_models.dart';
 
 abstract final class AdminStrings {
   static String get panel => L10n.tr('Administracija', 'Administration');
   static String get title => L10n.tr('Administracija', 'Administration');
   static String get denied =>
       L10n.tr('Samo administratori mogu da otvore ovaj panel.', 'Only administrators can open this panel.');
-  static String get statsTab => L10n.tr('Statistika', 'Statistics');
+  static String get statsTab => L10n.tr('Početna', 'Home');
   static String get usersTab => L10n.tr('Korisnici', 'Users');
   static String get reportsTab => L10n.tr('Prijave', 'Reports');
   static String get contentTab => L10n.tr('Sadržaj', 'Content');
@@ -114,7 +116,7 @@ abstract final class AdminStrings {
   static String get loadError => L10n.tr('Podaci nisu dostupni.', 'Data unavailable.');
   static String get noEmail => L10n.tr('Bez email adrese', 'No email address');
   static String get adminBadge => L10n.tr('ADMIN', 'ADMIN');
-  static String get statUsers => L10n.tr('Korisnici', 'Users');
+  static String get statUsers => L10n.tr('Ukupno korisnika', 'Total users');
   static String get statDogs => L10n.tr('Aktivni psi', 'Active dogs');
   static String get statReports => L10n.tr('Prijave', 'Reports');
   static String get statPending => L10n.tr('POI na čekanju', 'POIs pending');
@@ -128,11 +130,6 @@ abstract final class AdminStrings {
   static String get approveGroup => L10n.tr('✓ Odobri', '✓ Approve');
   static String get rejectGroup => L10n.tr('✗ Odbij', '✗ Reject');
 
-  static String groupCreatedBy(String userId) {
-    final who = userId.isEmpty ? unknownUser : userId;
-    return L10n.tr('Predložio: $who', 'Suggested by: $who');
-  }
-
   static String groupCreatedAt(DateTime? value) {
     if (value == null) {
       return L10n.tr('Datum kreiranja nepoznat', 'Creation date unknown');
@@ -142,16 +139,6 @@ abstract final class AdminStrings {
 
   static String totalUsers(int count) =>
       L10n.tr('Ukupno registrovanih: $count', 'Total registered: $count');
-
-  static String reportedBy(String userId) {
-    final who = userId.isEmpty ? unknownUser : userId;
-    return L10n.tr('Prijavio: $who', 'Reported by: $who');
-  }
-
-  static String reportedUser(String userId) {
-    final who = userId.isEmpty ? unknownUser : userId;
-    return L10n.tr('Prijavljen: $who', 'Reported user: $who');
-  }
 
   static String get unknownUser => L10n.tr('nepoznat korisnik', 'unknown user');
 
@@ -273,6 +260,253 @@ abstract final class AdminStrings {
         'Otkazati kupon ${c.code}? Poeni se NE vraćaju korisniku.',
         'Cancel coupon ${c.code}? Points are NOT refunded.',
       );
+
+  // --- Imena umesto ID-jeva ---
+  static String get unknownUserName =>
+      L10n.tr('Nepoznat korisnik', 'Unknown user');
+  static String get loadingName => L10n.tr('Učitava se…', 'Loading…');
+  static String userName(AdminUserRef? user) {
+    if (user == null || !user.exists) return unknownUserName;
+    return user.name.isEmpty ? L10n.tr('Korisnik bez imena', 'Unnamed user') : user.name;
+  }
+
+  static String get reporterLabel => L10n.tr('Prijavio', 'Reported by');
+  static String get reportedUserLabel => L10n.tr('Prijavljen', 'Reported user');
+  static String get createdByLabel => L10n.tr('Predložio', 'Suggested by');
+  static String get organizerLabel => L10n.tr('Organizator', 'Organizer');
+  static String get uploaderLabel => L10n.tr('Objavio', 'Posted by');
+  static String get userLabel => L10n.tr('Korisnik', 'User');
+  static String get partnerBadge => L10n.tr('PARTNER', 'PARTNER');
+  static String get userBadge => L10n.tr('KORISNIK', 'USER');
+  static String get suspendedBadge => L10n.tr('SUSPENDOVAN', 'SUSPENDED');
+
+  static String targetKind(ReportContentType type) => switch (type) {
+        ReportContentType.user => L10n.tr('Profil korisnika', 'User profile'),
+        ReportContentType.moment => L10n.tr('Momenat', 'Moment'),
+        ReportContentType.message => L10n.tr('Poruka u četu', 'Chat message'),
+        ReportContentType.dog => L10n.tr('Profil psa', 'Dog profile'),
+        ReportContentType.poi => L10n.tr('Mesto na mapi', 'Map place'),
+        ReportContentType.chat => L10n.tr('Razgovor', 'Conversation'),
+      };
+  static String get missingDog =>
+      L10n.tr('Pas je obrisan ili ne postoji', 'Dog deleted or missing');
+  static String get missingMoment =>
+      L10n.tr('Momenat je obrisan ili ne postoji', 'Moment deleted or missing');
+  static String get missingMessage => L10n.tr(
+        'Poruka nije dostupna (obrisana ili stara prijava bez četa)',
+        'Message unavailable',
+      );
+  static String get imageMessage => L10n.tr('📷 Slika', '📷 Photo');
+  static String reportSnapshot(String text) =>
+      L10n.tr('Tekst u trenutku prijave: „$text“', 'Text when reported: "$text"');
+
+  // --- Akcije moderacije ---
+  static String get deleteDog => L10n.tr('Obriši psa', 'Delete dog');
+  static String get deleteMessage => L10n.tr('Obriši poruku', 'Delete message');
+  static String get deleteMomentShort =>
+      L10n.tr('Obriši momenat', 'Delete moment');
+  static String get rejectPlace => L10n.tr('Odbij mesto', 'Reject place');
+  static String get suspendUser => L10n.tr('Suspenduj korisnika', 'Suspend user');
+  static String get unsuspendUser =>
+      L10n.tr('Ukini suspenziju', 'Lift suspension');
+  static String get openUser => L10n.tr('Otvori korisnika', 'Open user');
+  static String get confirmDeleteDog => L10n.tr(
+        'Profil psa će biti trajno obrisan za sve korisnike.',
+        'The dog profile will be permanently deleted.',
+      );
+  static String get confirmDeleteMessage => L10n.tr(
+        'Poruka će biti trajno obrisana iz razgovora.',
+        'The message will be permanently deleted.',
+      );
+  static String get suspendTitle => L10n.tr('Suspenzija naloga', 'Suspend account');
+  static String get suspendBody => L10n.tr(
+        'Korisnik neće moći da koristi aplikaciju niti da objavljuje sadržaj '
+            'dok ne ukinete suspenziju.',
+        'The user cannot use the app or post until you lift it.',
+      );
+  static String get suspendReason =>
+      L10n.tr('Razlog (vidi ga samo admin)', 'Reason (admin only)');
+  static String get suspendConfirm => L10n.tr('Suspenduj', 'Suspend');
+  static String get suspended => L10n.tr('Korisnik je suspendovan.', 'User suspended.');
+  static String get unsuspended =>
+      L10n.tr('Suspenzija je ukinuta.', 'Suspension lifted.');
+  static String get dogDeleted => L10n.tr('Pas je obrisan.', 'Dog deleted.');
+  static String get messageDeleted =>
+      L10n.tr('Poruka je obrisana.', 'Message deleted.');
+
+  // --- Početna (statistika) ---
+  static String get attention => L10n.tr('Zahteva pažnju', 'Needs attention');
+  static String get sectionCommunity => L10n.tr('Zajednica', 'Community');
+  static String get sectionActivity => L10n.tr('Aktivnost', 'Activity');
+  static String get sectionHelp => L10n.tr('Pomoć psima', 'Help dogs');
+  static String get sectionRewards => L10n.tr('Šetnje i nagrade', 'Walks & rewards');
+  static String get statNew7 => L10n.tr('Novi (7 dana)', 'New (7 days)');
+  static String get statNew30 => L10n.tr('Novi (30 dana)', 'New (30 days)');
+  static String get statSuspended => L10n.tr('Suspendovani', 'Suspended');
+  static String get statAllDogs => L10n.tr('Psi', 'Dogs');
+  static String get statMatches => L10n.tr('Mečevi', 'Matches');
+  static String get statChats => L10n.tr('Aktivni četovi (7 d)', 'Active chats (7 d)');
+  static String get statStories => L10n.tr('Aktivne priče', 'Active stories');
+  static String get statMoments => L10n.tr('Momenti', 'Moments');
+  static String get statEvents => L10n.tr('Predstojeći događaji', 'Upcoming events');
+  static String get statLost => L10n.tr('Izgubljeni (aktivni)', 'Lost (active)');
+  static String get statAdoption => L10n.tr('Za udomljavanje', 'For adoption');
+  static String get statWalks => L10n.tr('Nagrađene šetnje', 'Rewarded walks');
+  static String get statKm => L10n.tr('Km (nagrađeni)', 'Km (rewarded)');
+  static String get statClaimed => L10n.tr('Kuponi neiskorišćeni', 'Coupons unused');
+  static String get statRedeemed => L10n.tr('Kuponi iskorišćeni', 'Coupons used');
+  static String get statPartners => L10n.tr('Partneri', 'Partners');
+  static String get statOpenReports => L10n.tr('Otvorene prijave', 'Open reports');
+  static String get statNewFeedback => L10n.tr('Nove poruke', 'New messages');
+  static String get statGroupsPending =>
+      L10n.tr('Grupe na čekanju', 'Groups pending');
+  static String get statUnavailable => L10n.tr(
+        '– = podatak trenutno nije dostupan (veza, pravila ili indeks još '
+            'nisu objavljeni).',
+        '– = not available right now (connection, rules or index).',
+      );
+  static String get refresh => L10n.tr('Osveži', 'Refresh');
+  static String get homeTab => L10n.tr('Početna', 'Home');
+
+  // --- app_config ---
+  static String get appConfigTitle =>
+      L10n.tr('Verzija aplikacije (Android)', 'App version (Android)');
+  static String appConfigSummary(int min, int latest) => L10n.tr(
+        'Najnovija: $latest · minimalna (obavezno ažuriranje): $min',
+        'Latest: $latest · minimum (forced): $min',
+      );
+  static String get appConfigMissing => L10n.tr(
+        'Nije podešeno – korisnici ne dobijaju poruku za ažuriranje.',
+        'Not set – no update prompt.',
+      );
+  static String get appConfigLatest =>
+      L10n.tr('Najnoviji build (poruka „Ažuriraj“)', 'Latest build');
+  static String get appConfigMin =>
+      L10n.tr('Minimalni build (obavezno)', 'Minimum build (forced)');
+  static String get appConfigInvalid => L10n.tr(
+        'Minimalni build ne može biti veći od najnovijeg.',
+        'Minimum cannot exceed latest.',
+      );
+  static String get edit2 => L10n.tr('Izmeni', 'Edit');
+  static String appConfigThisBuild(int build) => L10n.tr(
+        'Ova aplikacija: build $build (iz pubspec.yaml)',
+        'This app: build $build (from pubspec.yaml)',
+      );
+  static String appConfigPublish(int build) => L10n.tr(
+        'Objavi build $build kao najnoviji',
+        'Publish build $build as latest',
+      );
+  static String get appConfigPublishHint => L10n.tr(
+        'Pritisni tek kad je ova verzija dostupna na Google Play-u – '
+            'korisnici starijih verzija će dobiti poruku „Ažuriraj“.',
+        'Only once this version is live on Google Play.',
+      );
+
+  // --- Korisnici ---
+  static String get searchUsers =>
+      L10n.tr('Pretraga: ime, email, grad ili ID', 'Search: name, email, city, ID');
+  static String get filterAll => L10n.tr('Svi', 'All');
+  static String get filterAdmins => L10n.tr('Admini', 'Admins');
+  static String get filterPartners => L10n.tr('Partneri', 'Partners');
+  static String get filterSuspended => L10n.tr('Suspendovani', 'Suspended');
+  static String shownUsers(int shown, int total) =>
+      L10n.tr('Prikazano $shown od $total', 'Showing $shown of $total');
+  static String get userDetail => L10n.tr('Korisnik', 'User');
+  static String get userNotFound =>
+      L10n.tr('Korisnik nije pronađen.', 'User not found.');
+  static String get copyId => L10n.tr('Kopiraj ID', 'Copy ID');
+  static String get idCopied => L10n.tr('ID je kopiran.', 'ID copied.');
+  static String get roleSection => L10n.tr('Uloga', 'Role');
+  static String get roleUser => L10n.tr('Korisnik', 'User');
+  static String get roleAdmin => L10n.tr('Administrator', 'Administrator');
+  static String roleCurrentPartner(String name) =>
+      L10n.tr('Partner: $name', 'Partner: $name');
+  static String get rolePartnerUnknown =>
+      L10n.tr('Partner (nepoznat partner)', 'Partner (unknown)');
+  static String get makePartner => L10n.tr('Dodeli ulogu partnera', 'Make partner');
+  static String get removePartner =>
+      L10n.tr('Ukloni ulogu partnera', 'Remove partner role');
+  static String get choosePartner => L10n.tr('Izaberi partnera', 'Choose partner');
+  static String get noPartners => L10n.tr(
+        'Prvo dodajte partnera u Nagrade → Partneri.',
+        'Add a partner first in Rewards → Partners.',
+      );
+  static String get adminRoleNote => L10n.tr(
+        'Ulogu administratora menjajte samo u Firebase Console.',
+        'Change the admin role only in Firebase Console.',
+      );
+  static String get roleSaved => L10n.tr('Uloga je sačuvana.', 'Role saved.');
+  static String get userDogs => L10n.tr('Psi', 'Dogs');
+  static String get noDogs => L10n.tr('Nema pasa.', 'No dogs.');
+  static String get reportsAgainst =>
+      L10n.tr('Prijave protiv korisnika', 'Reports against user');
+  static String get noReportsAgainst =>
+      L10n.tr('Nema prijava protiv ovog korisnika.', 'No reports against this user.');
+  static String get moderationSection => L10n.tr('Moderacija', 'Moderation');
+  static String suspendedSince(String reason) => reason.isEmpty
+      ? L10n.tr('Nalog je suspendovan.', 'Account suspended.')
+      : L10n.tr('Nalog je suspendovan: $reason', 'Account suspended: $reason');
+  static String reportStatus(ReportStatus status) => switch (status) {
+        ReportStatus.pending => L10n.tr('Na čekanju', 'Pending'),
+        ReportStatus.reviewed => L10n.tr('Rešeno', 'Resolved'),
+        ReportStatus.actionTaken => L10n.tr('Uklonjeno', 'Removed'),
+        ReportStatus.dismissed => L10n.tr('Odbačeno', 'Dismissed'),
+      };
+
+  // --- Sadržaj (oglasi) ---
+  static String get contentLost => L10n.tr('Izgubljeni psi', 'Lost dogs');
+  static String get contentAdoption => L10n.tr('Udomljavanje', 'Adoption');
+  static String get contentEvents => L10n.tr('Događaji', 'Events');
+  static String get groupsPendingTab => L10n.tr('Na čekanju', 'Pending');
+  static String get groupsAllTab => L10n.tr('Sve grupe', 'All groups');
+  static String get groupsTabShort => L10n.tr('Grupe', 'Groups');
+  static String get emptyContent => L10n.tr('Nema stavki.', 'No items.');
+  static String closeAction(AdminContentKind kind) => switch (kind) {
+        AdminContentKind.lostDog => L10n.tr('Označi rešeno', 'Mark resolved'),
+        AdminContentKind.adoption => L10n.tr('Označi udomljen', 'Mark adopted'),
+        AdminContentKind.group => L10n.tr('Odobri', 'Approve'),
+        AdminContentKind.event => '',
+      };
+  static String contentStatus(String status) => switch (status) {
+        'active' => L10n.tr('Aktivan', 'Active'),
+        'resolved' => L10n.tr('Rešeno', 'Resolved'),
+        'available' => L10n.tr('Dostupan', 'Available'),
+        'adopted' => L10n.tr('Udomljen', 'Adopted'),
+        'upcoming' => L10n.tr('Predstoji', 'Upcoming'),
+        'past' => L10n.tr('Prošao', 'Past'),
+        'pending' => L10n.tr('Na čekanju', 'Pending'),
+        'approved' => L10n.tr('Odobrena', 'Approved'),
+        _ => status,
+      };
+  static String get confirmDeleteContent => L10n.tr(
+        'Stavka će biti trajno obrisana za sve korisnike.',
+        'The item will be permanently deleted for everyone.',
+      );
+  static String get contentDeleted => L10n.tr('Obrisano.', 'Deleted.');
+  static String get contentClosed => L10n.tr('Sačuvano.', 'Saved.');
+
+  // --- Partneri ---
+  static String get rewardsPartners => L10n.tr('Partneri', 'Partners');
+  static String get partnerInactive => L10n.tr('neaktivan', 'inactive');
+  static String get newPartner => L10n.tr('Novi partner', 'New partner');
+  static String get editPartner => L10n.tr('Izmeni partnera', 'Edit partner');
+  static String get partnerName => L10n.tr('Naziv radnje', 'Shop name');
+  static String get partnerCity => L10n.tr('Grad', 'City');
+  static String get partnerAddress => L10n.tr('Adresa', 'Address');
+  static String get noPartnersYet => L10n.tr(
+        'Nema partnera. Dodajte radnju koja prihvata VauVau kupone, pa joj u '
+            'Korisnici dodelite nalog.',
+        'No partners yet.',
+      );
+  static String partnerAccounts(int n) =>
+      L10n.tr('Nalozi: $n', 'Accounts: $n');
+  static String get couponPartner =>
+      L10n.tr('Partner koji prihvata kupon', 'Partner that accepts the coupon');
+  static String get couponNoPartner => L10n.tr(
+        'Bez partnera (kupon označava samo admin)',
+        'No partner (admin redeems)',
+      );
+  static String get redeemedByLabel => L10n.tr('Označio', 'Redeemed by');
 
   static String _date(DateTime value) {
     return '${value.day}.${value.month}.${value.year}.';

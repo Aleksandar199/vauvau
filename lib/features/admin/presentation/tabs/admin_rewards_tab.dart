@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../auth/presentation/auth_providers.dart';
+import '../../../partners/domain/partner.dart';
+import '../../../partners/presentation/partner_providers.dart';
 import '../../../rewards/domain/reward_rules.dart';
 import '../../../rewards/domain/rewards_models.dart';
 import '../../../rewards/domain/rewards_repository.dart';
@@ -9,6 +12,7 @@ import '../../../rewards/presentation/rewards_controller.dart';
 import '../../../rewards/presentation/rewards_strings.dart';
 import '../admin_controller.dart';
 import '../admin_strings.dart';
+import '../widgets/admin_ref_widgets.dart';
 
 final _adminChallengesProvider = StreamProvider.autoDispose<List<Challenge>>(
   (ref) =>
@@ -36,7 +40,7 @@ class AdminRewardsTab extends StatelessWidget {
   Widget build(BuildContext context) {
     final primary = Theme.of(context).colorScheme.primary;
     return DefaultTabController(
-      length: 4,
+      length: 5,
       child: Column(
         children: [
           TabBar(
@@ -47,6 +51,7 @@ class AdminRewardsTab extends StatelessWidget {
             tabs: [
               Tab(text: AdminStrings.rewardsChallenges),
               Tab(text: AdminStrings.rewardsCoupons),
+              Tab(text: AdminStrings.rewardsPartners),
               Tab(text: AdminStrings.rewardsLedger),
               Tab(text: AdminStrings.rewardsClaims),
             ],
@@ -56,6 +61,7 @@ class AdminRewardsTab extends StatelessWidget {
               children: [
                 _ChallengesAdmin(),
                 _CouponsAdmin(),
+                _PartnersAdmin(),
                 _LedgerAdmin(),
                 _ClaimsAdmin(),
               ],
@@ -372,6 +378,8 @@ class _CouponsAdmin extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final repo = ref.read(rewardsRepositoryProvider);
     final now = DateTime.now();
+    // Keeps the partner list loaded for the coupon form.
+    ref.watch(partnersProvider);
     return Scaffold(
       floatingActionButton: FloatingActionButton.extended(
         heroTag: 'admin-coupon-add',
@@ -471,7 +479,10 @@ class _CouponsAdmin extends ConsumerWidget {
   ) async {
     final result = await showDialog<Coupon>(
       context: context,
-      builder: (_) => _CouponDialog(existing: existing),
+      builder: (_) => _CouponDialog(
+        existing: existing,
+        partners: ref.read(partnersProvider).value ?? const [],
+      ),
     );
     if (result == null || !context.mounted) return;
     await _guard(
@@ -482,9 +493,10 @@ class _CouponsAdmin extends ConsumerWidget {
 }
 
 class _CouponDialog extends StatefulWidget {
-  const _CouponDialog({this.existing});
+  const _CouponDialog({this.existing, this.partners = const []});
 
   final Coupon? existing;
+  final List<Partner> partners;
 
   @override
   State<_CouponDialog> createState() => _CouponDialogState();
@@ -513,6 +525,7 @@ class _CouponDialogState extends State<_CouponDialog> {
   late var _expiresAt =
       widget.existing?.expiresAt ??
       DateTime.now().add(const Duration(days: 30));
+  late var _partnerId = widget.existing?.partnerId ?? '';
   late var _active = widget.existing?.isActive ?? false;
 
   @override
@@ -565,6 +578,30 @@ class _CouponDialogState extends State<_CouponDialog> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
+              DropdownButtonFormField<String>(
+                key: const ValueKey('coupon-partner'),
+                initialValue: widget.partners.any((p) => p.id == _partnerId)
+                    ? _partnerId
+                    : '',
+                isExpanded: true,
+                decoration: InputDecoration(
+                  labelText: AdminStrings.couponPartner,
+                ),
+                items: [
+                  DropdownMenuItem(
+                    value: '',
+                    child: Text(AdminStrings.couponNoPartner),
+                  ),
+                  for (final p in widget.partners)
+                    DropdownMenuItem(value: p.id, child: Text(p.name)),
+                ],
+                onChanged: (id) => setState(() {
+                  _partnerId = id ?? '';
+                  for (final p in widget.partners) {
+                    if (p.id == _partnerId) _partner.text = p.name;
+                  }
+                }),
+              ),
               _text(_partner, AdminStrings.rewardsPartner, max: 60),
               _text(_discount, AdminStrings.rewardsDiscount, max: 40),
               _text(
@@ -660,6 +697,7 @@ class _CouponDialogState extends State<_CouponDialog> {
                 claimedCount: claimed,
                 terms: _terms.text.trim(),
                 isActive: _active,
+                partnerId: _partnerId,
               ),
             );
           },
@@ -687,9 +725,13 @@ class _LedgerAdmin extends ConsumerWidget {
           return ListTile(
             dense: true,
             title: Text(e.reason),
-            subtitle: Text(
-              '${e.userId} · ${e.id}'
-              '${e.createdAt == null ? '' : ' · ${e.createdAt!.toLocal()}'.split('.').first}',
+            subtitle: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                AdminUserLabel(uid: e.userId, avatarSize: 18),
+                if (e.createdAt != null)
+                  Text(AdminStrings.timestamp(e.createdAt!.toLocal())),
+              ],
             ),
             trailing: Text(
               RewardsStrings.ledgerAmount(e),
@@ -748,7 +790,11 @@ class _ClaimsAdminState extends ConsumerState<_ClaimsAdmin> {
       context,
       () => ref
           .read(rewardsRepositoryProvider)
-          .adminSetClaimStatus(claim.id, status),
+          .adminSetClaimStatus(
+            claim.id,
+            status,
+            byUid: ref.read(authStateProvider).value?.uid ?? '',
+          ),
     );
   }
 
@@ -756,10 +802,6 @@ class _ClaimsAdminState extends ConsumerState<_ClaimsAdmin> {
   Widget build(BuildContext context) {
     final now = DateTime.now();
     final query = _search.text.trim().toUpperCase();
-    final names = {
-      for (final u in ref.watch(adminUsersProvider).value ?? const [])
-        u.uid: u.name.isNotEmpty ? u.name : u.email,
-    };
     return Column(
       children: [
         Padding(
@@ -814,7 +856,6 @@ class _ClaimsAdminState extends ConsumerState<_ClaimsAdmin> {
                     _ClaimAdminCard(
                       claim: c,
                       now: now,
-                      userName: names[c.userId] ?? c.userId,
                       onRedeem: () => _setStatus(c, ClaimStatus.redeemed),
                       onCancel: () => _setStatus(c, ClaimStatus.cancelled),
                     ),
@@ -832,14 +873,12 @@ class _ClaimAdminCard extends StatelessWidget {
   const _ClaimAdminCard({
     required this.claim,
     required this.now,
-    required this.userName,
     required this.onRedeem,
     required this.onCancel,
   });
 
   final CouponClaim claim;
   final DateTime now;
-  final String userName;
   final VoidCallback onRedeem;
   final VoidCallback onCancel;
 
@@ -896,7 +935,11 @@ class _ClaimAdminCard extends StatelessWidget {
             ),
             const SizedBox(height: 6),
             Text('${claim.partnerName} · ${claim.discountLabel}'),
-            Text(AdminStrings.rewardsClaimUser(userName)),
+            AdminUserLabel(
+              uid: claim.userId,
+              prefix: AdminStrings.userLabel,
+              avatarSize: 20,
+            ),
             Text(
               AdminStrings.rewardsClaimDates(
                 date(claim.claimedAt),
@@ -907,6 +950,13 @@ class _ClaimAdminCard extends StatelessWidget {
             if (claim.redeemedAt != null)
               Text(
                 AdminStrings.rewardsRedeemedAt(date(claim.redeemedAt)),
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+            if (claim.redeemedBy.isNotEmpty)
+              AdminUserLabel(
+                uid: claim.redeemedBy,
+                prefix: AdminStrings.redeemedByLabel,
+                avatarSize: 18,
                 style: Theme.of(context).textTheme.bodySmall,
               ),
             if (active) ...[
@@ -931,6 +981,116 @@ class _ClaimAdminCard extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// Partner shops (`partners`). Their accounts are assigned in Korisnici.
+class _PartnersAdmin extends ConsumerWidget {
+  const _PartnersAdmin();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final users = ref.watch(adminUsersProvider).value ?? const [];
+    return Scaffold(
+      floatingActionButton: FloatingActionButton.extended(
+        heroTag: 'admin-partner-add',
+        onPressed: () => _edit(context, ref, null),
+        icon: const Icon(Icons.add_business_outlined),
+        label: Text(AdminStrings.newPartner),
+      ),
+      body: _asyncList<Partner>(
+        ref.watch(partnersProvider),
+        empty: AdminStrings.noPartnersYet,
+        data: (items) => ListView(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
+          children: [
+            for (final p in items)
+              Card(
+                child: ListTile(
+                  leading: const Icon(Icons.storefront_outlined),
+                  title: Text(p.name),
+                  subtitle: Text(
+                    [
+                      if (p.city.isNotEmpty) p.city,
+                      if (p.address.isNotEmpty) p.address,
+                      AdminStrings.partnerAccounts(
+                        users.where((u) => u.partnerId == p.id).length,
+                      ),
+                    ].join(' · '),
+                  ),
+                  onTap: () => _edit(context, ref, p),
+                  trailing: Switch(
+                    value: p.isActive,
+                    onChanged: (v) => _guard(
+                      context,
+                      () => ref
+                          .read(partnersRepositoryProvider)
+                          .setPartnerActive(p.id, v),
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _edit(BuildContext context, WidgetRef ref, Partner? existing) async {
+    final name = TextEditingController(text: existing?.name);
+    final city = TextEditingController(text: existing?.city);
+    final address = TextEditingController(text: existing?.address);
+    final form = GlobalKey<FormState>();
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(
+          existing == null ? AdminStrings.newPartner : AdminStrings.editPartner,
+        ),
+        content: Form(
+          key: form,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _text(name, AdminStrings.partnerName, max: 60),
+              _text(city, AdminStrings.partnerCity, max: 40, required: false),
+              _text(
+                address,
+                AdminStrings.partnerAddress,
+                max: 120,
+                required: false,
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: Text(AdminStrings.cancel),
+          ),
+          FilledButton(
+            onPressed: () {
+              if (form.currentState?.validate() ?? false) {
+                Navigator.of(dialogContext).pop(true);
+              }
+            },
+            child: Text(AdminStrings.save),
+          ),
+        ],
+      ),
+    );
+    final partner = Partner(
+      id: existing?.id ?? '',
+      name: name.text.trim(),
+      city: city.text.trim(),
+      address: address.text.trim(),
+      isActive: existing?.isActive ?? true,
+    );
+    if (ok != true || !context.mounted) return;
+    await _guard(
+      context,
+      () => ref.read(partnersRepositoryProvider).savePartner(partner),
     );
   }
 }

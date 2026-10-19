@@ -156,14 +156,9 @@ abstract final class RewardsStrings {
   static String claimed(String code) =>
       L10n.tr('Kupon preuzet: $code', 'Coupon claimed: $code');
   static String get showAtShop => L10n.tr(
-    'Pokažite kod na kasi partnera. Posle kupovine označite ga kao iskorišćen.',
-    'Show the code at the partner shop, then mark it used.',
-  );
-  static String get markUsed =>
-      L10n.tr('Označi kao iskorišćen', 'Mark as used');
-  static String get markUsedConfirm => L10n.tr(
-    'Označiti kupon kao iskorišćen? Ovo ne može da se poništi.',
-    'Mark the coupon as used? This cannot be undone.',
+    'Pokažite kod na kasi partnera. Partner ga posle kupovine označava kao '
+        'iskorišćen.',
+    'Show the code at the partner shop; the partner marks it used.',
   );
   static String get terms => L10n.tr('Uslovi', 'Terms');
   static String availability(CouponAvailability a) => switch (a) {

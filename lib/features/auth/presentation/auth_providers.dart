@@ -45,3 +45,17 @@ final authStateProvider = StreamProvider<AppUser?>((ref) {
 final isAdminProvider = Provider<bool>((ref) {
   return ref.watch(authStateProvider).asData?.value?.isAdmin ?? false;
 });
+
+/// `partners/{id}` of a signed-in partner shop; empty for everyone else.
+final partnerIdProvider = Provider<String>((ref) {
+  final user = ref.watch(authStateProvider).asData?.value;
+  return user != null && user.isPartner ? user.partnerId : '';
+});
+
+final isPartnerProvider = Provider<bool>((ref) {
+  return ref.watch(partnerIdProvider).isNotEmpty;
+});
+
+final isSuspendedProvider = Provider<bool>((ref) {
+  return ref.watch(authStateProvider).asData?.value?.isSuspended ?? false;
+});

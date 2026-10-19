@@ -11,6 +11,7 @@ import '../../events/presentation/events_screen.dart';
 import '../../groups/presentation/groups_list_screen.dart';
 import '../../moments/presentation/moments_screen.dart';
 import '../../lost_dogs/presentation/lost_dogs_screen.dart';
+import '../../partners/presentation/partner_coupons_screen.dart';
 import '../../profile/presentation/profile_controller.dart';
 import '../../profile/presentation/settings_screen.dart';
 import '../../support/presentation/about_app_dialog.dart';
@@ -73,6 +74,16 @@ class HomeDrawer extends ConsumerWidget {
                       selected: false,
                       onTap: () => _onItemTap(context, ref, item),
                     ),
+                  if (ref.watch(isPartnerProvider))
+                    _DrawerTile(
+                      item: AppDrawerCatalog.partnerCouponsItem,
+                      selected: false,
+                      onTap: () => _onItemTap(
+                        context,
+                        ref,
+                        AppDrawerCatalog.partnerCouponsItem,
+                      ),
+                    ),
                   if (isAdmin)
                     _DrawerTile(
                       item: AppDrawerCatalog.adminItem,
@@ -133,6 +144,7 @@ class HomeDrawer extends ConsumerWidget {
       DrawerItemKind.moments => const MomentsScreen(),
       DrawerItemKind.rules => const RulesAndSupportScreen(),
       DrawerItemKind.admin => const AdminDashboardScreen(),
+      DrawerItemKind.partnerCoupons => const PartnerCouponsScreen(),
       DrawerItemKind.settings => const SettingsScreen(),
       DrawerItemKind.page => DrawerSectionScreen(destination: item),
       DrawerItemKind.tab => null,

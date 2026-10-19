@@ -47,6 +47,11 @@ void main() {
     await pumpDashboard(tester, isAdmin: true);
 
     expect(find.text(AdminStrings.statsTab), findsOneWidget);
+    // Poruke korisnika su sada poseban tab (Početna = statistika).
+    await tester.ensureVisible(find.text(AdminStrings.feedbackTab));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text(AdminStrings.feedbackTab));
+    await tester.pumpAndSettle();
     expect(find.text('Mapa se sporo učitava'), findsOneWidget);
     expect(find.text(AdminStrings.isNew), findsOneWidget);
 

@@ -12,6 +12,7 @@ class ContentReport {
     required this.timestamp,
     this.reportedUserId = '',
     this.targetName = '',
+    this.contextId = '',
     this.details,
     this.status = ReportStatus.pending,
   });
@@ -23,6 +24,8 @@ class ContentReport {
   final String targetId;
   /// Human-readable place/profile name when available (e.g. POI placeName).
   final String targetName;
+  /// Where the target lives: chat id for a reported 1:1 message.
+  final String contextId;
   final String reason;
   final String? details;
   final DateTime timestamp;
@@ -38,6 +41,7 @@ class ContentReport {
       targetType: targetType,
       targetId: targetId,
       targetName: targetName ?? this.targetName,
+      contextId: contextId,
       reason: reason,
       details: details,
       timestamp: timestamp,

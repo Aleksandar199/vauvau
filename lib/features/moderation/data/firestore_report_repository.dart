@@ -137,6 +137,8 @@ class FirestoreReportRepository implements ReportRepository {
       'reportedUserId': report.reportedUserId,
       'targetType': targetType,
       'targetId': report.targetId,
+      if (report.targetName.isNotEmpty) 'targetName': report.targetName,
+      if (report.contextId.isNotEmpty) 'contextId': report.contextId,
       'reason': report.reason,
       'details': details,
       'status': report.statusKey,
@@ -398,6 +400,7 @@ class FirestoreReportRepository implements ReportRepository {
               data['targetName'] as String? ??
               '')
           .trim(),
+      contextId: (data['contextId'] as String? ?? '').trim(),
       reason: reason.isEmpty && fromPlaceChange ? 'Prijava promene' : reason,
       details: details.isEmpty ? null : details,
       timestamp: raw is Timestamp ? raw.toDate() : DateTime.now(),

@@ -333,6 +333,9 @@ class _ChatDetailScreenState extends ConsumerState<ChatDetailScreen>
         targetType: ReportContentType.message,
         targetId: message.id,
         reportedUserId: chat.peerUserId,
+        // Lets the admin open and delete the exact message.
+        contextId: widget.conversationId,
+        targetName: message.text,
       );
     }
   }

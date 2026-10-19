@@ -5,6 +5,8 @@ import '../../domain/admin_models.dart';
 import '../admin_controller.dart';
 import '../admin_strings.dart';
 import '../widgets/admin_confirm_dialog.dart';
+import '../widgets/admin_ref_widgets.dart';
+import 'admin_reports_tab.dart';
 
 class AdminFeedbackTab extends ConsumerWidget {
   const AdminFeedbackTab({super.key});
@@ -51,10 +53,16 @@ class _FeedbackCard extends ConsumerWidget {
             Row(
               children: [
                 Expanded(
-                  child: Text(
-                    entry.userName,
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w800,
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: AdminUserLabel(
+                      uid: entry.userId,
+                      fallbackName: entry.userName,
+                      avatarSize: 28,
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w800,
+                      ),
+                      onTap: () => openAdminUser(context, entry.userId),
                     ),
                   ),
                 ),

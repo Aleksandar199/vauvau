@@ -185,8 +185,6 @@ class WalkRewardsService {
       now: _ref.read(rewardsClockProvider)(),
     );
   }
-
-  Future<void> markRedeemed(String claimId) => _repo.markRedeemed(claimId);
 }
 
 final walkRewardsServiceProvider = Provider<WalkRewardsService>(

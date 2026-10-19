@@ -147,6 +147,8 @@ Map<String, Object?> claimPayload(Coupon coupon, String uid, String code) => {
   'discountLabel': coupon.discountLabel,
   'expiresAt': Timestamp.fromDate(coupon.expiresAt),
   'claimedAt': FieldValue.serverTimestamp(),
+  // Must equal the coupon's partnerId (rules) so the partner can redeem it.
+  if (coupon.partnerId.isNotEmpty) 'partnerId': coupon.partnerId,
 };
 
 Map<String, Object?> couponPayload(Coupon coupon) => {
@@ -160,4 +162,5 @@ Map<String, Object?> couponPayload(Coupon coupon) => {
   'maxQuantity': coupon.maxQuantity,
   'terms': coupon.terms,
   'isActive': coupon.isActive,
+  'partnerId': coupon.partnerId,
 };
