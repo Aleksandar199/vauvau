@@ -25,6 +25,7 @@ import '../domain/chat_message.dart';
 import '../domain/story_reference.dart';
 import '../domain/chat_repository.dart';
 import '../domain/scheduled_walk.dart';
+import 'chat_strings.dart';
 
 class ChatInboxController extends Notifier<List<ChatConversation>> {
   ChatRepository get _repo => ref.read(chatRepositoryProvider);
@@ -176,6 +177,26 @@ class ChatInboxController extends Notifier<List<ChatConversation>> {
             conversationId: conversationId,
           ),
     );
+  }
+
+  /// "Pridruži se šetnji" on the map: a real chat message to the walker
+  /// (plus the walk notification). Returns the chat id; throws when the
+  /// message could not be sent, so the UI never claims a request that
+  /// did not go out.
+  Future<String> requestJoinWalk(DiscoverProfile walkerDog) async {
+    if (walkerDog.ownerId.trim().isEmpty) {
+      throw StateError('Walker has no ownerId');
+    }
+    final conversationId = openFromMatch(walkerDog);
+    final myDog = _myDog;
+    final text = ChatStrings.joinWalkRequest(myDog?.name ?? '', walkerDog.name);
+    // sendMessage also sends the message push to the walker.
+    await sendMessage(conversationId, text);
+    notifyWalkRequest(
+      peerUserId: walkerDog.ownerId,
+      conversationId: conversationId,
+    );
+    return conversationId;
   }
 
   Future<void> sendLocationPin({

@@ -976,19 +976,37 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     await showWalkerSheet(
       context: context,
       pin: pin,
-      onJoinWalk: () {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(MapStrings.walkRequestSent)),
-        );
-        final chatId = _openWalkerChat(pin);
-        // Sender = me (name + my dog); previously the walker got their own.
-        ref.read(chatInboxProvider.notifier).notifyWalkRequest(
-              peerUserId: pin.profile.ownerId,
-              conversationId: chatId,
-            );
-      },
+      onJoinWalk: () => _requestJoinWalk(pin),
       onOpenChat: () => _openWalkerChat(pin),
     );
+  }
+
+  /// Sends a real chat message to the walker (plus the walk notification)
+  /// and only then says "sent". Before, the snackbar appeared right away
+  /// and only a notification was written (errors swallowed), so nothing
+  /// showed up in the walker's chat.
+  Future<void> _requestJoinWalk(WalkingDogPin pin) async {
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      final chatId = await ref
+          .read(chatInboxProvider.notifier)
+          .requestJoinWalk(pin.profile);
+      messenger.showSnackBar(
+        SnackBar(content: Text(MapStrings.walkRequestSent)),
+      );
+      if (!mounted) return;
+      ref.read(homeTabIndexProvider.notifier).showMessages();
+      Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => ChatScreen(conversationId: chatId),
+        ),
+      );
+    } catch (error) {
+      debugPrint('Join walk request failed: $error');
+      messenger.showSnackBar(
+        SnackBar(content: Text(MapStrings.walkRequestFailed)),
+      );
+    }
   }
 
   String _openWalkerChat(WalkingDogPin pin) {
