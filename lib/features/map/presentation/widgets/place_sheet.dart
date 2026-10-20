@@ -11,6 +11,7 @@ import '../../../auth/presentation/auth_providers.dart';
 import '../map_strings.dart';
 import '../poi_report_controller.dart';
 import '../user_poi_controller.dart';
+import '../../../../core/widgets/app_bottom_sheet.dart';
 
 Future<void> showPlaceSheet({
   required BuildContext context,
@@ -21,7 +22,7 @@ Future<void> showPlaceSheet({
   VoidCallback? onCall,
   VoidCallback? onInappropriate,
 }) {
-  return showModalBottomSheet<void>(
+  return showAppBottomSheet<void>(
     context: context,
     isScrollControlled: true,
     showDragHandle: true,
@@ -343,7 +344,7 @@ class _PlacePreviewSheetState extends ConsumerState<PlacePreviewSheet> {
     final messenger = ScaffoldMessenger.of(context);
 
     var confirmedVerified = false;
-    final submitted = await showModalBottomSheet<bool>(
+    final submitted = await showAppBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
       showDragHandle: true,

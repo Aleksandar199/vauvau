@@ -7,6 +7,7 @@ import 'add_reminder_sheet.dart';
 import 'reminder_controller.dart';
 import 'reminder_form_sheet.dart';
 import 'reminder_strings.dart';
+import '../../../../core/widgets/app_bottom_sheet.dart';
 
 class RemindersScreen extends ConsumerStatefulWidget {
   const RemindersScreen({
@@ -315,7 +316,7 @@ class _ReminderTile extends ConsumerWidget {
   }
 
   Future<void> _openDetails(BuildContext context, WidgetRef ref) async {
-    await showModalBottomSheet<void>(
+    await showAppBottomSheet<void>(
       context: context,
       showDragHandle: true,
       useSafeArea: true,

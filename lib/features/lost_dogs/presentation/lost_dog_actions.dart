@@ -10,6 +10,7 @@ import '../../auth/presentation/auth_providers.dart';
 import '../domain/lost_dog.dart';
 import 'lost_dog_strings.dart';
 import 'lost_dogs_controller.dart';
+import '../../../core/widgets/app_bottom_sheet.dart';
 
 Future<void> showLostDogSightingSheet({
   required BuildContext context,
@@ -17,7 +18,7 @@ Future<void> showLostDogSightingSheet({
   required LostDog dog,
 }) {
   final found = dog.isFoundListing;
-  return showModalBottomSheet<void>(
+  return showAppBottomSheet<void>(
     context: context,
     showDragHandle: true,
     builder: (sheetContext) {
@@ -140,7 +141,7 @@ Future<void> showLostDogProfileSheet({
   required WidgetRef ref,
   required LostDog dog,
 }) {
-  return showModalBottomSheet<void>(
+  return showAppBottomSheet<void>(
     context: context,
     isScrollControlled: true,
     showDragHandle: true,
@@ -230,7 +231,7 @@ Future<void> showLostDogCommentsSheet({
   required WidgetRef ref,
   required LostDog dog,
 }) {
-  return showModalBottomSheet<void>(
+  return showAppBottomSheet<void>(
     context: context,
     isScrollControlled: true,
     showDragHandle: true,

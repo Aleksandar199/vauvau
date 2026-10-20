@@ -12,6 +12,7 @@ import 'widgets/discover_empty_state.dart';
 import 'widgets/discover_filter_chip.dart';
 import 'widgets/discover_skeleton.dart';
 import 'widgets/swipe_dog_card.dart';
+import '../../../core/widgets/app_bottom_sheet.dart';
 
 class DiscoverScreen extends ConsumerStatefulWidget {
   const DiscoverScreen({super.key});
@@ -184,7 +185,7 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen> {
     WidgetRef ref,
     DiscoverProfile profile,
   ) {
-    return showModalBottomSheet<void>(
+    return showAppBottomSheet<void>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,

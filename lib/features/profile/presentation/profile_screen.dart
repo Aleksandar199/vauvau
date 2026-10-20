@@ -26,6 +26,7 @@ import 'profile_controller.dart';
 import 'profile_strings.dart';
 import 'widgets/profile_posts_strip.dart';
 import 'widgets/profile_ui.dart';
+import '../../../core/widgets/app_bottom_sheet.dart';
 
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
@@ -507,7 +508,7 @@ class _OwnerHeaderState extends ConsumerState<_OwnerHeader> {
       return;
     }
     final hasPhoto = _hasOwnerPhoto;
-    await showModalBottomSheet<void>(
+    await showAppBottomSheet<void>(
       context: context,
       builder: (sheetContext) {
         return SafeArea(

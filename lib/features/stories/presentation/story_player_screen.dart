@@ -16,6 +16,7 @@ import '../domain/story.dart';
 import 'stories_strings.dart';
 import 'story_highlight.dart';
 import 'story_providers.dart';
+import '../../../core/widgets/app_bottom_sheet.dart';
 
 const Duration kStoryItemDuration = Duration(seconds: 6);
 
@@ -920,7 +921,7 @@ class _Unavailable extends StatelessWidget {
 
 /// Author only: who viewed my story and who liked it.
 Future<void> showStoryViewersSheet(BuildContext context, Story story) {
-  return showModalBottomSheet<void>(
+  return showAppBottomSheet<void>(
     context: context,
     isScrollControlled: true,
     builder: (_) => _StoryViewersSheet(story: story),

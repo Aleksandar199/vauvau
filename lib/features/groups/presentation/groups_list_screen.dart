@@ -9,6 +9,7 @@ import 'group_chat_screen.dart';
 import 'groups_controller.dart';
 import 'groups_strings.dart';
 import 'widgets/group_card.dart';
+import '../../../core/widgets/app_bottom_sheet.dart';
 
 /// Groups page: "Za šetnju" (global + local groups, city and type filters) and
 /// "Po rasama" (canonical breed registry, search, city filter).
@@ -292,7 +293,7 @@ Future<void> showCreateGroupSheet(
   GroupCategory? category,
   String? breedKey,
 }) {
-  return showModalBottomSheet<void>(
+  return showAppBottomSheet<void>(
     context: context,
     isScrollControlled: true,
     showDragHandle: true,

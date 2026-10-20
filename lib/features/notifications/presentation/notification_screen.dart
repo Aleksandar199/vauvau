@@ -7,6 +7,7 @@ import '../domain/app_notification.dart';
 import 'notification_controller.dart';
 import 'notification_routing.dart';
 import 'notification_strings.dart';
+import '../../../core/widgets/app_bottom_sheet.dart';
 
 class NotificationScreen extends ConsumerWidget {
   const NotificationScreen({super.key});
@@ -24,7 +25,7 @@ class NotificationScreen extends ConsumerWidget {
 }
 
 Future<void> showNotificationsSheet(BuildContext context) {
-  return showModalBottomSheet<void>(
+  return showAppBottomSheet<void>(
     context: context,
     isScrollControlled: true,
     showDragHandle: true,

@@ -9,13 +9,14 @@ import '../../domain/moment_model.dart';
 import '../moments_controller.dart';
 import '../moments_strings.dart';
 import '../pointer_safe.dart';
+import '../../../../core/widgets/app_bottom_sheet.dart';
 
 Future<void> showMomentCommentsSheet(BuildContext context, MomentModel moment) {
   return afterPointerSettles(() async {
     if (!context.mounted) {
       return;
     }
-    await showModalBottomSheet<void>(
+    await showAppBottomSheet<void>(
       context: context,
       isScrollControlled: true,
       showDragHandle: true,

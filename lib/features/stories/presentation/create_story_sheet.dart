@@ -8,9 +8,10 @@ import '../../../core/utils/content_validation_service.dart';
 import '../domain/story.dart';
 import 'stories_strings.dart';
 import 'story_providers.dart';
+import '../../../core/widgets/app_bottom_sheet.dart';
 
 Future<Story?> showCreateStorySheet(BuildContext context) {
-  return showModalBottomSheet<Story>(
+  return showAppBottomSheet<Story>(
     context: context,
     isScrollControlled: true,
     useSafeArea: true,

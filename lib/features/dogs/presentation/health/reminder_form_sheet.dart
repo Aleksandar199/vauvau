@@ -5,6 +5,7 @@ import '../../domain/dog_reminder.dart';
 import 'add_reminder_sheet.dart';
 import 'reminder_controller.dart';
 import 'reminder_strings.dart';
+import '../../../../core/widgets/app_bottom_sheet.dart';
 
 Future<void> showReminderFormSheet({
   required BuildContext context,
@@ -13,7 +14,7 @@ Future<void> showReminderFormSheet({
   DogReminder? existing,
   String? preferredDogId,
 }) {
-  return showModalBottomSheet<void>(
+  return showAppBottomSheet<void>(
     context: context,
     isScrollControlled: true,
     useSafeArea: true,

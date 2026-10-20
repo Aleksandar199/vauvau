@@ -37,6 +37,7 @@ import 'widgets/place_sheet.dart';
 import 'widgets/walk_history_sheet.dart';
 import 'widgets/walk_stats_panel.dart';
 import 'widgets/walker_sheet.dart';
+import '../../../core/widgets/app_bottom_sheet.dart';
 
 class MapScreen extends ConsumerStatefulWidget {
   const MapScreen({super.key});
@@ -743,7 +744,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   Future<void> _openMoreFilters() async {
     const communityPlaceToken = Object();
     const adminPlaceToken = Object();
-    final selected = await showModalBottomSheet<Object>(
+    final selected = await showAppBottomSheet<Object>(
       context: context,
       showDragHandle: true,
       builder: (sheetContext) {

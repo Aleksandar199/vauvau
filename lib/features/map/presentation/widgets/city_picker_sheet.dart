@@ -4,12 +4,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../cities_controller.dart';
 import '../map_strings.dart';
 import '../../domain/city_model.dart';
+import '../../../../core/widgets/app_bottom_sheet.dart';
 
 Future<void> showCityPickerSheet({
   required BuildContext context,
   required WidgetRef ref,
 }) {
-  return showModalBottomSheet<void>(
+  return showAppBottomSheet<void>(
     context: context,
     isScrollControlled: true,
     showDragHandle: true,

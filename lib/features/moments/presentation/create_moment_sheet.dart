@@ -14,11 +14,12 @@ import '../../profile/presentation/profile_controller.dart';
 import '../domain/moment_model.dart';
 import 'moments_controller.dart';
 import 'moments_strings.dart';
+import '../../../core/widgets/app_bottom_sheet.dart';
 
 /// "Nova objava" – a permanent Moments post. Completely separate from 24h
 /// stories (stories bar on Otkrij): nothing is copied or uploaded twice.
 Future<void> showCreateMomentSheet(BuildContext context) {
-  return showModalBottomSheet<void>(
+  return showAppBottomSheet<void>(
     context: context,
     isScrollControlled: true,
     useSafeArea: true,

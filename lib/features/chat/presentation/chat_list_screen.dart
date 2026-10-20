@@ -26,6 +26,7 @@ import 'chat_strings.dart';
 import 'incoming_likes.dart';
 import 'widgets/chat_ui.dart';
 import 'widgets/dog_avatar.dart';
+import '../../../core/widgets/app_bottom_sheet.dart';
 
 class ChatListScreen extends ConsumerStatefulWidget {
   const ChatListScreen({super.key});
@@ -376,7 +377,7 @@ class _ChatListScreenState extends ConsumerState<ChatListScreen> {
     WidgetRef ref,
     DiscoverProfile profile,
   ) {
-    return showModalBottomSheet<void>(
+    return showAppBottomSheet<void>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,

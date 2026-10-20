@@ -23,6 +23,7 @@ import '../../stories/presentation/story_providers.dart';
 import '../domain/app_notification.dart';
 import '../domain/push_payload.dart';
 import 'push_navigation.dart';
+import '../../../core/widgets/app_bottom_sheet.dart';
 
 Future<void> openAppNotification(
   BuildContext context,
@@ -125,7 +126,7 @@ Future<void> _open(
         read<HomeTabIndex>(homeTabIndexProvider.notifier).showDiscover();
         return;
       }
-      await showModalBottomSheet<void>(
+      await showAppBottomSheet<void>(
         context: host,
         isScrollControlled: true,
         backgroundColor: Colors.transparent,

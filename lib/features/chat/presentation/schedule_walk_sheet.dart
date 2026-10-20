@@ -6,12 +6,13 @@ import '../data/walk_locations.dart';
 import '../domain/chat_time.dart';
 import 'chat_strings.dart';
 import 'widgets/location_choice_chip.dart';
+import '../../../core/widgets/app_bottom_sheet.dart';
 
 Future<void> showScheduleWalkSheet({
   required BuildContext context,
   required void Function(DateTime walkTime, String location) onSend,
 }) {
-  return showModalBottomSheet<void>(
+  return showAppBottomSheet<void>(
     context: context,
     isScrollControlled: true,
     builder: (sheetContext) {

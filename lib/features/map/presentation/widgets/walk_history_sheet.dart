@@ -4,9 +4,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../domain/walk_record.dart';
 import '../map_strings.dart';
 import '../walk_history_controller.dart';
+import '../../../../core/widgets/app_bottom_sheet.dart';
 
 Future<void> showWalkHistorySheet(BuildContext context) {
-  return showModalBottomSheet<void>(
+  return showAppBottomSheet<void>(
     context: context,
     isScrollControlled: true,
     useSafeArea: true,

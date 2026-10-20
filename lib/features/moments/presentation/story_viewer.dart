@@ -16,6 +16,7 @@ import 'moments_strings.dart';
 import 'pointer_safe.dart';
 import 'stories_controller.dart';
 import 'widgets/moment_comments_sheet.dart';
+import '../../../core/widgets/app_bottom_sheet.dart';
 
 const Duration kStoryDuration = Duration(seconds: 6);
 
@@ -673,7 +674,7 @@ Future<void> openMomentDog(
     if (!context.mounted) {
       return;
     }
-    await showModalBottomSheet<void>(
+    await showAppBottomSheet<void>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,

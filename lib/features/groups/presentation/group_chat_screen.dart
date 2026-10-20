@@ -20,6 +20,7 @@ import '../../profile/presentation/owner_profile_sheet.dart';
 import '../domain/groups_models.dart';
 import 'groups_controller.dart';
 import 'groups_strings.dart';
+import '../../../core/widgets/app_bottom_sheet.dart';
 
 class GroupChatScreen extends ConsumerStatefulWidget {
   const GroupChatScreen({super.key, this.groupId, this.eventId})
@@ -287,7 +288,7 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen> {
   }
 
   Future<void> _openAttachMenu() async {
-    final action = await showModalBottomSheet<_GroupAttachAction>(
+    final action = await showAppBottomSheet<_GroupAttachAction>(
       context: context,
       showDragHandle: true,
       builder: (sheetContext) {
@@ -352,7 +353,7 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen> {
   }
 
   Future<void> _pickPhoto() async {
-    final source = await showModalBottomSheet<ImageSource>(
+    final source = await showAppBottomSheet<ImageSource>(
       context: context,
       showDragHandle: true,
       builder: (sheetContext) {

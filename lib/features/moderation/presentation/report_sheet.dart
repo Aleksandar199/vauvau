@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../domain/content_report.dart';
 import 'moderation_strings.dart';
 import 'report_controller.dart';
+import '../../../core/widgets/app_bottom_sheet.dart';
 
 Future<bool> showContentReportSheet({
   required BuildContext context,
@@ -19,7 +20,7 @@ Future<bool> showContentReportSheet({
   // inside the sheet render behind the barrier until the sheet closes.
   final messenger = ScaffoldMessenger.of(context);
 
-  final sent = await showModalBottomSheet<bool>(
+  final sent = await showAppBottomSheet<bool>(
     context: context,
     isScrollControlled: true,
     useSafeArea: true,

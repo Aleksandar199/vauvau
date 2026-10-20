@@ -7,9 +7,10 @@ import '../../location/presentation/home_city_provider.dart';
 import '../data/seed_events.dart';
 import 'events_controller.dart';
 import 'events_strings.dart';
+import '../../../core/widgets/app_bottom_sheet.dart';
 
 Future<void> showCreateEventSheet(BuildContext context) {
-  return showModalBottomSheet<void>(
+  return showAppBottomSheet<void>(
     context: context,
     isScrollControlled: true,
     useSafeArea: true,

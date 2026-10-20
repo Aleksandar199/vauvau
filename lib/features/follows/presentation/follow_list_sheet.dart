@@ -6,6 +6,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../profile/data/owner_public_profile.dart';
 import '../../profile/presentation/owner_profile_sheet.dart';
 import '../../profile/presentation/profile_strings.dart';
+import '../../../core/widgets/app_bottom_sheet.dart';
 
 /// Public profile per user id for follower / following lists.
 final followListProfileProvider = FutureProvider.autoDispose
@@ -19,7 +20,7 @@ Future<void> showFollowListSheet(
   required String title,
   required Set<String> userIds,
 }) {
-  return showModalBottomSheet<void>(
+  return showAppBottomSheet<void>(
     context: context,
     isScrollControlled: true,
     showDragHandle: true,

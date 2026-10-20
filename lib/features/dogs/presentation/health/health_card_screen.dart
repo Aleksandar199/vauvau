@@ -7,6 +7,7 @@ import 'health_controller.dart';
 import 'health_record_sheet.dart';
 import 'health_strings.dart';
 import 'reminder_strings.dart';
+import '../../../../core/widgets/app_bottom_sheet.dart';
 
 /// Full health card for one dog — only shows categories that have records,
 /// plus a clear way to add a new medical entry.
@@ -94,7 +95,7 @@ class HealthCardScreen extends ConsumerWidget {
     BuildContext context,
     Map<HealthCategory, HealthRecord> latest,
   ) async {
-    final category = await showModalBottomSheet<HealthCategory>(
+    final category = await showAppBottomSheet<HealthCategory>(
       context: context,
       showDragHandle: true,
       useSafeArea: true,

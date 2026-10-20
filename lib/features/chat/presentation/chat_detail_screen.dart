@@ -27,6 +27,7 @@ import 'widgets/location_pin_bubble.dart';
 import 'widgets/message_bubble.dart';
 import 'widgets/message_reply.dart';
 import 'widgets/walk_invite_card.dart';
+import '../../../core/widgets/app_bottom_sheet.dart';
 
 class ChatDetailScreen extends ConsumerStatefulWidget {
   const ChatDetailScreen({super.key, required this.conversationId});
@@ -583,7 +584,7 @@ class _ChatDetailScreenState extends ConsumerState<ChatDetailScreen>
     if (!context.mounted) {
       return;
     }
-    await showModalBottomSheet<void>(
+    await showAppBottomSheet<void>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
@@ -664,7 +665,7 @@ class _ChatDetailScreenState extends ConsumerState<ChatDetailScreen>
   Future<void> _openAttachMenu(BuildContext context) async {
     // Await the attach sheet fully before opening the next sheet — popping and
     // immediately showing another modal fails on many mobile devices.
-    final action = await showModalBottomSheet<_ChatAttachAction>(
+    final action = await showAppBottomSheet<_ChatAttachAction>(
       context: context,
       showDragHandle: true,
       builder: (sheetContext) {
@@ -711,7 +712,7 @@ class _ChatDetailScreenState extends ConsumerState<ChatDetailScreen>
   }
 
   Future<void> _pickPhoto() async {
-    final source = await showModalBottomSheet<ImageSource>(
+    final source = await showAppBottomSheet<ImageSource>(
       context: context,
       showDragHandle: true,
       builder: (sheetContext) {

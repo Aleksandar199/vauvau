@@ -11,6 +11,7 @@ import 'health_record_sheet.dart';
 import 'reminder_controller.dart';
 import 'reminder_strings.dart';
 import 'reminders_screen.dart';
+import '../../../../core/widgets/app_bottom_sheet.dart';
 
 /// Compact "Zdravlje i podsetnici" summary shown on the Profile screen.
 class DogHealthTab extends ConsumerWidget {
@@ -165,7 +166,7 @@ class DogHealthTab extends ConsumerWidget {
 
   Future<void> _addHealthRecord(BuildContext context, WidgetRef ref) async {
     final latest = ref.read(latestHealthRecordsProvider(dogId));
-    final category = await showModalBottomSheet<HealthCategory>(
+    final category = await showAppBottomSheet<HealthCategory>(
       context: context,
       showDragHandle: true,
       useSafeArea: true,

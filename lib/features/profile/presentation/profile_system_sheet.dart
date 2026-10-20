@@ -7,11 +7,12 @@ import 'delete_account_action.dart';
 import 'profile_strings.dart';
 import 'settings_screen.dart';
 import 'sign_out_action.dart';
+import '../../../core/widgets/app_bottom_sheet.dart';
 
 /// Systemic profile actions: settings, admin (if allowed), sign out.
 Future<void> showProfileSystemSheet(BuildContext context, WidgetRef ref) {
   final isAdmin = ref.read(isAdminProvider);
-  return showModalBottomSheet<void>(
+  return showAppBottomSheet<void>(
     context: context,
     showDragHandle: true,
     builder: (sheetContext) {

@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../domain/health_record.dart';
 import 'health_controller.dart';
 import 'health_strings.dart';
+import '../../../../core/widgets/app_bottom_sheet.dart';
 
 Future<void> showHealthRecordSheet({
   required BuildContext context,
@@ -12,7 +13,7 @@ Future<void> showHealthRecordSheet({
   required HealthCategory category,
   HealthRecord? existing,
 }) {
-  return showModalBottomSheet<void>(
+  return showAppBottomSheet<void>(
     context: context,
     isScrollControlled: true,
     useSafeArea: true,

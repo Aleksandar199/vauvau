@@ -4,9 +4,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../domain/matching_filters.dart';
 import 'profile_controller.dart';
 import 'profile_strings.dart';
+import '../../../core/widgets/app_bottom_sheet.dart';
 
 Future<void> showMatchingFiltersSheet(BuildContext context) {
-  return showModalBottomSheet<void>(
+  return showAppBottomSheet<void>(
     context: context,
     isScrollControlled: true,
     showDragHandle: true,

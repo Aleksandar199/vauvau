@@ -6,6 +6,7 @@ import '../../../discover/domain/discover_profile.dart';
 import '../../../discover/presentation/widgets/discover_filter_chip.dart';
 import '../../domain/walking_dog_pin.dart';
 import '../map_strings.dart';
+import '../../../../core/widgets/app_bottom_sheet.dart';
 
 Future<void> showWalkerSheet({
   required BuildContext context,
@@ -13,7 +14,7 @@ Future<void> showWalkerSheet({
   required VoidCallback onJoinWalk,
   required VoidCallback onOpenChat,
 }) {
-  return showModalBottomSheet<void>(
+  return showAppBottomSheet<void>(
     context: context,
     showDragHandle: true,
     builder: (sheetContext) {

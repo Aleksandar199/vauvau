@@ -7,6 +7,7 @@ import '../../../../core/images/dog_image.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../domain/chat_message.dart';
 import 'message_reactions.dart';
+import '../../../../core/widgets/app_bottom_sheet.dart';
 
 /// Small circular sender avatar used next to chat bubbles.
 class SenderAvatar extends StatelessWidget {
@@ -200,7 +201,7 @@ Future<MessageActionChoice?> showMessageActionsSheet(
   String? currentReaction,
 }) {
   unawaited(HapticFeedback.selectionClick());
-  return showModalBottomSheet<MessageActionChoice>(
+  return showAppBottomSheet<MessageActionChoice>(
     context: context,
     showDragHandle: true,
     builder: (sheetContext) {

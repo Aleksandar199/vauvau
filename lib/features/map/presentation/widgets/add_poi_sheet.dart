@@ -7,13 +7,14 @@ import '../../domain/map_city.dart';
 import '../../domain/models/poi_model.dart';
 import '../map_strings.dart';
 import '../user_poi_controller.dart';
+import '../../../../core/widgets/app_bottom_sheet.dart';
 
 Future<void> showAddPoiSheet(
   BuildContext context,
   WidgetRef ref, {
   MapCity initialCity = MapCity.noviSad,
 }) {
-  return showModalBottomSheet<void>(
+  return showAppBottomSheet<void>(
     context: context,
     isScrollControlled: true,
     showDragHandle: true,

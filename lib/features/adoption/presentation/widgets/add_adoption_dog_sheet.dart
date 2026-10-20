@@ -11,6 +11,7 @@ import '../../../../core/widgets/breed_field.dart';
 import '../../../profile/presentation/profile_controller.dart';
 import '../adoption_controller.dart';
 import '../adoption_strings.dart';
+import '../../../../core/widgets/app_bottom_sheet.dart';
 
 class AddAdoptionDogScreen extends ConsumerStatefulWidget {
   const AddAdoptionDogScreen({super.key});
@@ -21,7 +22,7 @@ class AddAdoptionDogScreen extends ConsumerStatefulWidget {
 }
 
 Future<bool?> showAddAdoptionDogSheet(BuildContext context) {
-  return showModalBottomSheet<bool>(
+  return showAppBottomSheet<bool>(
     context: context,
     isScrollControlled: true,
     useSafeArea: true,

@@ -3,9 +3,10 @@ import 'package:flutter/material.dart';
 import '../../data/walk_locations.dart';
 import '../chat_strings.dart';
 import 'location_choice_chip.dart';
+import '../../../../core/widgets/app_bottom_sheet.dart';
 
 Future<String?> showLocationPickerSheet(BuildContext context) {
-  return showModalBottomSheet<String>(
+  return showAppBottomSheet<String>(
     context: context,
     isScrollControlled: true,
     showDragHandle: true,

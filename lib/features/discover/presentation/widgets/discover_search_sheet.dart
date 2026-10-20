@@ -3,9 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../discover_controller.dart';
 import '../discover_strings.dart';
+import '../../../../core/widgets/app_bottom_sheet.dart';
 
 Future<void> showDiscoverSearchSheet(BuildContext context) {
-  return showModalBottomSheet<void>(
+  return showAppBottomSheet<void>(
     context: context,
     isScrollControlled: true,
     showDragHandle: true,

@@ -10,6 +10,7 @@ import '../../discover/presentation/widgets/swipe_dog_card.dart';
 import '../../stories/presentation/widgets/owner_social_actions.dart';
 import '../data/owner_public_profile.dart';
 import 'profile_strings.dart';
+import '../../../core/widgets/app_bottom_sheet.dart';
 
 export '../data/owner_public_profile.dart' show OwnerProfileLoader;
 
@@ -25,7 +26,7 @@ Future<void> showOwnerProfileSheet(
   List<DiscoverProfile> fallbackDogs = const [],
   OwnerProfileLoader loader = loadOwnerPublicProfile,
 }) {
-  return showModalBottomSheet<void>(
+  return showAppBottomSheet<void>(
     context: context,
     isScrollControlled: true,
     showDragHandle: true,
@@ -220,7 +221,7 @@ class _OwnerProfileBody extends StatelessWidget {
                           ? null
                           : Text(dog.breed),
                       trailing: const Icon(Icons.chevron_right),
-                      onTap: () => showModalBottomSheet<void>(
+                      onTap: () => showAppBottomSheet<void>(
                         context: context,
                         isScrollControlled: true,
                         backgroundColor: Colors.transparent,

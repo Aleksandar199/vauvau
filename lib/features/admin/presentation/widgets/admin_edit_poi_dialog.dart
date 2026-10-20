@@ -7,6 +7,7 @@ import '../../../map/domain/map_place.dart';
 import '../../../map/domain/models/poi_model.dart';
 import '../../../map/presentation/user_poi_controller.dart';
 import '../admin_strings.dart';
+import '../../../../core/widgets/app_bottom_sheet.dart';
 
 /// Result of [showAdminEditPoiDialog].
 enum AdminEditPoiResult { cancelled, saved, savedAndResolved }
@@ -20,7 +21,7 @@ Future<AdminEditPoiResult> showAdminEditPoiDialog({
   String? reportDetails,
   bool offerResolve = false,
 }) async {
-  final result = await showModalBottomSheet<AdminEditPoiResult>(
+  final result = await showAppBottomSheet<AdminEditPoiResult>(
     context: context,
     isScrollControlled: true,
     useSafeArea: true,

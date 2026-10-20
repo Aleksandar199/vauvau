@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../domain/dog_reminder.dart';
 import 'reminder_form_sheet.dart';
 import 'reminder_strings.dart';
+import '../../../../core/widgets/app_bottom_sheet.dart';
 
 typedef ReminderDogOption = ({String id, String name});
 
@@ -11,7 +12,7 @@ Future<void> showAddReminderTypeSheet({
   required List<ReminderDogOption> dogs,
   String? preferredDogId,
 }) {
-  return showModalBottomSheet<void>(
+  return showAppBottomSheet<void>(
     context: context,
     isScrollControlled: true,
     useSafeArea: true,

@@ -5,9 +5,10 @@ import '../../../profile/domain/matching_filters.dart';
 import '../../../profile/presentation/profile_controller.dart';
 import '../discover_strings.dart';
 import 'discover_filter_chip.dart';
+import '../../../../core/widgets/app_bottom_sheet.dart';
 
 Future<void> showDiscoverFiltersSheet(BuildContext context) {
-  return showModalBottomSheet<void>(
+  return showAppBottomSheet<void>(
     context: context,
     isScrollControlled: true,
     showDragHandle: true,

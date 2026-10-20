@@ -11,9 +11,10 @@ import '../domain/lost_dog.dart';
 import '../domain/lost_dog_city.dart';
 import 'lost_dog_strings.dart';
 import 'lost_dogs_controller.dart';
+import '../../../core/widgets/app_bottom_sheet.dart';
 
 Future<String?> showReportCaseChooser(BuildContext context) {
-  return showModalBottomSheet<String>(
+  return showAppBottomSheet<String>(
     context: context,
     showDragHandle: true,
     builder: (sheetContext) {
@@ -62,7 +63,7 @@ Future<bool?> showReportLostDogSheet(
   BuildContext context, {
   String type = LostDogType.lost,
 }) {
-  return showModalBottomSheet<bool>(
+  return showAppBottomSheet<bool>(
     context: context,
     isScrollControlled: true,
     useSafeArea: true,
