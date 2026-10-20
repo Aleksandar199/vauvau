@@ -20,24 +20,46 @@ class FirestoreLostDogRepository implements LostDogRepository {
 
   @override
   Stream<List<LostDog>> watchLostDogs() {
-    // Sort client-side so missing createdAt / index issues don't blank the feed.
-    // Cap the snapshot size so the list stays responsive as the catalog grows.
+    // Newest first (every listing gets a server createdAt; a single-field
+    // order needs no composite index), capped so the list stays responsive.
     return FirestoreAuthGuard.guardedStream<List<LostDog>>(
       label: 'lostDogs.watch',
       empty: const [],
-      create: () => _col.limit(40).snapshots().map((snapshot) {
-        final dogs = <LostDog>[];
-        for (final doc in snapshot.docs) {
-          try {
-            dogs.add(_fromDoc(doc));
-          } catch (error) {
-            debugPrint('Lost dog parse skipped (${doc.id}): $error');
-          }
-        }
-        dogs.sort((a, b) => b.createdAt.compareTo(a.createdAt));
-        return dogs;
-      }),
+      create: () => _col
+          .orderBy('createdAt', descending: true)
+          .limit(60)
+          .snapshots()
+          .map(_dogsFromSnapshot),
     );
+  }
+
+  @override
+  Stream<List<LostDog>> watchLostDogsInCity(String cityId) {
+    // Equality only (no orderBy): needs no composite index. Sorted below.
+    return FirestoreAuthGuard.guardedStream<List<LostDog>>(
+      label: 'lostDogs.watchCity',
+      empty: const [],
+      create: () => _col
+          .where('cityId', isEqualTo: cityId)
+          .limit(40)
+          .snapshots()
+          .map(_dogsFromSnapshot),
+    );
+  }
+
+  List<LostDog> _dogsFromSnapshot(
+    QuerySnapshot<Map<String, dynamic>> snapshot,
+  ) {
+    final dogs = <LostDog>[];
+    for (final doc in snapshot.docs) {
+      try {
+        dogs.add(_fromDoc(doc));
+      } catch (error) {
+        debugPrint('Lost dog parse skipped (${doc.id}): $error');
+      }
+    }
+    dogs.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    return dogs;
   }
 
   @override
@@ -75,6 +97,7 @@ class FirestoreLostDogRepository implements LostDogRepository {
       'breed': dog.breed,
       'type': dog.type,
       'city': dog.city,
+      if (dog.cityId.isNotEmpty) 'cityId': dog.cityId,
       'neighborhood': dog.neighborhood,
       'lostDate': Timestamp.fromDate(
         dog.isFoundListing ? eventDate : dog.lostDate,
@@ -231,6 +254,7 @@ class FirestoreLostDogRepository implements LostDogRepository {
       breed: data['breed'] as String? ?? '',
       type: type,
       city: data['city'] as String? ?? '',
+      cityId: data['cityId'] is String ? data['cityId'] as String : '',
       neighborhood: data['neighborhood'] as String? ?? '',
       lostDate: lostDate,
       foundDate: foundDate,
@@ -302,8 +326,8 @@ class FirestoreLostDogRepository implements LostDogRepository {
       final map = item is Map<String, dynamic>
           ? item
           : item is Map
-              ? Map<String, dynamic>.from(item)
-              : null;
+          ? Map<String, dynamic>.from(item)
+          : null;
       if (map == null) {
         continue;
       }

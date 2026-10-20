@@ -1,4 +1,5 @@
 import 'lost_dog.dart';
+import 'lost_dog_city.dart';
 
 abstract final class LostDogMatcher {
   static const _stopWords = {
@@ -45,7 +46,7 @@ abstract final class LostDogMatcher {
   }
 
   static int _score(LostDog found, LostDog lost) {
-    if (!_samePlace(found.city, lost.city)) {
+    if (!_sameCity(found, lost)) {
       return 0;
     }
     var score = 1;
@@ -63,6 +64,15 @@ abstract final class LostDogMatcher {
       return 0;
     }
     return score;
+  }
+
+  static bool _sameCity(LostDog a, LostDog b) {
+    final left = LostDogCity.idOf(a);
+    final right = LostDogCity.idOf(b);
+    if (left != null && right != null) {
+      return left == right;
+    }
+    return _samePlace(a.city, b.city);
   }
 
   static bool _samePlace(String a, String b) {
@@ -88,7 +98,9 @@ abstract final class LostDogMatcher {
   }
 
   static bool _keywordsOverlap(LostDog found, LostDog lost) {
-    final left = _tokens('${found.description} ${found.dogName} ${found.breed}');
+    final left = _tokens(
+      '${found.description} ${found.dogName} ${found.breed}',
+    );
     final right = _tokens('${lost.description} ${lost.dogName} ${lost.breed}');
     if (left.isEmpty || right.isEmpty) {
       return false;

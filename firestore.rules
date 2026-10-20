@@ -861,13 +861,23 @@ service cloud.firestore {
           );
       }
 
+      // cityId is optional (old clients never send it, old listings lack it);
+      // when present it must be a SerbiaLocations city id.
+      function validLostDogCity() {
+        return !('cityId' in request.resource.data) ||
+          request.resource.data.cityId in
+            ['novi_sad', 'beograd', 'nis', 'kragujevac', 'zrenjanin', 'subotica'];
+      }
+
       allow read: if true;
       allow create: if isAuthenticated() &&
         request.resource.data.uploaderUserId == request.auth.uid &&
+        validLostDogCity() &&
         notSuspended();
       // Owner or admin may update (e.g. mark resolved).
       allow update: if isAuthenticated() &&
-        (request.auth.uid == resource.data.uploaderUserId || isAdmin());
+        (request.auth.uid == resource.data.uploaderUserId || isAdmin()) &&
+        validLostDogCity();
       // Anyone signed in may append one sighting comment as themselves:
       // existing comments stay identical (no rewriting others' text) and
       // commentsCount goes up by exactly 1.

@@ -5,7 +5,9 @@ import '../../../core/images/dog_image.dart';
 import '../../../core/theme/app_cards.dart';
 import '../../../core/widgets/feed_state.dart';
 import '../../auth/presentation/auth_providers.dart';
+import '../../../core/constants/serbia_locations.dart';
 import '../domain/lost_dog.dart';
+import '../domain/lost_dog_city.dart';
 import '../domain/lost_dog_matcher.dart';
 import 'lost_dog_actions.dart';
 import 'lost_dog_strings.dart';
@@ -47,8 +49,10 @@ class _LostDogsScreenState extends ConsumerState<LostDogsScreen>
   @override
   Widget build(BuildContext context) {
     final catalogAsync = ref.watch(lostDogsControllerProvider);
-    final lost = ref.watch(activeLostDogsProvider);
-    final found = ref.watch(activeFoundDogsProvider);
+    final cityFilter = ref.watch(lostDogCityFilterProvider);
+    final cityCatalog = ref.watch(cityLostDogsProvider);
+    final lost = ref.watch(cityMissingDogsProvider);
+    final found = ref.watch(cityFoundDogsProvider);
     final uid = ref.watch(lostDogReporterIdProvider);
     final isAdmin = ref.watch(isAdminProvider);
     final theme = Theme.of(context);
@@ -94,11 +98,21 @@ class _LostDogsScreenState extends ConsumerState<LostDogsScreen>
           retryLabel: LostDogStrings.retry,
         ),
         data: (catalog) {
+          // Matches look across every loaded listing, also other cities' old
+          // ones (the matcher itself requires the same city).
+          final matchCatalog = {
+            for (final dog in [...catalog, ...cityCatalog]) dog.id: dog,
+          }.values.toList();
           return Column(
             children: [
+              _CityFilterBar(
+                selected: cityFilter,
+                onSelected: (filter) =>
+                    ref.read(lostDogCityFilterProvider.notifier).select(filter),
+              ),
               Container(
                 width: double.infinity,
-                margin: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                margin: const EdgeInsets.fromLTRB(16, 4, 16, 8),
                 padding: const EdgeInsets.symmetric(
                   horizontal: 14,
                   vertical: 12,
@@ -123,8 +137,14 @@ class _LostDogsScreenState extends ConsumerState<LostDogsScreen>
                 child: visible.isEmpty
                     ? FeedStateView(
                         icon: Icons.search_off,
-                        title: _emptyLabel,
-                        subtitle: LostDogStrings.emptySubtitle,
+                        title: cityFilter == LostDogCity.all
+                            ? _emptyLabel
+                            : LostDogStrings.emptyInCity(
+                                _cityLabel(cityFilter),
+                              ),
+                        subtitle: cityFilter == LostDogCity.all
+                            ? LostDogStrings.emptySubtitle
+                            : LostDogStrings.emptyInCitySubtitle,
                       )
                     : ListView.separated(
                         padding: const EdgeInsets.fromLTRB(16, 4, 16, 88),
@@ -139,7 +159,7 @@ class _LostDogsScreenState extends ConsumerState<LostDogsScreen>
                                 uid.isNotEmpty && uid == dog.uploaderUserId,
                             isAdmin: isAdmin,
                             matches: dog.isFoundListing
-                                ? LostDogMatcher.matchesFor(dog, catalog)
+                                ? LostDogMatcher.matchesFor(dog, matchCatalog)
                                 : const [],
                           );
                         },
@@ -204,6 +224,52 @@ class _LostDogsScreenState extends ConsumerState<LostDogsScreen>
     if (type == LostDogType.found) {
       _tabs.animateTo(1);
     }
+  }
+}
+
+String _cityLabel(String filter) {
+  if (filter == LostDogCity.all) {
+    return LostDogStrings.allCities;
+  }
+  if (filter == LostDogCity.other) {
+    return LostDogStrings.otherCity;
+  }
+  return SerbiaLocations.cityById(filter)?.name ?? filter;
+}
+
+/// City chips: Svi gradovi · each [SerbiaLocations] city · Ostalo.
+class _CityFilterBar extends StatelessWidget {
+  const _CityFilterBar({required this.selected, required this.onSelected});
+
+  final String selected;
+  final ValueChanged<String> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    final filters = [
+      LostDogCity.all,
+      for (final city in SerbiaLocations.cities) city.id,
+      LostDogCity.other,
+    ];
+    return SizedBox(
+      height: 52,
+      child: ListView.separated(
+        key: const ValueKey('lost-dog-city-filter'),
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+        itemCount: filters.length,
+        separatorBuilder: (context, index) => const SizedBox(width: 8),
+        itemBuilder: (context, index) {
+          final filter = filters[index];
+          return ChoiceChip(
+            key: ValueKey('lost-dog-city-$filter'),
+            label: Text(_cityLabel(filter)),
+            selected: filter == selected,
+            onSelected: (_) => onSelected(filter),
+          );
+        },
+      ),
+    );
   }
 }
 

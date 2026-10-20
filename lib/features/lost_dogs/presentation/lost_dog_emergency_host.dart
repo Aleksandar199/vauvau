@@ -45,9 +45,10 @@ class _LostDogEmergencyHostState extends ConsumerState<LostDogEmergencyHost> {
 
   @override
   Widget build(BuildContext context) {
-    final recent = ref.watch(recentMissingLostDogsProvider);
+    // Only the user's own city (everyone when the user has no city).
+    final recent = ref.watch(emergencyLostDogsProvider);
     _maybeShow(recent);
-    ref.listen(recentMissingLostDogsProvider, (previous, next) {
+    ref.listen(emergencyLostDogsProvider, (previous, next) {
       _maybeShow(next);
     });
     return widget.child;

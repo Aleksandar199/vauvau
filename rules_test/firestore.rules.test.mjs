@@ -896,6 +896,45 @@ describe('9. lost_dogs komentari', () => {
   });
 });
 
+// ------------------------------------------- 9b. lost_dogs grad
+describe('9b. lost_dogs cityId', () => {
+  const listing = (extra = {}) => ({
+    uploaderUserId: 'alice',
+    dogName: 'Maks',
+    city: 'Novi Sad',
+    status: 'active',
+    comments: [],
+    commentsCount: 0,
+    commentLikes: {},
+    ...extra,
+  });
+
+  test('novi oglas sa poznatim cityId', async () => {
+    await assertSucceeds(
+      setDoc(doc(as('alice'), 'lost_dogs/n1'), listing({ cityId: 'novi_sad' })),
+    );
+    await assertSucceeds(
+      setDoc(doc(as('alice'), 'lost_dogs/n2'), listing({ city: 'Subotica', cityId: 'subotica' })),
+    );
+  });
+
+  test('stari klijent bez cityId i dalje objavljuje', async () => {
+    await assertSucceeds(setDoc(doc(as('alice'), 'lost_dogs/n3'), listing()));
+  });
+
+  test('nepoznat ili pogrešan tip cityId se odbija', async () => {
+    await assertFails(setDoc(doc(as('alice'), 'lost_dogs/n4'), listing({ cityId: 'pariz' })));
+    await assertFails(setDoc(doc(as('alice'), 'lost_dogs/n5'), listing({ cityId: 7 })));
+    await assertFails(setDoc(doc(as('alice'), 'lost_dogs/n6'), listing({ cityId: '' })));
+  });
+
+  test('vlasnik menja grad samo u poznat cityId', async () => {
+    await assertSucceeds(updateDoc(doc(as('carol'), 'lost_dogs/l1'), { cityId: 'beograd' }));
+    await assertFails(updateDoc(doc(as('carol'), 'lost_dogs/l1'), { cityId: 'xyz' }));
+    await assertFails(updateDoc(doc(as('bob'), 'lost_dogs/l1'), { cityId: 'nis' }));
+  });
+});
+
 // ------------------------------------------- 10. nizovi lajkova
 describe('10. lajkovi: samo svoj uid', () => {
   test('moments: svoj lajk/unlike prolazi, tuđi uid pada', async () => {

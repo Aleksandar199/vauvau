@@ -126,6 +126,7 @@ void main() {
     final dogs = await repo.watchLostDogs().first;
     final saved = dogs.firstWhere((dog) => dog.dogName == 'Maks');
     expect(saved.city, 'Beograd');
+    expect(saved.cityId, 'beograd');
     expect(saved.neighborhood, 'Blok 45');
   });
 }

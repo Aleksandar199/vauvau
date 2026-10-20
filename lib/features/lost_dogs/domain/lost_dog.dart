@@ -14,11 +14,15 @@ class LostDog {
     this.type = LostDogType.lost,
     this.breed = '',
     this.foundDate,
+    this.cityId = '',
   });
 
   final String id;
   final String dogName;
   final String city;
+
+  /// [SerbiaLocations] city id; empty on old listings (see `LostDogCity`).
+  final String cityId;
   final String neighborhood;
   final DateTime lostDate;
   final DateTime? foundDate;
@@ -40,8 +44,7 @@ class LostDog {
 
   bool get isMissing => isLostListing && isActive;
 
-  DateTime get eventDate =>
-      isFoundListing ? (foundDate ?? lostDate) : lostDate;
+  DateTime get eventDate => isFoundListing ? (foundDate ?? lostDate) : lostDate;
 
   String get placeLabel {
     if (city.isEmpty) {
@@ -57,6 +60,7 @@ class LostDog {
     String? id,
     String? dogName,
     String? city,
+    String? cityId,
     String? neighborhood,
     DateTime? lostDate,
     DateTime? foundDate,
@@ -73,6 +77,7 @@ class LostDog {
       id: id ?? this.id,
       dogName: dogName ?? this.dogName,
       city: city ?? this.city,
+      cityId: cityId ?? this.cityId,
       neighborhood: neighborhood ?? this.neighborhood,
       lostDate: lostDate ?? this.lostDate,
       foundDate: foundDate ?? this.foundDate,

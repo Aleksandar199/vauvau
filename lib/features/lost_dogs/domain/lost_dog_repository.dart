@@ -3,7 +3,12 @@ import 'package:image_picker/image_picker.dart';
 import 'lost_dog.dart';
 
 abstract class LostDogRepository {
+  /// Newest listings from every city.
   Stream<List<LostDog>> watchLostDogs();
+
+  /// Listings stored with this `cityId` (old listings without it are only
+  /// in [watchLostDogs]).
+  Stream<List<LostDog>> watchLostDogsInCity(String cityId);
 
   Stream<List<LostDogComment>> watchComments(String dogId);
 

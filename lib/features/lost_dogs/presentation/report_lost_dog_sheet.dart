@@ -8,6 +8,7 @@ import '../../../core/network/network_failure.dart';
 import '../../../core/utils/content_validation_service.dart';
 import '../../adoption/presentation/adoption_strings.dart';
 import '../domain/lost_dog.dart';
+import '../domain/lost_dog_city.dart';
 import 'lost_dog_strings.dart';
 import 'lost_dogs_controller.dart';
 
@@ -426,6 +427,7 @@ class _ReportLostDogSheetState extends ConsumerState<ReportLostDogSheet> {
       final ok = await ref.read(lostDogsControllerProvider.notifier).report(
             dogName: name.isEmpty ? LostDogStrings.unknownName : name,
             city: _city,
+            cityId: LostDogCity.idForFormCity(_city) ?? '',
             neighborhood: _resolvedNeighborhood,
             eventDate: _eventDate,
             description: _description.text.trim(),

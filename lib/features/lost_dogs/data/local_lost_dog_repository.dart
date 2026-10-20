@@ -15,8 +15,8 @@ class LocalLostDogRepository implements LostDogRepository {
   final List<LostDog> _dogs;
   final Map<String, List<LostDogComment>> _comments = {};
   final _controller = StreamController<List<LostDog>>.broadcast();
-  final Map<String, StreamController<List<LostDogComment>>> _commentControllers =
-      {};
+  final Map<String, StreamController<List<LostDogComment>>>
+  _commentControllers = {};
 
   void dispose() {
     _controller.close();
@@ -32,6 +32,16 @@ class LocalLostDogRepository implements LostDogRepository {
   }
 
   @override
+  Stream<List<LostDog>> watchLostDogsInCity(String cityId) {
+    return watchLostDogs().map(
+      (dogs) => [
+        for (final dog in dogs)
+          if (dog.cityId == cityId) dog,
+      ],
+    );
+  }
+
+  @override
   Stream<List<LostDogComment>> watchComments(String dogId) async* {
     yield List<LostDogComment>.from(_comments[dogId] ?? const []);
     yield* _commentController(dogId).stream;
@@ -42,13 +52,7 @@ class LocalLostDogRepository implements LostDogRepository {
     final id = dog.id.isEmpty
         ? 'lost-${DateTime.now().millisecondsSinceEpoch}'
         : dog.id;
-    _dogs.insert(
-      0,
-      dog.copyWith(
-        id: id,
-        imageUrl: dog.imageUrl,
-      ),
-    );
+    _dogs.insert(0, dog.copyWith(id: id, imageUrl: dog.imageUrl));
     _controller.add(List<LostDog>.from(_dogs));
   }
 

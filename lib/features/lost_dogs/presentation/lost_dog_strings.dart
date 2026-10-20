@@ -26,6 +26,17 @@ abstract final class LostDogStrings {
         'Prijavite nestanak ili pronalazak da pomognete lokalnoj zajednici.',
         'Report a loss or find to help the local community.',
       );
+  static String get allCities => L10n.tr('Svi gradovi', 'All cities');
+  static String get otherCity =>
+      L10n.tr('Ostalo / nepoznat grad', 'Other / unknown city');
+  static String emptyInCity(String city) => L10n.tr(
+        'Nema aktivnih prijava za: $city.',
+        'No active reports for: $city.',
+      );
+  static String get emptyInCitySubtitle => L10n.tr(
+        'Izaberi „Svi gradovi“ da vidiš prijave iz cele Srbije.',
+        'Pick “All cities” to see reports from all of Serbia.',
+      );
   static String get loadError =>
       L10n.tr('Došlo je do greške. Pokušajte ponovo.', 'Something went wrong. Try again.');
   static String get retry => L10n.tr('Pokušaj ponovo', 'Try again');
