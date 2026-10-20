@@ -63,7 +63,7 @@ void main() {
 
     expect(find.text(SupportStrings.title), findsOneWidget);
     expect(find.text('SOS'), findsOneWidget);
-    expect(find.text('NS VET (00–24h)'), findsOneWidget);
+    expect(find.text('Milenium Vet'), findsOneWidget);
 
     final tabLabels = tester
         .widgetList<Tab>(find.byType(Tab))

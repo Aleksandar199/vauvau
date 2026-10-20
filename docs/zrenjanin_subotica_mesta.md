@@ -114,7 +114,7 @@ Radijus 15 km, zum 13 (kao Niš/Kragujevac).
 | PetShop Sumo, Pedigree, Luna M (Zrenjanin) | Samo OSM ime, bez adrese. |
 | Prihvatilište Zrenjanin | Nije nađena adresa ni operater. |
 | Park za pse u Dudovoj šumi (Subotica) | Grad ga je otvorio 2020, ali tačno mesto nije ucrtano → bez izmišljenog pina; pomenut u opisu parka. |
-| Prihvatilište – „Zapadni vinogradi bb“ (Subotica) | Planplus; gradski članak navodi Deveta nova 249 – proveriti koja je tačna. |
+| Prihvatilište – „Zapadni vinogradi bb“ (Subotica) | Planplus; gradski članak navodi Deveta nova 249 – proveriti koja je tačna. **2026-10-20:** zvanični kontakt JKP (cistoca-su.co.rs/kontakt) navodi „9. Nova 249 (Ganjo šor 137)“, tel. 024 670 595 i 062 248 915 – vidi `docs/sos_kontakti.md`. |
 | Veterinarski specijalistički institut Subotica, Segedinski put 88 | Institut (laboratorija, farme), nije ambulanta za ljubimce; na istoj adresi je javna veterinarska stanica (dodata kao unknown). |
 | Panvet – broj za hitne | Sajt i OSM se razlikuju (065/9751 920 vs 065 9571920) → nije upisan. |
 | Nera & Ciara Pet (Arsenija Čarnojevića 70), Paw Styler (Dože Đerđa 15), Pet salon Tiffany (Antona Askerca 42), GroomRoom Nevena (Mihajla Radnića 16), Maša Grooming (Porečka 20) – Subotica | Nijedan javni izvor nije nađen. |

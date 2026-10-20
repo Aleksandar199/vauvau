@@ -5,13 +5,36 @@ abstract final class SupportStrings {
   static String get rulesTab => L10n.tr('📜 Pravila', '📜 Rules');
   static String get tipsTab => L10n.tr('💡 Saveti', '💡 Tips');
   static String get contactTab => L10n.tr('✉️ Piši Adminu', '✉️ Contact admin');
-  static String get sosIntro =>
-      L10n.tr('Dežurne službe 00–24h. Novi Sad i Beograd.', 'On-call services 24/7. Novi Sad and Belgrade.');
+  static String get sosIntro => L10n.tr(
+        'Izaberite grad. Radno vreme je preuzeto sa zvaničnih sajtova – pre polaska pozovite.',
+        'Choose a city. Hours are taken from official websites – call before you go.',
+      );
   static String get sosBadge => L10n.tr('HITNA POMOĆ', 'EMERGENCY');
   static String get sosSubtitle => L10n.tr('Brze linije i dežurne službe', 'Hotlines and on-call services');
   static String get sosVet => L10n.tr('VETERINAR', 'VET');
   static String get sosShelter => L10n.tr('AZIL / ZOOHIGIJENA', 'SHELTER / ANIMAL CONTROL');
   static String get sosLocal => L10n.tr('LOKALNA SLUŽBA', 'LOCAL SERVICE');
+  static String get sosGroupEmergencyVet =>
+      L10n.tr('Dežurni veterinar 0–24', 'On-call vet 24/7');
+  static String get sosGroupVetClinic =>
+      L10n.tr('Veterinarske ambulante', 'Vet clinics');
+  static String get sosGroupAnimalControl =>
+      L10n.tr('Zoohigijena i prihvatilišta', 'Animal control & shelters');
+  static String get sosGroupOther => L10n.tr('Ostalo', 'Other');
+  static String get sosNoContacts => L10n.tr(
+        'Za ovaj grad još nemamo proverene kontakte.',
+        'We have no verified contacts for this city yet.',
+      );
+  static String get sosNo24h => L10n.tr(
+        'Za ovaj grad nismo našli zvanično potvrđenog veterinara 0–24. Pogledajte dežurstva ambulanti ispod.',
+        'We found no officially confirmed 24/7 vet for this city. See clinic on-call hours below.',
+      );
+  static String get sosNavigate => L10n.tr('Navigacija', 'Directions');
+  static String get sosWebsite => L10n.tr('Sajt', 'Website');
+  static String sosCheckedOn(String date) => L10n.tr(
+        'Kontakti provereni $date.',
+        'Contacts checked on $date.',
+      );
   static String get sosHelpTitle => L10n.tr('Brza pomoć', 'Quick help');
   static String get callNow => L10n.tr('Pozovi', 'Call');
   static String get callUnavailable =>
