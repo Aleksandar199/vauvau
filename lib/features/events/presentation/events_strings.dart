@@ -45,6 +45,13 @@ abstract final class EventsStrings {
   static String get publishError =>
       L10n.tr('Šetnja nije sačuvana. Pokušajte ponovo.', 'Walk was not saved. Try again.');
   static String get addPhoto => L10n.tr('Dodaj fotografiju', 'Add photo');
+  static String get changePhoto => L10n.tr('Promeni fotografiju', 'Change photo');
+  static String get removePhoto => L10n.tr('Ukloni fotografiju', 'Remove photo');
+  static String get openPhoto => L10n.tr('Otvori fotografiju', 'Open photo');
+  static String get photoPreviewHint => L10n.tr(
+        'Ovako će slika izgledati na događaju. Dodirni za ceo prikaz.',
+        'This is how the photo will look on the event. Tap to view it fully.',
+      );
   static String get mapBanner => L10n.tr('📅 Događaji i šetnje', '📅 Events & walks');
   static String get successTitle => L10n.tr('Uspešno kreirano', 'Created successfully');
   static String get successBody => L10n.tr(

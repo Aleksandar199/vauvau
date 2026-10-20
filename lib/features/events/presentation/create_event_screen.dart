@@ -1,8 +1,11 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../../core/constants/serbia_locations.dart';
+import '../../../core/images/blur_fill_image.dart';
+import '../../../core/theme/app_cards.dart';
 import '../../location/presentation/home_city_provider.dart';
 import '../data/seed_events.dart';
 import 'events_controller.dart';
@@ -42,6 +45,7 @@ class _CreateEventScreenState extends ConsumerState<CreateEventScreen> {
   String? _preset;
   DateTime _when = DateTime.now().add(const Duration(days: 1));
   XFile? _photo;
+  Uint8List? _photoBytes;
   var _isLoading = false;
 
   List<String> get _venues => ref.read(eventVenuesProvider(_cityId));
@@ -213,13 +217,49 @@ class _CreateEventScreenState extends ConsumerState<CreateEventScreen> {
                   : null,
             ),
             SizedBox(height: 12),
+            if (_photoBytes case final bytes?) ...[
+              Stack(
+                children: [
+                  BlurFillImage(
+                    key: const ValueKey('event-photo-preview'),
+                    borderRadius: AppCardTokens.imageBorderRadius,
+                    tapTooltip: EventsStrings.openPhoto,
+                    onTap: () => showImageFullScreen(
+                      context,
+                      imageBuilder: (fit) => _previewImage(bytes, fit),
+                    ),
+                    imageBuilder: (fit) => _previewImage(bytes, fit),
+                  ),
+                  Positioned(
+                    top: 6,
+                    right: 6,
+                    child: IconButton.filledTonal(
+                      tooltip: EventsStrings.removePhoto,
+                      onPressed: _isLoading
+                          ? null
+                          : () => setState(() {
+                                _photo = null;
+                                _photoBytes = null;
+                              }),
+                      icon: const Icon(Icons.close_rounded),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 6),
+              Text(
+                EventsStrings.photoPreviewHint,
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+              const SizedBox(height: 8),
+            ],
             OutlinedButton.icon(
               onPressed: _isLoading ? null : _pickPhoto,
               icon: const Icon(Icons.photo_outlined),
               label: Text(
                 _photo == null
                     ? EventsStrings.addPhoto
-                    : EventsStrings.fieldPhoto,
+                    : EventsStrings.changePhoto,
               ),
             ),
             const SizedBox(height: 20),
@@ -312,9 +352,36 @@ class _CreateEventScreenState extends ConsumerState<CreateEventScreen> {
 
   Future<void> _pickPhoto() async {
     final file = await ImagePicker().pickImage(source: ImageSource.gallery);
-    if (file != null) {
-      setState(() => _photo = file);
+    if (file == null) {
+      return;
     }
+    Uint8List? bytes;
+    try {
+      bytes = await file.readAsBytes();
+    } catch (_) {
+      bytes = null;
+    }
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      _photo = file;
+      _photoBytes = bytes;
+    });
+  }
+
+  Widget _previewImage(Uint8List bytes, BoxFit fit) {
+    return Image.memory(
+      bytes,
+      fit: fit,
+      gaplessPlayback: true,
+      errorBuilder: (_, _, _) => ColoredBox(
+        color: Colors.grey.shade300,
+        child: const Center(
+          child: Icon(Icons.broken_image_outlined, color: Colors.grey),
+        ),
+      ),
+    );
   }
 
   String _resolvedLocation() {

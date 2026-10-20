@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 
-import '../../../../core/images/dog_image.dart';
 import '../../../../core/theme/app_cards.dart';
 import '../../../../core/constants/serbia_locations.dart';
 import '../../data/seed_events.dart';
 import '../../domain/event_model.dart';
 import '../events_strings.dart';
+import 'event_photo.dart';
 
 String _locationLabel(EventModel event) {
   final cityId = EventVenues.cityIdForEvent(event);
@@ -48,14 +48,7 @@ class EventCard extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
             child: Stack(
               children: [
-                ClipRRect(
-                  borderRadius: AppCardTokens.imageBorderRadius,
-                  child: SizedBox(
-                    height: 148,
-                    width: double.infinity,
-                    child: buildDogImage(event.imageUrl, seed: event.id),
-                  ),
-                ),
+                EventPhoto(event: event),
                 Positioned(
                   top: 8,
                   left: 8,

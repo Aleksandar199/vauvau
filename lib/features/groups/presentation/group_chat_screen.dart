@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../../core/images/dog_image.dart';
+import '../../../core/images/dog_photo_urls.dart';
 import '../../../core/network/network_failure.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/message_reactions.dart';
@@ -560,12 +561,23 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen> {
       appBar: AppBar(
         title: Row(
           children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(10),
-              child: SizedBox(
-                width: 36,
-                height: 36,
-                child: buildDogImage(imageUrl, seed: widget.threadId),
+            GestureDetector(
+              key: const ValueKey('group-chat-header-photo'),
+              // Thumbnail stays cropped; tap shows the whole photo.
+              onTap: isUnusableDogPhotoUrl(imageUrl)
+                  ? null
+                  : () => showDogPhotoViewer(
+                        context,
+                        photos: [imageUrl!.trim()],
+                        seed: widget.threadId,
+                      ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(10),
+                child: SizedBox(
+                  width: 36,
+                  height: 36,
+                  child: buildDogImage(imageUrl, seed: widget.threadId),
+                ),
               ),
             ),
             const SizedBox(width: 10),
