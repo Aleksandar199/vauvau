@@ -408,6 +408,12 @@ class _BreedTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final found = group;
+    final compact = ButtonStyle(
+      minimumSize: const WidgetStatePropertyAll(Size(0, 40)),
+      padding: const WidgetStatePropertyAll(
+        EdgeInsets.symmetric(horizontal: 14),
+      ),
+    );
     final cityName = found == null
         ? ''
         : SerbiaLocations.cityById(found.cityId)?.name ?? '';
@@ -425,28 +431,55 @@ class _BreedTile extends StatelessWidget {
           color: theme.colorScheme.outline.withValues(alpha: 0.35),
         ),
       ),
-      child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-        leading: Icon(Icons.pets, color: theme.colorScheme.primary),
-        title: Text(
-          GroupRanking.breedLabel(breed),
-          style: const TextStyle(fontWeight: FontWeight.w800),
-        ),
-        subtitle: Text(subtitle),
-        trailing: found == null
-            ? OutlinedButton(
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.pets, color: theme.colorScheme.primary),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        GroupRanking.breedLabel(breed),
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(subtitle, style: theme.textTheme.bodySmall),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            // Same layout as GroupCard: the button sits under the text, so a
+            // long label can never squeeze the title.
+            if (found == null)
+              OutlinedButton(
+                style: compact,
                 onPressed: onSuggest,
                 child: Text(GroupsStrings.suggestGroup),
               )
-            : found.isMember(memberId)
-            ? OutlinedButton(
+            else if (found.isMember(memberId))
+              OutlinedButton(
+                style: compact,
                 onPressed: () => onOpen(found),
                 child: Text(GroupsStrings.openChat),
               )
-            : FilledButton(
+            else
+              FilledButton(
+                style: compact,
                 onPressed: () => onJoin(found),
                 child: Text(GroupsStrings.join),
               ),
+          ],
+        ),
       ),
     );
   }

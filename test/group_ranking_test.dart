@@ -397,4 +397,30 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text(GroupsStrings.submitGroup), findsOneWidget);
   });
+
+  testWidgets('breed row on a phone-width screen keeps its title readable', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(360, 780));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final repo = LocalGroupsRepository(currentUserId: 'local-user');
+    addTearDown(repo.dispose);
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [groupsRepositoryProvider.overrideWith((ref) => repo)],
+        child: const MaterialApp(home: GroupsListScreen()),
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+    await tester.tap(find.text(GroupsStrings.tabBreeds));
+    await tester.pumpAndSettle();
+
+    // Regression: the theme's full-width button squeezed the title to one
+    // letter per line.
+    final title = tester.getSize(find.text('Pudle'));
+    expect(title.height, lessThan(30));
+    expect(title.width, greaterThan(30));
+    expect(find.text(GroupsStrings.suggestGroup).first, findsOneWidget);
+  });
 }
