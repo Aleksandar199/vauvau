@@ -15,9 +15,7 @@ enum MapLayerFilter {
   training,
   hotels,
   selfWash,
-  dogTreats,
   shelter,
-  water,
   sitters,
   walkers,
 }
@@ -39,9 +37,7 @@ extension MapLayerFilterX on MapLayerFilter {
         MapLayerFilter.training => MapStrings.filterTraining,
         MapLayerFilter.hotels => MapStrings.filterHotels,
         MapLayerFilter.selfWash => MapStrings.filterSelfWash,
-        MapLayerFilter.dogTreats => MapStrings.filterDogTreats,
         MapLayerFilter.shelter => MapStrings.filterShelter,
-        MapLayerFilter.water => MapStrings.filterWater,
         MapLayerFilter.sitters => MapStrings.filterSitters,
         MapLayerFilter.walkers => MapStrings.filterWalkers,
       };
@@ -57,9 +53,7 @@ extension MapLayerFilterX on MapLayerFilter {
         MapLayerFilter.training => MapPlaceType.training,
         MapLayerFilter.hotels => MapPlaceType.dogHotel,
         MapLayerFilter.selfWash => MapPlaceType.selfWash,
-        MapLayerFilter.dogTreats => MapPlaceType.dogTreats,
         MapLayerFilter.shelter => MapPlaceType.shelter,
-        MapLayerFilter.water => MapPlaceType.water,
         MapLayerFilter.sitters => MapPlaceType.petSitter,
         _ => null,
       };
@@ -80,9 +74,7 @@ extension MapLayerFilterX on MapLayerFilter {
       this == MapLayerFilter.training ||
       this == MapLayerFilter.hotels ||
       this == MapLayerFilter.selfWash ||
-      this == MapLayerFilter.dogTreats ||
       this == MapLayerFilter.shelter ||
-      this == MapLayerFilter.water ||
       this == MapLayerFilter.sitters;
 
   /// Compact chips on the map header.
@@ -105,9 +97,7 @@ extension MapLayerFilterX on MapLayerFilter {
     MapLayerFilter.training,
     MapLayerFilter.hotels,
     MapLayerFilter.selfWash,
-    MapLayerFilter.dogTreats,
     MapLayerFilter.shelter,
-    MapLayerFilter.water,
     MapLayerFilter.sitters,
   ];
 }
@@ -334,9 +324,7 @@ abstract final class MapStrings {
   static String get filterLodging => L10n.tr('🏨 Smeštaj', '🏨 Lodging');
   static String get filterTraining => L10n.tr('🎓 Dresura', '🎓 Training');
   static String get filterSelfWash => L10n.tr('🛁 Perionica', '🛁 Wash');
-  static String get filterDogTreats => L10n.tr('🥩 Hrana', '🥩 Food');
   static String get filterShelter => L10n.tr('🐾 Udomljavanje', '🐾 Adoption');
-  static String get filterWater => L10n.tr('💧 Voda', '💧 Water');
   static String get filterSitters => L10n.tr('Dog Sitter / Čuvanje', 'Dog sitter / boarding');
   static String get filterEmergency => L10n.tr('🚨 24/7 Hitno', '🚨 24/7 Emergency');
   static String get filterPetShops => L10n.tr('🛍️ Pet Shop', '🛍️ Pet shop');

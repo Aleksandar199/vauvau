@@ -221,16 +221,16 @@ class WalkGpsBanner extends ConsumerWidget {
       networkStateProvider.select((state) => state.isOffline),
     );
     const textStyle = TextStyle(
-      fontSize: 11,
+      fontSize: 10,
       color: Colors.white,
       fontWeight: FontWeight.w500,
-      height: 1.25,
+      height: 1.2,
     );
     return Material(
       color: Colors.transparent,
       child: Container(
         width: double.infinity,
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
         decoration: BoxDecoration(
           color: Colors.black.withValues(alpha: 0.6),
           borderRadius: BorderRadius.circular(12),
@@ -243,10 +243,10 @@ class WalkGpsBanner extends ConsumerWidget {
               children: [
                 Icon(
                   isPaused ? Icons.pause_circle_filled : Icons.gps_fixed,
-                  size: 16,
+                  size: 13,
                   color: isPaused ? Colors.amber : const Color(0xFF4ADE80),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: 6),
                 Expanded(
                   child: Text(
                     isPaused
@@ -257,11 +257,11 @@ class WalkGpsBanner extends ConsumerWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: 2),
             Row(
               children: [
-                const Icon(Icons.lock_outline, size: 14, color: Colors.white70),
-                const SizedBox(width: 8),
+                const Icon(Icons.lock_outline, size: 12, color: Colors.white70),
+                const SizedBox(width: 6),
                 Expanded(
                   child: Text(
                     '${MapStrings.privacyRouteOnlyYou} '
@@ -275,8 +275,8 @@ class WalkGpsBanner extends ConsumerWidget {
               const SizedBox(height: 4),
               Row(
                 children: [
-                  const Icon(Icons.wifi_off, size: 14, color: Colors.amber),
-                  const SizedBox(width: 8),
+                  const Icon(Icons.wifi_off, size: 12, color: Colors.amber),
+                  const SizedBox(width: 6),
                   Expanded(
                     child: Text(
                       NetworkStrings.walkOffline,
@@ -418,16 +418,16 @@ class _StatusRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(top: 4),
+      padding: const EdgeInsets.only(top: 2),
       child: Row(
         children: [
-          Icon(icon, size: 16, color: color),
-          const SizedBox(width: 6),
+          Icon(icon, size: 13, color: color),
+          const SizedBox(width: 5),
           Expanded(
             child: Text(
               text,
               style: TextStyle(
-                fontSize: 12,
+                fontSize: 10.5,
                 color: color,
                 fontWeight: FontWeight.w600,
               ),
