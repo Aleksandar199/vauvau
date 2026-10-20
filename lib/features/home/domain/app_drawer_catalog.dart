@@ -30,7 +30,6 @@ enum DrawerItemKind {
   adopt,
   groups,
   events,
-  moments,
   rules,
   admin,
   partnerCoupons,
@@ -48,7 +47,6 @@ abstract final class AppDrawerCatalog {
   static String get adopt => L10n.tr('🏠 Udomi', '🏠 Adopt');
   static String get groups => L10n.tr('👥 Grupe', '👥 Groups');
   static String get events => L10n.tr('📅 Događaji i šetnje', '📅 Events & walks');
-  static String get moments => L10n.tr('📸 VauVau Moments', '📸 VauVau Moments');
   static String get rules => L10n.tr('❓ Pravila & Podrška', '❓ Rules & Support');
   static String get admin => L10n.tr('Admin Panel', 'Admin Panel');
   static String get partnerCoupons =>
@@ -72,12 +70,6 @@ abstract final class AppDrawerCatalog {
           label: events,
           icon: Icons.event_available_outlined,
           kind: DrawerItemKind.events,
-        ),
-        AppDrawerDestination(
-          id: 'moments',
-          label: moments,
-          icon: Icons.camera_alt_outlined,
-          kind: DrawerItemKind.moments,
         ),
       ];
 

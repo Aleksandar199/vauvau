@@ -5,6 +5,9 @@ abstract final class MomentsStrings {
   static String get title => L10n.tr('VauVau Moments', 'VauVau Moments');
 
   // --- Feed ------------------------------------------------------------------
+  static String get homeTab => L10n.tr('Početna', 'Home');
+  static String get activity =>
+      L10n.tr('Aktivnosti: praćenja i sviđanja', 'Activity: follows and likes');
   static String get tabForYou => L10n.tr('Za tebe', 'For you');
   static String get tabFollowing => L10n.tr('Pratim', 'Following');
   static String get tabNearby => L10n.tr('U blizini', 'Nearby');

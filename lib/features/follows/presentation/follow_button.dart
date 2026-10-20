@@ -99,3 +99,65 @@ class FollowButton extends ConsumerWidget {
     );
   }
 }
+
+/// Instagram-style "Prati" next to an author name (feed post, story header):
+/// shown only while I do not follow [ownerId]; hidden for myself.
+class CompactFollowButton extends ConsumerWidget {
+  const CompactFollowButton({
+    super.key,
+    required this.ownerId,
+    required this.ownerName,
+    this.color,
+  });
+
+  final String ownerId;
+  final String ownerName;
+
+  /// Text color (white on stories); defaults to the brand color.
+  final Color? color;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final me = ref.watch(socialUserIdProvider);
+    if (ownerId.isEmpty || me.isEmpty || ownerId == me) {
+      return const SizedBox.shrink();
+    }
+    if (ref.watch(isFollowingProvider(ownerId))) {
+      return const SizedBox.shrink();
+    }
+    final busy = ref.watch(
+      followControllerProvider.select((pending) => pending.containsKey(ownerId)),
+    );
+    final foreground = color ?? AppColors.primaryDeep;
+    return OutlinedButton(
+      key: ValueKey('compact-follow-$ownerId'),
+      onPressed: busy
+          ? null
+          : () async {
+              final messenger = ScaffoldMessenger.maybeOf(context);
+              try {
+                await ref.read(followControllerProvider.notifier).follow(ownerId);
+                messenger?.showSnackBar(
+                  SnackBar(
+                    content: Text(FollowsStrings.followedToast(ownerName)),
+                  ),
+                );
+              } catch (_) {
+                messenger?.showSnackBar(
+                  SnackBar(content: Text(FollowsStrings.followFailed)),
+                );
+              }
+            },
+      style: OutlinedButton.styleFrom(
+        foregroundColor: foreground,
+        side: BorderSide(color: foreground.withValues(alpha: 0.6)),
+        minimumSize: const Size(0, 32),
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        visualDensity: VisualDensity.compact,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        textStyle: const TextStyle(fontWeight: FontWeight.w800),
+      ),
+      child: Text(FollowsStrings.follow),
+    );
+  }
+}

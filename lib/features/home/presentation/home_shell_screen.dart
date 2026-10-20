@@ -14,6 +14,8 @@ import '../../groups/presentation/group_unread_alerts.dart';
 import '../../lost_dogs/presentation/lost_dog_emergency_host.dart';
 import '../../map/presentation/map_screen.dart';
 import '../../map/presentation/map_strings.dart';
+import '../../moments/presentation/home_feed_screen.dart';
+import '../../moments/presentation/moments_strings.dart';
 import '../../notifications/presentation/notification_controller.dart';
 import '../../notifications/presentation/notification_screen.dart';
 import '../../notifications/presentation/notification_strings.dart';
@@ -37,11 +39,13 @@ class HomeShellScreen extends ConsumerWidget {
     final unreadChats = ref.watch(totalUnreadChatCountProvider);
     // Rebuild tab labels/copy when the user switches language.
     ref.watch(appSettingsProvider.select((s) => s.language));
-    final showScheduledWalks = tabIndex == 1 || tabIndex == 2;
+    final showScheduledWalks =
+        tabIndex == HomeTabIndex.map || tabIndex == HomeTabIndex.messages;
     ref.watch(groupUnreadAlertsProvider);
     ref.watch(incomingMessageSoundProvider);
 
     final titles = [
+      MomentsStrings.homeTab,
       '',
       MapStrings.title,
       ChatStrings.title,
@@ -53,7 +57,9 @@ class HomeShellScreen extends ConsumerWidget {
         child: LostDogEmergencyHost(
           child: Scaffold(
             drawer: const HomeDrawer(),
-            appBar: tabIndex == 0
+            appBar: tabIndex == HomeTabIndex.home
+                ? const HomeFeedAppBar()
+                : tabIndex == HomeTabIndex.discover
                 ? const DiscoverAppBar()
                 : AppBar(
                     title: Text(titles[tabIndex]),
@@ -67,7 +73,7 @@ class HomeShellScreen extends ConsumerWidget {
                       },
                     ),
                     actions: [
-                      if (tabIndex == 3)
+                      if (tabIndex == HomeTabIndex.profile)
                         IconButton(
                           tooltip: ProfileStrings.moreActions,
                           onPressed: () => showProfileSystemSheet(context, ref),
@@ -93,6 +99,7 @@ class HomeShellScreen extends ConsumerWidget {
                   child: IndexedStack(
                     index: tabIndex,
                     children: const [
+                      HomeFeedScreen(),
                       DiscoverScreen(),
                       MapScreen(),
                       MatchesScreen(),
@@ -108,6 +115,11 @@ class HomeShellScreen extends ConsumerWidget {
                 ref.read(homeTabIndexProvider.notifier).setIndex(index);
               },
               destinations: [
+                NavigationDestination(
+                  icon: const Icon(Icons.home_outlined),
+                  selectedIcon: const Icon(Icons.home_rounded),
+                  label: MomentsStrings.homeTab,
+                ),
                 NavigationDestination(
                   icon: Icon(Icons.pets_outlined),
                   selectedIcon: Icon(Icons.pets),

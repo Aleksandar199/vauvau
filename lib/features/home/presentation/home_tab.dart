@@ -1,18 +1,28 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+/// Bottom navigation: Početna (feed) · Otkrij · Mapa · Poruke · Profil.
+/// The app opens on Otkrij; Početna is the Instagram-style feed.
 class HomeTabIndex extends Notifier<int> {
+  static const int home = 0;
+  static const int discover = 1;
+  static const int map = 2;
+  static const int messages = 3;
+  static const int profile = 4;
+
   @override
-  int build() => 0;
+  int build() => discover;
 
   void setIndex(int index) => state = index;
 
-  void showDiscover() => state = 0;
+  void showHome() => state = home;
 
-  void showMap() => state = 1;
+  void showDiscover() => state = discover;
 
-  void showMessages() => state = 2;
+  void showMap() => state = map;
 
-  void showProfile() => state = 3;
+  void showMessages() => state = messages;
+
+  void showProfile() => state = profile;
 }
 
 final homeTabIndexProvider =

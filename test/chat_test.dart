@@ -161,7 +161,7 @@ void main() {
     final container = ProviderScope.containerOf(
       tester.element(find.byType(MatchesScreen)),
     );
-    expect(container.read(homeTabIndexProvider), 0);
+    expect(container.read(homeTabIndexProvider), HomeTabIndex.discover);
   });
 
   testWidgets('search filters conversations by dog name', (tester) async {

@@ -9,7 +9,6 @@ import '../../adoption/presentation/screens/adoption_screen.dart';
 import '../../auth/presentation/auth_providers.dart';
 import '../../events/presentation/events_screen.dart';
 import '../../groups/presentation/groups_list_screen.dart';
-import '../../moments/presentation/moments_screen.dart';
 import '../../lost_dogs/presentation/lost_dogs_screen.dart';
 import '../../partners/presentation/partner_coupons_screen.dart';
 import '../../profile/presentation/profile_controller.dart';
@@ -141,7 +140,6 @@ class HomeDrawer extends ConsumerWidget {
       DrawerItemKind.adopt => const AdoptionScreen(),
       DrawerItemKind.groups => const GroupsListScreen(),
       DrawerItemKind.events => const EventsScreen(),
-      DrawerItemKind.moments => const MomentsScreen(),
       DrawerItemKind.rules => const RulesAndSupportScreen(),
       DrawerItemKind.admin => const AdminDashboardScreen(),
       DrawerItemKind.partnerCoupons => const PartnerCouponsScreen(),

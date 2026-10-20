@@ -8,6 +8,7 @@ import '../../../core/images/dog_image.dart';
 import '../../../core/images/firebase_web_image.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../follows/presentation/follow_controller.dart';
+import '../../follows/presentation/follow_button.dart';
 import '../../moments/presentation/highlight_sheets.dart';
 import '../../moments/presentation/pointer_safe.dart';
 import '../../profile/data/owner_public_profile.dart';
@@ -755,6 +756,12 @@ class _Header extends StatelessWidget {
               ],
             ),
           ),
+          if (!mine)
+            CompactFollowButton(
+              ownerId: story.authorUserId,
+              ownerName: story.authorName,
+              color: Colors.white,
+            ),
           if (mine)
             _ChromeButton(
               icon: Icons.delete_outline,

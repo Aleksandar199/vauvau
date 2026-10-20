@@ -12,7 +12,7 @@ import 'widgets/moment_post_card.dart';
 
 /// VauVau Moments: the permanent community feed (posts stay until the author
 /// deletes them or moderation removes them). 24h stories are a separate
-/// feature – the stories bar on Otkrij.
+/// feature – the stories bar on Početna (`home_feed_screen.dart`).
 class MomentsScreen extends ConsumerWidget {
   const MomentsScreen({super.key});
 
@@ -73,35 +73,20 @@ class MomentFeedView extends ConsumerStatefulWidget {
 
 class _MomentFeedViewState extends ConsumerState<MomentFeedView>
     with AutomaticKeepAliveClientMixin {
-  final _scroll = ScrollController();
-
   @override
   bool get wantKeepAlive => true;
-
-  @override
-  void initState() {
-    super.initState();
-    _scroll.addListener(_onScroll);
-  }
-
-  @override
-  void dispose() {
-    _scroll.removeListener(_onScroll);
-    _scroll.dispose();
-    super.dispose();
-  }
 
   MomentFeedController get _controller =>
       ref.read(momentFeedProvider(widget.feed).notifier);
 
-  void _onScroll() {
-    if (!_scroll.hasClients) {
-      return;
-    }
-    final position = _scroll.position;
-    if (position.pixels >= position.maxScrollExtent - 900) {
+  /// No own ScrollController: inside Početna the list shares the
+  /// NestedScrollView's controller (stories bar scrolls away with the feed).
+  bool _onScroll(ScrollNotification notification) {
+    if (notification.metrics.axis == Axis.vertical &&
+        notification.metrics.extentAfter < 900) {
       _controller.loadMore();
     }
+    return false;
   }
 
   @override
@@ -160,8 +145,9 @@ class _MomentFeedViewState extends ConsumerState<MomentFeedView>
 
     return RefreshIndicator(
       onRefresh: _controller.refresh,
-      child: ListView.builder(
-        controller: _scroll,
+      child: NotificationListener<ScrollNotification>(
+        onNotification: _onScroll,
+        child: ListView.builder(
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.only(top: 4, bottom: 96),
         itemCount: header.length + state.items.length + 1,
@@ -178,6 +164,7 @@ class _MomentFeedViewState extends ConsumerState<MomentFeedView>
             onRetry: _controller.loadMore,
           );
         },
+        ),
       ),
     );
   }

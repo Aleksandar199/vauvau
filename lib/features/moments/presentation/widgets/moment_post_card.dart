@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/constants/serbia_locations.dart';
 import '../../../../core/images/dog_image.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../follows/presentation/follow_button.dart';
 import '../../../moderation/domain/content_report.dart';
 import '../../../moderation/presentation/report_sheet.dart';
 import '../../../moderation/presentation/safety_menu.dart';
@@ -101,6 +102,11 @@ class MomentPostCard extends ConsumerWidget {
                     ),
                   ),
                 ),
+                if (!isMine)
+                  CompactFollowButton(
+                    ownerId: moment.authorUserId,
+                    ownerName: moment.authorName,
+                  ),
                 PopupMenuButton<_PostAction>(
                   tooltip: MomentsStrings.postOptions,
                   icon: const Icon(Icons.more_horiz),

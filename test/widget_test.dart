@@ -139,9 +139,10 @@ void main() {
     expect(find.text(AppDrawerCatalog.adopt), findsOneWidget);
     expect(find.text(AppDrawerCatalog.groups), findsOneWidget);
     expect(find.text(AppDrawerCatalog.events), findsOneWidget);
+    // Moments moved from the menu to the Početna tab.
     expect(
-      find.text(AppDrawerCatalog.moments, skipOffstage: false),
-      findsOneWidget,
+      find.text('📸 VauVau Moments', skipOffstage: false),
+      findsNothing,
     );
     expect(
       find.text(AppDrawerCatalog.rules, skipOffstage: false),

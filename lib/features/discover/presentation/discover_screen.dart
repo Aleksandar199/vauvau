@@ -4,7 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../moderation/domain/content_report.dart';
 import '../../moderation/presentation/report_sheet.dart';
 import '../../profile/presentation/profile_controller.dart';
-import '../../stories/presentation/widgets/stories_bar.dart';
 import '../domain/discover_profile.dart';
 import 'discover_controller.dart';
 import 'discover_strings.dart';
@@ -68,12 +67,8 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const Padding(
-          padding: EdgeInsets.only(top: 6),
-          child: StoriesBar(),
-        ),
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [

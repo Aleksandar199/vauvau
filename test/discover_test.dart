@@ -13,6 +13,7 @@ import 'package:vauvau/features/discover/presentation/widgets/dog_photo_gallery.
 import 'package:vauvau/features/discover/presentation/widgets/swipe_dog_card.dart';
 import 'package:vauvau/features/discover/presentation/widgets/discover_filter_chip.dart';
 import 'package:vauvau/features/moments/presentation/moments_strings.dart';
+import 'package:vauvau/features/stories/presentation/widgets/stories_bar.dart';
 
 final Uint8List _transparentPng = Uint8List.fromList(const [
   0x89,
@@ -158,6 +159,8 @@ void main() {
 
   testWidgets('search with no matches shows empty state', (tester) async {
     await _pumpDiscover(tester, profiles: [_dog('Bobi')]);
+    // Stories moved to Početna.
+    expect(find.byType(StoriesBar), findsNothing);
 
     await tester.tap(find.byTooltip(DiscoverStrings.search));
     await tester.pump();

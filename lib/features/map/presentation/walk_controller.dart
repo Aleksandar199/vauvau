@@ -450,7 +450,9 @@ final walkPresenceRepositoryProvider = Provider<WalkPresenceRepository>((ref) {
 final liveWalkingDogsProvider =
     StreamProvider.autoDispose<List<WalkingDogPin>>((ref) {
   // IndexedStack keeps MapScreen mounted — only subscribe on the Map tab.
-  final onMapTab = ref.watch(homeTabIndexProvider.select((tab) => tab == 1));
+  final onMapTab = ref.watch(
+    homeTabIndexProvider.select((tab) => tab == HomeTabIndex.map),
+  );
   final authReady =
       ref.watch(firestoreAuthReadyProvider).asData?.value ?? false;
   if (!onMapTab || !authReady) {

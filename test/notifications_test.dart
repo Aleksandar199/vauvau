@@ -46,7 +46,7 @@ void main() {
     final container = ProviderScope.containerOf(
       tester.element(find.byType(MaterialApp)),
     );
-    expect(container.read(homeTabIndexProvider), 1);
+    expect(container.read(homeTabIndexProvider), HomeTabIndex.map);
     expect(
       container.read(notificationControllerProvider).firstWhere((item) => item.id == 'n-walk').isRead,
       isTrue,
