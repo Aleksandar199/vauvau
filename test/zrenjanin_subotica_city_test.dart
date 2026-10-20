@@ -25,6 +25,7 @@ import 'package:vauvau/features/map/presentation/cities_controller.dart';
 import 'package:vauvau/features/map/presentation/user_poi_controller.dart';
 import 'package:vauvau/features/map/presentation/walk_controller.dart';
 import 'package:vauvau/features/moments/presentation/create_moment_sheet.dart';
+import 'package:vauvau/features/moments/presentation/moments_strings.dart';
 import 'package:vauvau/features/profile/domain/matching_filters.dart';
 
 DiscoverProfile _profile(String id, String location) {
@@ -630,6 +631,12 @@ void main() {
 
     final zrFirst =
         EventVenues.forCity(SerbiaLocations.zrenjaninId, _allPlaces).first;
+    // Location is optional and starts empty; its list has the city's places.
+    expect(find.text(zrFirst), findsNothing);
+    await tester.tap(find.text(MomentsStrings.noLocation));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text(zrFirst).last);
+    await tester.pumpAndSettle();
     expect(find.text(zrFirst), findsOneWidget);
 
     await tester.tap(find.text('Zrenjanin'));
@@ -639,7 +646,10 @@ void main() {
 
     final suFirst =
         EventVenues.forCity(SerbiaLocations.suboticaId, _allPlaces).first;
-    expect(find.text(suFirst), findsOneWidget);
+    expect(find.text(zrFirst), findsNothing);
+    await tester.tap(find.text(MomentsStrings.noLocation));
+    await tester.pumpAndSettle();
+    expect(find.text(suFirst), findsWidgets);
     expect(find.text(zrFirst), findsNothing);
   });
 }

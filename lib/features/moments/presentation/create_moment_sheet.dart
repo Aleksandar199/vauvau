@@ -5,7 +5,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../../core/constants/serbia_locations.dart';
+import '../../../core/media/picked_video.dart';
+import '../../../core/media/tap_to_play_video.dart';
+import '../../../core/media/video_limits.dart';
+import '../../../core/media/video_strings.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/widgets/media_source_row.dart';
 import '../../auth/presentation/auth_providers.dart';
 import '../../events/data/seed_events.dart';
 import '../../events/presentation/events_controller.dart';
@@ -17,7 +22,7 @@ import 'moments_strings.dart';
 import '../../../core/widgets/app_bottom_sheet.dart';
 
 /// "Nova objava" – a permanent Moments post. Completely separate from 24h
-/// stories (stories bar on Otkrij): nothing is copied or uploaded twice.
+/// stories (stories bar on Početna): nothing is copied or uploaded twice.
 Future<void> showCreateMomentSheet(BuildContext context) {
   return showAppBottomSheet<void>(
     context: context,
@@ -37,11 +42,41 @@ Future<void> showCreateMomentSheet(BuildContext context) {
 
 enum _Phase { idle, uploading, publishing }
 
+/// City dropdown value for "Bez grada" / location value for "Bez lokacije".
+const String _none = '';
+
+/// City and location are both optional. Empty values are stored as '' (the
+/// post is then not in "U blizini", which filters by `cityId`).
+({String cityId, String locationName}) resolveMomentPlace({
+  required String cityId,
+  required String venue,
+  required String customText,
+}) {
+  if (venue == _none) {
+    return (cityId: cityId, locationName: '');
+  }
+  if (EventVenues.isCustom(venue)) {
+    return (cityId: cityId, locationName: customText.trim());
+  }
+  return (cityId: cityId, locationName: venue);
+}
+
 class CreateMomentSheet extends ConsumerStatefulWidget {
-  const CreateMomentSheet({super.key, this.initialPhoto});
+  const CreateMomentSheet({
+    super.key,
+    this.initialPhoto,
+    this.initialVideo,
+    this.videoProbe,
+  });
 
   /// Preselected photo (tests); normally picked in the sheet.
   final XFile? initialPhoto;
+
+  /// Preselected, already checked video (tests).
+  final PickedVideo? initialVideo;
+
+  /// Reads a picked video's length (tests inject one).
+  final VideoProbe? videoProbe;
 
   @override
   ConsumerState<CreateMomentSheet> createState() => _CreateMomentSheetState();
@@ -51,37 +86,46 @@ class _CreateMomentSheetState extends ConsumerState<CreateMomentSheet> {
   final _caption = TextEditingController();
   final _customLocation = TextEditingController();
   late String _cityId;
-  String? _preset;
+  String _venue = _none;
 
   /// '' = no dog on the post.
   String? _dogId;
+  var _videoMode = false;
   XFile? _photo;
   Uint8List? _preview;
+  PickedVideo? _video;
   var _phase = _Phase.idle;
   String? _error;
 
-  /// Kept across retries: the same draft id and uploaded photo, so a retry
+  /// Kept across retries: the same draft id and uploaded media, so a retry
   /// never creates a second post or a second file.
   String? _draftId;
   String? _uploadedUrl;
 
   bool get _busy => _phase != _Phase.idle;
 
-  String get _selectedVenue {
-    final venues = ref.read(eventVenuesProvider(_cityId));
-    final preset = _preset;
-    return preset != null && venues.contains(preset) ? preset : venues.first;
-  }
+  bool get _hasMedia => _photo != null || _video != null;
 
-  bool get _isCustom => EventVenues.isCustom(_selectedVenue);
+  List<String> _venuesFor(String cityId) {
+    if (cityId == _none) {
+      return [_none, EventVenues.customOption];
+    }
+    return [_none, ...ref.read(eventVenuesProvider(cityId))];
+  }
 
   @override
   void initState() {
     super.initState();
-    _cityId = ref.read(homeCityProvider)?.id ?? SerbiaLocations.noviSadId;
+    // Prefilled with my city (removable): that is what "U blizini" shows.
+    _cityId = ref.read(homeCityProvider)?.id ?? _none;
     final initial = widget.initialPhoto;
     if (initial != null) {
       _setPhoto(initial);
+    }
+    final video = widget.initialVideo;
+    if (video != null) {
+      _video = video;
+      _videoMode = true;
     }
   }
 
@@ -92,14 +136,19 @@ class _CreateMomentSheetState extends ConsumerState<CreateMomentSheet> {
     super.dispose();
   }
 
+  void _resetDraft() {
+    _uploadedUrl = null;
+    _draftId = null;
+    _error = null;
+  }
+
   Future<void> _setPhoto(XFile file) async {
     setState(() {
       _photo = file;
+      _video = null;
       _preview = null;
-      // A new photo is a new draft.
-      _uploadedUrl = null;
-      _draftId = null;
-      _error = null;
+      // New media is a new draft.
+      _resetDraft();
     });
     try {
       final bytes = await file.readAsBytes();
@@ -116,7 +165,13 @@ class _CreateMomentSheetState extends ConsumerState<CreateMomentSheet> {
     final theme = Theme.of(context);
     final profile = ref.watch(profileControllerProvider);
     final dogs = profile.dogs;
-    final venues = ref.watch(eventVenuesProvider(_cityId));
+    if (_cityId != _none) {
+      ref.watch(eventVenuesProvider(_cityId));
+    }
+    final venues = _venuesFor(_cityId);
+    if (!venues.contains(_venue)) {
+      _venue = _none;
+    }
     _dogId ??= profile.selectedDogId.isNotEmpty
         ? profile.selectedDogId
         : (dogs.isEmpty ? '' : dogs.first.id);
@@ -136,12 +191,24 @@ class _CreateMomentSheetState extends ConsumerState<CreateMomentSheet> {
           const SizedBox(height: 6),
           Text(MomentsStrings.newPostHint, style: theme.textTheme.bodySmall),
           const SizedBox(height: 14),
-          _PhotoPicker(
+          _MediaPreview(
             preview: _preview,
-            hasPhoto: _photo != null,
+            photo: _photo,
+            video: _video,
             enabled: !_busy,
+            onTap: () => _pick(ImageSource.gallery),
+          ),
+          const SizedBox(height: 10),
+          MediaSourceRow(
+            keyPrefix: 'moment',
+            video: _videoMode,
+            enabled: !_busy,
+            onVideoChanged: (value) => setState(() => _videoMode = value),
             onGallery: () => _pick(ImageSource.gallery),
             onCamera: () => _pick(ImageSource.camera),
+            hint: _videoMode
+                ? VideoStrings.limitHint(VideoLimits.postMaxDuration)
+                : null,
           ),
           const SizedBox(height: 16),
           if (dogs.isNotEmpty) ...[
@@ -183,8 +250,16 @@ class _CreateMomentSheetState extends ConsumerState<CreateMomentSheet> {
           DropdownButtonFormField<String>(
             key: const ValueKey('moment-city'),
             initialValue: _cityId,
-            decoration: InputDecoration(labelText: MomentsStrings.city),
+            decoration: InputDecoration(
+              labelText: MomentsStrings.cityOptional,
+              helperText: _cityId == _none ? MomentsStrings.noCityHint : null,
+              helperMaxLines: 2,
+            ),
             items: [
+              DropdownMenuItem(
+                value: _none,
+                child: Text(MomentsStrings.noCity),
+              ),
               for (final city in SerbiaLocations.cities)
                 DropdownMenuItem(value: city.id, child: Text(city.name)),
             ],
@@ -194,7 +269,7 @@ class _CreateMomentSheetState extends ConsumerState<CreateMomentSheet> {
                     if (value != null && value != _cityId) {
                       setState(() {
                         _cityId = value;
-                        _preset = null;
+                        _venue = _none;
                         _customLocation.clear();
                       });
                     }
@@ -203,29 +278,36 @@ class _CreateMomentSheetState extends ConsumerState<CreateMomentSheet> {
           const SizedBox(height: 12),
           DropdownButtonFormField<String>(
             key: ValueKey('moment-venue-$_cityId'),
-            initialValue: _selectedVenue,
+            initialValue: _venue,
             isExpanded: true,
-            decoration: InputDecoration(labelText: MomentsStrings.location),
+            decoration: InputDecoration(
+              labelText: MomentsStrings.locationOptional,
+            ),
             items: [
               for (final name in venues)
                 DropdownMenuItem(
                   value: name,
-                  child: Text(name, overflow: TextOverflow.ellipsis),
+                  child: Text(
+                    name == _none ? MomentsStrings.noLocation : name,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
             ],
             onChanged: _busy
                 ? null
                 : (value) {
                     if (value != null) {
-                      setState(() => _preset = value);
+                      setState(() => _venue = value);
                     }
                   },
           ),
-          if (_isCustom) ...[
+          if (EventVenues.isCustom(_venue)) ...[
             const SizedBox(height: 12),
             TextField(
+              key: const ValueKey('moment-custom-location'),
               controller: _customLocation,
               enabled: !_busy,
+              maxLength: 200,
               textCapitalization: TextCapitalization.sentences,
               decoration: InputDecoration(
                 labelText: MomentsStrings.customLocationHint,
@@ -273,7 +355,9 @@ class _CreateMomentSheetState extends ConsumerState<CreateMomentSheet> {
                 const SizedBox(width: 10),
                 Text(
                   _phase == _Phase.uploading
-                      ? MomentsStrings.uploading
+                      ? (_video != null
+                          ? MomentsStrings.uploadingVideo
+                          : MomentsStrings.uploading)
                       : MomentsStrings.publishing,
                 ),
               ],
@@ -284,6 +368,7 @@ class _CreateMomentSheetState extends ConsumerState<CreateMomentSheet> {
             children: [
               Expanded(
                 child: OutlinedButton(
+                  style: OutlinedButton.styleFrom(minimumSize: const Size(0, 48)),
                   onPressed: _busy ? null : () => Navigator.of(context).maybePop(),
                   child: Text(MomentsStrings.cancel),
                 ),
@@ -296,6 +381,7 @@ class _CreateMomentSheetState extends ConsumerState<CreateMomentSheet> {
                   style: FilledButton.styleFrom(
                     backgroundColor: AppColors.primary,
                     foregroundColor: Colors.white,
+                    minimumSize: const Size(0, 48),
                   ),
                   onPressed: _busy ? null : _save,
                   child: Text(
@@ -313,6 +399,10 @@ class _CreateMomentSheetState extends ConsumerState<CreateMomentSheet> {
   }
 
   Future<void> _pick(ImageSource source) async {
+    if (_videoMode) {
+      await _pickVideo(source);
+      return;
+    }
     try {
       final file = await ImagePicker().pickImage(
         source: source,
@@ -330,25 +420,52 @@ class _CreateMomentSheetState extends ConsumerState<CreateMomentSheet> {
     }
   }
 
-  String? _resolvedLocation() {
-    if (!_isCustom) {
-      return _selectedVenue;
+  Future<void> _pickVideo(ImageSource source) async {
+    const max = VideoLimits.postMaxDuration;
+    try {
+      final file = await pickVideoFile(source, max);
+      if (file == null || !mounted) {
+        return;
+      }
+      final result = await inspectPickedVideo(
+        file,
+        maxDuration: max,
+        probe: widget.videoProbe,
+      );
+      if (!mounted) {
+        return;
+      }
+      final problem = result.problem;
+      if (problem != null) {
+        setState(() => _error = VideoStrings.problem(problem, max));
+        return;
+      }
+      setState(() {
+        _video = result.video;
+        _photo = null;
+        _preview = null;
+        _resetDraft();
+      });
+    } catch (error) {
+      debugPrint('moment video pick failed: $error');
+      if (mounted) {
+        setState(() => _error = MomentsStrings.loadError);
+      }
     }
-    final custom = _customLocation.text.trim();
-    return custom.isEmpty ? null : custom;
   }
 
   Future<void> _save() async {
     final photo = _photo;
-    if (photo == null) {
+    final video = _video;
+    if (!_hasMedia) {
       setState(() => _error = MomentsStrings.photoRequired);
       return;
     }
-    final location = _resolvedLocation();
-    if (location == null) {
-      setState(() => _error = MomentsStrings.customLocationRequired);
-      return;
-    }
+    final place = resolveMomentPlace(
+      cityId: _cityId,
+      venue: _venue,
+      customText: _customLocation.text,
+    );
     final profile = ref.read(profileControllerProvider);
     final dog = profile.dogs.where((item) => item.id == _dogId).firstOrNull;
     final avatar =
@@ -363,7 +480,9 @@ class _CreateMomentSheetState extends ConsumerState<CreateMomentSheet> {
     });
     try {
       final draftId = _draftId ??= actions.newMomentId();
-      final url = _uploadedUrl ??= await actions.uploadPhoto(photo, draftId);
+      final url = _uploadedUrl ??= video != null
+          ? await actions.uploadVideo(video, draftId)
+          : await actions.uploadPhoto(photo!, draftId);
       if (!mounted) {
         return;
       }
@@ -379,9 +498,12 @@ class _CreateMomentSheetState extends ConsumerState<CreateMomentSheet> {
           dogBreed: dog?.breed ?? '',
           dogPhotoUrl: dog?.photoUrl ?? '',
           momentPhotoUrl: url,
+          mediaType: video != null
+              ? MomentMediaType.video
+              : MomentMediaType.image,
           caption: _caption.text.trim(),
-          locationName: location,
-          cityId: _cityId,
+          locationName: place.locationName,
+          cityId: place.cityId,
           likes: const [],
           commentsCount: 0,
           createdAt: DateTime.now(),
@@ -409,73 +531,54 @@ class _CreateMomentSheetState extends ConsumerState<CreateMomentSheet> {
   }
 }
 
-class _PhotoPicker extends StatelessWidget {
-  const _PhotoPicker({
+class _MediaPreview extends StatelessWidget {
+  const _MediaPreview({
     required this.preview,
-    required this.hasPhoto,
+    required this.photo,
+    required this.video,
     required this.enabled,
-    required this.onGallery,
-    required this.onCamera,
+    required this.onTap,
   });
 
   final Uint8List? preview;
-  final bool hasPhoto;
+  final XFile? photo;
+  final PickedVideo? video;
   final bool enabled;
-  final VoidCallback onGallery;
-  final VoidCallback onCamera;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     final bytes = preview;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        ClipRRect(
-          borderRadius: BorderRadius.circular(18),
-          child: AspectRatio(
-            aspectRatio: 4 / 5,
-            child: Material(
-              color: AppColors.primarySoft,
-              child: InkWell(
-                onTap: enabled ? onGallery : null,
-                child: bytes != null
-                    ? Image.memory(
-                        bytes,
-                        key: const ValueKey('moment-photo-preview'),
-                        fit: BoxFit.cover,
-                        gaplessPlayback: true,
-                        errorBuilder: (_, _, _) => const _PickHint(ready: true),
-                      )
-                    : _PickHint(ready: hasPhoto),
-              ),
-            ),
-          ),
+    final picked = video;
+    Widget child;
+    if (picked != null) {
+      child = TapToPlayVideo(
+        key: const ValueKey('moment-video-preview'),
+        source: picked.file.path,
+        // A local file (or web blob): showing the first frame is free.
+        initializeEagerly: true,
+        durationLabel: formatVideoDuration(picked.duration),
+      );
+    } else {
+      child = Material(
+        color: AppColors.primarySoft,
+        child: InkWell(
+          onTap: enabled ? onTap : null,
+          child: bytes != null
+              ? Image.memory(
+                  bytes,
+                  key: const ValueKey('moment-photo-preview'),
+                  fit: BoxFit.cover,
+                  gaplessPlayback: true,
+                  errorBuilder: (_, _, _) => const _PickHint(ready: true),
+                )
+              : _PickHint(ready: photo != null),
         ),
-        const SizedBox(height: 8),
-        Row(
-          children: [
-            Expanded(
-              child: OutlinedButton.icon(
-                onPressed: enabled ? onGallery : null,
-                icon: const Icon(Icons.photo_library_outlined),
-                label: Text(
-                  hasPhoto
-                      ? MomentsStrings.changePhoto
-                      : MomentsStrings.pickFromGallery,
-                ),
-              ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: OutlinedButton.icon(
-                onPressed: enabled ? onCamera : null,
-                icon: const Icon(Icons.photo_camera_outlined),
-                label: Text(MomentsStrings.takePhoto),
-              ),
-            ),
-          ],
-        ),
-      ],
+      );
+    }
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(18),
+      child: AspectRatio(aspectRatio: 4 / 5, child: child),
     );
   }
 }
@@ -498,7 +601,7 @@ class _PickHint extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            ready ? MomentsStrings.photo : MomentsStrings.addPhoto,
+            ready ? MomentsStrings.photo : MomentsStrings.addMedia,
             style: const TextStyle(
               color: AppColors.primaryDeep,
               fontWeight: FontWeight.w700,

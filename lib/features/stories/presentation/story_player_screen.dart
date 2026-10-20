@@ -6,6 +6,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/images/dog_image.dart';
 import '../../../core/images/firebase_web_image.dart';
+import '../../../core/media/story_video.dart';
+import '../../../core/media/video_limits.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../follows/presentation/follow_controller.dart';
 import '../../follows/presentation/follow_button.dart';
@@ -180,6 +182,12 @@ class _StoryGroupPlayerState extends ConsumerState<_StoryGroupPlayer>
   var _index = 0;
   var _held = false;
   var _mediaReady = false;
+
+  /// Progress is running (a video item plays exactly while it runs).
+  var _playing = false;
+
+  /// New key for a video each time an item is shown (replay from 0).
+  var _showCount = 0;
   var _liked = false;
   var _likeBusy = false;
   var _sending = false;
@@ -205,7 +213,7 @@ class _StoryGroupPlayerState extends ConsumerState<_StoryGroupPlayer>
     super.initState();
     _replyFocus.addListener(() {
       if (_replyFocus.hasFocus) {
-        _progress.stop();
+        _stop();
       } else {
         _resume();
       }
@@ -222,6 +230,7 @@ class _StoryGroupPlayerState extends ConsumerState<_StoryGroupPlayer>
       _show();
     } else if (!widget.active && oldWidget.active) {
       _progress.stop();
+      _playing = false; // rebuilt with the new widget
     }
   }
 
@@ -241,6 +250,9 @@ class _StoryGroupPlayerState extends ConsumerState<_StoryGroupPlayer>
       return;
     }
     _progress.reset();
+    _progress.duration = kStoryItemDuration;
+    _playing = false;
+    _showCount++;
     _mediaReady = false;
     _liked = false;
     _replyNonce = null;
@@ -276,7 +288,32 @@ class _StoryGroupPlayerState extends ConsumerState<_StoryGroupPlayer>
         !_held &&
         !_replyFocus.hasFocus) {
       _progress.forward();
+      _setPlaying(true);
     }
+  }
+
+  /// Stops the progress bar and a playing video with it.
+  void _stop() {
+    _progress.stop();
+    _setPlaying(false);
+  }
+
+  void _setPlaying(bool value) {
+    if (mounted && _playing != value) {
+      setState(() => _playing = value);
+    }
+  }
+
+  /// Video item: the progress bar lasts as long as the video (≤ 15 s).
+  void _onVideoReady(Story story, Duration length) {
+    if (!mounted || _story != story) {
+      return;
+    }
+    _progress.duration = storyVideoItemDuration(
+      length,
+      VideoLimits.storyMaxDuration + VideoLimits.tolerance,
+    );
+    _onMediaLoaded(story);
   }
 
   void _next() {
@@ -284,7 +321,7 @@ class _StoryGroupPlayerState extends ConsumerState<_StoryGroupPlayer>
       setState(() => _index++);
       _show();
     } else {
-      _progress.stop();
+      _stop();
       widget.onNextGroup();
     }
   }
@@ -301,7 +338,7 @@ class _StoryGroupPlayerState extends ConsumerState<_StoryGroupPlayer>
   }
 
   Future<T?> _paused<T>(Future<T?> Function() action) async {
-    _progress.stop();
+    _stop();
     try {
       return await action();
     } finally {
@@ -450,11 +487,18 @@ class _StoryGroupPlayerState extends ConsumerState<_StoryGroupPlayer>
     }
     final mine = _isMine;
     final now = DateTime.now();
-    // Web shows an HTML <img> from a URL; mobile decodes the bytes.
-    final webUrl = kIsWeb ? ref.watch(storyMediaUrlProvider(story)) : null;
-    final bytes = kIsWeb ? null : ref.watch(storyMediaProvider(story));
-    final media = (webUrl ?? bytes)!;
-    if (media.hasValue) {
+    // Video: local file (mobile) / URL (web), timing set when it is ready.
+    // Photo: web shows an HTML <img> from a URL; mobile decodes the bytes.
+    final video =
+        story.isVideo ? ref.watch(storyVideoSourceProvider(story)) : null;
+    final webUrl = !story.isVideo && kIsWeb
+        ? ref.watch(storyMediaUrlProvider(story))
+        : null;
+    final bytes = !story.isVideo && !kIsWeb
+        ? ref.watch(storyMediaProvider(story))
+        : null;
+    final AsyncValue<Object> media = (video ?? webUrl ?? bytes)!;
+    if (media.hasValue && video == null) {
       WidgetsBinding.instance.addPostFrameCallback(
         (_) => _onMediaLoaded(story),
       );
@@ -485,7 +529,7 @@ class _StoryGroupPlayerState extends ConsumerState<_StoryGroupPlayer>
       },
       onLongPressStart: (_) {
         _held = true;
-        _progress.stop();
+        _stop();
       },
       onLongPressEnd: (_) {
         _held = false;
@@ -499,7 +543,27 @@ class _StoryGroupPlayerState extends ConsumerState<_StoryGroupPlayer>
       child: Stack(
         fit: StackFit.expand,
         children: [
-          if (kIsWeb)
+          if (video != null)
+            video.when(
+              data: (source) => StoryVideo(
+                key: ValueKey('story-video-${story.id}-$_showCount'),
+                source: source,
+                playing: _playing,
+                onReady: (length) => _onVideoReady(story, length),
+                onError: () {
+                  // Unplayable: move on like a photo that failed to load.
+                  if (mounted && _story == story && !_mediaReady) {
+                    _mediaReady = true;
+                    _resume();
+                  }
+                },
+              ),
+              loading: () => const Center(
+                child: CircularProgressIndicator(color: Colors.white70),
+              ),
+              error: (_, _) => const _Unavailable(),
+            )
+          else if (kIsWeb)
             webUrl!.when(
               // HTML <img> (no bucket CORS needed), photo kept whole.
               data: (url) => KeyedSubtree(

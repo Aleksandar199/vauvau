@@ -44,7 +44,15 @@ class StoryGroup {
 
   DateTime get latest => moments.last.createdAt;
 
-  String get coverUrl => moments.last.momentPhotoUrl;
+  /// Newest photo (videos have no image cover; empty = fallback).
+  String get coverUrl {
+    for (final moment in moments.reversed) {
+      if (!moment.isVideo) {
+        return moment.momentPhotoUrl;
+      }
+    }
+    return '';
+  }
 }
 
 class SeenStories extends Notifier<Set<String>> {
@@ -142,12 +150,12 @@ String highlightCoverUrl(
 ) {
   final byId = {for (final moment in allMoments) moment.id: moment};
   final cover = byId[highlight.coverMomentId];
-  if (cover != null) {
+  if (cover != null && !cover.isVideo) {
     return cover.momentPhotoUrl;
   }
   for (final id in highlight.momentIds) {
     final moment = byId[id];
-    if (moment != null) {
+    if (moment != null && !moment.isVideo) {
       return moment.momentPhotoUrl;
     }
   }

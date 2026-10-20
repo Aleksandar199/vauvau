@@ -146,7 +146,10 @@ class FirestoreAdminRepository implements AdminRepository {
       (id, data) => AdminMomentRef(
         id: id,
         caption: (data['caption'] as String? ?? '').trim(),
-        photoUrl: data['momentPhotoUrl'] as String? ?? '',
+        // A video has no image preview (admin shows the fallback).
+        photoUrl: data['mediaType'] == 'video'
+            ? ''
+            : data['momentPhotoUrl'] as String? ?? '',
         authorUserId: data['authorUserId'] as String? ?? '',
         dogName: data['dogName'] as String? ?? '',
       ),

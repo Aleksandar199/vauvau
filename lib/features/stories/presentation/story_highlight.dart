@@ -60,6 +60,8 @@ class StoryHighlightArchiver {
       dogBreed: dog.breed,
       dogPhotoUrl: dog.photoUrls.isEmpty ? '' : dog.photoUrls.first,
       momentPhotoUrl: url,
+      // A video story stays a video (the uploader keeps its content type).
+      mediaType: story.isVideo ? MomentMediaType.video : MomentMediaType.image,
       caption: story.caption.trim(),
       locationName: '',
       likes: const [],

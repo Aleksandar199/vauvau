@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/constants/serbia_locations.dart';
 import '../../../../core/images/dog_image.dart';
+import '../../../../core/media/tap_to_play_video.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../follows/presentation/follow_button.dart';
 import '../../../moderation/domain/content_report.dart';
@@ -163,10 +164,17 @@ class MomentPostCard extends ConsumerWidget {
                   aspectRatio: 4 / 5,
                   child: ColoredBox(
                     color: AppColors.primarySoft,
-                    child: DogImage(
-                      url: moment.momentPhotoUrl,
-                      seed: moment.id,
-                    ),
+                    // Video: nothing downloads until tapped; muted; one at
+                    // a time across the feed.
+                    child: moment.isVideo
+                        ? TapToPlayVideo(
+                            key: ValueKey('moment-video-${moment.id}'),
+                            source: moment.momentPhotoUrl,
+                          )
+                        : DogImage(
+                            url: moment.momentPhotoUrl,
+                            seed: moment.id,
+                          ),
                   ),
                 ),
               ),

@@ -128,6 +128,7 @@ class LocalStoryRepository implements StoryRepository {
       dogId: draft.dogId,
       dogName: draft.dogName,
       dogPhotoUrl: draft.dogPhotoUrl,
+      mediaType: draft.mediaType,
       mediaPath: Story.mediaPathFor(me, id),
       caption: draft.caption.trim(),
       audience: draft.audience,
@@ -167,6 +168,13 @@ class LocalStoryRepository implements StoryRepository {
   Future<String> loadMediaUrl(Story story) async {
     final bytes = await loadMedia(story);
     return Uri.dataFromBytes(bytes, mimeType: 'image/jpeg').toString();
+  }
+
+  /// In-memory only: there is no file for a player (tests).
+  @override
+  Future<String> loadVideoSource(Story story) async {
+    await loadMedia(story);
+    throw const StoryAccessException('Video nije dostupan.');
   }
 
   @override

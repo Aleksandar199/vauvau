@@ -26,11 +26,16 @@ enum StoryAudience {
 }
 
 enum StoryMediaType {
-  image('image');
+  image('image'),
+  video('video');
 
   const StoryMediaType(this.key);
 
   final String key;
+
+  /// Missing / unknown (all stories before video) = photo.
+  static StoryMediaType fromKey(Object? key) =>
+      key == video.key ? video : image;
 }
 
 class Story {
@@ -70,6 +75,8 @@ class Story {
   final StoryAudience audience;
   final DateTime createdAt;
   final DateTime expiresAt;
+
+  bool get isVideo => mediaType == StoryMediaType.video;
 
   bool isActive(DateTime now) => expiresAt.isAfter(now);
 
@@ -135,9 +142,11 @@ class StoryDraft {
     this.dogId = '',
     this.dogName = '',
     this.dogPhotoUrl = '',
+    this.mediaType = StoryMediaType.image,
   });
 
   final StoryAudience audience;
+  final StoryMediaType mediaType;
   final String caption;
   final String dogId;
   final String dogName;

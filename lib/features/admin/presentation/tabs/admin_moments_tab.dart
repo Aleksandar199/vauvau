@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../../core/images/dog_image.dart';
 import '../../../moments/domain/moment_model.dart';
 import '../../../moments/presentation/moments_controller.dart';
 import '../../../moments/presentation/moments_strings.dart';
+import '../../../moments/presentation/widgets/moment_media.dart';
 import '../admin_strings.dart';
 import '../widgets/admin_confirm_dialog.dart';
 
@@ -49,7 +49,7 @@ class _ModerationCard extends ConsumerWidget {
         children: [
           SizedBox(
             height: 140,
-            child: buildDogImage(moment.momentPhotoUrl, seed: moment.id),
+            child: MomentThumb(moment: moment),
           ),
           Padding(
             padding: const EdgeInsets.all(14),

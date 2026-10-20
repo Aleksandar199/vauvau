@@ -3,6 +3,9 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/foundation.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../core/media/private_video_file.dart';
+import '../core/media/video_limits.dart';
+
 /// Uploads and deletes images on Firebase Storage.
 ///
 /// Objects live under `{root}/{userId}/...` so Storage rules can enforce
@@ -321,7 +324,9 @@ class StorageService {
         await sub.cancel();
       }
       onProgress?.call(1);
-      _privateCache[path] = bytes;
+      if (bytes.length <= _maxDownloadBytes) {
+        _privateCache[path] = bytes;
+      }
       return path;
     } on FirebaseException catch (error) {
       debugPrint('StorageService.uploadPrivateBytes code=${error.code}');
@@ -337,9 +342,13 @@ class StorageService {
       return cached;
     }
     try {
-      final bytes = await _storage.ref(path).getData(_maxDownloadBytes);
+      // Story media may be a video (storage.rules: < 20 MB).
+      final bytes = await _storage.ref(path).getData(VideoLimits.maxBytes);
       if (bytes == null || bytes.isEmpty) {
         throw StateError('Storage fajl je prazan.');
+      }
+      if (bytes.length > _maxDownloadBytes) {
+        return bytes; // videos are not kept in memory
       }
       if (_privateCache.length >= _maxCachedImages) {
         _privateCache.remove(_privateCache.keys.first);
@@ -364,9 +373,22 @@ class StorageService {
     }
   }
 
+  /// Mobile: a private video downloaded to a temp file (rules are checked
+  /// on the download); the player reads the file. Web uses
+  /// [privateDownloadUrl] instead.
+  Future<String> downloadPrivateVideoFile(String path) async {
+    try {
+      return await downloadPrivateVideoToFile(_storage.ref(path));
+    } on FirebaseException catch (error) {
+      debugPrint('StorageService.downloadPrivateVideoFile code=${error.code}');
+      throw StateError(_userMessageForFirebase(error));
+    }
+  }
+
   /// Best-effort delete of a private object (missing objects are fine).
   Future<void> deletePrivatePath(String path) async {
     _privateCache.remove(path);
+    await forgetPrivateVideoFile(path);
     if (path.trim().isEmpty) {
       return;
     }
@@ -499,7 +521,14 @@ class StorageService {
     if (sniffed != null) {
       return sniffed;
     }
+    final sniffedVideo = sniffVideoContentType(bytes);
+    if (sniffedVideo != null) {
+      return sniffedVideo;
+    }
     final mime = mimeType?.trim().toLowerCase() ?? '';
+    if (mime.startsWith('video/') || _isVideoFileName(fileName)) {
+      return videoContentType(mimeType: mime, fileName: fileName);
+    }
     if (mime.startsWith('image/') && mime != 'image/*') {
       return mime;
     }
@@ -550,7 +579,44 @@ class StorageService {
     return null;
   }
 
+  /// MP4 / MOV / 3GP (`ftyp` box) and WebM (EBML header) by their first
+  /// bytes, so copied story videos keep a video content type.
+  @visibleForTesting
+  static String? sniffVideoContentType(Uint8List bytes) {
+    if (bytes.length >= 12 &&
+        bytes[4] == 0x66 &&
+        bytes[5] == 0x74 &&
+        bytes[6] == 0x79 &&
+        bytes[7] == 0x70) {
+      final brand = String.fromCharCodes(bytes.sublist(8, 12));
+      if (brand == 'qt  ') {
+        return 'video/quicktime';
+      }
+      if (brand.startsWith('3g')) {
+        return 'video/3gpp';
+      }
+      return 'video/mp4';
+    }
+    if (bytes.length >= 4 &&
+        bytes[0] == 0x1A &&
+        bytes[1] == 0x45 &&
+        bytes[2] == 0xDF &&
+        bytes[3] == 0xA3) {
+      return 'video/webm';
+    }
+    return null;
+  }
+
+  static bool _isVideoFileName(String fileName) {
+    final lower = fileName.toLowerCase();
+    return const ['.mp4', '.mov', '.webm', '.3gp', '.m4v']
+        .any(lower.endsWith);
+  }
+
   String _extensionForContentType(String contentType) {
+    if (contentType.startsWith('video/')) {
+      return videoExtension(contentType);
+    }
     switch (contentType) {
       case 'image/png':
         return '.png';

@@ -58,9 +58,9 @@ abstract final class StoriesStrings {
         'Priča nestaje posle 24 sata.',
         'The story disappears after 24 hours.',
       );
-  static String get videoNotSupported => L10n.tr(
-        'Za sada priče podržavaju samo fotografije.',
-        'Stories support photos only for now.',
+  static String get pickVideo => L10n.tr(
+        'Izaberite ili snimite kratak video za priču',
+        'Choose or record a short video for your story',
       );
 
   // Viewer

@@ -143,9 +143,16 @@ describe('Moments – kreiranje objave', () => {
   test('nepoznata polja, pogrešna vrsta, predug opis i bez slike padaju', async () => {
     await assertFails(setDoc(doc(as('alice'), 'moments/y1'), post('alice', { isPinned: true })));
     await assertFails(setDoc(doc(as('alice'), 'moments/y2'), post('alice', { kind: 'story' })));
-    await assertFails(setDoc(doc(as('alice'), 'moments/y3'), post('alice', { mediaType: 'video' })));
+    await assertFails(setDoc(doc(as('alice'), 'moments/y3'), post('alice', { mediaType: 'gif' })));
     await assertFails(setDoc(doc(as('alice'), 'moments/y4'), post('alice', { caption: 'a'.repeat(2201) })));
     await assertFails(setDoc(doc(as('alice'), 'moments/y5'), post('alice', { momentPhotoUrl: '' })));
+  });
+
+  test('video objava (mediaType video) prolazi; bez mediaType = slika', async () => {
+    await assertSucceeds(setDoc(doc(as('alice'), 'moments/v1'), post('alice', { mediaType: 'video' })));
+    const { mediaType, ...noType } = post('alice');
+    await assertSucceeds(setDoc(doc(as('alice'), 'moments/v2'), noType));
+    await assertFails(setDoc(doc(as('alice'), 'moments/v3'), post('alice', { mediaType: 'audio' })));
   });
 
   test('suspendovan korisnik i neprijavljen ne objavljuju', async () => {

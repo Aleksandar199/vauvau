@@ -151,7 +151,22 @@ abstract final class MomentsStrings {
   static String get publishError =>
       L10n.tr('Objava nije sačuvana. Pokušajte ponovo.', 'Post was not saved. Try again.');
   static String get dogRequired => L10n.tr('Izaberite psa.', 'Select a dog.');
-  static String get photoRequired => L10n.tr('Dodajte fotografiju.', 'Add a photo.');
+  static String get photoRequired =>
+      L10n.tr('Dodajte fotografiju ili video.', 'Add a photo or a video.');
+  static String get addMedia =>
+      L10n.tr('Dodaj fotografiju ili video', 'Add a photo or video');
+  static String get videoReady => L10n.tr('Video je spreman', 'Video ready');
+  static String get noCity => L10n.tr('Bez grada', 'No city');
+  static String get noLocation => L10n.tr('Bez lokacije', 'No location');
+  static String get cityOptional => L10n.tr('Grad (opciono)', 'City (optional)');
+  static String get locationOptional =>
+      L10n.tr('Park / lokacija (opciono)', 'Park / location (optional)');
+  static String get noCityHint => L10n.tr(
+        'Objava bez grada se ne prikazuje u tabu „U blizini“.',
+        'A post without a city is not shown in the "Nearby" tab.',
+      );
+  static String get uploadingVideo =>
+      L10n.tr('Otpremanje videa...', 'Uploading video...');
   static String get noDogs => L10n.tr('Prvo dodajte profil psa.', 'Add a dog profile first.');
   static String get uploading => L10n.tr('Otpremanje fotografije...', 'Uploading photo...');
   static String get publishing => L10n.tr('Objavljivanje...', 'Publishing...');

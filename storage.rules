@@ -5,7 +5,8 @@ service firebase.storage {
     // rules. Rules cover SDK/REST access by path: single objects of public
     // roots are readable, but only the owner may list a folder (no
     // enumeration of other users' uploads). Chat images: uploader only.
-    // Writes require auth + image content type + max 8MB.
+    // Writes require auth + image content type + max 8MB (moments/ and
+    // stories/ also accept a short video < 20MB).
     // Deletes/writes are owner-scoped: {root}/{userId}/...
     function isSignedIn() {
       return request.auth != null;
@@ -22,6 +23,18 @@ service firebase.storage {
 
     function ownerImageWrite(userId) {
       return isOwner(userId) && isValidImage();
+    }
+
+    // Short videos (stories <= 15 s, posts <= 30 s in the app): only for
+    // moments/ and stories/, < 20 MB, known video containers. Length cannot
+    // be checked here; the size limit bounds it.
+    function isValidVideo() {
+      return request.resource.size < 20 * 1024 * 1024
+        && request.resource.contentType.matches('video/(mp4|quicktime|webm|3gpp)');
+    }
+
+    function ownerMediaWrite(userId) {
+      return isOwner(userId) && (isValidImage() || isValidVideo());
     }
 
     match /pets/{userId}/{allPaths=**} {
@@ -41,7 +54,7 @@ service firebase.storage {
     match /moments/{userId}/{allPaths=**} {
       allow get: if true;
       allow list: if isOwner(userId);
-      allow create, update: if ownerImageWrite(userId);
+      allow create, update: if ownerMediaWrite(userId);
       allow delete: if isOwner(userId);
     }
 
@@ -126,7 +139,7 @@ service firebase.storage {
       allow get: if isOwner(userId) ||
         (isSignedIn() && storyMediaReadable(userId, storyId));
       allow list: if false;
-      allow create: if ownerImageWrite(userId) && fileName == 'media' &&
+      allow create: if ownerMediaWrite(userId) && fileName == 'media' &&
         resource == null;
       allow update: if false;
       allow delete: if isOwner(userId);

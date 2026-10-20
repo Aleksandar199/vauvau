@@ -167,7 +167,7 @@ class FirestoreStoryRepository implements StoryRepository {
       'dogId': draft.dogId.trim(),
       'dogName': draft.dogName.trim(),
       'dogPhotoUrl': draft.dogPhotoUrl.trim(),
-      'mediaType': StoryMediaType.image.key,
+      'mediaType': draft.mediaType.key,
       'mediaPath': path,
       'caption': caption.length > Story.maxCaptionLength
           ? caption.substring(0, Story.maxCaptionLength)
@@ -232,6 +232,20 @@ class FirestoreStoryRepository implements StoryRepository {
       debugPrint(
         'story media denied id=${story.id} audience=${story.audience.key}: $error',
       );
+      throw StoryAccessException('$error');
+    }
+  }
+
+  @override
+  Future<String> loadVideoSource(Story story) async {
+    if (kIsWeb) {
+      // <video> streams the URL; no bucket CORS needed.
+      return loadMediaUrl(story);
+    }
+    try {
+      return await _storage.downloadPrivateVideoFile(story.mediaPath);
+    } catch (error) {
+      debugPrint('story video denied id=${story.id}: $error');
       throw StoryAccessException('$error');
     }
   }
@@ -384,6 +398,7 @@ class FirestoreStoryRepository implements StoryRepository {
       dogId: data['dogId'] as String? ?? '',
       dogName: data['dogName'] as String? ?? '',
       dogPhotoUrl: data['dogPhotoUrl'] as String? ?? '',
+      mediaType: StoryMediaType.fromKey(data['mediaType']),
       mediaPath:
           data['mediaPath'] as String? ?? Story.mediaPathFor(author, id),
       caption: data['caption'] as String? ?? '',

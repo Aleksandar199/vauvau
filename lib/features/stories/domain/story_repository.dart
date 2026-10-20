@@ -67,6 +67,10 @@ abstract class StoryRepository {
   /// Throws [StoryAccessException] when not allowed.
   Future<String> loadMediaUrl(Story story);
 
+  /// Video story: a local file (mobile) or a URL (web) for the player.
+  /// Throws [StoryAccessException] when not allowed.
+  Future<String> loadVideoSource(Story story);
+
   /// Records that [me] viewed [story] (idempotent, never for the author).
   Future<void> markViewed(Story story, String me);
 

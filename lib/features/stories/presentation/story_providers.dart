@@ -203,6 +203,7 @@ class StoryActions {
         dogPhotoUrl: (dog?.photoUrls.isNotEmpty ?? false)
             ? dog!.photoUrls.first
             : draft.dogPhotoUrl,
+        mediaType: draft.mediaType,
       ),
       bytes: bytes,
       mimeType: mimeType,
@@ -379,5 +380,12 @@ final ownerStoriesProvider = FutureProvider.autoDispose
 /// Web: media URL for an HTML <img> (no bucket CORS needed). No retry.
 final storyMediaUrlProvider = FutureProvider.autoDispose.family<String, Story>(
   (ref, story) => ref.read(storyRepositoryProvider).loadMediaUrl(story),
+  retry: (_, _) => null,
+);
+
+/// Video story: local file (mobile) or URL (web) for the player.
+final storyVideoSourceProvider =
+    FutureProvider.autoDispose.family<String, Story>(
+  (ref, story) => ref.read(storyRepositoryProvider).loadVideoSource(story),
   retry: (_, _) => null,
 );

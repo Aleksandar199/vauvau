@@ -9,6 +9,19 @@
 /// same way (no `kind`), so they never enter the feed either.
 enum MomentKind { post, legacy }
 
+/// `moments.mediaType`. Missing / unknown (all older documents) = photo.
+enum MomentMediaType {
+  image('image'),
+  video('video');
+
+  const MomentMediaType(this.key);
+
+  final String key;
+
+  static MomentMediaType fromKey(Object? key) =>
+      key == video.key ? video : image;
+}
+
 class MomentModel {
   const MomentModel({
     required this.id,
@@ -27,6 +40,7 @@ class MomentModel {
     this.kind = MomentKind.post,
     this.cityId = '',
     this.authorPhotoUrl = '',
+    this.mediaType = MomentMediaType.image,
   });
 
   static const String postKind = 'post';
@@ -50,6 +64,11 @@ class MomentModel {
   /// [SerbiaLocations] id the author picked (empty on legacy documents).
   final String cityId;
   final String authorPhotoUrl;
+
+  /// For [MomentMediaType.video], [momentPhotoUrl] is the video URL.
+  final MomentMediaType mediaType;
+
+  bool get isVideo => mediaType == MomentMediaType.video;
 
   bool get isPost => kind == MomentKind.post;
 
@@ -83,6 +102,7 @@ class MomentModel {
       kind: kind,
       cityId: cityId,
       authorPhotoUrl: authorPhotoUrl,
+      mediaType: mediaType,
     );
   }
 }

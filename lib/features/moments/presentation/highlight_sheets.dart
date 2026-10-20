@@ -8,6 +8,7 @@ import '../domain/story_highlight.dart';
 import 'moments_strings.dart';
 import 'pointer_safe.dart';
 import 'stories_controller.dart';
+import 'widgets/moment_media.dart';
 
 const Color _danger = Color(0xFFB91C1C);
 
@@ -516,10 +517,7 @@ class _HighlightEditorState extends ConsumerState<_HighlightEditor> {
                       ),
                     ),
                     child: ClipOval(
-                      child: DogImage(
-                        url: moment.momentPhotoUrl,
-                        seed: moment.id,
-                      ),
+                      child: MomentThumb(moment: moment, iconSize: 22),
                     ),
                   ),
                 );
@@ -622,7 +620,7 @@ class _ArchiveTile extends StatelessWidget {
         child: Stack(
           fit: StackFit.expand,
           children: [
-            DogImage(url: moment.momentPhotoUrl, seed: moment.id),
+            MomentThumb(moment: moment),
             if (selected) const ColoredBox(color: Color(0x55000000)),
             Positioned(
               left: 6,

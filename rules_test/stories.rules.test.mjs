@@ -218,6 +218,13 @@ describe('stories: objavljivanje', () => {
       valid('n6', { latitude: 45.2 })));
   });
 
+  test('video priča prolazi, nepoznat tip medija ne', async () => {
+    await assertSucceeds(setDoc(doc(db('alice'), 'stories/v1'),
+      valid('v1', { mediaType: 'video' })));
+    await assertFails(setDoc(doc(db('alice'), 'stories/v2'),
+      valid('v2', { mediaType: 'audio' })));
+  });
+
   test('priča se ne menja; briše je samo autor', async () => {
     await assertFails(updateDoc(doc(db('alice'), 'stories/sAll'), { caption: 'x' }));
     await assertFails(deleteDoc(doc(db('bob'), 'stories/sAll')));
@@ -337,5 +344,17 @@ describe('storage: mediji priča', () => {
     await assertSucceeds(uploadBytes(ref(st('bob'), 'stories/bob/new/media'), image, jpeg));
     await assertFails(uploadBytes(ref(st('bob'), 'stories/alice/new/media'), image, jpeg));
     await assertFails(uploadBytes(ref(st('alice'), 'stories/alice/sAll/media'), image, jpeg));
+  });
+
+  test('video do 20 MB; veći video, slika > 8 MB i drugi tipovi padaju', async () => {
+    const mp4 = { contentType: 'video/mp4' };
+    await assertSucceeds(uploadBytes(ref(st('bob'), 'stories/bob/v1/media'),
+      new Uint8Array(9 * 1024 * 1024), mp4));
+    await assertFails(uploadBytes(ref(st('bob'), 'stories/bob/v2/media'),
+      new Uint8Array(20 * 1024 * 1024), mp4));
+    await assertFails(uploadBytes(ref(st('bob'), 'stories/bob/v3/media'),
+      new Uint8Array(9 * 1024 * 1024), jpeg));
+    await assertFails(uploadBytes(ref(st('bob'), 'stories/bob/v4/media'),
+      image, { contentType: 'video/x-matroska' }));
   });
 });

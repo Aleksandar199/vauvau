@@ -6,6 +6,8 @@ import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:vauvau/core/media/video_limits.dart';
+import 'package:vauvau/core/media/video_strings.dart';
 import 'package:vauvau/features/chat/presentation/chat_inbox.dart';
 import 'package:vauvau/features/discover/data/local_discover_repository.dart';
 import 'package:vauvau/features/discover/domain/discover_profile.dart';
@@ -532,6 +534,17 @@ void main() {
       await tester.tap(find.byKey(const ValueKey('story-publish')));
       await tester.pumpAndSettle();
       expect(find.byKey(const ValueKey('story-publish-error')), findsOneWidget);
+      // The photo / video picker row makes the sheet taller.
+      await tester.scrollUntilVisible(
+        find.byKey(const ValueKey('story-publish')),
+        200,
+        scrollable: find
+            .descendant(
+              of: find.byType(CreateStorySheet),
+              matching: find.byType(Scrollable),
+            )
+            .first,
+      );
       expect(find.text(StoriesStrings.retry), findsOneWidget);
       expect(h.storyRepo.storyCount, 0);
 
@@ -544,6 +557,80 @@ void main() {
         published!.expiresAt.difference(published!.createdAt),
         Story.lifetime,
       );
+    });
+
+    testWidgets('video: predug se odbija, kratak se objavljuje kao video', (
+      tester,
+    ) async {
+      final h = _Harness();
+      var length = const Duration(seconds: 40);
+      await tester.binding.setSurfaceSize(const Size(360, 1400));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [...h.overrides],
+          child: MaterialApp(
+            home: Scaffold(
+              body: CreateStorySheet(
+                videoPicker: (_) async => XFile.fromData(
+                  Uint8List(4096),
+                  name: 'leo.mp4',
+                  mimeType: 'video/mp4',
+                ),
+                videoProbe: (_) async => length,
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+      // Galerija and Kamera in one row (360 px wide phone).
+      final gallery = tester.getRect(
+        find.byKey(const ValueKey('story-pick-gallery')),
+      );
+      final camera = tester.getRect(
+        find.byKey(const ValueKey('story-pick-camera')),
+      );
+      expect(gallery.top, camera.top);
+      expect(gallery.width, closeTo(camera.width, 0.5));
+
+      await tester.tap(find.byKey(const ValueKey('story-pick-mode-video')));
+      await tester.pump();
+      await tester.tap(find.byKey(const ValueKey('story-pick-gallery')));
+      await tester.pump();
+      await tester.pump();
+      expect(
+        find.text(
+          VideoStrings.problem(VideoProblem.tooLong, VideoLimits.storyMaxDuration),
+        ),
+        findsOneWidget,
+      );
+
+      length = const Duration(seconds: 8);
+      await tester.tap(find.byKey(const ValueKey('story-pick-gallery')));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(find.byKey(const ValueKey('story-video-preview')), findsOneWidget);
+      await tester.tap(find.byKey(const ValueKey('story-audience-all')));
+      await tester.pump();
+      await tester.scrollUntilVisible(
+        find.byKey(const ValueKey('story-publish')),
+        200,
+        scrollable: find
+            .descendant(
+              of: find.byType(CreateStorySheet),
+              matching: find.byType(Scrollable),
+            )
+            .first,
+      );
+      await tester.tap(find.byKey(const ValueKey('story-publish')));
+      for (var i = 0; i < 5; i++) {
+        await tester.pump(const Duration(milliseconds: 50));
+      }
+      expect(h.storyRepo.storyCount, 1);
+      final story = (await h.storyRepo.watchMyStories(me).first).single;
+      expect(story.isVideo, isTrue);
+      expect(tester.takeException(), isNull);
     });
   });
 }

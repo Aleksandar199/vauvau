@@ -223,7 +223,14 @@ void main() {
 
     final nisFirst =
         EventVenues.forCity(SerbiaLocations.nisId, _seedPlaces).first;
-    expect(find.text(MomentsStrings.city), findsOneWidget);
+    // City and location are optional; the location starts empty and its
+    // list offers the places of the selected city.
+    expect(find.text(MomentsStrings.cityOptional), findsOneWidget);
+    expect(find.text(nisFirst), findsNothing);
+    await tester.tap(find.text(MomentsStrings.noLocation));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text(nisFirst).last);
+    await tester.pumpAndSettle();
     expect(find.text(nisFirst), findsOneWidget);
 
     await tester.tap(find.text('Niš'));
@@ -233,7 +240,11 @@ void main() {
 
     final kgFirst =
         EventVenues.forCity(SerbiaLocations.kragujevacId, _seedPlaces).first;
-    expect(find.text(kgFirst), findsOneWidget);
+    // A new city resets the location to "Bez lokacije".
+    expect(find.text(nisFirst), findsNothing);
+    await tester.tap(find.text(MomentsStrings.noLocation));
+    await tester.pumpAndSettle();
+    expect(find.text(kgFirst), findsWidgets);
     expect(find.text(nisFirst), findsNothing);
   });
 }

@@ -503,7 +503,7 @@ class FirestoreMomentsRepository implements MomentsRepository {
       'dogBreed': dogId.isEmpty ? '' : moment.dogBreed.trim(),
       'dogPhotoUrl': dogId.isEmpty ? '' : moment.dogPhotoUrl.trim(),
       'momentPhotoUrl': photo,
-      'mediaType': 'image',
+      'mediaType': moment.mediaType.key,
       'caption': caption.length > MomentModel.maxCaptionLength
           ? caption.substring(0, MomentModel.maxCaptionLength)
           : caption,
@@ -640,6 +640,7 @@ MomentModel momentFromMap(
         ? 'Novi Sad'
         : locationName,
     cityId: text('cityId'),
+    mediaType: MomentMediaType.fromKey(data['mediaType']),
     likes: _strings(data['likes']),
     commentsCount: (data['commentsCount'] as num?)?.toInt() ?? 0,
     createdAt: pendingCreatedAt ?? _date(data['createdAt']),

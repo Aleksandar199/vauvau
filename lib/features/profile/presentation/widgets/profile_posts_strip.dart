@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../../core/images/dog_image.dart';
 import '../../../moments/domain/moment_model.dart';
 import '../../../moments/presentation/create_moment_sheet.dart';
 import '../../../moments/presentation/moments_controller.dart';
 import '../../../moments/presentation/moments_strings.dart';
+import '../../../moments/presentation/widgets/moment_media.dart';
 import '../../../moments/presentation/widgets/moment_post_card.dart';
 import '../profile_strings.dart';
 
@@ -75,7 +75,7 @@ class ProfilePostsStrip extends ConsumerWidget {
                     child: SizedBox(
                       width: tileSize,
                       height: tileSize,
-                      child: buildDogImage(post.momentPhotoUrl, seed: post.id),
+                      child: MomentThumb(moment: post, iconSize: 24),
                     ),
                   ),
                 );

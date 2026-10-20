@@ -6,6 +6,9 @@ import 'package:image_picker/image_picker.dart';
 
 import '../../../core/firebase/firebase_status.dart';
 import '../../../core/firebase/firestore_auth_guard.dart';
+import '../../../core/media/picked_video.dart';
+import '../../../core/media/video_limits.dart';
+import '../../../core/media/video_strings.dart';
 import '../../../core/utils/content_validation_service.dart';
 import '../../../services/storage_service.dart';
 import '../../auth/presentation/auth_providers.dart';
@@ -470,6 +473,22 @@ class MomentActions {
     return _ref.read(momentPhotoUploaderProvider)(photo, draftId);
   }
 
+  /// Uploads a checked video, same path scheme as photos
+  /// (`moments/{uid}/{draftId}.mp4`).
+  Future<String> uploadVideo(PickedVideo video, String draftId) async {
+    final problem = checkVideo(
+      sizeBytes: video.sizeBytes,
+      duration: video.duration,
+      maxDuration: VideoLimits.postMaxDuration,
+    );
+    if (problem != null) {
+      throw StateError(
+        VideoStrings.problem(problem, VideoLimits.postMaxDuration),
+      );
+    }
+    return _ref.read(momentPhotoUploaderProvider)(video.file, draftId);
+  }
+
   /// Publishes [draft] (its id and uploaded photo URL set by the sheet).
   /// Retrying the same draft never creates a second post.
   Future<MomentModel> publish(MomentModel draft) async {
@@ -498,6 +517,7 @@ class MomentActions {
       dogBreed: draft.dogBreed,
       dogPhotoUrl: draft.dogPhotoUrl,
       momentPhotoUrl: draft.momentPhotoUrl,
+      mediaType: draft.mediaType,
       caption: caption,
       locationName: draft.locationName,
       cityId: draft.cityId,

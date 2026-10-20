@@ -308,6 +308,7 @@ class LocalMomentsRepository implements MomentsRepository {
         caption: moment.caption,
         locationName: moment.locationName,
         cityId: moment.cityId,
+        mediaType: moment.mediaType,
         likes: const [],
         commentsCount: 0,
         createdAt: DateTime.now(),

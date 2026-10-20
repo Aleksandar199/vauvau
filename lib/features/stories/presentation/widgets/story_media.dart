@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/images/firebase_web_image.dart';
+import '../../../../core/media/tap_to_play_video.dart';
 import '../../domain/story.dart';
 import '../stories_strings.dart';
 import '../story_providers.dart';
@@ -27,6 +28,10 @@ class StoryMediaImage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    if (story.isVideo) {
+      // No frame for a thumbnail: downloading the whole video is too much.
+      return VideoThumbnail(iconSize: compact ? 20 : 40);
+    }
     if (kIsWeb) {
       // Bytes via fetch would need bucket CORS; an HTML <img> does not.
       return ref.watch(storyMediaUrlProvider(story)).when(

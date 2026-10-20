@@ -1109,7 +1109,7 @@ service cloud.firestore {
           'likes', 'commentsCount', 'createdAt']) &&
         d.authorUserId == request.auth.uid &&
         d.get('kind', 'post') == 'post' &&
-        d.get('mediaType', 'image') == 'image' &&
+        d.get('mediaType', 'image') in ['image', 'video'] &&
         d.momentPhotoUrl is string &&
         d.momentPhotoUrl.size() > 0 && d.momentPhotoUrl.size() <= 2048 &&
         optString(d, 'caption', 2200) &&
@@ -1292,7 +1292,7 @@ service cloud.firestore {
         request.resource.data.get('dogName', '').size() <= 80 &&
         request.resource.data.get('dogPhotoUrl', '') is string &&
         request.resource.data.get('dogPhotoUrl', '').size() <= 2048 &&
-        request.resource.data.mediaType == 'image' &&
+        request.resource.data.mediaType in ['image', 'video'] &&
         request.resource.data.mediaPath ==
           'stories/' + request.auth.uid + '/' + storyId + '/media' &&
         request.resource.data.caption is string &&

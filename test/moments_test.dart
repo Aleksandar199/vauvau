@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:flutter/material.dart';
@@ -6,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:vauvau/core/media/picked_video.dart';
 import 'package:vauvau/core/constants/serbia_locations.dart';
 import 'package:vauvau/core/geo/geo.dart';
 import 'package:vauvau/features/follows/data/local_follow_repository.dart';
@@ -515,6 +517,109 @@ void main() {
       expect(post.authorUserId, _me);
       expect(h.uploads, hasLength(1), reason: 'photo uploaded once');
       expect(h.uploads.single, post.id, reason: 'draft id = post id');
+    });
+
+    testWidgets('city and location are optional', (tester) async {
+      final h = _Harness();
+      await _pumpScreen(
+        tester,
+        h,
+        size: const Size(412, 2400),
+        child: Scaffold(
+          body: CreateMomentSheet(
+            initialPhoto: XFile.fromData(_png, name: 'pas.png', mimeType: 'image/png'),
+          ),
+        ),
+      );
+      await _settle(tester);
+      // Location starts empty ("Bez lokacije"), city can be cleared.
+      expect(find.text(MomentsStrings.noLocation), findsOneWidget);
+      await tester.tap(find.byKey(const ValueKey('moment-city')));
+      await _settle(tester);
+      await tester.tap(find.text(MomentsStrings.noCity).last);
+      await _settle(tester);
+      expect(find.text(MomentsStrings.noCityHint), findsOneWidget);
+      await tester.ensureVisible(find.byKey(const ValueKey('moment-publish')));
+      await tester.tap(find.byKey(const ValueKey('moment-publish')));
+      await _settle(tester);
+
+      expect(find.byKey(const ValueKey('moment-publish-error')), findsNothing);
+      final post = h.repo.moments.single;
+      expect(post.cityId, isEmpty);
+      expect(post.locationName, isEmpty);
+      expect(post.mediaType, MomentMediaType.image);
+    });
+
+    test('resolveMomentPlace keeps empty city / location empty', () {
+      expect(
+        resolveMomentPlace(cityId: '', venue: '', customText: 'x'),
+        (cityId: '', locationName: ''),
+      );
+      expect(
+        resolveMomentPlace(
+          cityId: SerbiaLocations.noviSadId,
+          venue: 'Limanski park',
+          customText: '',
+        ).locationName,
+        'Limanski park',
+      );
+      // Custom option left empty = no location, not an error.
+      expect(
+        resolveMomentPlace(
+          cityId: SerbiaLocations.noviSadId,
+          venue: 'Ostalo / Ručni unos',
+          customText: '  ',
+        ).locationName,
+        '',
+      );
+    });
+
+    testWidgets('a checked video is published as mediaType video', (tester) async {
+      final h = _Harness();
+      final file = XFile.fromData(
+        Uint8List(2048),
+        name: 'setnja.mp4',
+        mimeType: 'video/mp4',
+      );
+      await _pumpScreen(
+        tester,
+        h,
+        size: const Size(412, 2400),
+        child: Scaffold(
+          body: CreateMomentSheet(
+            initialVideo: PickedVideo(
+              file: file,
+              duration: const Duration(seconds: 12),
+              sizeBytes: 2048,
+              contentType: 'video/mp4',
+            ),
+          ),
+        ),
+      );
+      await _settle(tester);
+      expect(find.byKey(const ValueKey('moment-video-preview')), findsOneWidget);
+      await tester.ensureVisible(find.byKey(const ValueKey('moment-publish')));
+      await tester.tap(find.byKey(const ValueKey('moment-publish')));
+      await _settle(tester);
+
+      final post = h.repo.moments.single;
+      expect(post.isVideo, isTrue);
+      expect(h.uploads, [post.id]);
+    });
+
+    testWidgets('Galerija and Kamera sit in one row at 360 px', (tester) async {
+      await _pumpScreen(
+        tester,
+        _Harness(),
+        size: const Size(360, 2400),
+        child: const Scaffold(body: CreateMomentSheet()),
+      );
+      final gallery = tester.getRect(find.byKey(const ValueKey('moment-gallery')));
+      final camera = tester.getRect(find.byKey(const ValueKey('moment-camera')));
+      expect(gallery.top, camera.top);
+      expect(gallery.width, closeTo(camera.width, 0.5));
+      expect(gallery.right, lessThan(camera.left));
+      expect(tester.takeException(), isNull);
     });
 
     testWidgets('publishing without a photo is refused', (tester) async {

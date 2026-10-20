@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/images/dog_image.dart';
+import '../../../core/media/story_video.dart';
+import '../../../core/media/video_limits.dart';
 import '../../discover/domain/discover_profile.dart';
 import '../../discover/presentation/discover_controller.dart';
 import '../../discover/presentation/widgets/dog_photo_gallery.dart';
@@ -184,6 +186,13 @@ class _StoryGroupViewState extends ConsumerState<StoryGroupView>
   int _index = 0;
   bool _held = false;
 
+  /// Progress is running; a video item plays exactly while it runs.
+  bool _playing = false;
+
+  /// Video item waiting for its length before the progress starts.
+  bool _videoPending = false;
+  int _showCount = 0;
+
   @override
   void initState() {
     super.initState();
@@ -199,6 +208,7 @@ class _StoryGroupViewState extends ConsumerState<StoryGroupView>
       _start();
     } else if (!widget.active && oldWidget.active) {
       _progress.stop();
+      _playing = false;
     }
   }
 
@@ -212,7 +222,42 @@ class _StoryGroupViewState extends ConsumerState<StoryGroupView>
 
   void _start() {
     widget.onViewed(_moment.id);
+    _progress.duration = kStoryDuration;
+    _showCount++;
+    if (_moment.isVideo) {
+      // Starts in [_onVideoReady], with the video's own length.
+      _videoPending = true;
+      _progress.reset();
+      _playing = false; // callers rebuild
+      return;
+    }
+    _videoPending = false;
     _progress.forward(from: 0);
+    _playing = true;
+  }
+
+  void _onVideoReady(MomentModel moment, Duration? length) {
+    if (!mounted || _moment.id != moment.id || !_videoPending) {
+      return;
+    }
+    _videoPending = false;
+    if (length != null) {
+      _progress.duration = storyVideoItemDuration(
+        length,
+        VideoLimits.postMaxDuration + VideoLimits.tolerance,
+      );
+    }
+    _progress.reset();
+    _resume();
+  }
+
+  void _setPlaying(bool value) {
+    if (_playing == value) {
+      return;
+    }
+    if (mounted) {
+      setState(() => _playing = value);
+    }
   }
 
   void _next() {
@@ -235,11 +280,15 @@ class _StoryGroupViewState extends ConsumerState<StoryGroupView>
     }
   }
 
-  void _pause() => _progress.stop();
+  void _pause() {
+    _progress.stop();
+    _setPlaying(false);
+  }
 
   void _resume() {
-    if (mounted && widget.active && !_held) {
+    if (mounted && widget.active && !_held && !_videoPending) {
       _progress.forward();
+      _setPlaying(true);
     }
   }
 
@@ -337,7 +386,16 @@ class _StoryGroupViewState extends ConsumerState<StoryGroupView>
       child: Stack(
         fit: StackFit.expand,
         children: [
-          BlurBackdropPhoto(url: moment.momentPhotoUrl, seed: moment.id),
+          if (moment.isVideo)
+            StoryVideo(
+              key: ValueKey('highlight-video-${moment.id}-$_showCount'),
+              source: moment.momentPhotoUrl,
+              playing: _playing,
+              onReady: (length) => _onVideoReady(moment, length),
+              onError: () => _onVideoReady(moment, null),
+            )
+          else
+            BlurBackdropPhoto(url: moment.momentPhotoUrl, seed: moment.id),
           const IgnorePointer(
             child: DecoratedBox(
               decoration: BoxDecoration(

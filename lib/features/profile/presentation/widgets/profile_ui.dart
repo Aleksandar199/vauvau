@@ -4,6 +4,7 @@ import '../../../../core/images/dog_image.dart';
 import '../../../../core/theme/app_cards.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../moments/domain/moment_model.dart';
+import '../../../moments/presentation/widgets/moment_media.dart';
 
 /// Round profile / dog avatar with white ring and soft elevation.
 class ProfileAvatar extends StatelessWidget {
@@ -111,7 +112,7 @@ class ProfileMomentsGrid extends StatelessWidget {
             borderRadius: BorderRadius.circular(8),
             child: ClipRRect(
               borderRadius: BorderRadius.circular(8),
-              child: buildDogImage(moment.momentPhotoUrl, seed: moment.id),
+              child: MomentThumb(moment: moment),
             ),
           ),
         );
