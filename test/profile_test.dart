@@ -133,6 +133,14 @@ void main() {
   testWidgets('switches selected dog', (tester) async {
     final container = await _pumpProfile(tester);
 
+    // Stories and posts are above the dogs now: scroll to the chip.
+    await tester.scrollUntilVisible(
+      find.text('Maks'),
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.drag(find.byType(Scrollable).first, const Offset(0, 150));
+    await tester.pump();
     await tester.tap(find.text('Maks'));
     await tester.pump();
 

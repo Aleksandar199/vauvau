@@ -23,6 +23,8 @@ import 'package:vauvau/features/stories/domain/story.dart';
 import 'package:vauvau/features/stories/presentation/story_highlight.dart';
 import 'package:vauvau/features/stories/presentation/story_player_screen.dart';
 import 'package:vauvau/features/stories/presentation/story_providers.dart';
+import 'package:vauvau/features/moments/presentation/widgets/moment_post_card.dart';
+import 'package:vauvau/features/moments/presentation/widgets/story_widgets.dart';
 
 const _me = 'local-user';
 
@@ -198,6 +200,32 @@ void main() {
               seed: const [('ana', _me), ('ivan', _me), (_me, 'mila')],
             ),
           ),
+          momentsMemberIdProvider.overrideWithValue(_me),
+          momentsRepositoryProvider.overrideWithValue(
+            LocalMomentsRepository(
+              currentUserId: _me,
+              seed: [
+                _post('p1'),
+                _post('p2'),
+                MomentModel(
+                  id: 'old',
+                  kind: MomentKind.legacy,
+                  authorUserId: _me,
+                  authorName: 'Aleksandar',
+                  dogId: 'my-dog',
+                  dogName: 'Luna',
+                  dogBreed: '',
+                  dogPhotoUrl: '',
+                  momentPhotoUrl: 'https://example.com/old.jpg',
+                  caption: '',
+                  locationName: '',
+                  likes: const [],
+                  commentsCount: 0,
+                  createdAt: DateTime(2026, 9, 1),
+                ),
+              ],
+            ),
+          ),
           ownerProfileLoaderProvider.overrideWithValue(
             (id) async => OwnerPublicProfile(
               userId: id,
@@ -239,7 +267,8 @@ void main() {
     ) async {
       await pumpProfile(tester);
 
-      expect(find.text(ProfileStrings.metricPosts), findsOneWidget);
+      // Next to the photo and as the title of the posts strip.
+      expect(find.text(ProfileStrings.metricPosts), findsNWidgets(2));
       expect(find.text('Momenti'), findsNothing);
       expect(countOf(tester, 'profile-count-followers'), '2');
       expect(countOf(tester, 'profile-count-following'), '1');
@@ -258,6 +287,34 @@ void main() {
       expect(find.text('Osoba ivan'), findsOneWidget);
       expect(find.text('Osoba mila'), findsNothing);
     });
+
+    testWidgets('redosled: priče, objave, pa psi', (tester) async {
+      await pumpProfile(tester);
+
+      final highlights = tester.getTopLeft(find.byType(StoryHighlightsRow)).dy;
+      final posts = tester.getTopLeft(
+        find.byKey(const ValueKey('profile-posts')),
+      ).dy;
+      final dogs = tester.getTopLeft(find.text(ProfileStrings.myDogs)).dy;
+      expect(highlights, lessThan(posts));
+      expect(posts, lessThan(dogs));
+    });
+
+    testWidgets('objave su male sličice; stari momenti se ne prikazuju', (
+      tester,
+    ) async {
+      await pumpProfile(tester);
+
+      expect(find.byKey(const ValueKey('profile-post-p1')), findsOneWidget);
+      expect(find.byKey(const ValueKey('profile-post-p2')), findsOneWidget);
+      expect(find.byKey(const ValueKey('profile-post-old')), findsNothing);
+      final size = tester.getSize(find.byKey(const ValueKey('profile-post-p1')));
+      expect(size.height, lessThanOrEqualTo(72));
+
+      await tester.tap(find.byKey(const ValueKey('profile-post-p1')));
+      await tester.pumpAndSettle();
+      expect(find.byType(MomentPostCard), findsOneWidget);
+    });
   });
 }
 
@@ -268,3 +325,4 @@ class _PngStoryRepository extends LocalStoryRepository {
   @override
   Future<Uint8List> loadMedia(Story story) async => _png;
 }
+

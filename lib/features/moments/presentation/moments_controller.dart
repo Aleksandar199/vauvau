@@ -459,6 +459,7 @@ class MomentActions {
   Future<void> delete(MomentModel moment) async {
     await _repo.deleteMoment(moment.id);
     _patches.markDeleted(moment.id);
+    _ref.invalidate(myMomentCountProvider);
   }
 
   Future<String> uploadPhoto(XFile photo, String draftId) async {
@@ -506,6 +507,7 @@ class MomentActions {
     );
     _patches.addCreated(created);
     _ref.invalidate(myMomentCountProvider);
+    _ref.invalidate(myPostsProvider);
     return created;
   }
 }
@@ -524,4 +526,20 @@ final myMomentCountProvider = FutureProvider<int>((ref) async {
     debugPrint('moments count: $error');
     return 0;
   }
+});
+
+/// My feed posts (`kind: post`), newest first – the profile "Objave" strip.
+final myPostsProvider = FutureProvider<List<MomentModel>>((ref) async {
+  final me = ref.watch(momentsMemberIdProvider);
+  if (me.isEmpty) {
+    return const [];
+  }
+  final deleted = ref.watch(
+    momentPatchesProvider.select((patches) => patches.deleted),
+  );
+  final mine = await ref.watch(momentsRepositoryProvider).fetchByAuthor(me);
+  return [
+    for (final moment in mine)
+      if (moment.isPost && !deleted.contains(moment.id)) moment,
+  ];
 });

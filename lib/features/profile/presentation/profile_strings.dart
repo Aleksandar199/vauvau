@@ -128,6 +128,8 @@ abstract final class ProfileStrings {
       );
   static String get metricDogs => L10n.tr('Psi', 'Dogs');
   static String get metricPosts => L10n.tr('Objave', 'Posts');
+  static String get postsEmpty =>
+      L10n.tr('Još nemaš objava.', 'No posts yet.');
   static String get followers => L10n.tr('Pratioci', 'Followers');
   static String get followingCount => L10n.tr('Pratim', 'Following');
   static String get followListEmpty =>

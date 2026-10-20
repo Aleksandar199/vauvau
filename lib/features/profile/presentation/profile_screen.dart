@@ -24,6 +24,7 @@ import 'edit_owner_profile_screen.dart';
 import 'edit_profile_screen.dart';
 import 'profile_controller.dart';
 import 'profile_strings.dart';
+import 'widgets/profile_posts_strip.dart';
 import 'widgets/profile_ui.dart';
 
 class ProfileScreen extends ConsumerWidget {
@@ -60,6 +61,13 @@ class ProfileScreen extends ConsumerWidget {
                     ),
                   ),
                 ],
+                // Instagram order: stories (highlights), posts, then dogs.
+                if (hasDogs) ...[
+                  const SizedBox(height: 16),
+                  StoryHighlightsRow(dogId: profile.dog.id, editable: true),
+                ],
+                const SizedBox(height: 16),
+                const ProfilePostsStrip(),
                 SizedBox(height: 20),
                 Text(
                   ProfileStrings.myDogs,
@@ -102,8 +110,6 @@ class ProfileScreen extends ConsumerWidget {
                     onOpenPhoto: (index) =>
                         _openGallery(context, profile.dog.photoUrls, index),
                   ),
-                  const SizedBox(height: 16),
-                  StoryHighlightsRow(dogId: profile.dog.id, editable: true),
                   const SizedBox(height: 12),
                   DogHealthTab(
                     dogId: profile.dog.id,
