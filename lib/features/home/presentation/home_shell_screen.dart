@@ -24,6 +24,7 @@ import '../../profile/presentation/profile_controller.dart';
 import '../../profile/presentation/profile_screen.dart';
 import '../../profile/presentation/profile_strings.dart';
 import '../../profile/presentation/profile_system_sheet.dart';
+import '../../profile/presentation/share_profile_sheet.dart';
 import '../domain/app_drawer_catalog.dart';
 import 'home_drawer.dart';
 import 'home_tab.dart';
@@ -73,6 +74,30 @@ class HomeShellScreen extends ConsumerWidget {
                       },
                     ),
                     actions: [
+                      if (tabIndex == HomeTabIndex.profile) ...[
+                        IconButton(
+                          key: const ValueKey('profile-share'),
+                          tooltip: ProfileStrings.shareProfile,
+                          onPressed: () => showShareTextSheet(
+                            context,
+                            title: ProfileStrings.shareProfile,
+                            text: profileShareText(
+                              ref.read(profileControllerProvider),
+                            ),
+                          ),
+                          icon: const Icon(Icons.share_outlined),
+                        ),
+                        IconButton(
+                          key: const ValueKey('profile-invite'),
+                          tooltip: ProfileStrings.inviteFriends,
+                          onPressed: () => showShareTextSheet(
+                            context,
+                            title: ProfileStrings.inviteFriends,
+                            text: inviteFriendsText(),
+                          ),
+                          icon: const Icon(Icons.person_add_alt_1_outlined),
+                        ),
+                      ],
                       if (tabIndex == HomeTabIndex.profile)
                         IconButton(
                           tooltip: ProfileStrings.moreActions,

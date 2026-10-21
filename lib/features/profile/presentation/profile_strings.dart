@@ -26,6 +26,37 @@ abstract final class ProfileStrings {
   static String get adminPanel => L10n.tr('Administracija', 'Administration');
   static String get adminBadge => L10n.tr('ADMIN', 'ADMIN');
   static String get moreActions => L10n.tr('Više opcija', 'More options');
+  static String get shareProfile => L10n.tr('Podeli profil', 'Share profile');
+  static String get inviteFriends =>
+      L10n.tr('Pozovi prijatelje', 'Invite friends');
+  static String get shareCopy => L10n.tr('Kopiraj', 'Copy');
+  static String get shareCopied =>
+      L10n.tr('Tekst je kopiran.', 'Text copied.');
+  static String get shareSms => L10n.tr('Poruka', 'Message');
+  static String get shareEmail => L10n.tr('Email', 'Email');
+  static String get shareAppMissing => L10n.tr(
+        'Aplikacija nije dostupna na ovom uređaju. Kopirajte tekst.',
+        'That app is not available on this device. Copy the text instead.',
+      );
+  static String shareProfileMessage({
+    required String name,
+    required List<String> dogs,
+    required String link,
+  }) {
+    final who = name.isEmpty ? L10n.tr('mene', 'me') : name;
+    final withDogs = dogs.isEmpty
+        ? ''
+        : L10n.tr(' i ${dogs.join(', ')}', ' and ${dogs.join(', ')}');
+    return L10n.tr(
+      'Zaprati $who$withDogs na VauVau – društvenoj mreži za vlasnike pasa 🐾 Preuzmi aplikaciju: $link',
+      'Follow $who$withDogs on VauVau – the social network for dog owners 🐾 Get the app: $link',
+    );
+  }
+
+  static String inviteMessage({required String link}) => L10n.tr(
+        'Pridruži mi se na VauVau 🐶 Šetnje, druženje pasa i novi prijatelji u tvom gradu. Preuzmi aplikaciju: $link',
+        'Join me on VauVau 🐶 Walks, dog playdates and new friends in your city. Get the app: $link',
+      );
   static String get searchFilters =>
       L10n.tr('Filteri za pretragu', 'Search filters');
   static String get signOut => L10n.tr('Odjavi se', 'Sign out');
