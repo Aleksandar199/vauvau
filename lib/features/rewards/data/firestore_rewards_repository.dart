@@ -681,6 +681,21 @@ class FirestoreRewardsRepository implements RewardsRepository {
       _coupons.doc(id).update({'isActive': active});
 
   @override
+  Future<void> setCouponRemaining(String id, int remaining) {
+    if (remaining < 0) throw ArgumentError.value(remaining, 'remaining');
+    final ref = _coupons.doc(id);
+    return _db.runTransaction((tx) async {
+      final snap = await tx.get(ref);
+      final claimed = Coupon.fromMap(id, plainData(snap.data() ?? {}))
+          .claimedCount;
+      tx.update(ref, {
+        'maxQuantity': claimed + remaining,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+    });
+  }
+
+  @override
   Stream<List<LedgerEntry>> watchAllLedger({int limit = 100}) {
     return FirestoreAuthGuard.guardedStream<List<LedgerEntry>>(
       label: 'rewards.adminLedger',

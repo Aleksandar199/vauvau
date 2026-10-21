@@ -442,34 +442,78 @@ class _CouponsAdmin extends ConsumerWidget {
         children: [
           for (final c in items)
             Card(
-              child: ListTile(
-                title: Text('${c.partnerName} · ${c.discountLabel}'),
-                subtitle: Text(
-                  '${RewardsStrings.cost(c.pointsCost)} · '
-                  '${c.claimedCount}/${c.maxQuantity} · '
-                  '${RewardsStrings.validUntil(c.expiresAt)} · '
-                  '${RewardsStrings.availability(c.availability(now))}',
-                ),
-                onTap: () => _editCoupon(context, ref, c),
-                trailing: Switch(
-                  value: c.isActive,
-                  onChanged: (v) {
-                    if (v && RewardRules.isPlaceholderPartner(c.partnerName)) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(AdminStrings.rewardsNeedPartner),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  ListTile(
+                    title: Text('${c.partnerName} · ${c.discountLabel}'),
+                    subtitle: Text(
+                      '${RewardsStrings.cost(c.pointsCost)} · '
+                      '${c.claimedCount}/${c.maxQuantity} · '
+                      '${RewardsStrings.validUntil(c.expiresAt)} · '
+                      '${RewardsStrings.availability(c.availability(now))}',
+                    ),
+                    onTap: () => _editCoupon(context, ref, c),
+                    trailing: Switch(
+                      value: c.isActive,
+                      onChanged: (v) {
+                        if (v &&
+                            RewardRules.isPlaceholderPartner(c.partnerName)) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(AdminStrings.rewardsNeedPartner),
+                            ),
+                          );
+                          return;
+                        }
+                        _guard(context, () => repo.setCouponActive(c.id, v));
+                      },
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 8, 8),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            AdminStrings.rewardsRemaining(
+                              c.remaining,
+                              c.claimedCount,
+                            ),
+                            style: const TextStyle(fontWeight: FontWeight.w700),
+                          ),
                         ),
-                      );
-                      return;
-                    }
-                    _guard(context, () => repo.setCouponActive(c.id, v));
-                  },
-                ),
+                        TextButton.icon(
+                          key: ValueKey('coupon-remaining-${c.id}'),
+                          style: TextButton.styleFrom(
+                            minimumSize: const Size(0, 40),
+                          ),
+                          onPressed: () => _editRemaining(context, repo, c),
+                          icon: const Icon(Icons.edit_outlined, size: 18),
+                          label: Text(AdminStrings.rewardsChangeRemaining),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
             ),
         ],
       ),
     );
+  }
+
+  Future<void> _editRemaining(
+    BuildContext context,
+    RewardsRepository repo,
+    Coupon coupon,
+  ) async {
+    final remaining = await showDialog<int>(
+      context: context,
+      builder: (_) => _RemainingDialog(coupon: coupon),
+    );
+    if (remaining == null || !context.mounted) return;
+    await _guard(context, () => repo.setCouponRemaining(coupon.id, remaining));
   }
 
   Future<void> _editCoupon(
@@ -1037,7 +1081,11 @@ class _PartnersAdmin extends ConsumerWidget {
     );
   }
 
-  Future<void> _edit(BuildContext context, WidgetRef ref, Partner? existing) async {
+  Future<void> _edit(
+    BuildContext context,
+    WidgetRef ref,
+    Partner? existing,
+  ) async {
     final name = TextEditingController(text: existing?.name);
     final city = TextEditingController(text: existing?.city);
     final address = TextEditingController(text: existing?.address);
@@ -1091,6 +1139,104 @@ class _PartnersAdmin extends ConsumerWidget {
     await _guard(
       context,
       () => ref.read(partnersRepositoryProvider).savePartner(partner),
+    );
+  }
+}
+
+/// How many coupons of an offer can still be claimed (any time, also while
+/// the offer is active). Returns the new remaining count.
+class _RemainingDialog extends StatefulWidget {
+  const _RemainingDialog({required this.coupon});
+
+  final Coupon coupon;
+
+  @override
+  State<_RemainingDialog> createState() => _RemainingDialogState();
+}
+
+class _RemainingDialogState extends State<_RemainingDialog> {
+  static const _max = 100000;
+  final _form = GlobalKey<FormState>();
+  late final _value = TextEditingController(text: '${widget.coupon.remaining}');
+
+  @override
+  void dispose() {
+    _value.dispose();
+    super.dispose();
+  }
+
+  void _add(int delta) {
+    final current = int.tryParse(_value.text) ?? 0;
+    final next = (current + delta).clamp(0, _max);
+    setState(() => _value.text = '$next');
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = widget.coupon;
+    return AlertDialog(
+      title: Text(AdminStrings.rewardsRemainingTitle),
+      content: Form(
+        key: _form,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('${c.partnerName} · ${c.discountLabel}'),
+            const SizedBox(height: 4),
+            Text(
+              AdminStrings.rewardsClaimedSoFar(c.claimedCount),
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+            const SizedBox(height: 12),
+            TextFormField(
+              key: const ValueKey('coupon-remaining-field'),
+              controller: _value,
+              autofocus: true,
+              keyboardType: TextInputType.number,
+              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+              decoration: InputDecoration(
+                labelText: AdminStrings.rewardsRemainingField,
+              ),
+              validator: (v) {
+                final n = int.tryParse(v ?? '');
+                if (n == null) return AdminStrings.rewardsNumber;
+                if (n > _max) return AdminStrings.rewardsRange(_max);
+                return null;
+              },
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              children: [
+                for (final d in const [-10, -1, 1, 10, 50])
+                  ActionChip(
+                    label: Text(d > 0 ? '+$d' : '$d'),
+                    onPressed: () => _add(d),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              AdminStrings.rewardsRemainingHint,
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: Text(AdminStrings.cancel),
+        ),
+        FilledButton(
+          onPressed: () {
+            if (!(_form.currentState?.validate() ?? false)) return;
+            Navigator.of(context).pop(int.parse(_value.text));
+          },
+          child: Text(AdminStrings.save),
+        ),
+      ],
     );
   }
 }

@@ -72,6 +72,11 @@ abstract class RewardsRepository {
 
   Future<void> setCouponActive(String id, bool active);
 
+  /// Sets how many coupons are still available: maxQuantity becomes the
+  /// current claimedCount + [remaining] (read in a transaction, so a claim
+  /// made at the same moment is not lost). 0 = sold out.
+  Future<void> setCouponRemaining(String id, int remaining);
+
   Stream<List<LedgerEntry>> watchAllLedger({int limit = 100});
 
   Stream<List<CouponClaim>> watchAllClaims({int limit = 200});

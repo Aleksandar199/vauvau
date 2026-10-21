@@ -224,6 +224,22 @@ abstract final class AdminStrings {
         '$n already claimed – cannot be lower.',
       );
   static String get rewardsTerms => L10n.tr('Uslovi', 'Terms');
+  static String rewardsRemaining(int remaining, int claimed) => L10n.tr(
+        'Preostalo: $remaining (preuzeto $claimed)',
+        'Remaining: $remaining (claimed $claimed)',
+      );
+  static String get rewardsChangeRemaining => L10n.tr('Promeni', 'Change');
+  static String get rewardsRemainingTitle =>
+      L10n.tr('Broj preostalih kupona', 'Coupons remaining');
+  static String get rewardsRemainingField =>
+      L10n.tr('Preostalo za preuzimanje', 'Still available');
+  static String rewardsClaimedSoFar(int n) =>
+      L10n.tr('Do sada preuzeto: $n', 'Claimed so far: $n');
+  static String get rewardsRemainingHint => L10n.tr(
+        'Može da se menja bilo kada. 0 = rasprodato. Već preuzeti kuponi '
+            'ostaju važeći.',
+        'Can be changed any time. 0 = sold out. Claimed coupons stay valid.',
+      );
   static String get rewardsStart => L10n.tr('Početak', 'Start');
   static String get rewardsEnd => L10n.tr('Istek', 'Expiry');
   static String get rewardsDates =>

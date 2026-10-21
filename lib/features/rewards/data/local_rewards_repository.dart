@@ -394,6 +394,19 @@ class LocalRewardsRepository implements RewardsRepository {
   }
 
   @override
+  Future<void> setCouponRemaining(String id, int remaining) async {
+    if (remaining < 0) throw ArgumentError.value(remaining, 'remaining');
+    final c = _coupons[id];
+    if (c != null) {
+      _coupons[id] = Coupon.fromMap(id, {
+        ..._couponMap(c),
+        'maxQuantity': c.claimedCount + remaining,
+      });
+    }
+    _notify();
+  }
+
+  @override
   Stream<List<LedgerEntry>> watchAllLedger({int limit = 100}) => _live(
     () => [
       for (final entry in _ledger.entries)

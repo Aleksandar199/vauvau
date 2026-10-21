@@ -8,6 +8,7 @@ import 'package:vauvau/features/admin/presentation/admin_controller.dart';
 import 'package:vauvau/features/admin/presentation/admin_dashboard_screen.dart';
 import 'package:vauvau/features/admin/presentation/admin_strings.dart';
 import 'package:vauvau/features/admin/presentation/tabs/admin_reports_tab.dart';
+import 'package:vauvau/features/admin/presentation/tabs/admin_rewards_tab.dart';
 import 'package:vauvau/features/auth/domain/app_user.dart';
 import 'package:vauvau/features/auth/presentation/auth_providers.dart';
 import 'package:vauvau/features/map/domain/completed_walk.dart';
@@ -28,24 +29,27 @@ import 'package:vauvau/features/rewards/presentation/rewards_controller.dart';
 final DateTime _now = DateTime.utc(2026, 10, 16, 10);
 
 Coupon _coupon(String id, {String partnerId = 'p1'}) => Coupon(
-      id: id,
-      partnerName: 'Pet shop Šapa',
-      title: 'Hrana',
-      description: '',
-      discountLabel: '15% popusta',
-      pointsCost: 10,
-      startsAt: _now.subtract(const Duration(days: 1)),
-      expiresAt: _now.add(const Duration(days: 10)),
-      maxQuantity: 5,
-      isActive: true,
-      partnerId: partnerId,
-    );
+  id: id,
+  partnerName: 'Pet shop Šapa',
+  title: 'Hrana',
+  description: '',
+  discountLabel: '15% popusta',
+  pointsCost: 10,
+  startsAt: _now.subtract(const Duration(days: 1)),
+  expiresAt: _now.add(const Duration(days: 10)),
+  maxQuantity: 5,
+  isActive: true,
+  partnerId: partnerId,
+);
 
 /// u1 earns points with one 6 km walk, then claims both coupons.
 Future<(LocalRewardsRepository, CouponClaim, CouponClaim)> _claimed() async {
   final repo = LocalRewardsRepository(
     challenges: const [],
-    coupons: [_coupon('c1'), _coupon('c2', partnerId: 'p2')],
+    coupons: [
+      _coupon('c1'),
+      _coupon('c2', partnerId: 'p2'),
+    ],
   );
   final end = _now.subtract(const Duration(hours: 1));
   await repo.saveWalk(
@@ -106,8 +110,7 @@ void main() {
             partnerId: 'p1',
             input: input,
             now: _now,
-          ))
-              .status;
+          )).status;
 
       expect(await check(mine.code.toLowerCase()), PartnerCheckStatus.valid);
       // Kupon drugog partnera izgleda kao nepostojeći.
@@ -146,8 +149,8 @@ void main() {
     testWidgets('ekran Kuponi: unos koda → važeći → označi iskorišćen', (
       tester,
     ) async {
-      final (repo, mine, _) = await tester.runAsync(_claimed) ??
-          (throw StateError('no repo'));
+      final (repo, mine, _) =
+          await tester.runAsync(_claimed) ?? (throw StateError('no repo'));
       final partners = LocalPartnersRepository(
         partners: const [Partner(id: 'p1', name: 'Pet shop Šapa')],
       );
@@ -185,7 +188,9 @@ void main() {
         findsOneWidget,
       );
 
-      await tester.tap(find.widgetWithText(FilledButton, PartnerStrings.redeem));
+      await tester.tap(
+        find.widgetWithText(FilledButton, PartnerStrings.redeem),
+      );
       await tester.pumpAndSettle();
       // Potvrda u dijalogu.
       await tester.tap(
@@ -196,8 +201,9 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      final stored = (await repo.watchClaims('u1').first)
-          .firstWhere((c) => c.id == mine.id);
+      final stored = (await repo.watchClaims('u1').first).firstWhere(
+        (c) => c.id == mine.id,
+      );
       expect(stored.status, ClaimStatus.redeemed);
       expect(stored.redeemedBy, 'shop');
       expect(
@@ -274,7 +280,10 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.text('${AdminStrings.reporterLabel}: Milica'), findsOneWidget);
+      expect(
+        find.text('${AdminStrings.reporterLabel}: Milica'),
+        findsOneWidget,
+      );
       expect(
         find.text(
           '${AdminStrings.reportedUserLabel}: ${AdminStrings.unknownUserName}',
@@ -328,7 +337,9 @@ void main() {
           ],
           child: MaterialApp(
             home: Scaffold(
-              body: SingleChildScrollView(child: AdminReportCard(report: report)),
+              body: SingleChildScrollView(
+                child: AdminReportCard(report: report),
+              ),
             ),
           ),
         ),
@@ -374,9 +385,7 @@ void main() {
       return admin;
     }
 
-    testWidgets('početna prikazuje statistiku; nedostupno = –', (
-      tester,
-    ) async {
+    testWidgets('početna prikazuje statistiku; nedostupno = –', (tester) async {
       await pumpPanel(tester);
       expect(find.text(AdminStrings.attention), findsOneWidget);
       expect(find.text('42'), findsOneWidget);
@@ -408,8 +417,10 @@ void main() {
       final milica = admin.users.firstWhere((u) => u.uid == 'local-user');
       expect(milica.role, AdminRoles.partner);
       expect(milica.partnerId, 'p1');
-      expect(find.text(AdminStrings.roleCurrentPartner('Pet shop Šapa')),
-          findsOneWidget);
+      expect(
+        find.text(AdminStrings.roleCurrentPartner('Pet shop Šapa')),
+        findsOneWidget,
+      );
 
       await tester.tap(find.text(AdminStrings.removePartner));
       await tester.pumpAndSettle();
@@ -434,6 +445,69 @@ void main() {
       expect(suspended.isSuspended, isTrue);
       expect(suspended.suspendedReason, 'Spam');
       expect(find.text(AdminStrings.unsuspendUser), findsOneWidget);
+    });
+  });
+
+  group('Admin – broj preostalih kupona', () {
+    test('preostalo = maxQuantity − preuzeto; 0 = rasprodato', () async {
+      final (repo, _, _) = await _claimed();
+      // c1: max 5, 1 preuzet → preostalo 4.
+      Future<Coupon> c1() async =>
+          (await repo.watchCoupons(activeOnly: false).first).firstWhere(
+            (c) => c.id == 'c1',
+          );
+      expect((await c1()).remaining, 4);
+      await repo.setCouponRemaining('c1', 20);
+      expect((await c1()).maxQuantity, 21);
+      expect((await c1()).remaining, 20);
+      await repo.setCouponRemaining('c1', 0);
+      expect((await c1()).availability(_now), CouponAvailability.soldOut);
+      await expectLater(
+        repo.setCouponRemaining('c1', -1),
+        throwsA(isA<ArgumentError>()),
+      );
+    });
+
+    testWidgets('admin menja preostali broj iz kartice kupona', (tester) async {
+      await tester.binding.setSurfaceSize(const Size(412, 892));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      final repo = LocalRewardsRepository(
+        challenges: const [],
+        coupons: [_coupon('c1')],
+      );
+      final partners = LocalPartnersRepository();
+      addTearDown(partners.dispose);
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            isAdminProvider.overrideWithValue(true),
+            rewardsRepositoryProvider.overrideWithValue(repo),
+            partnersRepositoryProvider.overrideWithValue(partners),
+          ],
+          child: const MaterialApp(home: Scaffold(body: AdminRewardsTab())),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(AdminStrings.rewardsCoupons));
+      await tester.pumpAndSettle();
+      expect(find.text(AdminStrings.rewardsRemaining(5, 0)), findsOneWidget);
+
+      await tester.tap(find.byKey(const ValueKey('coupon-remaining-c1')));
+      await tester.pumpAndSettle();
+      await tester.enterText(
+        find.byKey(const ValueKey('coupon-remaining-field')),
+        '120',
+      );
+      await tester.tap(find.text('+10'));
+      await tester.pump();
+      await tester.tap(find.text(AdminStrings.save));
+      await tester.pumpAndSettle();
+
+      expect(find.text(AdminStrings.rewardsRemaining(130, 0)), findsOneWidget);
+      expect(
+        (await repo.watchCoupons(activeOnly: false).first).single.maxQuantity,
+        130,
+      );
     });
   });
 }
