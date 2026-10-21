@@ -1,0 +1,78 @@
+# Codemagic CI – iOS build bez Mac-a (vodič: docs/ios_vodic.md).
+#
+# Tajne NISU u repou. Pre prvog builda u Codemagic-u (codemagic.io) podesiti:
+#  1. Team settings → Integrations → Developer Portal → App Store Connect API
+#     ključ (.p8, Issuer ID, Key ID). Ime integracije mora biti tačno
+#     "VauVau ASC" (vidi `integrations` ispod).
+#  2. Team settings → codemagic.yaml settings → Code signing identities:
+#     "Generate certificate" (Apple Distribution) i "Fetch profiles" za
+#     com.vauvau.app (App Store). Codemagic ih pravi preko API ključa – Mac
+#     nije potreban.
+#  3. (Opciono) promenljiva APP_STORE_APPLE_ID u ovom fajlu = Apple ID
+#     aplikacije (samo cifre, App Store Connect → App Information).
+#
+# Build se pokreće RUČNO (Start new build → workflow "iOS → TestFlight").
+
+workflows:
+  ios-testflight:
+    name: iOS → TestFlight
+    instance_type: mac_mini_m2
+    max_build_duration: 60
+    integrations:
+      app_store_connect: VauVau ASC
+    environment:
+      flutter: 3.44.1
+      xcode: latest
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: com.vauvau.app
+      vars:
+        BUNDLE_ID: com.vauvau.app
+        # Apple ID aplikacije iz App Store Connect-a (nije tajna). Prazno =
+        # build broj se uzima samo iz pubspec.yaml (+N).
+        APP_STORE_APPLE_ID: ""
+    scripts:
+      - name: Provera Firebase iOS konfiguracije
+        script: |
+          PLIST=ios/Runner/GoogleService-Info.plist
+          if ! grep -A1 "<key>BUNDLE_ID</key>" "$PLIST" | grep -q "<string>$BUNDLE_ID</string>"; then
+            echo "GoogleService-Info.plist nije za $BUNDLE_ID."
+            echo "Registruj iOS aplikaciju $BUNDLE_ID u Firebase-u i zameni fajl (docs/ios_vodic.md, korak 4)."
+            exit 1
+          fi
+      - name: Flutter paketi
+        script: |
+          flutter config --enable-swift-package-manager
+          flutter pub get
+      - name: Analiza koda
+        script: |
+          flutter analyze --no-fatal-infos
+      - name: Potpisivanje (profili iz Codemagic-a)
+        script: |
+          xcode-project use-profiles
+      - name: Build IPA
+        script: |
+          PUBSPEC_BUILD=$(grep -E '^version:' pubspec.yaml | sed -E 's/.*\+([0-9]+).*/\1/')
+          BUILD_NUMBER=$PUBSPEC_BUILD
+          if [ -n "$APP_STORE_APPLE_ID" ]; then
+            LATEST=$(app-store-connect get-latest-testflight-build-number "$APP_STORE_APPLE_ID" 2>/dev/null || echo 0)
+            if [ "${LATEST:-0}" -ge "$BUILD_NUMBER" ] 2>/dev/null; then
+              BUILD_NUMBER=$((LATEST + 1))
+            fi
+          fi
+          echo "Build broj: $BUILD_NUMBER (pubspec: $PUBSPEC_BUILD)"
+          flutter build ipa --release \
+            --build-number="$BUILD_NUMBER" \
+            --export-options-plist=/Users/builder/export_options.plist
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
+      - $HOME/Library/Developer/Xcode/DerivedData/**/Build/**/*.dSYM
+    publishing:
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: true
+        # Eksterne grupe testera (posle Beta App Review), npr.:
+        # beta_groups:
+        #   - Prijatelji VauVau
+        submit_to_app_store: false

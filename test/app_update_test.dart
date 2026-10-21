@@ -10,6 +10,8 @@ Future<void> _pump(
   WidgetTester tester, {
   required AppUpdateConfig? config,
   int? build = 7,
+  AppStorePlatform? platform = AppStorePlatform.android,
+  bool? enabled = true,
 }) async {
   await tester.pumpWidget(
     ProviderScope(
@@ -18,9 +20,13 @@ Future<void> _pump(
           LocalAppUpdateRepository(config),
         ),
         if (build != null) appBuildNumberProvider.overrideWithValue(build),
+        appUpdatePlatformProvider.overrideWithValue(platform),
       ],
-      child: const MaterialApp(
-        home: AppUpdateHost(enabled: true, child: Scaffold(body: Text('home'))),
+      child: MaterialApp(
+        home: AppUpdateHost(
+          enabled: enabled,
+          child: const Scaffold(body: Text('home')),
+        ),
       ),
     ),
   );
@@ -74,6 +80,36 @@ void main() {
     await tester.tapAt(const Offset(2, 2)); // barrier
     await tester.pumpAndSettle();
     expect(find.text(AppUpdateStrings.requiredTitle), findsOneWidget);
+  });
+
+  test('iOS nikad ne otvara Play; bez App Store id-ja nema linka', () {
+    final ios = AppStorePlatform.ios.storeUris;
+    expect(ios.any((uri) => uri.toString().contains('play.google')), isFalse);
+    expect(ios.any((uri) => uri.scheme == 'market'), isFalse);
+    if (kAppStoreId.isEmpty) expect(ios, isEmpty);
+    expect(AppStorePlatform.ios.configDocId, 'ios');
+    expect(AppStorePlatform.android.configDocId, 'android');
+    expect(AppStorePlatform.android.storeUris.first.scheme, 'market');
+  });
+
+  testWidgets('iOS bez App Store id-ja: nema dijaloga', (tester) async {
+    await _pump(
+      tester,
+      config: const AppUpdateConfig(minBuild: 99, latestBuild: 99),
+      platform: AppStorePlatform.ios,
+      enabled: null,
+    );
+    expect(find.byType(AlertDialog), findsNothing);
+  }, skip: kAppStoreId.isNotEmpty);
+
+  testWidgets('web/desktop: nema dijaloga', (tester) async {
+    await _pump(
+      tester,
+      config: const AppUpdateConfig(minBuild: 99),
+      platform: null,
+      enabled: null,
+    );
+    expect(find.byType(AlertDialog), findsNothing);
   });
 
   testWidgets('up to date or unknown config: no dialog', (tester) async {

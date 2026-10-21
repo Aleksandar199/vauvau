@@ -6,7 +6,7 @@ import '../domain/app_update.dart';
 abstract class AppUpdateRepository {
   /// Null when the config cannot be read (offline, rules not deployed):
   /// no prompt is shown then.
-  Future<AppUpdateConfig?> fetch();
+  Future<AppUpdateConfig?> fetch(AppStorePlatform platform);
 }
 
 class FirestoreAppUpdateRepository implements AppUpdateRepository {
@@ -15,9 +15,10 @@ class FirestoreAppUpdateRepository implements AppUpdateRepository {
   final FirebaseFirestore _firestore;
 
   @override
-  Future<AppUpdateConfig?> fetch() async {
+  Future<AppUpdateConfig?> fetch(AppStorePlatform platform) async {
     try {
-      final snapshot = await _firestore.doc('app_config/android').get();
+      final snapshot =
+          await _firestore.doc('app_config/${platform.configDocId}').get();
       return snapshot.exists ? AppUpdateConfig.fromMap(snapshot.data()) : null;
     } catch (error) {
       debugPrint('app update config unavailable: $error');
@@ -32,5 +33,5 @@ class LocalAppUpdateRepository implements AppUpdateRepository {
   final AppUpdateConfig? config;
 
   @override
-  Future<AppUpdateConfig?> fetch() async => config;
+  Future<AppUpdateConfig?> fetch(AppStorePlatform platform) async => config;
 }

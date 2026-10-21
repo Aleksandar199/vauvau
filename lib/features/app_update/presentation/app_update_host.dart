@@ -18,6 +18,17 @@ final appUpdateRepositoryProvider = Provider<AppUpdateRepository>((ref) {
   return LocalAppUpdateRepository();
 });
 
+/// Store of this device: Android → Play, iOS → App Store, web/desktop →
+/// none (no prompt).
+final appUpdatePlatformProvider = Provider<AppStorePlatform?>((ref) {
+  if (kIsWeb) return null;
+  return switch (defaultTargetPlatform) {
+    TargetPlatform.android => AppStorePlatform.android,
+    TargetPlatform.iOS => AppStorePlatform.ios,
+    _ => null,
+  };
+});
+
 /// Test override for the installed build; null = ask the platform.
 final appBuildNumberProvider = Provider<int?>((ref) => null);
 
@@ -44,23 +55,27 @@ final appUpdateStatusProvider = FutureProvider<AppUpdateStatus>((ref) async {
   final ready = ref.watch(
     firestoreAuthReadyProvider.select((value) => value.value ?? false),
   );
-  if (!ready && isFirebaseReady) {
+  final platform = ref.watch(appUpdatePlatformProvider);
+  if ((!ready && isFirebaseReady) ||
+      platform == null ||
+      platform.storeUris.isEmpty) {
     return AppUpdateStatus.upToDate;
   }
-  final config = await ref.watch(appUpdateRepositoryProvider).fetch();
+  final config = await ref.watch(appUpdateRepositoryProvider).fetch(platform);
   final build = await ref.watch(installedBuildNumberProvider.future);
   if (config == null || build == null) return AppUpdateStatus.upToDate;
   return config.statusFor(build);
 });
 
 /// Shows the update dialog once per app start when a newer build exists;
-/// a required update cannot be dismissed. Android only (Play listing).
+/// a required update cannot be dismissed. Android opens Play, iOS the App
+/// Store (only once `kAppStoreId` is set) – never the other platform's store.
 class AppUpdateHost extends ConsumerStatefulWidget {
   const AppUpdateHost({super.key, required this.child, this.enabled});
 
   final Widget child;
 
-  /// Defaults to Android only.
+  /// Defaults to: this device has a store to open ([appUpdatePlatformProvider]).
   final bool? enabled;
 
   @override
@@ -72,17 +87,14 @@ class _AppUpdateHostState extends ConsumerState<AppUpdateHost> {
 
   bool get _enabled =>
       widget.enabled ??
-      (!kIsWeb && defaultTargetPlatform == TargetPlatform.android);
+      (ref.read(appUpdatePlatformProvider)?.storeUris.isNotEmpty ?? false);
 
   Future<void> _open() async {
     final launcher = ref.read(externalLinkLauncherProvider);
-    var opened = false;
-    try {
-      opened = await launcher.open(Uri.parse(kPlayStoreMarketUrl));
-    } catch (_) {}
-    if (!opened) {
+    final uris = ref.read(appUpdatePlatformProvider)?.storeUris ?? const [];
+    for (final uri in uris) {
       try {
-        await launcher.open(Uri.parse(kPlayStoreWebUrl));
+        if (await launcher.open(uri)) return;
       } catch (_) {}
     }
   }
