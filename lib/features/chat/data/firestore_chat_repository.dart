@@ -26,8 +26,9 @@ class FirestoreChatRepository implements ChatRepository {
 
   final FirebaseFirestore _firestore;
   final String currentUserId;
-  final String currentUserName;
-  final String currentUserAvatarUrl;
+  /// Updated in place when the profile name / photo changes (no rebuild).
+  String currentUserName;
+  String currentUserAvatarUrl;
   List<ChatConversation> _inbox = const [];
   final StreamController<List<ChatConversation>> _inboxController =
       StreamController<List<ChatConversation>>.broadcast();
@@ -501,6 +502,12 @@ class FirestoreChatRepository implements ChatRepository {
       'unreadByUser': <String, int>{myUserId: 0, peerId: 0},
       'isNewMatch': true,
     }, SetOptions(merge: true));
+  }
+
+  @override
+  void updateSender({required String name, required String avatarUrl}) {
+    currentUserName = name;
+    currentUserAvatarUrl = avatarUrl;
   }
 
   @override
@@ -1056,6 +1063,7 @@ class FirestoreChatRepository implements ChatRepository {
       lastActivityAt: _date(data['lastMessageTimestamp']) ?? DateTime.now(),
       isNewMatch: data['isNewMatch'] as bool? ?? false,
       unreadCount: _unreadForMe(data),
+      peerUnreadCount: _unreadForPeer(data, peerId),
       lastMessagePreview: data['lastMessage'] as String? ?? '',
     );
   }
@@ -1091,6 +1099,16 @@ class FirestoreChatRepository implements ChatRepository {
       storyAuthorId: data['storyAuthorId'] as String? ?? '',
       storyCaption: data['storyCaption'] as String? ?? '',
     );
+  }
+
+  /// The peer's unread count ("Viđeno" when 0); null if the room has none.
+  int? _unreadForPeer(Map<String, dynamic> data, String peerId) {
+    final map = data['unreadByUser'];
+    if (peerId.isEmpty || map is! Map) {
+      return null;
+    }
+    final value = map[peerId];
+    return value is num ? value.toInt() : null;
   }
 
   int _unreadForMe(Map<String, dynamic> data) {

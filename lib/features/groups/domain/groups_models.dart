@@ -449,13 +449,19 @@ class GroupInboxThread {
         unread++;
       }
     }
+    // Latest of the loaded messages and the doc's lastMessageAt: the message
+    // page may not be loaded yet (or be older than the doc field).
+    final fromMessages = last?.createdAt;
+    final fromDoc = group.lastMessageAt;
+    final lastActivity = fromMessages == null
+        ? fromDoc
+        : fromDoc == null || fromMessages.isAfter(fromDoc)
+        ? fromMessages
+        : fromDoc;
     return GroupInboxThread(
       group: group,
       lastMessage: last?.preview ?? group.lastMessage,
-      lastActivityAt:
-          last?.createdAt ??
-          group.lastMessageAt ??
-          DateTime.fromMillisecondsSinceEpoch(0),
+      lastActivityAt: lastActivity ?? DateTime.fromMillisecondsSinceEpoch(0),
       unreadCount: unread,
     );
   }

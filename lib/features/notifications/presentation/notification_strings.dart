@@ -1,4 +1,5 @@
 import '../../../core/l10n/l10n.dart';
+import '../domain/app_notification.dart';
 
 abstract final class NotificationStrings {
   static String get title => L10n.tr('Obaveštenja', 'Notifications');
@@ -8,7 +9,12 @@ abstract final class NotificationStrings {
         'Ovde će se pojaviti mečevi, poruke i pozivi na šetnju.',
         'Matches, messages, and walk invites will appear here.',
       );
-  static String get markAll => L10n.tr('Označi sve kao pročitano', 'Mark all as read');
+  static String dayLabel(NotificationDay day) => switch (day) {
+    NotificationDay.today => L10n.tr('Danas', 'Today'),
+    NotificationDay.yesterday => L10n.tr('Juče', 'Yesterday'),
+    NotificationDay.earlier => L10n.tr('Ranije', 'Earlier'),
+  };
+  static String get markAll =>L10n.tr('Označi sve kao pročitano', 'Mark all as read');
   static String get enableTitle => L10n.tr('Omogući obaveštenja', 'Enable notifications');
   static String get enableBody => L10n.tr(
         'VauVau šalje obaveštenja o novim mečevima, porukama i pozivima na šetnju.',

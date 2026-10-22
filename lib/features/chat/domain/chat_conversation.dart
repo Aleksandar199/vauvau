@@ -18,6 +18,7 @@ class ChatConversation {
     this.isNewMatch = false,
     this.unreadCount = 0,
     this.lastMessagePreview = '',
+    this.peerUnreadCount,
   });
 
   final String id;
@@ -37,6 +38,22 @@ class ChatConversation {
 
   /// From the room document (`lastMessage`) — used when messages are not hydrated.
   final String lastMessagePreview;
+
+  /// Messages the peer has not read yet (`unreadByUser[peer]`); null when
+  /// unknown (older rooms, local data). 0 = the peer saw everything I sent.
+  final int? peerUnreadCount;
+
+  /// "Viđeno" for my latest message: it is the newest one, it is saved on
+  /// the server (not an optimistic local copy) and the peer has read it.
+  bool get lastMessageSeenByPeer {
+    if (peerUnreadCount != 0 || messages.isEmpty) {
+      return false;
+    }
+    final last = messages.last;
+    return last.isMine &&
+        !last.id.startsWith('local-') &&
+        !lastActivityAt.isBefore(last.sentAt);
+  }
 
   String get title => '$dogName ($ownerName)';
 
@@ -71,6 +88,7 @@ class ChatConversation {
     bool? isNewMatch,
     int? unreadCount,
     String? lastMessagePreview,
+    int? peerUnreadCount,
   }) {
     return ChatConversation(
       id: id,
@@ -88,6 +106,7 @@ class ChatConversation {
       isNewMatch: isNewMatch ?? this.isNewMatch,
       unreadCount: unreadCount ?? this.unreadCount,
       lastMessagePreview: lastMessagePreview ?? this.lastMessagePreview,
+      peerUnreadCount: peerUnreadCount ?? this.peerUnreadCount,
     );
   }
 }

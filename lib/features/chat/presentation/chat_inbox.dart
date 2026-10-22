@@ -8,6 +8,7 @@ import '../../../core/firebase/firebase_status.dart';
 import '../../../core/firebase/firestore_auth_guard.dart';
 import '../../../core/images/image_upload_service.dart';
 import '../../../core/utils/content_validation_service.dart';
+import '../../auth/domain/app_user.dart';
 import '../../auth/presentation/auth_providers.dart';
 import '../../discover/domain/discover_profile.dart';
 import '../../dogs/domain/dogs_exception.dart';
@@ -281,16 +282,34 @@ final chatUserIdProvider = Provider<String>((ref) {
 });
 
 final chatRepositoryProvider = Provider<ChatRepository>((ref) {
-  final user = ref.watch(authStateProvider).asData?.value;
-  final uid = user?.uid ?? '';
-  final name = (user?.displayName ?? '').trim().isEmpty
-      ? 'Ti'
-      : user!.displayName!.trim();
-  final avatar = user?.ownerAvatarUrl ?? '';
+  // Only what the repository uses. Watching the whole AppUser rebuilt the
+  // repository (dropping inbox, open rooms and walk invites until reloaded)
+  // on every users/{uid} snapshot, e.g. right after a page reload, which
+  // made scheduled walks flash and disappear.
+  // Name / photo change right after a reload too (Auth first, then the
+  // users doc), so they are pushed into the live repository instead.
+  final uid = ref.watch(
+    authStateProvider.select((auth) => auth.asData?.value?.uid ?? ''),
+  );
+  ({String name, String avatar}) senderOf(AsyncValue<AppUser?> auth) {
+    final user = auth.asData?.value;
+    final name = (user?.displayName ?? '').trim();
+    return (name: name.isEmpty ? 'Ti' : name, avatar: user?.ownerAvatarUrl ?? '');
+  }
+
+  final sender = senderOf(ref.read(authStateProvider));
+  final name = sender.name;
+  final avatar = sender.avatar;
+  final hasUser = uid.isNotEmpty;
+  void keepSenderFresh(ChatRepository repo) {
+    ref.listen(authStateProvider.select(senderOf), (_, next) {
+      repo.updateSender(name: next.name, avatarUrl: next.avatar);
+    });
+  }
   // Do not open Firestore chat listeners until Auth has a real user.
   // (authState still loading → asData null → previously queried as 'local-user')
   final authReady = ref.watch(firestoreAuthReadyProvider).asData?.value ?? false;
-  if (isFirebaseReady && user != null && uid.isNotEmpty && authReady) {
+  if (isFirebaseReady && hasUser && authReady) {
     final repo = FirestoreChatRepository(
       firestore: FirebaseFirestore.instance,
       currentUserId: uid,
@@ -298,6 +317,7 @@ final chatRepositoryProvider = Provider<ChatRepository>((ref) {
       currentUserAvatarUrl: avatar,
     );
     repo.start();
+    keepSenderFresh(repo);
     ref.onDispose(repo.dispose);
     return repo;
   }
@@ -307,6 +327,7 @@ final chatRepositoryProvider = Provider<ChatRepository>((ref) {
     currentUserName: name,
     currentUserAvatarUrl: avatar,
   );
+  keepSenderFresh(repo);
   ref.onDispose(repo.dispose);
   return repo;
 });

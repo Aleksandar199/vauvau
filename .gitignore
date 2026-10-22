@@ -65,3 +65,4 @@ app.*.map.json
 
 # Claude Code lokalna podešavanja
 .claude/settings.local.json
+/functions/node_modules/

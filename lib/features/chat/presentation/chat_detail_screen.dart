@@ -477,6 +477,28 @@ class _ChatDetailScreenState extends ConsumerState<ChatDetailScreen>
                     onLongPress: () => _onMessageLongPress(message, open),
                   );
                 }
+                if (index == open.messages.length - 1 &&
+                    open.lastMessageSeenByPeer) {
+                  child = Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      child,
+                      Padding(
+                        key: const ValueKey('message-seen'),
+                        padding: const EdgeInsets.fromLTRB(0, 0, 56, 4),
+                        child: Text(
+                          ChatStrings.seen,
+                          style: Theme.of(context).textTheme.labelSmall
+                              ?.copyWith(
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onSurfaceVariant,
+                              ),
+                        ),
+                      ),
+                    ],
+                  );
+                }
                 if (index == _unreadAnchorIndex) {
                   return KeyedSubtree(key: _unreadAnchorKey, child: child);
                 }

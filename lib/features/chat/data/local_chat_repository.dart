@@ -18,8 +18,9 @@ class LocalChatRepository implements ChatRepository {
   }) : _inbox = List<ChatConversation>.from(seed);
 
   final String currentUserId;
-  final String currentUserName;
-  final String currentUserAvatarUrl;
+  /// Updated in place when the profile name / photo changes (no rebuild).
+  String currentUserName;
+  String currentUserAvatarUrl;
   List<ChatConversation> _inbox;
   int _messageSeq = 0;
   final StreamController<List<ChatConversation>> _inboxController =
@@ -121,6 +122,12 @@ class LocalChatRepository implements ChatRepository {
     _inbox = [chat, ..._inbox];
     _emit();
     return chat.id;
+  }
+
+  @override
+  void updateSender({required String name, required String avatarUrl}) {
+    currentUserName = name;
+    currentUserAvatarUrl = avatarUrl;
   }
 
   @override

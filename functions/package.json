@@ -1,0 +1,13 @@
+{
+  "name": "vauvau-functions",
+  "private": true,
+  "description": "VauVau Cloud Functions: šalje push iz users/{uid}/fcmInbox (poruke stižu i kad je aplikacija zatvorena).",
+  "main": "index.js",
+  "engines": {
+    "node": "20"
+  },
+  "dependencies": {
+    "firebase-admin": "^12.7.0",
+    "firebase-functions": "^6.1.0"
+  }
+}

@@ -194,11 +194,12 @@ class PushController extends Notifier<bool> {
   }
 
   Future<void> _handleForeground(PushPayload payload) async {
-    if (!_isEnabled(payload.kind)) {
+    // FCM now really arrives (Cloud Function sendQueuedPush). While the app
+    // is open, chat messages are already announced by the in-app watchers
+    // (incomingChatAlertProvider / groupUnreadAlerts) and in-app kinds have
+    // their `notifications` doc, so neither is shown or listed twice.
+    if (!_isEnabled(payload.kind) || !payload.showsInApp) {
       return;
-    }
-    if (payload.showsInApp) {
-      _ingest(payload);
     }
     await _gateway.present(payload);
   }

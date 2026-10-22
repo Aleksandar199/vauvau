@@ -275,7 +275,9 @@ EventInboxThread _threadFor(
       memberIds: event.participantUserIds,
       memberCount: event.participantCount,
       lastMessage: event.lastMessage,
-      lastMessageAt: event.lastMessageAt ?? event.dateTime,
+      // Not event.dateTime: a future event without messages would jump to
+      // the top of Poruke above newer 1:1 and group messages.
+      lastMessageAt: event.lastMessageAt,
     ),
     messages: messages,
     lastRead: lastRead,

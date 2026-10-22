@@ -90,13 +90,29 @@ class NotificationsInbox extends ConsumerWidget {
     if (items.isEmpty) {
       return const _EmptyNotifications();
     }
-    return ListView.separated(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-      itemCount: items.length,
-      separatorBuilder: (context, index) => const SizedBox(height: 8),
-      itemBuilder: (context, index) {
-        return _NotificationCard(item: items[index]);
-      },
+    final sections = groupNotificationsByDay(items, DateTime.now());
+    final theme = Theme.of(context);
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+      children: [
+        for (final section in sections) ...[
+          Padding(
+            key: ValueKey('notification-section-${section.day.name}'),
+            padding: const EdgeInsets.fromLTRB(4, 16, 4, 8),
+            child: Text(
+              NotificationStrings.dayLabel(section.day),
+              style: theme.textTheme.titleSmall?.copyWith(
+                fontWeight: FontWeight.w800,
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ),
+          for (final item in section.items) ...[
+            _NotificationCard(item: item),
+            const SizedBox(height: 8),
+          ],
+        ],
+      ],
     );
   }
 }

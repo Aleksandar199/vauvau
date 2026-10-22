@@ -26,6 +26,7 @@ abstract final class ChatStrings {
   static String get composeHint =>
       L10n.tr('Napiši poruku...', 'Write a message...');
   static String get send => L10n.tr('Pošalji', 'Send');
+  static String get seen => L10n.tr('Viđeno', 'Seen');
   static String get emptyTitle =>
       L10n.tr('Nemate aktivnih poruka.', 'You have no active messages.');
   static String get emptySubtitle => L10n.tr(

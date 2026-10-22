@@ -57,3 +57,37 @@ class AppNotification {
     );
   }
 }
+
+enum NotificationDay { today, yesterday, earlier }
+
+typedef NotificationSection = ({
+  NotificationDay day,
+  List<AppNotification> items,
+});
+
+/// Splits [items] into Danas / Juče / Ranije by the device's calendar day
+/// (newest first inside each section; empty sections are left out).
+List<NotificationSection> groupNotificationsByDay(
+  List<AppNotification> items,
+  DateTime now,
+) {
+  final today = DateTime(now.year, now.month, now.day);
+  final yesterday = DateTime(now.year, now.month, now.day - 1);
+  final byDay = <NotificationDay, List<AppNotification>>{
+    for (final day in NotificationDay.values) day: <AppNotification>[],
+  };
+  final sorted = [...items]..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+  for (final item in sorted) {
+    final at = item.createdAt;
+    final day = !at.isBefore(today)
+        ? NotificationDay.today
+        : !at.isBefore(yesterday)
+        ? NotificationDay.yesterday
+        : NotificationDay.earlier;
+    byDay[day]!.add(item);
+  }
+  return [
+    for (final day in NotificationDay.values)
+      if (byDay[day]!.isNotEmpty) (day: day, items: byDay[day]!),
+  ];
+}

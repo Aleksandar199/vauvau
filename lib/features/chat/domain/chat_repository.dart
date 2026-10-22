@@ -39,6 +39,9 @@ abstract class ChatRepository {
 
   void markRead(String conversationId);
 
+  /// My display name / photo for messages sent from now on.
+  void updateSender({required String name, required String avatarUrl});
+
   /// [story] marks the message as a reply to that story (Inbox shows it).
   Future<void> sendMessage(
     String conversationId,
