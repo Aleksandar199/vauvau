@@ -77,26 +77,10 @@ class ReminderController {
       customIntervalUnit: reminder.customIntervalUnit,
     );
     final repo = _ref.read(reminderRepositoryProvider);
-    final notifications = _ref.read(notificationServiceProvider);
     final reminderId = await repo.saveReminder(normalized);
     final notificationId = DogReminder.notificationIdFor(reminderId);
-    await notifications.cancelReminder(notificationId);
-
     final stored = normalized.copyWith(id: reminderId);
-    final greetingSet = await _scheduleBirthdayGreeting(stored, dogName);
-    var reminderSet = false;
-    if (greetingSet && BirthdayGreeting.reminderIsSameDay(stored)) {
-      // Offset "na dan": the greeting replaces the plain reminder.
-      reminderSet = true;
-    } else if (!stored.isCompleted) {
-      reminderSet = await notifications.scheduleHealthReminder(
-        notificationId: notificationId,
-        title: ReminderStrings.typeShortLabel(stored.type),
-        body:
-            '$dogName: ${stored.title} — ${ReminderStrings.date(stored.date)}',
-        scheduledDate: stored.notifyDate,
-      );
-    }
+    final reminderSet = await _schedule(stored, dogName);
 
     final shouldStoreId = reminderSet;
     final currentlyStored = reminder.notificationId == notificationId;
@@ -117,6 +101,54 @@ class ReminderController {
       reminderId: reminderId,
       reminderSet: reminderSet,
     );
+  }
+
+  /// (Re)schedules the local notifications of a saved reminder: the reminder
+  /// itself on its notify date, plus the birthday greeting. Scheduling the
+  /// same id again replaces it, so this is safe to repeat.
+  Future<bool> _schedule(DogReminder stored, String dogName) async {
+    final notifications = _ref.read(notificationServiceProvider);
+    final notificationId = DogReminder.notificationIdFor(stored.id);
+    await notifications.cancelReminder(notificationId);
+    final greetingSet = await _scheduleBirthdayGreeting(stored, dogName);
+    if (greetingSet && BirthdayGreeting.reminderIsSameDay(stored)) {
+      // Offset "na dan": the greeting replaces the plain reminder.
+      return true;
+    }
+    if (stored.isCompleted) {
+      return false;
+    }
+    return notifications.scheduleHealthReminder(
+      notificationId: notificationId,
+      title: ReminderStrings.typeShortLabel(stored.type),
+      body: '$dogName: ${stored.title} — ${ReminderStrings.date(stored.date)}',
+      scheduledDate: stored.notifyDate,
+    );
+  }
+
+  /// App start: local notifications live only on this phone (lost after a
+  /// reinstall or on a new phone, missing for reminders saved on another
+  /// device). Re-creates them from the stored reminders; repeating reminders
+  /// whose date has passed move to the next occurrence (saved once).
+  Future<void> resync(
+    List<DogReminder> items, {
+    required String dogName,
+    DateTime? now,
+  }) async {
+    final clock = now ?? DateTime.now();
+    for (final item in items) {
+      if (item.id.isEmpty) continue;
+      try {
+        final rolled = item.rolledForward(clock);
+        if (!_sameDay(rolled.date, item.date)) {
+          await save(reminder: rolled, dogName: dogName);
+        } else {
+          await _schedule(item, dogName);
+        }
+      } catch (error) {
+        debugPrint('Reminder resync failed for ${item.id}: $error');
+      }
+    }
   }
 
   /// Rolls repeating reminders whose date is in the past up to the next

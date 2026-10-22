@@ -91,6 +91,29 @@ class HealthController {
     return HealthSaveResult(recordId: recordId, reminderSet: reminderSet);
   }
 
+  /// App start: re-creates the local notifications of records that had a
+  /// reminder (stored `notificationId`) and a due date still ahead – after a
+  /// reinstall, on a new phone or for records saved on another device.
+  Future<void> resync(List<HealthRecord> records, {required String dogName}) async {
+    final notifications = _ref.read(notificationServiceProvider);
+    for (final record in records) {
+      final due = record.nextDueDate;
+      if (record.id.isEmpty || record.notificationId == null || due == null) {
+        continue;
+      }
+      try {
+        await notifications.scheduleHealthReminder(
+          notificationId: HealthRecord.notificationIdFor(record.id),
+          title: HealthStrings.reminderTitle(dogName),
+          body: HealthStrings.reminderBody(dogName, record.title),
+          scheduledDate: due,
+        );
+      } catch (error) {
+        debugPrint('Health reminder resync failed for ${record.id}: $error');
+      }
+    }
+  }
+
   Future<void> delete(HealthRecord record) async {
     final notificationId = record.notificationId ??
         HealthRecord.notificationIdFor(record.id);

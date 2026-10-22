@@ -7,6 +7,7 @@ import '../../chat/presentation/chat_strings.dart';
 import '../../chat/presentation/incoming_message_sound.dart';
 import '../../chat/presentation/matches_screen.dart';
 import '../../chat/presentation/widgets/scheduled_walks_banner.dart';
+import '../../dogs/presentation/health/reminder_notification_sync.dart';
 import '../../discover/presentation/discover_screen.dart';
 import '../../discover/presentation/discover_strings.dart';
 import '../../discover/presentation/widgets/discover_app_bar.dart';
@@ -43,6 +44,8 @@ class HomeShellScreen extends ConsumerWidget {
     final showScheduledWalks =
         tabIndex == HomeTabIndex.map || tabIndex == HomeTabIndex.messages;
     ref.watch(groupUnreadAlertsProvider);
+    // Local reminder / health notifications after reinstall or new phone.
+    ref.watch(reminderNotificationSyncProvider);
     ref.watch(incomingMessageSoundProvider);
 
     final titles = [
