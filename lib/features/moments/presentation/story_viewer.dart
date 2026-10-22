@@ -244,7 +244,7 @@ class _StoryGroupViewState extends ConsumerState<StoryGroupView>
     if (length != null) {
       _progress.duration = storyVideoItemDuration(
         length,
-        VideoLimits.postMaxDuration + VideoLimits.tolerance,
+        VideoLimits.maxDuration + VideoLimits.tolerance,
       );
     }
     _progress.reset();

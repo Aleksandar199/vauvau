@@ -479,11 +479,11 @@ class MomentActions {
     final problem = checkVideo(
       sizeBytes: video.sizeBytes,
       duration: video.duration,
-      maxDuration: VideoLimits.postMaxDuration,
+      maxDuration: VideoLimits.maxDuration,
     );
     if (problem != null) {
       throw StateError(
-        VideoStrings.problem(problem, VideoLimits.postMaxDuration),
+        VideoStrings.problem(problem, VideoLimits.maxDuration),
       );
     }
     return _ref.read(momentPhotoUploaderProvider)(video.file, draftId);

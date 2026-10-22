@@ -311,7 +311,7 @@ class _StoryGroupPlayerState extends ConsumerState<_StoryGroupPlayer>
     }
     _progress.duration = storyVideoItemDuration(
       length,
-      VideoLimits.storyMaxDuration + VideoLimits.tolerance,
+      VideoLimits.maxDuration + VideoLimits.tolerance,
     );
     _onMediaLoaded(story);
   }

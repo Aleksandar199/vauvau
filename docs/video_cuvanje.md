@@ -1,40 +1,55 @@
 # Video u pričama i objavama – čuvanje i kvote
 
-Proveravano: 20.10.2026. Izvori:
+Proveravano: 20.10.2026 (kvote), 22.10.2026 (deployovana pravila, kompresija). Izvori:
 - https://firebase.google.com/pricing (tabela „Cloud Storage“)
 - https://firebase.google.com/docs/storage/faqs-storage-changes-announced-sept-2024
+- https://pub.dev/packages/video_compressor_plus (kompresija na telefonu)
 
-## Kako se video čuva
+## Kako se video priprema i čuva
 
-1. Telefon bira ili snima video (`image_picker`). Kamera staje na limitu
-   (priča 15 s, objava 30 s). Video iz galerije aplikacija proverava posle izbora:
-   trajanje (preko `video_player`) i veličinu (< 20 MB). Predug ili prevelik
-   video se odbija uz poruku šta treba uraditi (`core/media/video_limits.dart`,
-   `checkVideo`).
-2. **Sam fajl ide u Firebase Storage**, u bucket projekta
+1. Korisnik bira ili snima video u kvalitetu koji telefon ima (`image_picker`).
+   Kamera staje na 15 s; video iz galerije može biti duži.
+2. **Priprema na telefonu** (Android i iOS, `core/media/picked_video.dart` →
+   `prepareVideoForUpload`, paket `video_compressor_plus`: Android MediaCodec,
+   iOS AVFoundation, bez FFmpeg-a):
+   - duži video se skraćuje na **prvih 15 s** (korisnik vidi napomenu);
+   - rezolucija se smanjuje na **najviše 720p** (uspravno 720×1280), 30 fps;
+     orijentacija i odnos stranica ostaju;
+   - ako je i tada ≥ 20 MB, radi se drugi prolaz na 540p; ako ni to ne pomogne,
+     video se odbija uz poruku;
+   - rezultat se UVEK ponovo meri (trajanje i veličina) pre otpremanja.
+   Na webu nema kodera: video mora već biti ≤ 15 s i < 20 MB.
+3. **Sam fajl ide u Firebase Storage**, u bucket projekta
    `vauvau-3195a.firebasestorage.app`:
    - priča: `stories/{uid}/{storyId}/media` – privatno, svako čitanje prolazi
      `storage.rules` (publika, blokada, istek 24 h);
    - objava: `moments/{uid}/{draftId}.mp4` – javni link sa tokenom (kao slike).
-3. **U Firestore ide samo mali dokument** (nekoliko stotina bajtova): putanja ili
+4. **U Firestore ide samo mali dokument** (nekoliko stotina bajtova): putanja ili
    link do fajla + `mediaType: 'video'` + opis, grad, autor… Video nikad nije u
    bazi, pa ne troši Firestore kvotu.
-4. Gledanje:
+5. Gledanje:
    - priča: na telefonu se video jednom preuzme u privremeni folder aplikacije i
-     pušta odatle (ponovno gledanje iste priče na istom telefonu ne preuzima
-     ponovo dok OS ne očisti keš); na webu se pušta preko privremenog linka;
+     pušta odatle; na webu se pušta preko privremenog linka;
    - objava: ništa se ne preuzima dok korisnik ne tapne na video (bez autoplay-a,
      bez zvuka, samo jedan video svira u isto vreme).
-5. Brisanje priče/objave briše i fajl. Priče koje samo isteknu (24 h) ostaju u
+6. Brisanje priče/objave briše i fajl. Priče koje samo isteknu (24 h) ostaju u
    Storage-u dok se ne podesi lifecycle pravilo (vidi Preporuke).
+
+## Pravila (stanje 22.10.2026)
+
+Provereno čitanjem aktivnih pravila sa Firebase-a (Rules API): `cloud.firestore`
+(deploy 22.10. 08:32 UTC) i `firebase.storage/vauvau-3195a.firebasestorage.app`
+(deploy 22.10. 08:34 UTC) su **identični** `firestore.rules` i `storage.rules` u
+repou: `mediaType` `image`/`video` za objave i priče, video < 20 MB
+(mp4/quicktime/webm/3gpp) samo u `moments/` i `stories/`.
 
 ## Koje kvote važe
 
 Bucket je novog tipa (`*.firebasestorage.app`). Po zvaničnim FAQ-u, Cloud Storage
 od septembra 2024 traži **Blaze plan** (pay-as-you-go), a Spark projekti od
-3.2.2026 nemaju pristup nijednom bucketu. Pošto otpremanje slika radi, projekat je
-verovatno već na Blaze planu – **proveri u Firebase Console → Usage and billing**
-(iz fajlova u repou plan ne može da se utvrdi).
+3.2.2026 nemaju pristup nijednom bucketu. Cloud Functions su deployovane
+22.10.2026, a i one traže Blaze, pa je projekat na Blaze planu – iznos i budžet
+proveri u **Firebase Console → Usage and billing**.
 
 Besplatni nivo za `*.firebasestorage.app` (Firebase pricing stranica, isti brojevi
 kao Google Cloud „Always Free“):
@@ -48,32 +63,32 @@ kao Google Cloud „Always Free“):
 
 Važi **samo ako je bucket u regionu `us-central1`, `us-east1` ili `us-west1`**
 (Console → Storage → podešavanja bucketa). U drugom regionu (npr. `europe-west`)
-plaća se od prvog bajta po ceni Google Cloud Storage-a. Iznad besplatnog nivoa
-naplaćuje se po Google Cloud Storage cenovniku (linkovan sa pricing stranice).
+plaća se od prvog bajta po ceni Google Cloud Storage-a.
 
-## Okvirna procena (nije merenje)
+## Okvirna procena (nije merenje na uređaju)
 
-Telefon snima otprilike 1 MB/s na 720p i 2–2,5 MB/s na 1080p.
+Posle pripreme: 720p, ~4 Mbit/s video + zvuk ≈ **0,5 MB po sekundi**, pa je video
+od 15 s oko **7–8 MB** (bez obzira da li je snimljen u 1080p ili 4K).
 
-- Priča 15 s na 720p ≈ 15 MB; objava 30 s na 720p ≈ 30 MB → **prelazi limit od
-  20 MB** i biva odbijena. Na 1080p i priča od 15 s (≈ 30 MB) prelazi limit.
-  Prolaze: kraći snimci, 720p, ili video koji je već kompresovan (npr. poslat
-  preko WhatsApp-a/Vibera).
-- Skladište: 5 GB / ~15 MB ≈ **330 videa** istovremeno (bez slika). Priče se
+- Skladište: 5 GB / ~8 MB ≈ **600 videa** istovremeno (bez slika). Priče se
   same ne brišu dok se ne uključi lifecycle pravilo.
-- Preuzimanje: 100 GB / ~15 MB ≈ **6.600 gledanja mesečno** (~220 dnevno).
-  Jedna priča od 15 MB koju pogleda 100 pratilaca = 1,5 GB.
+- Preuzimanje: 100 GB / ~8 MB ≈ **12.500 gledanja mesečno** (~400 dnevno).
+  Jedna priča od 8 MB koju pogleda 100 pratilaca = 0,8 GB.
 - Upload: 5.000 mesečno za SVE fajlove (slike profila, psa, četa, objave, priče).
 
 ## Preporuke
 
-1. Ostaviti limite (priča 15 s, objava 30 s, < 20 MB) – trajanje i veličina su
-   jedina kočnica troška; `storage.rules` proverava veličinu i tip i kad je
-   klijent izmenjen (trajanje ne može da se proveri u pravilima).
-2. **Lifecycle pravilo** za prefiks `stories/` (briši starije od 2 dana) –
+1. **Lifecycle pravilo** za prefiks `stories/` (briši starije od 2 dana) –
    Google Cloud Console → Cloud Storage → bucket → Lifecycle. Već je u TODO 6b.
-3. Kompresija na telefonu (npr. paket `video_compress`) pre otpremanja – tek
-   tada objava od 30 s realno staje u 20 MB. Traži nativni paket i proveru na
-   uređaju, zato nije urađeno u ovoj izmeni.
-4. Postaviti budžet i upozorenje u Google Cloud Billing (npr. 5 €), da trošak
+2. Postaviti budžet i upozorenje u Google Cloud Billing (npr. 5 €), da trošak
    ne iznenadi.
+3. Na uređaju proveriti stvarne veličine (snimak 1080p/4K, dug video iz
+   galerije) i vreme pripreme na slabijem telefonu.
+
+## Poznata ograničenja
+
+- iOS (još nije objavljen): paket na iOS-u ne primenjuje skraćivanje kad video
+  ima zvuk. Aplikacija to hvata – duži video posle obrade i dalje ima više od
+  15 s, pa se odbija uz poruku da se skrati u Fotografijama. Proveriti kad
+  stigne prvi iOS build.
+- Web: nema smanjenja ni skraćivanja.

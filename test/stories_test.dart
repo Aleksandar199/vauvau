@@ -8,6 +8,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:vauvau/core/media/video_limits.dart';
 import 'package:vauvau/core/media/video_strings.dart';
+import 'package:vauvau/core/media/video_transcoder.dart';
 import 'package:vauvau/features/chat/presentation/chat_inbox.dart';
 import 'package:vauvau/features/discover/data/local_discover_repository.dart';
 import 'package:vauvau/features/discover/domain/discover_profile.dart';
@@ -601,7 +602,7 @@ void main() {
       await tester.pump();
       expect(
         find.text(
-          VideoStrings.problem(VideoProblem.tooLong, VideoLimits.storyMaxDuration),
+          VideoStrings.problem(VideoProblem.tooLong, VideoLimits.maxDuration),
         ),
         findsOneWidget,
       );
@@ -632,5 +633,86 @@ void main() {
       expect(story.isVideo, isTrue);
       expect(tester.takeException(), isNull);
     });
+
+    testWidgets('video: dug video se skraćuje na 15 s i smanjuje', (
+      tester,
+    ) async {
+      final h = _Harness();
+      final transcoder = _ShrinkingTranscoder();
+      await tester.binding.setSurfaceSize(const Size(360, 1400));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [...h.overrides],
+          child: MaterialApp(
+            home: Scaffold(
+              body: CreateStorySheet(
+                videoPicker: (_) async => XFile.fromData(
+                  Uint8List(4096),
+                  name: 'dug.mov',
+                  mimeType: 'video/quicktime',
+                  path: '/dug.mov',
+                ),
+                // 1 min 4K source; the re-encoded copy is 15 s.
+                videoProbe: (file) async => file.path == '/dug.mov'
+                    ? const Duration(minutes: 1)
+                    : const Duration(seconds: 15),
+                videoTranscoder: transcoder,
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+      expect(
+        find.text(VideoStrings.limitHint(VideoLimits.maxDuration)),
+        findsNothing,
+        reason: 'hint shows only in video mode',
+      );
+      await tester.tap(find.byKey(const ValueKey('story-pick-mode-video')));
+      await tester.pump();
+      expect(
+        find.textContaining(
+          VideoStrings.limitHint(VideoLimits.maxDuration),
+        ),
+        findsOneWidget,
+      );
+      await tester.tap(find.byKey(const ValueKey('story-pick-gallery')));
+      await tester.pump();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+
+      expect(transcoder.calls, 1);
+      expect(find.byKey(const ValueKey('video-preparing')), findsNothing);
+      expect(find.byKey(const ValueKey('story-video-preview')), findsOneWidget);
+      expect(
+        find.text(VideoStrings.trimmed(VideoLimits.maxDuration)),
+        findsOneWidget,
+      );
+      expect(tester.takeException(), isNull);
+    });
   });
+}
+
+class _ShrinkingTranscoder implements VideoTranscoder {
+  var calls = 0;
+
+  @override
+  bool get isSupported => true;
+
+  @override
+  Future<TranscodedVideo?> transcode({
+    required String path,
+    required VideoTargetQuality quality,
+    int? startTime,
+    int? duration,
+    void Function(double progress)? onProgress,
+  }) async {
+    calls++;
+    onProgress?.call(1);
+    return const TranscodedVideo(path: '/kratak.mp4', sizeBytes: 6000000);
+  }
+
+  @override
+  Future<void> clearCache() async {}
 }

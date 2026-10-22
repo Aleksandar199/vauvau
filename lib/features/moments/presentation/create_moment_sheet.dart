@@ -8,7 +8,9 @@ import '../../../core/constants/serbia_locations.dart';
 import '../../../core/media/picked_video.dart';
 import '../../../core/media/tap_to_play_video.dart';
 import '../../../core/media/video_limits.dart';
+import '../../../core/media/video_prepare_progress.dart';
 import '../../../core/media/video_strings.dart';
+import '../../../core/media/video_transcoder.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/media_source_row.dart';
 import '../../auth/presentation/auth_providers.dart';
@@ -67,6 +69,7 @@ class CreateMomentSheet extends ConsumerStatefulWidget {
     this.initialPhoto,
     this.initialVideo,
     this.videoProbe,
+    this.videoTranscoder,
   });
 
   /// Preselected photo (tests); normally picked in the sheet.
@@ -77,6 +80,9 @@ class CreateMomentSheet extends ConsumerStatefulWidget {
 
   /// Reads a picked video's length (tests inject one).
   final VideoProbe? videoProbe;
+
+  /// Trims / re-encodes a picked video (tests inject one).
+  final VideoTranscoder? videoTranscoder;
 
   @override
   ConsumerState<CreateMomentSheet> createState() => _CreateMomentSheetState();
@@ -94,6 +100,11 @@ class _CreateMomentSheetState extends ConsumerState<CreateMomentSheet> {
   XFile? _photo;
   Uint8List? _preview;
   PickedVideo? _video;
+
+  /// 0..1 while a picked video is trimmed / re-encoded.
+  double? _videoPrep;
+  String? _videoNotice;
+  var _transcoded = false;
   var _phase = _Phase.idle;
   String? _error;
 
@@ -102,7 +113,10 @@ class _CreateMomentSheetState extends ConsumerState<CreateMomentSheet> {
   String? _draftId;
   String? _uploadedUrl;
 
-  bool get _busy => _phase != _Phase.idle;
+  bool get _busy => _phase != _Phase.idle || _videoPrep != null;
+
+  VideoTranscoder get _transcoder =>
+      widget.videoTranscoder ?? const PlatformVideoTranscoder();
 
   bool get _hasMedia => _photo != null || _video != null;
 
@@ -132,6 +146,10 @@ class _CreateMomentSheetState extends ConsumerState<CreateMomentSheet> {
   @override
   void dispose() {
     _caption.dispose();
+    if (_transcoded) {
+      // Re-encoded copies live in the app cache; the upload already read them.
+      _transcoder.clearCache();
+    }
     _customLocation.dispose();
     super.dispose();
   }
@@ -207,9 +225,25 @@ class _CreateMomentSheetState extends ConsumerState<CreateMomentSheet> {
             onGallery: () => _pick(ImageSource.gallery),
             onCamera: () => _pick(ImageSource.camera),
             hint: _videoMode
-                ? VideoStrings.limitHint(VideoLimits.postMaxDuration)
+                ? VideoStrings.limitHint(
+                    VideoLimits.maxDuration,
+                    compresses: _transcoder.isSupported,
+                  )
                 : null,
           ),
+          if (_videoPrep != null) VideoPrepareProgress(progress: _videoPrep!),
+          if (_videoNotice != null && _video != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 6),
+              child: Text(
+                _videoNotice!,
+                key: const ValueKey('video-trimmed-notice'),
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: AppColors.primaryDeep,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
           const SizedBox(height: 16),
           if (dogs.isNotEmpty) ...[
             Text(MomentsStrings.dogOptional, style: theme.textTheme.labelLarge),
@@ -343,7 +377,7 @@ class _CreateMomentSheetState extends ConsumerState<CreateMomentSheet> {
               ),
             ),
           ],
-          if (_busy) ...[
+          if (_phase != _Phase.idle) ...[
             const SizedBox(height: 16),
             Row(
               children: [
@@ -421,26 +455,45 @@ class _CreateMomentSheetState extends ConsumerState<CreateMomentSheet> {
   }
 
   Future<void> _pickVideo(ImageSource source) async {
-    const max = VideoLimits.postMaxDuration;
+    const max = VideoLimits.maxDuration;
     try {
       final file = await pickVideoFile(source, max);
       if (file == null || !mounted) {
         return;
       }
-      final result = await inspectPickedVideo(
+      setState(() {
+        _videoPrep = 0;
+        _videoNotice = null;
+        _error = null;
+      });
+      final transcoder = _transcoder;
+      _transcoded |= transcoder.isSupported;
+      final result = await prepareVideoForUpload(
         file,
         maxDuration: max,
         probe: widget.videoProbe,
+        transcoder: transcoder,
+        onProgress: (value) {
+          if (mounted) {
+            setState(() => _videoPrep = value);
+          }
+        },
       );
       if (!mounted) {
         return;
       }
       final problem = result.problem;
       if (problem != null) {
-        setState(() => _error = VideoStrings.problem(problem, max));
+        setState(() {
+          _videoPrep = null;
+          _error = VideoStrings.problem(problem, max);
+        });
         return;
       }
       setState(() {
+        _videoPrep = null;
+        _videoNotice =
+            result.video!.wasTrimmed ? VideoStrings.trimmed(max) : null;
         _video = result.video;
         _photo = null;
         _preview = null;
@@ -449,7 +502,10 @@ class _CreateMomentSheetState extends ConsumerState<CreateMomentSheet> {
     } catch (error) {
       debugPrint('moment video pick failed: $error');
       if (mounted) {
-        setState(() => _error = MomentsStrings.loadError);
+        setState(() {
+          _videoPrep = null;
+          _error = MomentsStrings.loadError;
+        });
       }
     }
   }

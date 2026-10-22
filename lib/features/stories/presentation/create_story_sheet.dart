@@ -6,7 +6,9 @@ import 'package:image_picker/image_picker.dart';
 import '../../../core/media/picked_video.dart';
 import '../../../core/media/tap_to_play_video.dart';
 import '../../../core/media/video_limits.dart';
+import '../../../core/media/video_prepare_progress.dart';
 import '../../../core/media/video_strings.dart';
+import '../../../core/media/video_transcoder.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/content_validation_service.dart';
 import '../../../core/widgets/media_source_row.dart';
@@ -26,19 +28,21 @@ Future<Story?> showCreateStorySheet(BuildContext context) {
 }
 
 /// Pick → preview → caption + audience → publish (with progress / retry).
-/// Photo or a short video (≤ [VideoLimits.storyMaxDuration]).
+/// Photo or a short video (≤ [VideoLimits.maxDuration]).
 class CreateStorySheet extends ConsumerStatefulWidget {
   const CreateStorySheet({
     super.key,
     this.picker,
     this.videoPicker,
     this.videoProbe,
+    this.videoTranscoder,
   });
 
   /// Injected in tests.
   final Future<XFile?> Function(ImageSource source)? picker;
   final Future<XFile?> Function(ImageSource source)? videoPicker;
   final VideoProbe? videoProbe;
+  final VideoTranscoder? videoTranscoder;
 
   @override
   ConsumerState<CreateStorySheet> createState() => _CreateStorySheetState();
@@ -53,6 +57,14 @@ class _CreateStorySheetState extends ConsumerState<CreateStorySheet> {
   /// Checked video; its bytes are read only when publishing.
   PickedVideo? _video;
 
+  /// 0..1 while a picked video is trimmed / re-encoded.
+  double? _videoPrep;
+  String? _videoNotice;
+  var _transcoded = false;
+
+  VideoTranscoder get _transcoder =>
+      widget.videoTranscoder ?? const PlatformVideoTranscoder();
+
   /// No default: the author picks the audience explicitly.
   StoryAudience? _audience;
   double? _progress;
@@ -65,6 +77,10 @@ class _CreateStorySheetState extends ConsumerState<CreateStorySheet> {
   @override
   void dispose() {
     _caption.dispose();
+    if (_transcoded) {
+      // Re-encoded copies live in the app cache; the upload already read them.
+      _transcoder.clearCache();
+    }
     super.dispose();
   }
 
@@ -111,7 +127,7 @@ class _CreateStorySheetState extends ConsumerState<CreateStorySheet> {
   }
 
   Future<void> _pickVideo(ImageSource source) async {
-    const max = VideoLimits.storyMaxDuration;
+    const max = VideoLimits.maxDuration;
     final pick =
         widget.videoPicker ?? (ImageSource s) => pickVideoFile(s, max);
     try {
@@ -119,20 +135,39 @@ class _CreateStorySheetState extends ConsumerState<CreateStorySheet> {
       if (file == null || !mounted) {
         return;
       }
-      final result = await inspectPickedVideo(
+      setState(() {
+        _videoPrep = 0;
+        _videoNotice = null;
+        _error = null;
+      });
+      final transcoder = _transcoder;
+      _transcoded |= transcoder.isSupported;
+      final result = await prepareVideoForUpload(
         file,
         maxDuration: max,
         probe: widget.videoProbe,
+        transcoder: transcoder,
+        onProgress: (value) {
+          if (mounted) {
+            setState(() => _videoPrep = value);
+          }
+        },
       );
       if (!mounted) {
         return;
       }
       final problem = result.problem;
       if (problem != null) {
-        setState(() => _error = VideoStrings.problem(problem, max));
+        setState(() {
+          _videoPrep = null;
+          _error = VideoStrings.problem(problem, max);
+        });
         return;
       }
       setState(() {
+        _videoPrep = null;
+        _videoNotice =
+            result.video!.wasTrimmed ? VideoStrings.trimmed(max) : null;
         _video = result.video;
         _file = null;
         _bytes = null;
@@ -142,7 +177,10 @@ class _CreateStorySheetState extends ConsumerState<CreateStorySheet> {
     } catch (error) {
       debugPrint('Story video pick failed: $error');
       if (mounted) {
-        setState(() => _error = StoriesStrings.publishFailed);
+        setState(() {
+          _videoPrep = null;
+          _error = StoriesStrings.publishFailed;
+        });
       }
     }
   }
@@ -194,7 +232,10 @@ class _CreateStorySheetState extends ConsumerState<CreateStorySheet> {
     final theme = Theme.of(context);
     final bytes = _bytes;
     final video = _video;
-    final canPublish = _hasMedia && _audience != null && !_publishing;
+    final canPublish = _hasMedia &&
+        _audience != null &&
+        !_publishing &&
+        _videoPrep == null;
     final retrying = _error != null && _hasMedia;
     return DraggableScrollableSheet(
       expand: false,
@@ -279,7 +320,7 @@ class _CreateStorySheetState extends ConsumerState<CreateStorySheet> {
             MediaSourceRow(
               keyPrefix: 'story-pick',
               video: _videoMode,
-              enabled: !_publishing,
+              enabled: !_publishing && _videoPrep == null,
               showCamera: !kIsWeb,
               onVideoChanged: (value) => setState(() => _videoMode = value),
               onGallery: () => _pick(ImageSource.gallery),
@@ -289,10 +330,23 @@ class _CreateStorySheetState extends ConsumerState<CreateStorySheet> {
             Text(
               _videoMode
                   ? '${StoriesStrings.expiresHint} '
-                      '${VideoStrings.limitHint(VideoLimits.storyMaxDuration)}'
+                      '${VideoStrings.limitHint(VideoLimits.maxDuration, compresses: _transcoder.isSupported)}'
                   : StoriesStrings.expiresHint,
               style: theme.textTheme.bodySmall,
             ),
+            if (_videoPrep != null) VideoPrepareProgress(progress: _videoPrep!),
+            if (_videoNotice != null && _video != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 6),
+                child: Text(
+                  _videoNotice!,
+                  key: const ValueKey('video-trimmed-notice'),
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: AppColors.primaryDeep,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
             const SizedBox(height: 14),
             TextField(
               key: const ValueKey('story-caption'),

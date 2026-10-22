@@ -14,9 +14,26 @@ abstract final class VideoStrings {
   static String get unavailable =>
       L10n.tr('Video nije dostupan.', 'Video is not available.');
 
-  static String limitHint(Duration max) => L10n.tr(
-        'Video do ${max.inSeconds} s i ${VideoLimits.maxBytes ~/ (1024 * 1024)} MB.',
-        'Video up to ${max.inSeconds} s and ${VideoLimits.maxBytes ~/ (1024 * 1024)} MB.',
+  /// [compresses] = Android / iOS (re-encode + trim); web only checks.
+  static String limitHint(Duration max, {bool compresses = true}) =>
+      compresses
+          ? L10n.tr(
+              'Video do ${max.inSeconds} s – duži se skraćuje na prvih ${max.inSeconds} s, a kvalitet se prilagođava (do 720p).',
+              'Video up to ${max.inSeconds} s – longer ones keep the first ${max.inSeconds} s, quality is adjusted (up to 720p).',
+            )
+          : L10n.tr(
+              'Video do ${max.inSeconds} s i ${VideoLimits.maxBytes ~/ (1024 * 1024)} MB.',
+              'Video up to ${max.inSeconds} s and ${VideoLimits.maxBytes ~/ (1024 * 1024)} MB.',
+            );
+
+  static String preparing(double progress) => L10n.tr(
+        'Pripremam video… ${(progress * 100).round()}%',
+        'Preparing video… ${(progress * 100).round()}%',
+      );
+
+  static String trimmed(Duration max) => L10n.tr(
+        'Video je bio duži – zadržano je prvih ${max.inSeconds} sekundi.',
+        'The video was longer – the first ${max.inSeconds} seconds were kept.',
       );
 
   static String problem(VideoProblem problem, Duration max) {

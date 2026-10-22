@@ -1,19 +1,16 @@
 /// Limits for short videos in stories and Moments posts, and the pure
-/// decision whether a picked video may be uploaded.
+/// decision whether a video may be uploaded.
 ///
-/// Why these numbers: a phone records roughly 0.5–1.5 MB per second at
-/// 720p–1080p, so 15 s of story is ~8–20 MB and 30 s of post ~15–40 MB.
-/// The picker asks the camera for 720p-ish output where it can; anything
-/// above [maxBytes] is refused, because every view downloads the whole file
-/// from Firebase Storage (quota). storage.rules enforce the same byte limit.
+/// Users pick or record in whatever quality the phone has; on Android / iOS
+/// the app re-encodes to at most 720p (~4 Mbit/s, so 15 s ≈ 7–8 MB) and keeps
+/// only the first [maxDuration] (`prepareVideoForUpload`). [maxBytes] is a
+/// safety net (a second 540p pass, then refusal) and the same limit as
+/// storage.rules; every view downloads the whole file (Storage quota).
 class VideoLimits {
   const VideoLimits._();
 
-  /// Story: a quick clip, like a photo story that moves.
-  static const Duration storyMaxDuration = Duration(seconds: 15);
-
-  /// Post: room for a short trick or a moment from a walk.
-  static const Duration postMaxDuration = Duration(seconds: 30);
+  /// Stories and posts: a short clip.
+  static const Duration maxDuration = Duration(seconds: 15);
 
   /// Same limit as `isValidVideo()` in storage.rules (strictly less than).
   static const int maxBytes = 20 * 1024 * 1024;
