@@ -4,11 +4,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/firebase/firebase_status.dart';
 import '../../../../core/services/notification_service.dart';
+import '../../../rewards/data/birthday_reward_source.dart';
+import '../../../rewards/domain/birthday_reward.dart';
 import '../../data/firestore_reminder_repository.dart';
 import '../../data/local_reminder_repository.dart';
+import '../../domain/birthday_greeting.dart';
 import '../../domain/dog_reminder.dart';
 import '../../domain/reminder_repository.dart';
 import '../../domain/reminder_schedule.dart';
+import '../dog_providers.dart';
 import 'reminder_strings.dart';
 
 final reminderRepositoryProvider = Provider<ReminderRepository>((ref) {
@@ -79,8 +83,12 @@ class ReminderController {
     await notifications.cancelReminder(notificationId);
 
     final stored = normalized.copyWith(id: reminderId);
+    final greetingSet = await _scheduleBirthdayGreeting(stored, dogName);
     var reminderSet = false;
-    if (!stored.isCompleted) {
+    if (greetingSet && BirthdayGreeting.reminderIsSameDay(stored)) {
+      // Offset "na dan": the greeting replaces the plain reminder.
+      reminderSet = true;
+    } else if (!stored.isCompleted) {
       reminderSet = await notifications.scheduleHealthReminder(
         notificationId: notificationId,
         title: ReminderStrings.typeShortLabel(stored.type),
@@ -140,10 +148,55 @@ class ReminderController {
     return result;
   }
 
+  /// Birthday reminders also get a "Srećan rođendan" notification at 09:00 on
+  /// the birthday itself (cancelled for other types, completed or deleted
+  /// reminders). Mentions the partner gift only when `app_config/birthday`
+  /// turns it on. Returns whether the greeting was scheduled.
+  Future<bool> _scheduleBirthdayGreeting(
+    DogReminder reminder,
+    String dogName,
+  ) async {
+    final notifications = _ref.read(notificationServiceProvider);
+    final greetingId = BirthdayGreeting.notificationIdFor(reminder.id);
+    await notifications.cancelReminder(greetingId);
+    if (!BirthdayGreeting.appliesTo(reminder)) {
+      return false;
+    }
+    // Roll-forward to next year saves without a name: use my dog's name.
+    var name = dogName.trim();
+    if (name.isEmpty) {
+      final dogs = _ref.read(ownerDogsProvider).value ?? const [];
+      for (final dog in dogs) {
+        if (dog.id == reminder.dogId) {
+          name = dog.name;
+        }
+      }
+    }
+    var reward = BirthdayRewardConfig.disabled;
+    try {
+      reward = await _ref.read(birthdayRewardConfigProvider.future);
+    } catch (_) {
+      // No gift info: the greeting is still sent.
+    }
+    return notifications.scheduleHealthReminder(
+      notificationId: greetingId,
+      title: ReminderStrings.birthdayGreetingTitle(name),
+      body: ReminderStrings.birthdayGreetingBody(
+        name,
+        hasReward: reward.isActive,
+        rewardPartner: reward.partnerName,
+      ),
+      scheduledDate: BirthdayGreeting.greetingDay(reminder),
+    );
+  }
+
   Future<void> delete(DogReminder reminder) async {
     final notificationId =
         reminder.notificationId ?? DogReminder.notificationIdFor(reminder.id);
     await _ref.read(notificationServiceProvider).cancelReminder(notificationId);
+    await _ref
+        .read(notificationServiceProvider)
+        .cancelReminder(BirthdayGreeting.notificationIdFor(reminder.id));
     await _ref.read(reminderRepositoryProvider).deleteReminder(
           dogId: reminder.dogId,
           reminderId: reminder.id,

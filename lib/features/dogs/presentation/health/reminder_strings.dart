@@ -162,6 +162,37 @@ abstract final class ReminderStrings {
     };
   }
 
+  // Birthday greeting (local notification on the birthday morning).
+  static String birthdayGreetingTitle(String dogName) {
+    final name = dogName.trim();
+    return name.isEmpty
+        ? L10n.tr('🎂 Srećan rođendan!', '🎂 Happy birthday!')
+        : L10n.tr('🎂 Srećan rođendan, $name!', '🎂 Happy birthday, $name!');
+  }
+
+  static String birthdayGreetingBody(
+    String dogName, {
+    String rewardPartner = '',
+    bool hasReward = false,
+  }) {
+    final name = dogName.trim();
+    final who = name.isEmpty ? L10n.tr('tvog psa', 'your dog') : name;
+    final base = L10n.tr(
+      'VauVau tim čestita! Danas je veliki dan za $who – mazi, poslastica i duga šetnja 🐾',
+      'Greetings from the VauVau team! A big day for $who – cuddles, a treat and a long walk 🐾',
+    );
+    if (!hasReward) {
+      return base;
+    }
+    final from = rewardPartner.trim().isEmpty
+        ? ''
+        : L10n.tr(' od $rewardPartner', ' from $rewardPartner');
+    return L10n.tr(
+      '$base 🎁 Čeka te rođendanski poklon$from u Nagradama.',
+      '$base 🎁 A birthday gift$from is waiting in Rewards.',
+    );
+  }
+
   static String defaultTitle(ReminderType type) {
     final label = typeLabel(type);
     final space = label.indexOf(' ');
