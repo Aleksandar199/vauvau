@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 
 import '../../../core/firebase/firestore_auth_guard.dart';
 import '../../app_update/domain/app_update.dart';
+import '../../rewards/domain/birthday_reward.dart';
 import '../../auth/data/user_document.dart';
 import '../../map/data/places_repository.dart';
 import '../../map/domain/models/poi_model.dart';
@@ -482,6 +483,23 @@ class FirestoreAdminRepository implements AdminRepository {
     return _appConfig.set({
       'minBuild': config.minBuild,
       'latestBuild': config.latestBuild,
+      'updatedAt': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
+  }
+
+  DocumentReference<Map<String, dynamic>> get _birthdayReward =>
+      firestore.doc(BirthdayRewardConfig.docPath);
+
+  @override
+  Future<BirthdayRewardConfig> fetchBirthdayReward() async {
+    final snap = await _birthdayReward.get();
+    return BirthdayRewardConfig.fromMap(snap.data());
+  }
+
+  @override
+  Future<void> saveBirthdayReward(BirthdayRewardConfig config) {
+    return _birthdayReward.set({
+      ...config.toMap(),
       'updatedAt': FieldValue.serverTimestamp(),
     }, SetOptions(merge: true));
   }

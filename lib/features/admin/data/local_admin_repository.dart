@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import '../../app_update/domain/app_update.dart';
+import '../../rewards/domain/birthday_reward.dart';
 import '../../map/data/places_repository.dart';
 import '../../map/domain/models/poi_model.dart';
 import '../../support/domain/admin_feedback.dart';
@@ -44,6 +45,7 @@ class LocalAdminRepository implements AdminRepository {
   final Map<AdminContentKind, List<AdminContentItem>> _content;
   final AdminStats stats;
   AppUpdateConfig? appConfig;
+  BirthdayRewardConfig birthdayReward = BirthdayRewardConfig.disabled;
   final PlacesRepository _places;
   final StreamController<List<FeedbackEntry>> _feedbackController =
       StreamController<List<FeedbackEntry>>.broadcast();
@@ -250,6 +252,14 @@ class LocalAdminRepository implements AdminRepository {
   @override
   Future<void> saveAppConfig(AppUpdateConfig config) async {
     appConfig = config;
+  }
+
+  @override
+  Future<BirthdayRewardConfig> fetchBirthdayReward() async => birthdayReward;
+
+  @override
+  Future<void> saveBirthdayReward(BirthdayRewardConfig config) async {
+    birthdayReward = config;
   }
 
   List<FeedbackEntry> _sortedFeedback() {

@@ -5,6 +5,7 @@ import '../../../core/firebase/firebase_status.dart';
 import '../../app_update/domain/app_update.dart';
 import '../../auth/presentation/auth_providers.dart';
 import '../../map/presentation/cities_controller.dart';
+import '../../rewards/domain/birthday_reward.dart';
 import '../data/batched_loader.dart';
 import '../data/firestore_admin_repository.dart';
 import '../data/local_admin_repository.dart';
@@ -167,3 +168,9 @@ class AdminUserActions {
 final adminUserActionsProvider = Provider<AdminUserActions>(
   AdminUserActions.new,
 );
+
+/// `app_config/birthday` for the admin form (Nagrade → Rođendanski poklon).
+final adminBirthdayRewardProvider =
+    FutureProvider.autoDispose<BirthdayRewardConfig>((ref) {
+  return ref.watch(adminRepositoryProvider).fetchBirthdayReward();
+});

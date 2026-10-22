@@ -510,4 +510,79 @@ void main() {
       );
     });
   });
+
+  group('rođendanski poklon', () {
+    Future<LocalAdminRepository> pumpBirthday(WidgetTester tester) async {
+      await tester.binding.setSurfaceSize(const Size(412, 1400));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      final admin = LocalAdminRepository();
+      addTearDown(admin.dispose);
+      final partners = LocalPartnersRepository();
+      addTearDown(partners.dispose);
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            isAdminProvider.overrideWithValue(true),
+            adminRepositoryProvider.overrideWithValue(admin),
+            rewardsRepositoryProvider.overrideWithValue(
+              LocalRewardsRepository(
+                challenges: const [],
+                coupons: [_coupon('rodjendan')],
+              ),
+            ),
+            partnersRepositoryProvider.overrideWithValue(partners),
+          ],
+          child: const MaterialApp(home: Scaffold(body: AdminRewardsTab())),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text(AdminStrings.birthdayTab));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(AdminStrings.birthdayTab));
+      await tester.pumpAndSettle();
+      return admin;
+    }
+
+    testWidgets('bez kupona ne može da se uključi', (tester) async {
+      final admin = await pumpBirthday(tester);
+
+      await tester.tap(find.byKey(const ValueKey('admin-birthday-enabled')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('admin-birthday-save')));
+      await tester.pumpAndSettle();
+
+      expect(find.text(AdminStrings.birthdayNeedsCoupon), findsOneWidget);
+      expect(admin.birthdayReward.enabled, isFalse);
+    });
+
+    testWidgets('izbor kupona + uključivanje upisuje app_config/birthday', (
+      tester,
+    ) async {
+      final admin = await pumpBirthday(tester);
+
+      await tester.tap(find.byType(DropdownButtonFormField<String>));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Hrana · Pet shop Šapa').last);
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('admin-birthday-enabled')));
+      await tester.pumpAndSettle();
+
+      // Pregled čestitke već najavljuje poklon.
+      expect(
+        find.descendant(
+          of: find.byKey(const ValueKey('admin-birthday-preview')),
+          matching: find.textContaining('Pet shop Šapa'),
+        ),
+        findsOneWidget,
+      );
+
+      await tester.tap(find.byKey(const ValueKey('admin-birthday-save')));
+      await tester.pumpAndSettle();
+
+      expect(admin.birthdayReward.enabled, isTrue);
+      expect(admin.birthdayReward.couponId, 'rodjendan');
+      expect(admin.birthdayReward.partnerName, 'Pet shop Šapa');
+      expect(admin.birthdayReward.isActive, isTrue);
+    });
+  });
 }

@@ -24,6 +24,12 @@ class BirthdayRewardConfig {
   /// A gift is announced only when it is switched on AND points to a coupon.
   bool get isActive => enabled && couponId.trim().isNotEmpty;
 
+  Map<String, Object> toMap() => {
+    'enabled': enabled,
+    'couponId': couponId.trim(),
+    'partnerName': partnerName.trim(),
+  };
+
   factory BirthdayRewardConfig.fromMap(Map<String, dynamic>? data) {
     if (data == null) {
       return disabled;

@@ -1,4 +1,5 @@
 import '../../app_update/domain/app_update.dart';
+import '../../rewards/domain/birthday_reward.dart';
 import '../../map/data/places_repository.dart';
 import '../../map/domain/models/poi_model.dart';
 import 'admin_models.dart';
@@ -70,4 +71,10 @@ abstract class AdminRepository {
   Future<AppUpdateConfig?> fetchAppConfig();
 
   Future<void> saveAppConfig(AppUpdateConfig config);
+
+  // --- app_config/birthday (rođendanski poklon) ---
+
+  Future<BirthdayRewardConfig> fetchBirthdayReward();
+
+  Future<void> saveBirthdayReward(BirthdayRewardConfig config);
 }

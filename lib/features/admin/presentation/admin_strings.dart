@@ -164,6 +164,27 @@ abstract final class AdminStrings {
   static String get rewardsCoupons => L10n.tr('Kuponi', 'Coupons');
   static String get rewardsLedger => L10n.tr('Evidencija poena', 'Points log');
   static String get rewardsClaims => L10n.tr('Preuzeti kuponi', 'Claimed coupons');
+  static String get birthdayTab => L10n.tr('Rođendanski poklon', 'Birthday gift');
+  static String get birthdayIntro => L10n.tr(
+        'Na rođendan psa (podsetnik „Rođendan“) korisnik dobija čestitku u 09:00. Kad uključiš poklon, čestitka dodaje: „🎁 Čeka te rođendanski poklon od {partner} u Nagradama.“',
+        'On the dog\'s birthday (a "Birthday" reminder) the owner gets a greeting at 09:00. With the gift on, it adds: "🎁 A birthday gift from {partner} is waiting in Rewards."',
+      );
+  static String get birthdayEnabled =>
+      L10n.tr('Rođendanski poklon uključen', 'Birthday gift on');
+  static String get birthdayCoupon => L10n.tr('Kupon poklona', 'Gift coupon');
+  static String get birthdayNoCoupon =>
+      L10n.tr('Bez kupona', 'No coupon');
+  static String get birthdayPartner =>
+      L10n.tr('Ime partnera u čestitki', 'Partner name in the greeting');
+  static String get birthdayNeedsCoupon => L10n.tr(
+        'Izaberi kupon pre uključivanja poklona.',
+        'Pick a coupon before turning the gift on.',
+      );
+  static String get birthdayPreview => L10n.tr('Pregled čestitke', 'Greeting preview');
+  static String get birthdayNote => L10n.tr(
+        'Važi za rođendanske podsetnike koje korisnici sačuvaju posle izmene (čestitka se zakazuje unapred na telefonu). Za sada je ovo najava: korisnik kupon preuzima u Nagradama po ceni u poenima koju podesiš na kuponu (0 poena = besplatno za sve). Pravi poklon samo slavljenicima traži dodatnu doradu.',
+        'Applies to birthday reminders saved after the change (the greeting is scheduled on the phone). For now this is an announcement: the user claims the coupon in Rewards at its points price (0 points = free for everyone). A gift only for birthday owners needs more work.',
+      );
   static String get save => L10n.tr('Sačuvaj', 'Save');
   static String get rewardsSaved => L10n.tr('Sačuvano.', 'Saved.');
   static String get rewardsSaveFailed =>

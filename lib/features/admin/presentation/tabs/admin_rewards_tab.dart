@@ -5,6 +5,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../auth/presentation/auth_providers.dart';
 import '../../../partners/domain/partner.dart';
 import '../../../partners/presentation/partner_providers.dart';
+import '../../../dogs/presentation/health/reminder_strings.dart';
+import '../../../rewards/data/birthday_reward_source.dart';
+import '../../../rewards/domain/birthday_reward.dart';
 import '../../../rewards/domain/reward_rules.dart';
 import '../../../rewards/domain/rewards_models.dart';
 import '../../../rewards/domain/rewards_repository.dart';
@@ -40,7 +43,7 @@ class AdminRewardsTab extends StatelessWidget {
   Widget build(BuildContext context) {
     final primary = Theme.of(context).colorScheme.primary;
     return DefaultTabController(
-      length: 5,
+      length: 6,
       child: Column(
         children: [
           TabBar(
@@ -54,6 +57,7 @@ class AdminRewardsTab extends StatelessWidget {
               Tab(text: AdminStrings.rewardsPartners),
               Tab(text: AdminStrings.rewardsLedger),
               Tab(text: AdminStrings.rewardsClaims),
+              Tab(text: AdminStrings.birthdayTab),
             ],
           ),
           const Expanded(
@@ -64,6 +68,7 @@ class AdminRewardsTab extends StatelessWidget {
                 _PartnersAdmin(),
                 _LedgerAdmin(),
                 _ClaimsAdmin(),
+                _BirthdayRewardAdmin(),
               ],
             ),
           ),
@@ -1237,6 +1242,201 @@ class _RemainingDialogState extends State<_RemainingDialog> {
           child: Text(AdminStrings.save),
         ),
       ],
+    );
+  }
+}
+
+/// Nagrade → Rođendanski poklon: `app_config/birthday` (enabled, couponId,
+/// partnerName). Turning it on only makes the birthday greeting announce
+/// the gift; claiming still follows the coupon (points price).
+class _BirthdayRewardAdmin extends ConsumerStatefulWidget {
+  const _BirthdayRewardAdmin();
+
+  @override
+  ConsumerState<_BirthdayRewardAdmin> createState() =>
+      _BirthdayRewardAdminState();
+}
+
+class _BirthdayRewardAdminState extends ConsumerState<_BirthdayRewardAdmin> {
+  final _partner = TextEditingController();
+  BirthdayRewardConfig? _draft;
+  var _saving = false;
+
+  @override
+  void dispose() {
+    _partner.dispose();
+    super.dispose();
+  }
+
+  void _start(BirthdayRewardConfig stored) {
+    if (_draft != null) {
+      return;
+    }
+    _draft = stored;
+    _partner.text = stored.partnerName;
+  }
+
+  void _set({bool? enabled, String? couponId, String? partnerName}) {
+    final d = _draft ?? BirthdayRewardConfig.disabled;
+    setState(() {
+      _draft = BirthdayRewardConfig(
+        enabled: enabled ?? d.enabled,
+        couponId: couponId ?? d.couponId,
+        partnerName: partnerName ?? d.partnerName,
+      );
+    });
+  }
+
+  Future<void> _save() async {
+    final d = _draft ?? BirthdayRewardConfig.disabled;
+    if (d.enabled && d.couponId.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(AdminStrings.birthdayNeedsCoupon)),
+      );
+      return;
+    }
+    setState(() => _saving = true);
+    await _guard(context, () async {
+      await ref.read(adminRepositoryProvider).saveBirthdayReward(
+        BirthdayRewardConfig(
+          enabled: d.enabled,
+          couponId: d.couponId,
+          partnerName: _partner.text.trim(),
+        ),
+      );
+      ref.invalidate(adminBirthdayRewardProvider);
+      ref.invalidate(birthdayRewardConfigProvider);
+    });
+    if (mounted) {
+      setState(() => _saving = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final stored = ref.watch(adminBirthdayRewardProvider);
+    final coupons = ref.watch(_adminCouponsProvider).value ?? const <Coupon>[];
+    return stored.when(
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (_, _) => Center(child: Text(AdminStrings.loadError)),
+      data: (config) {
+        _start(config);
+        final d = _draft!;
+        final known = coupons.any((c) => c.id == d.couponId);
+        final preview = BirthdayRewardConfig(
+          enabled: d.enabled,
+          couponId: d.couponId,
+          partnerName: _partner.text,
+        );
+        return ListView(
+          key: const ValueKey('admin-birthday-reward'),
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+          children: [
+            Text(AdminStrings.birthdayIntro, style: theme.textTheme.bodyMedium),
+            const SizedBox(height: 12),
+            SwitchListTile(
+              key: const ValueKey('admin-birthday-enabled'),
+              contentPadding: EdgeInsets.zero,
+              title: Text(AdminStrings.birthdayEnabled),
+              value: d.enabled,
+              onChanged: (value) => _set(enabled: value),
+            ),
+            const SizedBox(height: 8),
+            DropdownButtonFormField<String>(
+              // Rebuilt when the coupon list arrives (initialValue is read once).
+              key: ValueKey('admin-birthday-coupon-${coupons.length}'),
+              initialValue: known ? d.couponId : '',
+              isExpanded: true,
+              decoration: InputDecoration(
+                labelText: AdminStrings.birthdayCoupon,
+                border: const OutlineInputBorder(),
+              ),
+              items: [
+                DropdownMenuItem(
+                  value: '',
+                  child: Text(AdminStrings.birthdayNoCoupon),
+                ),
+                for (final c in coupons)
+                  DropdownMenuItem(
+                    value: c.id,
+                    child: Text(
+                      [c.title, c.partnerName]
+                          .where((s) => s.trim().isNotEmpty)
+                          .join(' · '),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+              ],
+              onChanged: (id) {
+                final picked = coupons.where((c) => c.id == id).firstOrNull;
+                if (picked != null && _partner.text.trim().isEmpty) {
+                  _partner.text = picked.partnerName;
+                }
+                _set(
+                  couponId: id ?? '',
+                  enabled: (id ?? '').isEmpty ? false : null,
+                );
+              },
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              key: const ValueKey('admin-birthday-partner'),
+              controller: _partner,
+              maxLength: 60,
+              onChanged: (_) => setState(() {}),
+              decoration: InputDecoration(
+                labelText: AdminStrings.birthdayPartner,
+                border: const OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              AdminStrings.birthdayPreview,
+              style: theme.textTheme.titleSmall,
+            ),
+            const SizedBox(height: 6),
+            Container(
+              key: const ValueKey('admin-birthday-preview'),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.surfaceContainerHighest,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    ReminderStrings.birthdayGreetingTitle('Dzeki'),
+                    style: const TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    ReminderStrings.birthdayGreetingBody(
+                      'Dzeki',
+                      hasReward: preview.isActive,
+                      rewardPartner: preview.partnerName,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              AdminStrings.birthdayNote,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: 16),
+            FilledButton(
+              key: const ValueKey('admin-birthday-save'),
+              onPressed: _saving ? null : _save,
+              child: Text(AdminStrings.save),
+            ),
+          ],
+        );
+      },
     );
   }
 }
