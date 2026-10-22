@@ -478,4 +478,13 @@ enum WalkIneligibleReason {
 
   /// Rewards only from the Android / iOS app (web = testing only).
   unsupportedPlatform,
+
+  /// The server rejected the walk (route not credible / sparse / invalid).
+  serverRejected,
+
+  /// The server got the walk more than 48 h after it ended.
+  walkExpired,
+
+  /// The same route was already used for a reward.
+  duplicateRoute,
 }

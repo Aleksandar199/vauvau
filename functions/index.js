@@ -263,3 +263,15 @@ exports.sendEventMessagePush = onDocumentCreated(
       membersField: 'participantUserIds',
     }),
 );
+
+// --- Rewards (Dnevni VauVau izazov) ------------------------------------------
+// rewardWalk: the app only saves the finished walk; this re-checks it (route,
+// speed, duplicates), pays XP / points / challenge bonuses with admin rights
+// and writes the outcome to users/{uid}/reward_results/{walkId}. See
+// rewards.js. The rules no longer let clients write balances.
+const { rewardWalkHandler } = require('./rewards');
+
+exports.rewardWalk = onDocumentCreated(
+  'users/{uid}/walks/{walkId}',
+  rewardWalkHandler,
+);

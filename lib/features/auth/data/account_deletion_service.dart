@@ -175,6 +175,7 @@ class AccountDeletionService {
     try {
       await _deleteSubcollection(userRef, 'rewards');
       await _deleteSubcollection(userRef, 'reward_ledger');
+      await _deleteSubcollection(userRef, 'reward_results');
     } catch (error) {
       debugPrint('Rewards cleanup skipped: $error');
     }

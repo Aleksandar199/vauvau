@@ -94,20 +94,6 @@ CompletedWalk? completedWalkFromDoc(
   );
 }
 
-Map<String, Object?> progressPayload(
-  PeriodProgress before,
-  int meters,
-  int counted,
-  int points,
-  String entryId,
-) => {
-  'meters': before.meters + meters,
-  'walks': before.walks + counted,
-  'walkPoints': before.walkPoints + points,
-  'lastEntryId': entryId,
-  'updatedAt': FieldValue.serverTimestamp(),
-};
-
 String walkReason(int km, int points) => points > 0
     ? 'Šetnja: $km km'
     : (km >= 1
@@ -165,4 +151,58 @@ Map<String, Object?> couponPayload(Coupon coupon) => {
   'terms': coupon.terms,
   'isActive': coupon.isActive,
   'partnerId': coupon.partnerId,
+};
+
+/// Reads users/{uid}/reward_results/{walkId} (written by the rewardWalk
+/// Cloud Function) into what "Završi šetnju" shows.
+WalkSaveResult walkResultFromServer(Map<String, dynamic> data) {
+  int number(String key) => data[key] is num ? (data[key] as num).toInt() : 0;
+  if (data['status'] != 'rewarded') {
+    return WalkSaveResult(
+      saved: true,
+      ineligibleReason: walkReasonFromServer(data['reason']),
+    );
+  }
+  final challenges = <LedgerEntry>[];
+  final raw = data['challenges'];
+  if (raw is List) {
+    for (final item in raw) {
+      if (item is! Map) continue;
+      final id = '${item['id']}';
+      challenges.add(
+        LedgerEntry(
+          id: LedgerEntry.challengeEntryId(id, 0),
+          type: LedgerType.challenge,
+          xp: item['xp'] is num ? (item['xp'] as num).toInt() : 0,
+          points: item['points'] is num ? (item['points'] as num).toInt() : 0,
+          reason: 'Izazov: ${item['title'] ?? id}',
+          challengeId: id,
+        ),
+      );
+    }
+  }
+  final xp = number('xp');
+  final extraXp = challenges.fold<int>(0, (total, entry) => total + entry.xp);
+  return WalkSaveResult(
+    saved: true,
+    eligible: true,
+    xp: xp,
+    points: number('points'),
+    capped: data['capped'] == true,
+    challengeEntries: challenges,
+    xpBefore: number('xpBefore'),
+    xpAfter: number('xpBefore') + xp + extraXp,
+  );
+}
+
+WalkIneligibleReason walkReasonFromServer(Object? reason) => switch (reason) {
+  'mock_location' => WalkIneligibleReason.mockLocation,
+  'suspicious_gps' ||
+  'suspicious_route' => WalkIneligibleReason.suspiciousGps,
+  'too_fast_average' => WalkIneligibleReason.tooFastAverage,
+  'too_long' => WalkIneligibleReason.tooLong,
+  'too_short' => WalkIneligibleReason.tooShort,
+  'expired' => WalkIneligibleReason.walkExpired,
+  'duplicate_route' => WalkIneligibleReason.duplicateRoute,
+  _ => WalkIneligibleReason.serverRejected,
 };

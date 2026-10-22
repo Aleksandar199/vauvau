@@ -5,7 +5,6 @@ import 'package:flutter/foundation.dart';
 
 import '../../../core/firebase/firestore_auth_guard.dart';
 import '../../map/domain/completed_walk.dart';
-import '../domain/belgrade_calendar.dart';
 import '../domain/birthday_reward.dart';
 import '../domain/reward_rules.dart';
 import '../domain/rewards_models.dart';
@@ -20,11 +19,16 @@ import 'reward_payloads.dart';
 /// - `reward_challenges/{id}`, `reward_coupons/{id}` – admin content.
 /// - `coupon_claims/{couponId}_{uid}` – the user's coupon + code.
 class FirestoreRewardsRepository implements RewardsRepository {
-  FirestoreRewardsRepository(this._db, {Duration? commitTimeout})
-    : _commitTimeout = commitTimeout ?? const Duration(seconds: 12);
+  FirestoreRewardsRepository(
+    this._db, {
+    Duration? commitTimeout,
+    Duration? resultWait,
+  }) : _commitTimeout = commitTimeout ?? const Duration(seconds: 12),
+       _resultWait = resultWait ?? defaultResultWait;
 
   final FirebaseFirestore _db;
   final Duration _commitTimeout;
+  final Duration _resultWait;
 
   DocumentReference<Map<String, dynamic>> _user(String uid) =>
       _db.collection('users').doc(uid);
@@ -186,135 +190,54 @@ class FirestoreRewardsRepository implements RewardsRepository {
   }
 
   // --- Walks -----------------------------------------------------------------
+  //
+  // The app only SAVES the walk. The rewardWalk Cloud Function
+  // (functions/rewards.js) re-checks the route, pays XP / points / challenge
+  // bonuses and writes the outcome to users/{uid}/reward_results/{walkId};
+  // the rules forbid clients from writing balances.
+
+  /// How long "Završi šetnju" waits for the server's verdict before it says
+  /// the reward will follow (slow network, function cold start).
+  static const Duration defaultResultWait = Duration(seconds: 25);
 
   @override
   Future<WalkSaveResult> saveWalk(CompletedWalk walk, {DateTime? now}) async {
     final reason = RewardRules.ineligibleReason(walk);
     final walkRef = _walks(walk.userId).doc(walk.id);
-    final walkData = walkPayload(walk);
-
+    final saved = await _saveWalkOnly(walkRef, walk, walkPayload(walk));
+    if (!saved.saved) {
+      return WalkSaveResult(saved: false, ineligibleReason: reason);
+    }
+    // Flagged / too short / web: nothing to wait for (the server also
+    // rejects flagged walks, but the app already knows why).
     if (!RewardRules.countsTowardChallenges(walk)) {
-      final saved = await _saveWalkOnly(walkRef, walk, walkData);
       return WalkSaveResult(
-        saved: saved.saved,
+        saved: true,
         pendingSync: saved.pending,
         ineligibleReason: reason,
       );
     }
-
+    if (saved.pending) {
+      return WalkSaveResult(saved: true, pendingSync: true);
+    }
     try {
-      final outcome = await _payWalk(
-        walk.userId,
-        walkRef: walkRef,
-        walkData: walkData,
-        recognizedMeters: walk.recognizedMeters,
-        endedAt: walk.endedAt,
-      );
-      return WalkSaveResult(
-        saved: true,
-        eligible: reason == null,
-        ineligibleReason: reason,
-        xp: outcome.points,
-        points: outcome.points,
-        capped: outcome.capped,
-        alreadyRewarded: outcome.already,
-        pendingSync: outcome.pending,
-        xpBefore: outcome.xpBefore,
-        xpAfter: outcome.xpBefore + outcome.points,
-      );
-    } on RewardsException catch (error) {
-      debugPrint('Walk reward not written: $error');
-      // Old rules / offline read: keep at least the walk (reward retried
-      // later by retryPendingWalks while inside the claim window).
-      final saved = await _saveWalkOnly(walkRef, walk, walkData);
-      return WalkSaveResult(
-        saved: saved.saved,
-        pendingSync: saved.pending || error.code == RewardsErrorCode.offline,
-        rewardDenied: error.code == RewardsErrorCode.denied,
-        ineligibleReason: reason,
-      );
+      final data = await _awaitResult(walk.userId, walk.id);
+      return walkResultFromServer(data);
+    } on TimeoutException {
+      return const WalkSaveResult(saved: true, pendingSync: true);
+    } catch (error) {
+      debugPrint('Walk result not read: $error');
+      return const WalkSaveResult(saved: true, pendingSync: true);
     }
   }
 
-  /// Writes walk + ledger + summary + day + week in one batch.
-  Future<_PayOutcome> _payWalk(
-    String uid, {
-    required DocumentReference<Map<String, dynamic>> walkRef,
-    required Map<String, Object?>? walkData,
-    required int recognizedMeters,
-    required DateTime endedAt,
-  }) async {
-    final entryId = LedgerEntry.walkEntryId(walkRef.id);
-    final ledgerRef = _ledger(uid).doc(entryId);
-    final dayKey = BelgradeCalendar.dayKey(endedAt);
-    final weekKey = BelgradeCalendar.weekKey(endedAt);
-    final dayRef = _day(uid, dayKey);
-    final weekRef = _week(uid, weekKey);
-
-    final List<DocumentSnapshot<Map<String, dynamic>>> snaps;
-    try {
-      snaps = await Future.wait([
-        ledgerRef.get(),
-        walkRef.get(),
-        _summary(uid).get(),
-        dayRef.get(),
-        weekRef.get(),
-      ]);
-    } catch (error) {
-      throw _mapError(error);
-    }
-    final summary = RewardSummary.fromMap(snaps[2].data());
-    if (snaps[0].exists) {
-      return _PayOutcome(points: 0, already: true, xpBefore: summary.xp);
-    }
-    final day = PeriodProgress.fromMap(snaps[3].data());
-    final week = PeriodProgress.fromMap(snaps[4].data());
-    final km = RewardRules.wholeKm(recognizedMeters);
-    final points = RewardRules.walkReward(
-      recognizedMeters: recognizedMeters,
-      paidTodayPoints: day.walkPoints,
-    );
-    final counted = km >= RewardRules.minRewardKm ? 1 : 0;
-
-    final batch = _db.batch();
-    // Walk docs are immutable under the rules: only create when missing.
-    if (!snaps[1].exists && walkData != null) {
-      batch.set(walkRef, walkData);
-    }
-    batch
-      ..set(ledgerRef, {
-        'type': 'walk',
-        'walkId': walkRef.id,
-        'km': km,
-        'dayKey': dayKey,
-        'weekKey': weekKey,
-        'xp': points,
-        'points': points,
-        'reason': walkReason(km, points),
-        'createdAt': FieldValue.serverTimestamp(),
-      })
-      ..set(_summary(uid), {
-        'xp': summary.xp + points,
-        'points': summary.points + points,
-        'lastEntryId': entryId,
-        'updatedAt': FieldValue.serverTimestamp(),
-      })
-      ..set(
-        dayRef,
-        progressPayload(day, recognizedMeters, counted, points, entryId),
-      )
-      ..set(
-        weekRef,
-        progressPayload(week, recognizedMeters, counted, points, entryId),
-      );
-
-    final pending = await _commit(batch);
-    return _PayOutcome(
-      points: points,
-      capped: points < km * RewardRules.pointsPerKm,
-      pending: pending,
-      xpBefore: summary.xp,
-    );
+  Future<Map<String, dynamic>> _awaitResult(String uid, String walkId) async {
+    final ref = _user(uid).collection('reward_results').doc(walkId);
+    final snap = await ref
+        .snapshots()
+        .firstWhere((snapshot) => snapshot.exists)
+        .timeout(_resultWait);
+    return plainData(snap.data()!);
   }
 
   Future<({bool saved, bool pending})> _saveWalkOnly(
@@ -334,177 +257,25 @@ class FirestoreRewardsRepository implements RewardsRepository {
       final pending = await _commit(batch);
       return (saved: true, pending: pending);
     } on RewardsException catch (error) {
-      if (error.code != RewardsErrorCode.denied) {
-        return (saved: false, pending: false);
-      }
-    }
-    // Last resort for the currently deployed (old) rules: the legacy array
-    // on the public profile, without the route.
-    try {
-      await _user(walk.userId).set({
-        'walkHistory': FieldValue.arrayUnion([legacyWalkPayload(walk)]),
-      }, SetOptions(merge: true));
-      return (saved: true, pending: false);
-    } catch (error) {
       debugPrint('Walk save failed: $error');
       return (saved: false, pending: false);
     }
   }
 
+  // The server pays everything; nothing to retry or claim from the app.
+
   @override
   Future<List<LedgerEntry>> retryPendingWalks(
     String uid, {
     DateTime? now,
-  }) async {
-    final at = now ?? DateTime.now();
-    // A bit inside the rules' window so the server clock still accepts it.
-    final cutoff = at.subtract(
-      RewardRules.claimWindow - const Duration(minutes: 10),
-    );
-    final paid = <LedgerEntry>[];
-    try {
-      final snap = await _walks(
-        uid,
-      ).where('endedAt', isGreaterThan: Timestamp.fromDate(cutoff)).get();
-      for (final doc in snap.docs) {
-        final walk = completedWalkFromDoc(uid, doc.id, plainData(doc.data()));
-        if (walk == null || !RewardRules.countsTowardChallenges(walk)) {
-          continue;
-        }
-        final outcome = await _payWalk(
-          uid,
-          walkRef: doc.reference,
-          walkData: null,
-          recognizedMeters: walk.recognizedMeters,
-          endedAt: walk.endedAt,
-        );
-        if (!outcome.already && !outcome.pending) {
-          paid.add(
-            LedgerEntry(
-              id: LedgerEntry.walkEntryId(doc.id),
-              type: LedgerType.walk,
-              xp: outcome.points,
-              points: outcome.points,
-              reason: walkReason(
-                RewardRules.wholeKm(walk.recognizedMeters),
-                outcome.points,
-              ),
-              walkId: doc.id,
-            ),
-          );
-        }
-      }
-    } catch (error) {
-      debugPrint('retryPendingWalks: $error');
-    }
-    return paid;
-  }
-
-  // --- Challenges ------------------------------------------------------------
+  }) async => const [];
 
   @override
   Future<List<LedgerEntry>> claimChallenges(
     String uid, {
     DateTime? now,
     DateTime? at,
-  }) async {
-    final current = now ?? DateTime.now();
-    final moments = {current, ?at};
-    final paid = <LedgerEntry>[];
-    List<Challenge> challenges;
-    try {
-      final snap = await _challenges.where('isActive', isEqualTo: true).get();
-      challenges = [
-        for (final doc in snap.docs)
-          Challenge.fromMap(doc.id, plainData(doc.data())),
-      ];
-    } catch (error) {
-      debugPrint('claimChallenges: $error');
-      return paid;
-    }
-    final seen = <String>{};
-    for (final moment in moments) {
-      final dayKey = BelgradeCalendar.dayKey(moment);
-      final weekKey = BelgradeCalendar.weekKey(moment);
-      RewardProgress progress;
-      try {
-        final snaps = await Future.wait([
-          _day(uid, dayKey).get(),
-          _week(uid, weekKey).get(),
-        ]);
-        progress = RewardProgress(
-          dayKey: dayKey,
-          weekKey: weekKey,
-          day: PeriodProgress.fromMap(snaps[0].data()),
-          week: PeriodProgress.fromMap(snaps[1].data()),
-        );
-      } catch (error) {
-        debugPrint('claimChallenges progress: $error');
-        continue;
-      }
-      for (final challenge in challenges) {
-        if (!challenge.isMet(progress)) continue;
-        final periodKey = challenge.periodKey(progress);
-        final entryId = LedgerEntry.challengeEntryId(challenge.id, periodKey);
-        if (!seen.add(entryId)) continue;
-        final entry = await _claimChallenge(uid, challenge, periodKey, entryId);
-        if (entry != null) paid.add(entry);
-      }
-    }
-    return paid;
-  }
-
-  Future<LedgerEntry?> _claimChallenge(
-    String uid,
-    Challenge challenge,
-    int periodKey,
-    String entryId,
-  ) async {
-    final ledgerRef = _ledger(uid).doc(entryId);
-    final reason = challengeReason(challenge);
-    try {
-      final created = await _db
-          .runTransaction<bool>((tx) async {
-            final existing = await tx.get(ledgerRef);
-            if (existing.exists) return false;
-            final summary = RewardSummary.fromMap(
-              (await tx.get(_summary(uid))).data(),
-            );
-            tx
-              ..set(ledgerRef, {
-                'type': 'challenge',
-                'challengeId': challenge.id,
-                'periodKey': periodKey,
-                'xp': challenge.rewardXp,
-                'points': challenge.rewardPoints,
-                'reason': reason,
-                'createdAt': FieldValue.serverTimestamp(),
-              })
-              ..set(_summary(uid), {
-                'xp': summary.xp + challenge.rewardXp,
-                'points': summary.points + challenge.rewardPoints,
-                'lastEntryId': entryId,
-                'updatedAt': FieldValue.serverTimestamp(),
-              });
-            return true;
-          })
-          .timeout(_commitTimeout);
-      if (!created) return null;
-      return LedgerEntry(
-        id: entryId,
-        type: LedgerType.challenge,
-        xp: challenge.rewardXp,
-        points: challenge.rewardPoints,
-        reason: reason,
-        challengeId: challenge.id,
-        periodKey: periodKey,
-      );
-    } catch (error) {
-      // Offline, rules not deployed or already paid by another device.
-      debugPrint('Challenge ${challenge.id} not claimed: $error');
-      return null;
-    }
-  }
+  }) async => const [];
 
   // --- Coupons ---------------------------------------------------------------
 
@@ -906,20 +677,4 @@ class FirestoreRewardsRepository implements RewardsRepository {
     }
     return RewardsException(RewardsErrorCode.unknown, '$error');
   }
-}
-
-class _PayOutcome {
-  const _PayOutcome({
-    required this.points,
-    this.capped = false,
-    this.already = false,
-    this.pending = false,
-    this.xpBefore = 0,
-  });
-
-  final int points;
-  final bool capped;
-  final bool already;
-  final bool pending;
-  final int xpBefore;
 }

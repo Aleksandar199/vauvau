@@ -289,6 +289,18 @@ abstract final class RewardsStrings {
       'Poeni se dobijaju samo u Android i iOS aplikaciji.',
       'Points are only earned in the Android and iOS app.',
     ),
+    WalkIneligibleReason.serverRejected => L10n.tr(
+      'Server nije prihvatio šetnju (ruta nije verodostojna) – ne boduje se.',
+      'The server did not accept the walk (route not credible) – not scored.',
+    ),
+    WalkIneligibleReason.walkExpired => L10n.tr(
+      'Šetnja je stigla na server više od 48 h posle kraja – ne boduje se.',
+      'The walk reached the server more than 48 h after it ended – not scored.',
+    ),
+    WalkIneligibleReason.duplicateRoute => L10n.tr(
+      'Ova ruta je već iskorišćena za poene – šetnja se ne boduje.',
+      'This route was already used for points – walk not scored.',
+    ),
   };
   static String challengeDone(String title) =>
       L10n.tr('Izazov završen: $title', 'Challenge done: $title');

@@ -211,95 +211,107 @@ async function seedPoints(uid, points) {
   });
 }
 
-describe('nagrade: šetnje', () => {
-  test('2,5 km: tačan obračun prolazi, ponovni zahtev za istu šetnju pada', async () => {
+describe('nagrade: šetnje (server piše poene)', () => {
+  // Poene za šetnju i izazove dodeljuje Cloud Function rewardWalk
+  // (functions/rewards.js, testirana u functions/test); klijent ih ne sme.
+  test('klijent ne može da upiše poene za šetnju (ni tačan obračun)', async () => {
     const walk = walkDoc({ meters: 2500, minutes: 30 });
-    await assertSucceeds(payWalk('alice', 'w1', walk));
-    const summary = await summaryOf('alice');
-    assert.equal(summary.xp, 10);
-    assert.equal(summary.points, 10);
-    // Ista šetnja još jednom (pauza / restart / ponovljen zahtev).
-    await assertFails(payWalk('alice', 'w1', walk, { skipWalk: true }));
-  });
-
-  test('lažni iznosi, bez evidencije, bez salda ili pogrešan dan – pada', async () => {
-    const walk = walkDoc({ meters: 2500, minutes: 30 });
+    await assertFails(payWalk('alice', 'w1', walk));
     await assertFails(payWalk('alice', 'w1', walk, { points: 15 }));
-    await assertFails(payWalk('alice', 'w1', walk, { extraXp: 50 }));
     await assertFails(payWalk('alice', 'w1', walk, { skipLedger: true }));
     await assertFails(payWalk('alice', 'w1', walk, { skipSummary: true }));
-    await assertFails(payWalk('alice', 'w1', walk, { dayKey: 20200101 }));
-    // Direktna izmena salda bez evidencije.
+    assert.deepEqual(await summaryOf('alice'), {});
+  });
+
+  test('šetnju (zapis) klijent i dalje čuva, ali bez poena', async () => {
+    const walk = walkDoc({ meters: 2500, minutes: 30 });
+    await assertSucceeds(setDoc(doc(as('alice'), 'users/alice/walks/w1'), walk));
+    await assertFails(setDoc(doc(as('bob'), 'users/alice/walks/w2'), walk));
+    assert.deepEqual(await summaryOf('alice'), {});
+  });
+
+  test('direktna izmena salda, napretka i evidencije pada', async () => {
     await assertFails(setDoc(doc(as('alice'), 'users/alice/rewards/summary'), {
       xp: 999, points: 999, lastEntryId: 'nema', updatedAt: serverTimestamp(),
     }));
+    const today = dayKeyOf(new Date());
+    await assertFails(setDoc(doc(as('alice'), 'users/alice/rewards/d' + today), {
+      meters: 99999, walks: 9, walkPoints: 0, lastEntryId: 'x', updatedAt: serverTimestamp(),
+    }));
+    await assertFails(setDoc(doc(as('alice'), 'users/alice/reward_ledger/walk_x'), {
+      type: 'walk', walkId: 'x', xp: 50, points: 50, reason: 'Šetnja', createdAt: serverTimestamp(),
+    }));
+    await assertFails(setDoc(doc(as('alice'), 'users/alice/reward_results/x'), {
+      status: 'rewarded', points: 50,
+    }));
   });
 
-  test('vožnja (prosek > 7 km/h), stara i predugačka šetnja – pada', async () => {
-    await assertFails(payWalk('alice', 'car', walkDoc({ meters: 10000, minutes: 20 })));
-    await assertFails(payWalk('alice', 'old', walkDoc({
-      meters: 2000, minutes: 30, endedAt: new Date(Date.now() - 49 * 3600e3),
-    })));
-    await assertFails(payWalk('alice', 'long', walkDoc({ meters: 20000, minutes: 300 })));
-    // Granica: tačno 7 km/h prolazi.
-    await assertSucceeds(payWalk('alice', 'edge', walkDoc({ meters: 3500, minutes: 30 })));
+  test('klijent ne može da pošalje poene ni uz kupon (lažni unos tipa šetnja)', async () => {
+    await seedCoupon('c1');
+    await seedPoints('alice', 10);
+    const db = as('alice');
+    const batch = writeBatch(db);
+    batch.set(doc(db, 'users/alice/reward_ledger/walk_cheat'), {
+      type: 'walk', walkId: 'cheat', xp: 500, points: 500, reason: 'Šetnja', createdAt: serverTimestamp(),
+    });
+    batch.set(doc(db, 'users/alice/rewards/summary'), {
+      xp: 510, points: 510, lastEntryId: 'walk_cheat', updatedAt: serverTimestamp(),
+    });
+    await assertFails(batch.commit());
+    assert.equal((await summaryOf('alice')).points, 10);
   });
 
-  test('dnevni limit 30 poena od kilometara', async () => {
-    await assertSucceeds(payWalk('alice', 'a', walkDoc({ meters: 4200, minutes: 50 })));
-    // Drugi put 4 km: do limita je ostalo 10, 20 pada.
-    await assertFails(payWalk('alice', 'b', walkDoc({ meters: 4000, minutes: 45 }), { points: 20 }));
-    await assertSucceeds(payWalk('alice', 'b', walkDoc({ meters: 4000, minutes: 45 })));
-    // Treća: 0 poena, ali se računa u kilometre izazova.
-    await assertSucceeds(payWalk('alice', 'c', walkDoc({ meters: 1500, minutes: 20 })));
-    assert.equal((await summaryOf('alice')).points, 30);
-  });
-
-  test('šetnja i evidencija su privatne i nepromenljive', async () => {
-    await assertSucceeds(payWalk('alice', 'w1', walkDoc({ meters: 2000, minutes: 25 })));
+  test('šetnja, rezultat i evidencija su privatni; admin vidi evidenciju', async () => {
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      const d = ctx.firestore();
+      await setDoc(doc(d, 'users/alice/walks/w1'), walkDoc({ meters: 2000, minutes: 25 }));
+      await setDoc(doc(d, 'users/alice/reward_ledger/walk_w1'), { type: 'walk', xp: 5, points: 5 });
+      await setDoc(doc(d, 'users/alice/reward_results/w1'), { status: 'rewarded', points: 5 });
+      await setDoc(doc(d, 'users/alice/rewards/summary'), { xp: 5, points: 5, lastEntryId: 'walk_w1' });
+    });
+    await assertSucceeds(getDoc(doc(as('alice'), 'users/alice/reward_results/w1')));
+    await assertSucceeds(getDoc(doc(as('admin'), 'users/alice/reward_results/w1')));
+    await assertFails(getDoc(doc(as('bob'), 'users/alice/reward_results/w1')));
     await assertFails(getDoc(doc(as('bob'), 'users/alice/walks/w1')));
     await assertFails(getDoc(doc(as('bob'), 'users/alice/rewards/summary')));
     await assertFails(getDoc(doc(as('bob'), 'users/alice/reward_ledger/walk_w1')));
     await assertFails(updateDoc(doc(as('alice'), 'users/alice/walks/w1'), { recognizedMeters: 9000 }));
     await assertFails(deleteDoc(doc(as('alice'), 'users/alice/reward_ledger/walk_w1')));
     await assertFails(deleteDoc(doc(as('alice'), 'users/alice/rewards/summary')));
-    // Admin vidi evidenciju svih (collection group), korisnik ne.
+    await assertFails(deleteDoc(doc(as('alice'), 'users/alice/reward_results/w1')));
     await assertSucceeds(getDocs(query(collectionGroup(as('admin'), 'reward_ledger'))));
     await assertFails(getDocs(query(collectionGroup(as('bob'), 'reward_ledger'))));
   });
 
-  test('brisanje naloga: evidencija se briše tek posle javnog profila', async () => {
-    await assertSucceeds(payWalk('alice', 'w1', walkDoc({ meters: 2000, minutes: 25 })));
+  test('tajna kolekcija otisaka ruta nije dostupna klijentima', async () => {
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), 'route_fingerprints/abc'), { uid: 'alice' });
+    });
+    await assertFails(getDoc(doc(as('alice'), 'route_fingerprints/abc')));
+    await assertFails(getDoc(doc(as('admin'), 'route_fingerprints/abc')));
+    await assertFails(setDoc(doc(as('alice'), 'route_fingerprints/new'), { uid: 'alice' }));
+  });
+
+  test('brisanje naloga: evidencija i rezultati se brišu tek posle javnog profila', async () => {
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      const d = ctx.firestore();
+      await setDoc(doc(d, 'users/alice/reward_ledger/walk_w1'), { type: 'walk', xp: 5, points: 5 });
+      await setDoc(doc(d, 'users/alice/reward_results/w1'), { status: 'rewarded' });
+      await setDoc(doc(d, 'users/alice/rewards/summary'), { xp: 5, points: 5, lastEntryId: 'walk_w1' });
+    });
     await assertSucceeds(deleteDoc(doc(as('alice'), 'users/alice')));
     await assertSucceeds(deleteDoc(doc(as('alice'), 'users/alice/reward_ledger/walk_w1')));
+    await assertSucceeds(deleteDoc(doc(as('alice'), 'users/alice/reward_results/w1')));
     await assertSucceeds(deleteDoc(doc(as('alice'), 'users/alice/rewards/summary')));
   });
 });
 
 describe('nagrade: izazovi', () => {
-  test('dnevni: jednom po danu, samo kad je cilj ispunjen i izazov aktivan', async () => {
+  test('klijent ne može sam da naplati izazov', async () => {
     const today = dayKeyOf(new Date());
-    await assertSucceeds(payWalk('alice', 'w1', walkDoc({ meters: 1200, minutes: 15 })));
     await assertFails(claimChallenge('alice', 'daily_2km', today));
-    await assertSucceeds(payWalk('alice', 'w2', walkDoc({ meters: 1000, minutes: 12 })));
-    await assertFails(claimChallenge('alice', 'daily_2km', today, { xp: 50 }));
-    await assertSucceeds(claimChallenge('alice', 'daily_2km', today));
-    await assertFails(claimChallenge('alice', 'daily_2km', today));
-    await assertFails(claimChallenge('alice', 'off', today));
-    // Stari period (van 48 h) pada.
-    await assertFails(claimChallenge('alice', 'daily_2km', 20200101));
-  });
-
-  test('nedeljni cilj: 3 šetnje od najmanje 1 km', async () => {
-    const week = weekKeyOf(new Date());
-    const bonus = { xp: 20, points: 20 };
-    await assertSucceeds(payWalk('alice', 'a', walkDoc({ meters: 1100, minutes: 15 })));
-    await assertSucceeds(payWalk('alice', 'b', walkDoc({ meters: 800, minutes: 10 })));
-    await assertSucceeds(payWalk('alice', 'c', walkDoc({ meters: 1300, minutes: 15 })));
-    await assertFails(claimChallenge('alice', 'weekly_3walks', week, bonus));
-    await assertSucceeds(payWalk('alice', 'd', walkDoc({ meters: 1000, minutes: 12 })));
-    await assertSucceeds(claimChallenge('alice', 'weekly_3walks', week, bonus));
-    await assertFails(claimChallenge('alice', 'weekly_3walks', week, bonus));
+    await assertFails(claimChallenge('alice', 'weekly_3walks', weekKeyOf(new Date()), { xp: 20, points: 20 }));
+    assert.deepEqual(await summaryOf('alice'), {});
   });
 
   test('izazove i kupone menja samo admin', async () => {
