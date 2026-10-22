@@ -209,6 +209,10 @@ abstract final class MapStrings {
         'Location tracking stopped.',
       );
   static String get gpsRetry => L10n.tr('Pokušaj ponovo', 'Retry');
+  static String get mockLocationWarning => L10n.tr(
+        'Otkrivena je lažna lokacija – ova šetnja se neće bodovati.',
+        'Fake location detected – this walk will not earn points.',
+      );
   static String get vehicleDetected => L10n.tr(
         'Deo puta je bio brži od hoda (vozilo?) – ne računa se.',
         'Part of the route was faster than walking (vehicle?) – not counted.',

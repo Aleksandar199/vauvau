@@ -90,6 +90,7 @@ class GeolocatorLocationClient implements LocationClient {
               timestamp: position.timestamp,
               accuracyM: position.accuracy,
               speedMps: position.speed,
+              altitudeM: position.altitude,
               isMocked: position.isMocked,
             ),
           );

@@ -100,11 +100,14 @@ class _Harness {
     }
   }
 
-  LocationFix fix(double northM, {double acc = 5}) => LocationFix(
+  /// Like a real phone: accuracy and speed vary a little (constant values
+  /// are one of the signals that flag synthetic GPS).
+  LocationFix fix(double northM, {double? acc}) => LocationFix(
     latitude: 45.25 + northM * _m,
     longitude: 19.84,
     timestamp: now,
-    accuracyM: acc,
+    accuracyM: acc ?? 4 + (northM ~/ 6 % 7) * 0.5,
+    speedMps: 1.0 + (northM ~/ 6 % 4) * 0.1,
   );
 }
 

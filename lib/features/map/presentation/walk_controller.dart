@@ -340,6 +340,7 @@ class WalkController extends Notifier<WalkSession> {
       statusMessage: (session.statusMessage ?? '').trim(),
       mockDetected: track.mockDetected,
       vehicleDetected: track.vehicleDetected,
+      suspiciousGps: track.suspicious,
       approximate: session.distanceApproximate,
       recovered: session.recovered,
       acceptedFixes: track.acceptedFixes,

@@ -472,4 +472,10 @@ enum WalkIneligibleReason {
   mockLocation,
   tooFastAverage,
   recoveredWithoutTracking,
+
+  /// Several independent GPS signals look synthetic.
+  suspiciousGps,
+
+  /// Rewards only from the Android / iOS app (web = testing only).
+  unsupportedPlatform,
 }

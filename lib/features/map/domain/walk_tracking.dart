@@ -41,6 +41,26 @@ abstract final class WalkTrackingRules {
 
   /// Route points kept for storage (older points are thinned out).
   static const int maxStoredPoints = 600;
+
+  // --- Synthetic-GPS suspicion (see [FixStats]) -------------------------
+  // Real GNSS readings vary; many spoofers do not. A walk is flagged only
+  // when at least [suspicionSignals] independent signals fire, each over
+  // enough samples, so one odd phone does not lose an honest walk.
+
+  /// Fixes needed before accuracy / altitude constancy counts.
+  static const int suspicionMinFixes = 40;
+
+  /// Counted steps needed before "no device speed" counts.
+  static const int suspicionMinMoving = 30;
+
+  /// Share of counted steps without a device speed that fires the signal.
+  static const double suspicionSpeedlessShare = 0.9;
+
+  /// Device speed below this (m/s) counts as "not reported" while moving.
+  static const double suspicionMinSpeedMps = 0.2;
+
+  /// Signals (of 3) that make a walk suspicious.
+  static const int suspicionSignals = 2;
 }
 
 /// What the filter did with one fix.
@@ -132,6 +152,7 @@ class WalkTrackState {
     this.lastFixAt,
     this.lastAccuracyM,
     this.lastVerdict,
+    this.stats = const FixStats(),
   });
 
   /// Route split where counting stopped (pause, vehicle, gap).
@@ -156,9 +177,15 @@ class WalkTrackState {
   final double? lastAccuracyM;
   final FixVerdict? lastVerdict;
 
+  /// Evidence for synthetic GPS that is not flagged as a mock provider.
+  final FixStats stats;
+
   double get distanceKm => distanceM / 1000;
 
   bool get vehicleDetected => vehicleTime > Duration.zero || excludedM >= 200;
+
+  /// Several independent signals say the GPS data is synthetic.
+  bool get suspicious => stats.suspicious;
 
   int get pointCount =>
       segments.fold(0, (sum, segment) => sum + segment.length);
@@ -180,6 +207,7 @@ class WalkTrackState {
     DateTime? lastFixAt,
     double? lastAccuracyM,
     FixVerdict? lastVerdict,
+    FixStats? stats,
   }) {
     return WalkTrackState(
       segments: segments ?? this.segments,
@@ -194,6 +222,7 @@ class WalkTrackState {
       lastFixAt: lastFixAt ?? this.lastFixAt,
       lastAccuracyM: lastAccuracyM ?? this.lastAccuracyM,
       lastVerdict: lastVerdict ?? this.lastVerdict,
+      stats: stats ?? this.stats,
     );
   }
 
@@ -211,6 +240,7 @@ class WalkTrackState {
     if (vehicleUntil != null)
       'vehicleUntil': vehicleUntil!.millisecondsSinceEpoch,
     'vehicleMs': vehicleTime.inMilliseconds,
+    'stats': stats.toJson(),
   };
 
   static WalkTrackState fromJson(Object? raw) {
@@ -238,6 +268,7 @@ class WalkTrackState {
           ? DateTime.fromMillisecondsSinceEpoch(vehicleUntil.toInt())
           : null,
       vehicleTime: Duration(milliseconds: n('vehicleMs').toInt()),
+      stats: FixStats.fromJson(raw['stats']),
     );
   }
 }
@@ -248,6 +279,27 @@ class WalkTrackState {
 /// (noise, driving, tunnels), it is NOT protection against a modified app.
 abstract final class WalkTracker {
   static WalkTrackState step(
+    WalkTrackState state,
+    LocationFix fix, {
+    required DateTime now,
+  }) {
+    final next = _filter(state, fix, now: now);
+    const rejected = {
+      FixVerdict.mocked,
+      FixVerdict.stale,
+      FixVerdict.inaccurate,
+      FixVerdict.outOfOrder,
+    };
+    final verdict = next.lastVerdict;
+    if (verdict == null || rejected.contains(verdict)) {
+      return next;
+    }
+    return next.copyWith(
+      stats: next.stats.add(fix, moved: verdict == FixVerdict.accepted),
+    );
+  }
+
+  static WalkTrackState _filter(
     WalkTrackState state,
     LocationFix fix, {
     required DateTime now,
@@ -416,4 +468,114 @@ List<List<RoutePoint>> thinSegments(
     if (count() == before) break;
   }
   return result;
+}
+
+/// Counters for spotting synthetic GPS that is NOT flagged as a mock
+/// provider (rooted phones that hide it, emulators). Three independent
+/// signals; a walk is suspicious when [WalkTrackingRules.suspicionSignals]
+/// of them fire:
+/// 1. accuracy is exactly the same value for every fix,
+/// 2. a real, non-zero altitude never changes,
+/// 3. the device reports no speed although the position keeps moving.
+///
+/// Client-side only (a modified app can skip it) and thresholds are
+/// conservative; they still need calibration on real walks.
+class FixStats {
+  const FixStats({
+    this.samples = 0,
+    this.accuracyKeys = const [],
+    this.altitudeSamples = 0,
+    this.altitudeKeys = const [],
+    this.movingSamples = 0,
+    this.speedlessMoving = 0,
+  });
+
+  /// Fixes that passed the basic checks (not mocked / stale / inaccurate).
+  final int samples;
+
+  /// Up to two distinct accuracy values (×10) – we only need "1 or more".
+  final List<int> accuracyKeys;
+  final int altitudeSamples;
+  final List<int> altitudeKeys;
+
+  /// Fixes that added walking distance.
+  final int movingSamples;
+
+  /// Of those, fixes where the device reported (almost) no speed.
+  final int speedlessMoving;
+
+  FixStats add(LocationFix fix, {required bool moved}) {
+    final accuracy = fix.accuracyM;
+    final altitude = fix.altitudeM;
+    final hasAltitude = altitude != null && altitude != 0 && altitude.isFinite;
+    final speed = fix.speedMps;
+    final speedless =
+        speed == null || speed < WalkTrackingRules.suspicionMinSpeedMps;
+    return FixStats(
+      samples: samples + 1,
+      accuracyKeys: accuracy == null
+          ? accuracyKeys
+          : _withKey(accuracyKeys, (accuracy * 10).round()),
+      altitudeSamples: altitudeSamples + (hasAltitude ? 1 : 0),
+      altitudeKeys: hasAltitude
+          ? _withKey(altitudeKeys, (altitude * 10).round())
+          : altitudeKeys,
+      movingSamples: movingSamples + (moved ? 1 : 0),
+      speedlessMoving: speedlessMoving + (moved && speedless ? 1 : 0),
+    );
+  }
+
+  static List<int> _withKey(List<int> keys, int key) {
+    if (keys.length >= 2 || keys.contains(key)) return keys;
+    return [...keys, key];
+  }
+
+  bool get constantAccuracy =>
+      samples >= WalkTrackingRules.suspicionMinFixes &&
+      accuracyKeys.length <= 1;
+
+  bool get constantAltitude =>
+      altitudeSamples >= WalkTrackingRules.suspicionMinFixes &&
+      altitudeKeys.length <= 1;
+
+  bool get missingSpeed =>
+      movingSamples >= WalkTrackingRules.suspicionMinMoving &&
+      speedlessMoving / movingSamples >=
+          WalkTrackingRules.suspicionSpeedlessShare;
+
+  int get signals => [
+    constantAccuracy,
+    constantAltitude,
+    missingSpeed,
+  ].where((fired) => fired).length;
+
+  bool get suspicious => signals >= WalkTrackingRules.suspicionSignals;
+
+  Map<String, Object?> toJson() => {
+    'n': samples,
+    'acc': accuracyKeys,
+    'altN': altitudeSamples,
+    'alt': altitudeKeys,
+    'mov': movingSamples,
+    'nospeed': speedlessMoving,
+  };
+
+  static FixStats fromJson(Object? raw) {
+    if (raw is! Map) return const FixStats();
+    int n(String key) => raw[key] is num ? (raw[key] as num).toInt() : 0;
+    List<int> keys(String key) => raw[key] is List
+        ? [
+            for (final v in raw[key] as List)
+              if (v is num) v.toInt(),
+          ].take(2).toList()
+        : const [];
+    return FixStats(
+      samples: n('n'),
+      accuracyKeys: keys('acc'),
+      altitudeSamples: n('altN'),
+      altitudeKeys: keys('alt'),
+      movingSamples: n('mov'),
+      speedlessMoving: n('nospeed'),
+    );
+  }
 }

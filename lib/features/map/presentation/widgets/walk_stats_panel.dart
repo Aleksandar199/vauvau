@@ -389,6 +389,15 @@ class WalkTrackingStatus extends ConsumerWidget {
       };
       rows.add(_StatusRow(icon: icon, color: color, text: text));
     }
+    if (walk.track.mockDetected) {
+      rows.add(
+        _StatusRow(
+          icon: Icons.location_off,
+          color: const Color(0xFFB91C1C),
+          text: MapStrings.mockLocationWarning,
+        ),
+      );
+    }
     if (walk.track.vehicleDetected) {
       rows.add(
         _StatusRow(

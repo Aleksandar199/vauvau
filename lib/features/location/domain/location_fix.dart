@@ -8,6 +8,7 @@ class LocationFix {
     required this.timestamp,
     this.accuracyM,
     this.speedMps,
+    this.altitudeM,
     this.isMocked = false,
   });
 
@@ -22,6 +23,10 @@ class LocationFix {
 
   /// Device-reported ground speed; null or negative = unknown.
   final double? speedMps;
+
+  /// Altitude in meters; null or exactly 0 = the device did not report one
+  /// (Android sends 0.0 then), so it is never used as evidence.
+  final double? altitudeM;
 
   /// Android mock-location provider (fake GPS apps).
   final bool isMocked;

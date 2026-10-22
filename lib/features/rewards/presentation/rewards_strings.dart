@@ -279,6 +279,16 @@ abstract final class RewardsStrings {
       'Šetnja je prekinuta i ne boduje se.',
       'Walk was interrupted and is not scored.',
     ),
+    WalkIneligibleReason.suspiciousGps => L10n.tr(
+      'GPS podaci izgledaju neprirodno (previše pravilni) – šetnja se ne '
+          'boduje. Pokušajte sa uključenim GPS-om visoke preciznosti.',
+      'GPS data looks unnatural (too regular) – walk not scored. Try again '
+          'with high-accuracy GPS on.',
+    ),
+    WalkIneligibleReason.unsupportedPlatform => L10n.tr(
+      'Poeni se dobijaju samo u Android i iOS aplikaciji.',
+      'Points are only earned in the Android and iOS app.',
+    ),
   };
   static String challengeDone(String title) =>
       L10n.tr('Izazov završen: $title', 'Challenge done: $title');

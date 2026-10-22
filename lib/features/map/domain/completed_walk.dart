@@ -16,6 +16,7 @@ class CompletedWalk {
     this.statusMessage = '',
     this.mockDetected = false,
     this.vehicleDetected = false,
+    this.suspiciousGps = false,
     this.approximate = false,
     this.recovered = false,
     this.acceptedFixes = 0,
@@ -40,6 +41,10 @@ class CompletedWalk {
   final String statusMessage;
   final bool mockDetected;
   final bool vehicleDetected;
+
+  /// Several independent signals say the GPS data is synthetic
+  /// (`FixStats`); the walk is saved but not rewarded.
+  final bool suspiciousGps;
   final bool approximate;
 
   /// Walk was restored after the app process was killed.

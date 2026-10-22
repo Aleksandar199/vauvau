@@ -43,6 +43,7 @@ Map<String, Object?> walkPayload(CompletedWalk walk) => {
   'flags': {
     'vehicle': walk.vehicleDetected,
     'mock': walk.mockDetected,
+    'suspicious': walk.suspiciousGps,
     'approximate': walk.approximate,
     'recovered': walk.recovered,
   },
@@ -89,6 +90,7 @@ CompletedWalk? completedWalkFromDoc(
     recognizedMeters: meters.toInt(),
     mockDetected: flags['mock'] == true,
     vehicleDetected: flags['vehicle'] == true,
+    suspiciousGps: flags['suspicious'] == true,
   );
 }
 

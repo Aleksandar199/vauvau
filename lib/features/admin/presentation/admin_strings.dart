@@ -1,5 +1,6 @@
 import '../../../core/l10n/l10n.dart';
 import '../../moderation/domain/content_report.dart';
+import '../../rewards/domain/earner_stats.dart';
 import '../../rewards/domain/rewards_models.dart';
 import '../domain/admin_models.dart';
 
@@ -265,6 +266,24 @@ abstract final class AdminStrings {
   static String get rewardsEnd => L10n.tr('Istek', 'Expiry');
   static String get rewardsDates =>
       L10n.tr('Istek mora biti posle početka.', 'Expiry must be after start.');
+  static String get rewardsTopEarners =>
+      L10n.tr('Najveća zarada (7 dana)', 'Top earners (7 days)');
+  static String get rewardsTopEarnersHint => L10n.tr(
+        'Poeni od šetnji po korisniku. Upozorenje = dnevni limit skoro '
+            'svaki dan – proveri nalog.',
+        'Walk points per user. Warning = daily limit almost every day – '
+            'review the account.',
+      );
+  static String rewardsEarnerLine(EarnerSummary e) => L10n.tr(
+        '${e.points} poena · ${e.km} km · ${e.walks} šetnji · limit '
+            '${e.daysAtCap}/${e.activeDays} dana',
+        '${e.points} pts · ${e.km} km · ${e.walks} walks · limit '
+            '${e.daysAtCap}/${e.activeDays} days',
+      );
+  static String get rewardsEarnerSuspicious => L10n.tr(
+        'Dnevni limit skoro svaki dan',
+        'Daily limit almost every day',
+      );
   static String get rewardsNoLedger =>
       L10n.tr('Još nema dodeljenih poena.', 'No points awarded yet.');
   static String get rewardsSearchCode =>

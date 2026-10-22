@@ -8,6 +8,7 @@ import '../../../partners/presentation/partner_providers.dart';
 import '../../../dogs/presentation/health/reminder_strings.dart';
 import '../../../rewards/data/birthday_reward_source.dart';
 import '../../../rewards/domain/birthday_reward.dart';
+import '../../../rewards/domain/earner_stats.dart';
 import '../../../rewards/domain/reward_rules.dart';
 import '../../../rewards/domain/rewards_models.dart';
 import '../../../rewards/domain/rewards_repository.dart';
@@ -27,7 +28,7 @@ final _adminCouponsProvider = StreamProvider.autoDispose<List<Coupon>>(
 );
 
 final _adminLedgerProvider = StreamProvider.autoDispose<List<LedgerEntry>>(
-  (ref) => ref.watch(rewardsRepositoryProvider).watchAllLedger(),
+  (ref) => ref.watch(rewardsRepositoryProvider).watchAllLedger(limit: 300),
 );
 
 final _adminClaimsProvider = StreamProvider.autoDispose<List<CouponClaim>>(
@@ -769,12 +770,18 @@ class _LedgerAdmin extends ConsumerWidget {
     return _asyncList<LedgerEntry>(
       ref.watch(_adminLedgerProvider),
       empty: AdminStrings.rewardsNoLedger,
-      data: (items) => ListView.separated(
+      data: (items) {
+        final top = EarnerStats.top(items, now: DateTime.now());
+        final offset = top.isEmpty ? 0 : 1;
+        return ListView.separated(
         padding: const EdgeInsets.all(16),
-        itemCount: items.length,
+        itemCount: items.length + offset,
         separatorBuilder: (_, _) => const Divider(height: 1),
         itemBuilder: (context, i) {
-          final e = items[i];
+          if (offset == 1 && i == 0) {
+            return _TopEarnersCard(earners: top);
+          }
+          final e = items[i - offset];
           return ListTile(
             dense: true,
             title: Text(e.reason),
@@ -792,7 +799,8 @@ class _LedgerAdmin extends ConsumerWidget {
             ),
           );
         },
-      ),
+      );
+      },
     );
   }
 }
@@ -1451,6 +1459,71 @@ class _BirthdayRewardAdminState extends ConsumerState<_BirthdayRewardAdmin> {
           ],
         );
       },
+    );
+  }
+}
+
+/// Who earned the most walk points this week – a quick way to spot
+/// farming (someone at the daily limit almost every day). Computed from the
+/// latest ledger entries; the admin decides what to do (suspend, cancel).
+class _TopEarnersCard extends StatelessWidget {
+  const _TopEarnersCard({required this.earners});
+
+  final List<EarnerSummary> earners;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              AdminStrings.rewardsTopEarners,
+              style: theme.textTheme.titleSmall?.copyWith(
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            Text(
+              AdminStrings.rewardsTopEarnersHint,
+              style: theme.textTheme.bodySmall,
+            ),
+            const SizedBox(height: 8),
+            for (final earner in earners)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 4),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          AdminUserLabel(uid: earner.userId, avatarSize: 18),
+                          Text(
+                            AdminStrings.rewardsEarnerLine(earner),
+                            style: theme.textTheme.bodySmall,
+                          ),
+                        ],
+                      ),
+                    ),
+                    if (earner.looksSuspicious)
+                      Tooltip(
+                        message: AdminStrings.rewardsEarnerSuspicious,
+                        child: const Icon(
+                          Icons.warning_amber_rounded,
+                          color: Color(0xFFB45309),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+          ],
+        ),
+      ),
     );
   }
 }

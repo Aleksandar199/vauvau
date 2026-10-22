@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kDebugMode, kIsWeb;
 import 'package:flutter/material.dart';
 
 import '../../map/domain/completed_walk.dart';
@@ -59,12 +60,24 @@ abstract final class RewardRules {
     return raw < room ? raw : room;
   }
 
+  /// Points are for the phone apps (Android / iOS). The browser has no
+  /// mock-location flag and its position is trivial to fake (DevTools), so
+  /// web walks earn nothing – except in debug builds, so the team can test.
+  static bool get platformCanEarn => !kIsWeb || kDebugMode;
+
   /// Why a walk can't be rewarded (null = it can, if ≥ 1 km).
-  static WalkIneligibleReason? ineligibleReason(CompletedWalk walk) {
+  static WalkIneligibleReason? ineligibleReason(
+    CompletedWalk walk, {
+    bool? platformAllowed,
+  }) {
     if (walk.userId.isEmpty || walk.userId == 'local-user') {
       return WalkIneligibleReason.notSignedIn;
     }
+    if (!(platformAllowed ?? platformCanEarn)) {
+      return WalkIneligibleReason.unsupportedPlatform;
+    }
     if (walk.mockDetected) return WalkIneligibleReason.mockLocation;
+    if (walk.suspiciousGps) return WalkIneligibleReason.suspiciousGps;
     if (walk.durationSeconds > maxWalkDuration.inSeconds) {
       return WalkIneligibleReason.tooLong;
     }
