@@ -1,6 +1,7 @@
 import 'dart:math';
 
 import '../../map/domain/completed_walk.dart';
+import 'birthday_reward.dart';
 import 'rewards_models.dart';
 
 /// XP / points / challenges / coupons. Firestore implementation writes
@@ -41,6 +42,19 @@ abstract class RewardsRepository {
   /// Atomic: enough points, active, in date range, stock left, once per user.
   Future<CouponClaim> claimCoupon(String uid, String couponId, {DateTime? now});
 
+  /// Birthday gift ([Coupon.isBirthday], free): only inside [eligibility]'s
+  /// 30-day window, once per user per birthday year (marker
+  /// `birthday_claims/{uid}_{year}` written in the same batch).
+  Future<CouponClaim> claimBirthdayCoupon(
+    String uid,
+    String couponId,
+    BirthdayEligibility eligibility, {
+    DateTime? now,
+  });
+
+  /// Whether the user already took a birthday gift for [year].
+  Future<bool> hasBirthdayClaim(String uid, int year);
+
   // --- Partner shop (rules: role 'partner' + active partners/{partnerId}) ---
   // The user only shows the code; the partner (or admin) marks it used, so a
   // mistaken tap by the user can no longer burn the coupon.
@@ -71,6 +85,10 @@ abstract class RewardsRepository {
   Future<void> saveCoupon(Coupon coupon);
 
   Future<void> setCouponActive(String id, bool active);
+
+  /// Admin: marks [id] as THE birthday coupon (free, `isBirthday: true`) or
+  /// turns that off.
+  Future<void> setBirthdayCoupon(String id, {required bool birthday});
 
   /// Sets how many coupons are still available: maxQuantity becomes the
   /// current claimedCount + [remaining] (read in a transaction, so a claim

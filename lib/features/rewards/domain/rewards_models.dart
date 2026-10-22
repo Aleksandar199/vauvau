@@ -140,6 +140,9 @@ class LedgerEntry {
       'ch_${challengeId}_$periodKey';
 
   static String couponEntryId(String couponId) => 'coupon_$couponId';
+
+  static String birthdayCouponEntryId(String couponId, int year) =>
+      'coupon_${couponId}_$year';
 }
 
 enum ChallengePeriod { daily, weekly }
@@ -257,6 +260,7 @@ class Coupon {
     this.terms = '',
     this.isActive = false,
     this.partnerId = '',
+    this.isBirthday = false,
   });
 
   factory Coupon.fromMap(String id, Map<String, dynamic> data) => Coupon(
@@ -273,6 +277,7 @@ class Coupon {
     terms: _str(data['terms']),
     isActive: data['isActive'] == true,
     partnerId: _str(data['partnerId']),
+    isBirthday: data['isBirthday'] == true,
   );
 
   final String id;
@@ -292,6 +297,11 @@ class Coupon {
 
   /// `partners/{id}`; that partner's shop accounts see and redeem its claims.
   final String partnerId;
+
+  /// Birthday gift (admin, Nagrade → Rođendanski poklon): free, only for an
+  /// owner whose dog has a birthday in the last 30 days, once a year; not in
+  /// the normal coupon list.
+  final bool isBirthday;
 
   int get remaining => (maxQuantity - claimedCount).clamp(0, maxQuantity);
 
@@ -370,6 +380,10 @@ class CouponClaim {
   final String redeemedBy;
 
   static String docId(String couponId, String uid) => '${couponId}_$uid';
+
+  /// Birthday gift claim: one per user per birthday year.
+  static String birthdayDocId(String couponId, String uid, int year) =>
+      '${couponId}_${uid}_$year';
 
   /// Adds "expired" for unused coupons past their end date.
   ClaimStatus effectiveStatus(DateTime now) {

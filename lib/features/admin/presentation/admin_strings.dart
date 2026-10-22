@@ -182,8 +182,8 @@ abstract final class AdminStrings {
       );
   static String get birthdayPreview => L10n.tr('Pregled čestitke', 'Greeting preview');
   static String get birthdayNote => L10n.tr(
-        'Važi za rođendanske podsetnike koje korisnici sačuvaju posle izmene (čestitka se zakazuje unapred na telefonu). Za sada je ovo najava: korisnik kupon preuzima u Nagradama po ceni u poenima koju podesiš na kuponu (0 poena = besplatno za sve). Pravi poklon samo slavljenicima traži dodatnu doradu.',
-        'Applies to birthday reminders saved after the change (the greeting is scheduled on the phone). For now this is an announcement: the user claims the coupon in Rewards at its points price (0 points = free for everyone). A gift only for birthday owners needs more work.',
+        'Izabrani kupon postaje rođendanski: besplatan (0 poena), ne vidi se u običnoj listi i može da ga preuzme samo vlasnik psa koji ima podsetnik „Rođendan“ – od dana rođendana do 30 dana posle, najviše jednom godišnje. Kupon mora biti i aktivan (tab Kuponi) i u roku važenja. Najava u čestitki važi za podsetnike sačuvane posle izmene.',
+        'The chosen coupon becomes the birthday coupon: free (0 points), hidden from the normal list and only for an owner whose dog has a "Birthday" reminder – from the birthday until 30 days after, at most once a year. It must also be active (Coupons tab) and within its dates. The greeting mentions it for reminders saved after the change.',
       );
   static String get save => L10n.tr('Sačuvaj', 'Save');
   static String get rewardsSaved => L10n.tr('Sačuvano.', 'Saved.');

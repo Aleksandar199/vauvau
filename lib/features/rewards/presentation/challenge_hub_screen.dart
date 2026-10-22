@@ -7,6 +7,7 @@ import '../../../core/widgets/feed_state.dart';
 import '../../map/domain/walk_record.dart';
 import '../../map/presentation/walk_history_controller.dart';
 import '../domain/belgrade_calendar.dart';
+import '../domain/birthday_reward.dart';
 import '../domain/reward_rules.dart';
 import '../domain/rewards_models.dart';
 import 'rewards_controller.dart';
@@ -597,8 +598,13 @@ class _RewardsTab extends ConsumerWidget {
                   ],
                 ),
         ),
+        if (ref.watch(birthdayGiftProvider).value case final gift?)
+          BirthdayGiftCard(gift: gift),
         _SectionTitle(RewardsStrings.couponsSection),
-        couponsAsync.when(
+        couponsAsync.whenData(
+          // The birthday gift is only offered through its own card.
+          (all) => [for (final c in all) if (!c.isBirthday) c],
+        ).when(
           loading: FeedStateView.loadingBody,
           error: (_, _) => FeedStateView(
             icon: Icons.cloud_off,
@@ -794,6 +800,111 @@ class _CouponCardState extends ConsumerState<CouponCard> {
                       ),
               ),
             ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// "🎂 Rođendanski poklon": shown only while [birthdayGiftProvider] says the
+/// user may claim it (birthday in the last 30 days, not taken this year).
+class BirthdayGiftCard extends ConsumerStatefulWidget {
+  const BirthdayGiftCard({super.key, required this.gift});
+
+  final BirthdayGift gift;
+
+  @override
+  ConsumerState<BirthdayGiftCard> createState() => _BirthdayGiftCardState();
+}
+
+class _BirthdayGiftCardState extends ConsumerState<BirthdayGiftCard> {
+  var _busy = false;
+
+  Future<void> _claim() async {
+    setState(() => _busy = true);
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      final claim = await ref
+          .read(walkRewardsServiceProvider)
+          .claimBirthdayGift(widget.gift);
+      messenger.showSnackBar(
+        SnackBar(content: Text(RewardsStrings.claimed(claim.code))),
+      );
+    } on RewardsException catch (error) {
+      messenger.showSnackBar(
+        SnackBar(content: Text(RewardsStrings.error(error.code))),
+      );
+    } catch (_) {
+      messenger.showSnackBar(
+        SnackBar(content: Text(RewardsStrings.error(RewardsErrorCode.unknown))),
+      );
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = RewardsPalette.of(context);
+    final coupon = widget.gift.coupon;
+    final e = widget.gift.eligibility;
+    return RewardsCard(
+      key: const ValueKey('birthday-gift-card'),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            RewardsStrings.birthdayGiftTitle(e.dogName),
+            style: TextStyle(
+              fontWeight: FontWeight.w900,
+              fontSize: 16,
+              color: palette.text,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            coupon.discountLabel,
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.w900,
+              color: palette.accent,
+            ),
+          ),
+          if (coupon.partnerName.isNotEmpty)
+            Text(coupon.partnerName, style: TextStyle(color: palette.text)),
+          if (coupon.terms.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Text(
+                '${RewardsStrings.terms}: ${coupon.terms}',
+                style: TextStyle(color: palette.muted, fontSize: 12),
+              ),
+            ),
+          const SizedBox(height: 8),
+          Text(
+            RewardsStrings.birthdayGiftDeadline(e.deadline),
+            style: TextStyle(color: palette.muted, fontSize: 12),
+          ),
+          const SizedBox(height: 10),
+          Align(
+            alignment: Alignment.centerRight,
+            child: FilledButton.icon(
+              key: const ValueKey('birthday-gift-claim'),
+              style: FilledButton.styleFrom(
+                backgroundColor: palette.accent,
+                minimumSize: const Size(0, 44),
+              ),
+              onPressed: _busy ? null : _claim,
+              icon: _busy
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.cake_outlined),
+              label: Text(RewardsStrings.birthdayGiftClaim),
+            ),
           ),
         ],
       ),

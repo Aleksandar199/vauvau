@@ -4,6 +4,7 @@ import '../../map/data/walk_history_repository.dart';
 import '../../map/domain/completed_walk.dart';
 import '../../map/domain/walk_record.dart';
 import '../domain/belgrade_calendar.dart';
+import '../domain/birthday_reward.dart';
 import '../domain/reward_rules.dart';
 import '../domain/rewards_models.dart';
 import '../domain/rewards_repository.dart';
@@ -32,6 +33,9 @@ class LocalRewardsRepository implements RewardsRepository {
   final Map<String, Challenge> _challenges = {};
   final Map<String, Coupon> _coupons = {};
   final Map<String, CouponClaim> _claims = {};
+
+  /// `birthday_claims` markers: '{uid}_{year}' → couponId.
+  final Map<String, String> birthdayMarkers = {};
   final Map<String, Map<String, CompletedWalk>> _walks = {};
   final _changes = StreamController<void>.broadcast();
   var _couponSeq = 0;
@@ -281,6 +285,9 @@ class LocalRewardsRepository implements RewardsRepository {
     if (coupon == null) {
       throw const RewardsException(RewardsErrorCode.inactive);
     }
+    if (coupon.isBirthday) {
+      throw const RewardsException(RewardsErrorCode.inactive);
+    }
     final claimId = CouponClaim.docId(couponId, uid);
     if (_claims.containsKey(claimId)) {
       throw const RewardsException(RewardsErrorCode.alreadyClaimed);
@@ -394,6 +401,82 @@ class LocalRewardsRepository implements RewardsRepository {
   }
 
   @override
+  Future<void> setBirthdayCoupon(String id, {required bool birthday}) async {
+    final c = _coupons[id];
+    if (c != null) {
+      _coupons[id] = Coupon.fromMap(id, {
+        ..._couponMap(c),
+        'isBirthday': birthday,
+        if (birthday) 'pointsCost': 0,
+      });
+    }
+    _notify();
+  }
+
+  @override
+  Future<bool> hasBirthdayClaim(String uid, int year) async =>
+      birthdayMarkers.containsKey(BirthdayEligibility.markerId(uid, year));
+
+  @override
+  Future<CouponClaim> claimBirthdayCoupon(
+    String uid,
+    String couponId,
+    BirthdayEligibility eligibility, {
+    DateTime? now,
+  }) async {
+    final at = now ?? DateTime.now();
+    if (at.isBefore(eligibility.birthday) ||
+        !at.isBefore(eligibility.deadline)) {
+      throw const RewardsException(RewardsErrorCode.expired);
+    }
+    final coupon = _coupons[couponId];
+    if (coupon == null || !coupon.isBirthday || coupon.pointsCost != 0) {
+      throw const RewardsException(RewardsErrorCode.inactive);
+    }
+    final year = eligibility.year;
+    final marker = BirthdayEligibility.markerId(uid, year);
+    final claimId = CouponClaim.birthdayDocId(couponId, uid, year);
+    if (birthdayMarkers.containsKey(marker) || _claims.containsKey(claimId)) {
+      throw const RewardsException(RewardsErrorCode.alreadyClaimed);
+    }
+    checkCouponClaimable(coupon, summaryOf(uid), at);
+    _addEntry(
+      uid,
+      LedgerEntry(
+        id: LedgerEntry.birthdayCouponEntryId(couponId, year),
+        type: LedgerType.coupon,
+        xp: 0,
+        points: 0,
+        reason: couponReason(coupon),
+        createdAt: at,
+        couponId: couponId,
+      ),
+    );
+    _coupons[couponId] = Coupon.fromMap(couponId, {
+      ..._couponMap(coupon),
+      'claimedCount': coupon.claimedCount + 1,
+    });
+    birthdayMarkers[marker] = couponId;
+    final claim = CouponClaim(
+      id: claimId,
+      couponId: couponId,
+      userId: uid,
+      code: CouponCode.generate(),
+      status: ClaimStatus.claimed,
+      pointsCost: 0,
+      claimedAt: at,
+      expiresAt: coupon.expiresAt,
+      partnerName: coupon.partnerName,
+      title: coupon.title,
+      discountLabel: coupon.discountLabel,
+      partnerId: coupon.partnerId,
+    );
+    _claims[claimId] = claim;
+    _notify();
+    return claim;
+  }
+
+  @override
   Future<void> setCouponRemaining(String id, int remaining) async {
     if (remaining < 0) throw ArgumentError.value(remaining, 'remaining');
     final c = _coupons[id];
@@ -480,5 +563,6 @@ class LocalRewardsRepository implements RewardsRepository {
     'claimedCount': c.claimedCount,
     'terms': c.terms,
     'isActive': c.isActive,
+    'isBirthday': c.isBirthday,
   };
 }

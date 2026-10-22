@@ -512,6 +512,13 @@ void main() {
   });
 
   group('rođendanski poklon', () {
+    late LocalRewardsRepository birthdayRewards;
+    setUp(() {
+      birthdayRewards = LocalRewardsRepository(
+        challenges: const [],
+        coupons: [_coupon('rodjendan')],
+      );
+    });
     Future<LocalAdminRepository> pumpBirthday(WidgetTester tester) async {
       await tester.binding.setSurfaceSize(const Size(412, 1400));
       addTearDown(() => tester.binding.setSurfaceSize(null));
@@ -524,12 +531,7 @@ void main() {
           overrides: [
             isAdminProvider.overrideWithValue(true),
             adminRepositoryProvider.overrideWithValue(admin),
-            rewardsRepositoryProvider.overrideWithValue(
-              LocalRewardsRepository(
-                challenges: const [],
-                coupons: [_coupon('rodjendan')],
-              ),
-            ),
+            rewardsRepositoryProvider.overrideWithValue(birthdayRewards),
             partnersRepositoryProvider.overrideWithValue(partners),
           ],
           child: const MaterialApp(home: Scaffold(body: AdminRewardsTab())),
@@ -583,6 +585,11 @@ void main() {
       expect(admin.birthdayReward.couponId, 'rodjendan');
       expect(admin.birthdayReward.partnerName, 'Pet shop Šapa');
       expect(admin.birthdayReward.isActive, isTrue);
+      // Kupon je postao rođendanski i besplatan.
+      final coupon = (await birthdayRewards.watchCoupons(activeOnly: false).first)
+          .single;
+      expect(coupon.isBirthday, isTrue);
+      expect(coupon.pointsCost, 0);
     });
   });
 }

@@ -143,6 +143,18 @@ abstract final class RewardsStrings {
   static String startsOn(DateTime d) =>
       L10n.tr('Počinje ${_date(d)}', 'Starts ${_date(d)}');
   static String remaining(int n) => L10n.tr('Preostalo: $n', 'Left: $n');
+  static String birthdayGiftTitle(String dogName) => dogName.trim().isEmpty
+      ? L10n.tr('🎂 Rođendanski poklon', '🎂 Birthday gift')
+      : L10n.tr(
+          '🎂 Rođendanski poklon za ${dogName.trim()}',
+          '🎂 Birthday gift for ${dogName.trim()}',
+        );
+  static String birthdayGiftDeadline(DateTime d) => L10n.tr(
+        'Besplatno · preuzmi do ${_date(d)} (posle toga pravo ističe)',
+        'Free · claim by ${_date(d)} (after that it expires)',
+      );
+  static String get birthdayGiftClaim =>
+      L10n.tr('Preuzmi poklon', 'Claim gift');
   static String get claim => L10n.tr('Preuzmi', 'Claim');
   static String claimConfirmTitle(Coupon c) =>
       L10n.tr('Preuzeti kupon?', 'Claim coupon?');

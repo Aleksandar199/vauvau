@@ -435,13 +435,70 @@ service cloud.firestore {
     }
 
     // Coupon purchase: exactly -price, together with the caller's new claim.
+    // A birthday coupon (isBirthday) is free and its entry / claim ids carry
+    // the birthday year (one per user per year, see birthdayMarkerOk).
     function couponEntryOk(uid, entryId, e) {
       let c = get(couponPath(e.couponId)).data;
-      return entryId == 'coupon_' + e.couponId &&
-        e.keys().hasOnly(['type', 'couponId', 'xp', 'points', 'reason', 'createdAt']) &&
-        e.xp == 0 && e.points == -c.pointsCost &&
-        !exists(claimPath(e.couponId, uid)) &&
-        existsAfter(claimPath(e.couponId, uid));
+      let birthday = c.get('isBirthday', false) == true;
+      return e.xp == 0 && e.points == -c.pointsCost &&
+        (
+          (!birthday &&
+            entryId == 'coupon_' + e.couponId &&
+            e.keys().hasOnly(['type', 'couponId', 'xp', 'points', 'reason', 'createdAt']) &&
+            !exists(claimPath(e.couponId, uid)) &&
+            existsAfter(claimPath(e.couponId, uid))) ||
+          (birthday &&
+            e.birthdayYear is int &&
+            entryId == 'coupon_' + e.couponId + '_' + string(e.birthdayYear) &&
+            e.keys().hasOnly(['type', 'couponId', 'birthdayYear', 'xp', 'points', 'reason', 'createdAt']) &&
+            !exists(birthdayClaimPath(e.couponId, uid, e.birthdayYear)) &&
+            existsAfter(birthdayClaimPath(e.couponId, uid, e.birthdayYear)))
+        );
+    }
+
+    // --- Birthday gift coupon --------------------------------------------
+    // Only the owner of a dog with a "Rođendan" reminder, from the birthday
+    // until 30 days after it, once per user per year (marker
+    // birthday_claims/{uid}_{year}; nobody deletes it). The birthday may be
+    // the reminder date or, for a yearly reminder already rolled to next
+    // year, that date minus 365/366 days. No server: the rules cannot tell
+    // whether the date is the dog's real birthday (once a year limits it).
+    function birthdayClaimPath(couponId, uid, year) {
+      return /databases/$(database)/documents/coupon_claims/$(couponId + '_' + uid + '_' + string(year));
+    }
+
+    function birthdayMarkerPath(uid, year) {
+      return /databases/$(database)/documents/birthday_claims/$(uid + '_' + string(year));
+    }
+
+    function birthdayMarkerOk(markerId) {
+      let d = request.resource.data;
+      let dog = get(dogPath(d.dogId)).data;
+      let r = get(/databases/$(database)/documents/dogs/$(d.dogId)/reminders/$(d.reminderId)).data;
+      return d.keys().hasOnly(['userId', 'couponId', 'dogId', 'reminderId',
+          'birthday', 'birthdayYear', 'createdAt']) &&
+        d.userId == request.auth.uid &&
+        d.birthday is timestamp &&
+        d.birthdayYear == d.birthday.year() &&
+        markerId == request.auth.uid + '_' + string(d.birthdayYear) &&
+        d.createdAt == request.time &&
+        d.dogId is string && d.reminderId is string &&
+        dog.ownerId == request.auth.uid &&
+        r.type == 'birthday' &&
+        r.date is timestamp &&
+        (d.birthday == r.date ||
+          d.birthday == r.date - duration.value(365, 'd') ||
+          d.birthday == r.date - duration.value(366, 'd')) &&
+        request.time >= d.birthday &&
+        request.time < d.birthday + duration.value(30, 'd') &&
+        existsAfter(birthdayClaimPath(d.couponId, request.auth.uid, d.birthdayYear));
+    }
+
+    match /birthday_claims/{markerId} {
+      allow read: if isAuthenticated() &&
+        (resource == null || resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isAuthenticated() && notSuspended() &&
+        birthdayMarkerOk(markerId);
     }
 
     // Admin review of all points across users.
@@ -467,8 +524,18 @@ service cloud.firestore {
         request.time < resource.data.expiresAt &&
         request.resource.data.claimedCount == resource.data.get('claimedCount', 0) + 1 &&
         request.resource.data.claimedCount <= resource.data.maxQuantity &&
-        !exists(claimPath(couponId, request.auth.uid)) &&
-        existsAfter(claimPath(couponId, request.auth.uid));
+        (resource.data.get('isBirthday', false) == true
+          ? newBirthdayClaim(couponId, request.time.year()) ||
+            newBirthdayClaim(couponId, request.time.year() - 1)
+          : !exists(claimPath(couponId, request.auth.uid)) &&
+            existsAfter(claimPath(couponId, request.auth.uid)));
+    }
+
+    // The birthday claim of this batch: its year is this or last year (the
+    // 30-day window may cross New Year).
+    function newBirthdayClaim(couponId, year) {
+      return !exists(birthdayClaimPath(couponId, request.auth.uid, year)) &&
+        existsAfter(birthdayClaimPath(couponId, request.auth.uid, year));
     }
 
     // A user's coupon: id {couponId}_{uid} (one per user per offer), random
@@ -509,10 +576,26 @@ service cloud.firestore {
       let d = request.resource.data;
       let before = get(couponPath(d.couponId)).data;
       let after = getAfter(couponPath(d.couponId)).data;
-      return claimId == d.couponId + '_' + request.auth.uid &&
-        d.keys().hasOnly(['userId', 'couponId', 'code', 'status', 'pointsCost',
-          'partnerName', 'title', 'discountLabel', 'expiresAt', 'claimedAt',
-          'partnerId']) &&
+      let birthday = before.get('isBirthday', false) == true;
+      return (
+          (!birthday &&
+            claimId == d.couponId + '_' + request.auth.uid &&
+            d.keys().hasOnly(['userId', 'couponId', 'code', 'status', 'pointsCost',
+              'partnerName', 'title', 'discountLabel', 'expiresAt', 'claimedAt',
+              'partnerId']) &&
+            existsAfter(ledgerPath(request.auth.uid, 'coupon_' + d.couponId))) ||
+          (birthday &&
+            d.birthdayYear is int &&
+            claimId == d.couponId + '_' + request.auth.uid + '_' + string(d.birthdayYear) &&
+            d.keys().hasOnly(['userId', 'couponId', 'code', 'status', 'pointsCost',
+              'partnerName', 'title', 'discountLabel', 'expiresAt', 'claimedAt',
+              'partnerId', 'birthdayYear']) &&
+            before.pointsCost == 0 &&
+            existsAfter(ledgerPath(request.auth.uid, 'coupon_' + d.couponId + '_' + string(d.birthdayYear))) &&
+            !exists(birthdayMarkerPath(request.auth.uid, d.birthdayYear)) &&
+            existsAfter(birthdayMarkerPath(request.auth.uid, d.birthdayYear)) &&
+            getAfter(birthdayMarkerPath(request.auth.uid, d.birthdayYear)).data.couponId == d.couponId)
+        ) &&
         d.get('partnerId', '') == before.get('partnerId', '') &&
         d.userId == request.auth.uid &&
         d.status == 'claimed' &&
@@ -520,8 +603,7 @@ service cloud.firestore {
         d.code is string && d.code.matches('^VV-[A-HJ-NP-Z2-9]{8}$') &&
         d.pointsCost == before.pointsCost &&
         d.expiresAt == before.expiresAt &&
-        after.claimedCount == before.get('claimedCount', 0) + 1 &&
-        existsAfter(ledgerPath(request.auth.uid, 'coupon_' + d.couponId));
+        after.claimedCount == before.get('claimedCount', 0) + 1;
     }
 
     match /notifications/{notificationId} {

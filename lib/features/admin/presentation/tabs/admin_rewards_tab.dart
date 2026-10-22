@@ -739,7 +739,10 @@ class _CouponDialogState extends State<_CouponDialog> {
                 title: _title.text.trim(),
                 description: _description.text.trim(),
                 discountLabel: _discount.text.trim(),
-                pointsCost: int.parse(_cost.text),
+                // A birthday gift stays free (the rules require 0 points).
+                pointsCost: widget.existing?.isBirthday == true
+                    ? 0
+                    : int.parse(_cost.text),
                 startsAt: _startsAt,
                 expiresAt: _expiresAt,
                 maxQuantity: int.parse(_quantity.text),
@@ -747,6 +750,7 @@ class _CouponDialogState extends State<_CouponDialog> {
                 terms: _terms.text.trim(),
                 isActive: _active,
                 partnerId: _partnerId,
+                isBirthday: widget.existing?.isBirthday ?? false,
               ),
             );
           },
@@ -1296,7 +1300,17 @@ class _BirthdayRewardAdminState extends ConsumerState<_BirthdayRewardAdmin> {
       return;
     }
     setState(() => _saving = true);
+    final previous = ref.read(adminBirthdayRewardProvider).value?.couponId ?? '';
     await _guard(context, () async {
+      final rewards = ref.read(rewardsRepositoryProvider);
+      // The chosen coupon becomes THE birthday coupon (free, hidden from the
+      // normal list, only for birthday owners); the old one goes back.
+      if (previous.isNotEmpty && previous != d.couponId) {
+        await rewards.setBirthdayCoupon(previous, birthday: false);
+      }
+      if (d.couponId.isNotEmpty) {
+        await rewards.setBirthdayCoupon(d.couponId, birthday: true);
+      }
       await ref.read(adminRepositoryProvider).saveBirthdayReward(
         BirthdayRewardConfig(
           enabled: d.enabled,

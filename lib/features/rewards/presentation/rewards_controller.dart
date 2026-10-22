@@ -6,12 +6,17 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/firebase/firebase_status.dart';
 import '../../auth/presentation/auth_providers.dart';
+import '../../dogs/domain/dog_reminder.dart';
+import '../../dogs/presentation/dog_providers.dart';
+import '../../dogs/presentation/health/reminder_controller.dart';
 import '../../map/data/walk_history_repository.dart';
 import '../../map/domain/completed_walk.dart';
 import '../../map/presentation/walk_history_controller.dart';
 import '../data/firestore_rewards_repository.dart';
 import '../data/local_rewards_repository.dart';
+import '../data/birthday_reward_source.dart';
 import '../domain/belgrade_calendar.dart';
+import '../domain/birthday_reward.dart';
 import '../domain/rewards_models.dart';
 import '../domain/rewards_repository.dart';
 
@@ -185,8 +190,72 @@ class WalkRewardsService {
       now: _ref.read(rewardsClockProvider)(),
     );
   }
+
+  /// Birthday gift (free, once a year) for the window in [gift].
+  Future<CouponClaim> claimBirthdayGift(BirthdayGift gift) async {
+    final uid = _ref.read(rewardsUidProvider);
+    if (uid.isEmpty) {
+      throw const RewardsException(RewardsErrorCode.signedOut);
+    }
+    final claim = await _repo.claimBirthdayCoupon(
+      uid,
+      gift.coupon.id,
+      gift.eligibility,
+      now: _ref.read(rewardsClockProvider)(),
+    );
+    _ref.invalidate(birthdayGiftProvider);
+    return claim;
+  }
 }
 
 final walkRewardsServiceProvider = Provider<WalkRewardsService>(
   WalkRewardsService.new,
 );
+
+/// The birthday gift I can claim now: the admin turned it on
+/// (`app_config/birthday`), its coupon is a live birthday coupon, one of my
+/// dogs has a "Rođendan" reminder within the last 30 days and I have not
+/// taken a gift for that birthday year yet. Otherwise null.
+final birthdayGiftProvider = FutureProvider.autoDispose<BirthdayGift?>((
+  ref,
+) async {
+  final uid = ref.watch(rewardsUidProvider);
+  if (uid.isEmpty) return null;
+  final config = await ref.watch(birthdayRewardConfigProvider.future);
+  if (!config.isActive) return null;
+  final coupons = await ref.watch(activeCouponsProvider.future);
+  final now = ref.read(rewardsClockProvider)();
+  Coupon? coupon;
+  for (final c in coupons) {
+    if (c.id == config.couponId && c.isBirthday && c.pointsCost == 0) {
+      coupon = c;
+    }
+  }
+  if (coupon == null ||
+      coupon.availability(now) != CouponAvailability.available) {
+    return null;
+  }
+  final dogs = await ref.watch(ownerDogsProvider.future);
+  final reminders = ref.read(reminderRepositoryProvider);
+  final refs = <BirthdayReminderRef>[];
+  for (final dog in dogs) {
+    final items = await reminders.watchReminders(dog.id).first;
+    for (final r in items) {
+      if (r.type == ReminderType.birthday && r.id.isNotEmpty) {
+        refs.add(
+          BirthdayReminderRef(
+            dogId: dog.id,
+            reminderId: r.id,
+            date: r.date,
+            dogName: dog.name,
+          ),
+        );
+      }
+    }
+  }
+  final eligibility = BirthdayEligibility.find(refs, now);
+  if (eligibility == null) return null;
+  final repo = ref.read(rewardsRepositoryProvider);
+  if (await repo.hasBirthdayClaim(uid, eligibility.year)) return null;
+  return BirthdayGift(coupon: coupon, eligibility: eligibility);
+});

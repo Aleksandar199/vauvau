@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 import '../../../core/firebase/firestore_auth_guard.dart';
 import '../../map/domain/completed_walk.dart';
 import '../domain/belgrade_calendar.dart';
+import '../domain/birthday_reward.dart';
 import '../domain/reward_rules.dart';
 import '../domain/rewards_models.dart';
 import '../domain/rewards_repository.dart';
@@ -528,6 +529,10 @@ class FirestoreRewardsRepository implements RewardsRepository {
               couponId,
               plainData(couponSnap.data()!),
             );
+            // The birthday gift goes only through claimBirthdayCoupon.
+            if (coupon.isBirthday) {
+              throw const RewardsException(RewardsErrorCode.inactive);
+            }
             final claimSnap = await tx.get(claimRef);
             if (claimSnap.exists) {
               throw const RewardsException(RewardsErrorCode.alreadyClaimed);
@@ -564,6 +569,120 @@ class FirestoreRewardsRepository implements RewardsRepository {
               status: ClaimStatus.claimed,
               pointsCost: coupon.pointsCost,
               claimedAt: now ?? DateTime.now(),
+              expiresAt: coupon.expiresAt,
+              partnerName: coupon.partnerName,
+              title: coupon.title,
+              discountLabel: coupon.discountLabel,
+              partnerId: coupon.partnerId,
+            );
+          })
+          .timeout(_commitTimeout);
+    } on RewardsException {
+      rethrow;
+    } on TimeoutException {
+      throw const RewardsException(RewardsErrorCode.offline);
+    } catch (error) {
+      throw _mapError(error);
+    }
+  }
+
+  DocumentReference<Map<String, dynamic>> _birthdayMarker(
+    String uid,
+    int year,
+  ) => _db
+      .collection('birthday_claims')
+      .doc(BirthdayEligibility.markerId(uid, year));
+
+  @override
+  Future<bool> hasBirthdayClaim(String uid, int year) async {
+    try {
+      return (await _birthdayMarker(uid, year).get()).exists;
+    } catch (error) {
+      throw _mapError(error);
+    }
+  }
+
+  @override
+  Future<CouponClaim> claimBirthdayCoupon(
+    String uid,
+    String couponId,
+    BirthdayEligibility eligibility, {
+    DateTime? now,
+  }) async {
+    final at = now ?? DateTime.now();
+    if (at.isBefore(eligibility.birthday) ||
+        !at.isBefore(eligibility.deadline)) {
+      throw const RewardsException(RewardsErrorCode.expired);
+    }
+    final year = eligibility.year;
+    final couponRef = _coupons.doc(couponId);
+    final claimRef = _claims.doc(CouponClaim.birthdayDocId(couponId, uid, year));
+    final markerRef = _birthdayMarker(uid, year);
+    final entryId = LedgerEntry.birthdayCouponEntryId(couponId, year);
+    final ledgerRef = _ledger(uid).doc(entryId);
+    try {
+      return await _db
+          .runTransaction<CouponClaim>((tx) async {
+            final couponSnap = await tx.get(couponRef);
+            if (!couponSnap.exists) {
+              throw const RewardsException(RewardsErrorCode.inactive);
+            }
+            final coupon = Coupon.fromMap(
+              couponId,
+              plainData(couponSnap.data()!),
+            );
+            if (!coupon.isBirthday || coupon.pointsCost != 0) {
+              throw const RewardsException(RewardsErrorCode.inactive);
+            }
+            if ((await tx.get(markerRef)).exists ||
+                (await tx.get(claimRef)).exists) {
+              throw const RewardsException(RewardsErrorCode.alreadyClaimed);
+            }
+            final summary = RewardSummary.fromMap(
+              (await tx.get(_summary(uid))).data(),
+            );
+            checkCouponClaimable(coupon, summary, at);
+
+            final code = CouponCode.generate();
+            tx
+              ..set(claimRef, {
+                ...claimPayload(coupon, uid, code),
+                'birthdayYear': year,
+              })
+              ..update(couponRef, {'claimedCount': coupon.claimedCount + 1})
+              ..set(ledgerRef, {
+                'type': 'coupon',
+                'couponId': couponId,
+                'birthdayYear': year,
+                'xp': 0,
+                'points': 0,
+                'reason': couponReason(coupon),
+                'createdAt': FieldValue.serverTimestamp(),
+              })
+              ..set(_summary(uid), {
+                'xp': summary.xp,
+                'points': summary.points,
+                'lastEntryId': entryId,
+                'updatedAt': FieldValue.serverTimestamp(),
+              })
+              ..set(markerRef, {
+                'userId': uid,
+                'couponId': couponId,
+                'dogId': eligibility.dogId,
+                'reminderId': eligibility.reminderId,
+                // Exact instant: the rules compare it with the reminder date.
+                'birthday': Timestamp.fromDate(eligibility.birthday),
+                'birthdayYear': year,
+                'createdAt': FieldValue.serverTimestamp(),
+              });
+            return CouponClaim(
+              id: claimRef.id,
+              couponId: couponId,
+              userId: uid,
+              code: code,
+              status: ClaimStatus.claimed,
+              pointsCost: 0,
+              claimedAt: at,
               expiresAt: coupon.expiresAt,
               partnerName: coupon.partnerName,
               title: coupon.title,
@@ -679,6 +798,14 @@ class FirestoreRewardsRepository implements RewardsRepository {
   @override
   Future<void> setCouponActive(String id, bool active) =>
       _coupons.doc(id).update({'isActive': active});
+
+  @override
+  Future<void> setBirthdayCoupon(String id, {required bool birthday}) =>
+      _coupons.doc(id).update({
+        'isBirthday': birthday,
+        // A birthday gift is free (the rules require 0 points).
+        if (birthday) 'pointsCost': 0,
+      });
 
   @override
   Future<void> setCouponRemaining(String id, int remaining) {
