@@ -27,6 +27,7 @@ class LocalGroupsRepository implements GroupsRepository {
   final Map<String, StreamController<DateTime?>> _readControllers = {};
 
   void dispose() {
+    _mutedChanges.close();
     _groupsController.close();
     for (final controller in _messageControllers.values) {
       controller.close();
@@ -52,6 +53,24 @@ class LocalGroupsRepository implements GroupsRepository {
   Stream<List<GroupMessage>> watchMessages(String groupId) async* {
     yield List<GroupMessage>.from(_messages[groupId] ?? const []);
     yield* _messageControllerFor(groupId).stream;
+  }
+
+  final Map<String, bool> _muted = {};
+  final StreamController<String> _mutedChanges =
+      StreamController<String>.broadcast();
+
+  @override
+  Stream<bool> watchMuted(String groupId) async* {
+    yield _muted[groupId] ?? false;
+    yield* _mutedChanges.stream
+        .where((changed) => changed == groupId)
+        .map((_) => _muted[groupId] ?? false);
+  }
+
+  @override
+  Future<void> setMuted(String groupId, bool muted) async {
+    _muted[groupId] = muted;
+    _mutedChanges.add(groupId);
   }
 
   @override

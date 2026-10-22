@@ -50,6 +50,11 @@ class GroupsController extends Notifier<List<BreedGroup>> {
     return ref.read(groupsRepositoryProvider).markRead(groupId);
   }
 
+  /// No push / sound for this group (it still shows as unread).
+  Future<void> setMuted(String groupId, bool muted) {
+    return ref.read(groupsRepositoryProvider).setMuted(groupId, muted);
+  }
+
   Future<void> join(String groupId) {
     return ref.read(groupsRepositoryProvider).joinGroup(groupId);
   }
@@ -225,6 +230,11 @@ final groupByIdProvider = Provider.family<BreedGroup?, String>((ref, groupId) {
     }
   }
   return null;
+});
+
+/// True when I muted this group's notifications.
+final groupMutedProvider = StreamProvider.family<bool, String>((ref, groupId) {
+  return ref.watch(groupsRepositoryProvider).watchMuted(groupId);
 });
 
 final groupLastReadProvider = StreamProvider.family<DateTime?, String>((

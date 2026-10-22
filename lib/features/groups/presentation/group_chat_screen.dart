@@ -603,6 +603,7 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen> {
             ),
           ],
         ),
+        actions: [_MuteButton(threadId: widget.threadId, isEvent: widget.isEvent)],
       ),
       body: Column(
         children: [
@@ -842,6 +843,65 @@ class _GroupMessageBubble extends StatelessWidget {
           ],
         ],
       ),
+    );
+  }
+}
+
+/// Bell in the group / event chat app bar: mutes push and sound for this
+/// thread only (members/{me}.muted; the push function skips muted members).
+class _MuteButton extends ConsumerWidget {
+  const _MuteButton({required this.threadId, required this.isEvent});
+
+  final String threadId;
+  final bool isEvent;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final muted =
+        ref
+            .watch(
+              isEvent
+                  ? eventMutedProvider(threadId)
+                  : groupMutedProvider(threadId),
+            )
+            .value ??
+        false;
+    return IconButton(
+      key: const ValueKey('group-chat-mute'),
+      tooltip: muted ? GroupsStrings.unmute : GroupsStrings.mute,
+      icon: Icon(
+        muted
+            ? Icons.notifications_off_outlined
+            : Icons.notifications_active_outlined,
+      ),
+      onPressed: () async {
+        final next = !muted;
+        try {
+          if (isEvent) {
+            await ref
+                .read(eventsControllerProvider.notifier)
+                .setMuted(threadId, next);
+          } else {
+            await ref
+                .read(groupsControllerProvider.notifier)
+                .setMuted(threadId, next);
+          }
+          if (!context.mounted) {
+            return;
+          }
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                next ? GroupsStrings.mutedSnack : GroupsStrings.unmutedSnack,
+              ),
+            ),
+          );
+        } catch (error) {
+          if (context.mounted) {
+            showNetworkErrorSnackBar(context, error);
+          }
+        }
+      },
     );
   }
 }

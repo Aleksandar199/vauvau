@@ -120,6 +120,19 @@ abstract final class GroupsStrings {
           L10n.tr('Planinarenje i izleti', 'Hiking and trips'),
       };
 
+  static String get mute =>
+      L10n.tr('Utišaj obaveštenja', 'Mute notifications');
+  static String get unmute =>
+      L10n.tr('Uključi obaveštenja', 'Unmute notifications');
+  static String get mutedSnack => L10n.tr(
+        'Obaveštenja za ovaj čet su isključena.',
+        'Notifications for this chat are muted.',
+      );
+  static String get unmutedSnack => L10n.tr(
+        'Obaveštenja za ovaj čet su uključena.',
+        'Notifications for this chat are on.',
+      );
+
   static String memberCount(int count) {
     if (L10n.isEnglish) {
       return count == 1 ? '1 member' : '$count members';

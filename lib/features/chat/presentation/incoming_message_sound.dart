@@ -147,7 +147,7 @@ final incomingMessageSoundProvider = Provider<void>((ref) {
   ref.listen(
     joinedGroupThreadsProvider,
     (_, next) {
-      final arrived = groups.update(
+      final arrived = groups.arrivals(
         {
           for (final thread in next)
             thread.group.id: ThreadActivity(
@@ -157,7 +157,11 @@ final incomingMessageSoundProvider = Provider<void>((ref) {
         },
         DateTime.now(),
       );
-      if (arrived && !ref.read(systemMessageAlertsAudibleProvider)) {
+      // Muted threads stay silent.
+      final audible = arrived.where(
+        (id) => !(ref.read(groupMutedProvider(id)).value ?? false),
+      );
+      if (audible.isNotEmpty && !ref.read(systemMessageAlertsAudibleProvider)) {
         play();
       }
     },
@@ -167,7 +171,7 @@ final incomingMessageSoundProvider = Provider<void>((ref) {
   ref.listen(
     joinedEventThreadsProvider,
     (_, next) {
-      final arrived = events.update(
+      final arrived = events.arrivals(
         {
           for (final thread in next)
             thread.event.id: ThreadActivity(
@@ -177,7 +181,11 @@ final incomingMessageSoundProvider = Provider<void>((ref) {
         },
         DateTime.now(),
       );
-      if (arrived && !ref.read(systemMessageAlertsAudibleProvider)) {
+      // Muted threads stay silent.
+      final audible = arrived.where(
+        (id) => !(ref.read(eventMutedProvider(id)).value ?? false),
+      );
+      if (audible.isNotEmpty && !ref.read(systemMessageAlertsAudibleProvider)) {
         play();
       }
     },

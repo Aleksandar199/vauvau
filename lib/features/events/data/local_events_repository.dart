@@ -28,6 +28,7 @@ class LocalEventsRepository implements EventsRepository {
   final Map<String, StreamController<DateTime?>> _readControllers = {};
 
   void dispose() {
+    _mutedChanges.close();
     _eventsController.close();
     for (final controller in _messageControllers.values) {
       controller.close();
@@ -47,6 +48,24 @@ class LocalEventsRepository implements EventsRepository {
   Stream<List<GroupMessage>> watchMessages(String eventId) async* {
     yield List<GroupMessage>.from(_messages[eventId] ?? const []);
     yield* _messageControllerFor(eventId).stream;
+  }
+
+  final Map<String, bool> _muted = {};
+  final StreamController<String> _mutedChanges =
+      StreamController<String>.broadcast();
+
+  @override
+  Stream<bool> watchMuted(String eventId) async* {
+    yield _muted[eventId] ?? false;
+    yield* _mutedChanges.stream
+        .where((changed) => changed == eventId)
+        .map((_) => _muted[eventId] ?? false);
+  }
+
+  @override
+  Future<void> setMuted(String eventId, bool muted) async {
+    _muted[eventId] = muted;
+    _mutedChanges.add(eventId);
   }
 
   @override

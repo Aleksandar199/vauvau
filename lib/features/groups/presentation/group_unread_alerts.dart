@@ -21,7 +21,8 @@ final groupUnreadAlertsProvider = Provider<void>((ref) {
     }
     for (final thread in next) {
       final oldCount = previous[thread.group.id] ?? 0;
-      if (thread.unreadCount > oldCount) {
+      if (thread.unreadCount > oldCount &&
+          !(ref.read(groupMutedProvider(thread.group.id)).value ?? false)) {
         unawaited(
           ref.read(pushControllerProvider.notifier).notifyGroupThread(
                 groupTitle: thread.group.title,
@@ -43,7 +44,8 @@ final groupUnreadAlertsProvider = Provider<void>((ref) {
     }
     for (final thread in next) {
       final oldCount = previousEvents[thread.event.id] ?? 0;
-      if (thread.unreadCount > oldCount) {
+      if (thread.unreadCount > oldCount &&
+          !(ref.read(eventMutedProvider(thread.event.id)).value ?? false)) {
         unawaited(
           ref.read(pushControllerProvider.notifier).notifyGroupThread(
                 groupTitle: thread.event.title,

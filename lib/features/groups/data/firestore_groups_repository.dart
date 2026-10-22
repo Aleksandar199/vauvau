@@ -188,6 +188,34 @@ class FirestoreGroupsRepository implements GroupsRepository {
   }
 
   @override
+  Stream<bool> watchMuted(String groupId) {
+    if (currentUserId.isEmpty) {
+      return Stream<bool>.value(false);
+    }
+    return FirestoreAuthGuard.guardedStream<bool>(
+      label: 'groups.muted',
+      empty: false,
+      create: () => _col
+          .doc(groupId)
+          .collection('members')
+          .doc(currentUserId)
+          .snapshots()
+          .map((snap) => snap.data()?['muted'] == true),
+    );
+  }
+
+  @override
+  Future<void> setMuted(String groupId, bool muted) async {
+    if (currentUserId.isEmpty) {
+      return;
+    }
+    // The push function (functions/index.js) skips members with muted: true.
+    await _col.doc(groupId).collection('members').doc(currentUserId).set({
+      'muted': muted ? true : FieldValue.delete(),
+    }, SetOptions(merge: true));
+  }
+
+  @override
   Future<void> markRead(String groupId) async {
     if (currentUserId.isEmpty) {
       return;

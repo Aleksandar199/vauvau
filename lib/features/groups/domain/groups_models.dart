@@ -476,6 +476,12 @@ abstract class GroupsRepository {
 
   Stream<DateTime?> watchLastRead(String groupId);
 
+  /// True when I muted this thread's notifications (`members/{me}.muted`).
+  /// Muted threads still count as unread, but get no push or sound.
+  Stream<bool> watchMuted(String groupId);
+
+  Future<void> setMuted(String groupId, bool muted);
+
   Future<void> joinGroup(String groupId);
 
   Future<void> markRead(String groupId);

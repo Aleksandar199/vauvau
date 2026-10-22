@@ -162,7 +162,11 @@ class NotificationService {
     final tag = alertTagFor(data);
     try {
       await _plugin.show(
-        id: alertIdFor(data),
+        // Android: id 0 + tag, the same key an FCM notification uses, so the
+        // local alert and the push for one chat replace each other.
+        id: defaultTargetPlatform == TargetPlatform.android
+            ? 0
+            : alertIdFor(data),
         title: title.isEmpty ? 'VauVau' : title,
         body: body,
         notificationDetails: NotificationDetails(
@@ -209,17 +213,20 @@ class NotificationService {
         final id = conversationId.trim();
         final data = {'type': 'message', 'conversationId': id};
         await _plugin.cancel(id: alertIdFor(data), tag: alertTagFor(data));
+        await _plugin.cancel(id: 0, tag: alertTagFor(data));
         await _plugin.cancel(id: alertIdFor(data));
       }
       if (groupId != null && groupId.trim().isNotEmpty) {
         final id = groupId.trim();
         final data = {'type': 'group', 'groupId': id};
         await _plugin.cancel(id: alertIdFor(data), tag: alertTagFor(data));
+        await _plugin.cancel(id: 0, tag: alertTagFor(data));
       }
       if (eventId != null && eventId.trim().isNotEmpty) {
         final id = eventId.trim();
         final data = {'type': 'event', 'eventId': id};
         await _plugin.cancel(id: alertIdFor(data), tag: alertTagFor(data));
+        await _plugin.cancel(id: 0, tag: alertTagFor(data));
       }
 
       // Also sweep active tray items on the alerts channel (covers older

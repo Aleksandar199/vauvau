@@ -990,3 +990,23 @@ describe('10. lajkovi: samo svoj uid', () => {
     await assertFails(updateDoc(doc(as('bob'), 'events/e1/messages/em1'), { likes: [] }));
   });
 });
+
+// ------------------------------------------- 11. utišavanje grupe/događaja
+describe('11. members.muted: samo svoj dokument', () => {
+  test('član utišava i uključuje svoju grupu i događaj, tuđi ne može', async () => {
+    const db = as('alice');
+    await assertSucceeds(
+      setDoc(doc(db, 'breed_groups/g1/members/alice'), { muted: true }, { merge: true }),
+    );
+    await assertSucceeds(
+      updateDoc(doc(db, 'breed_groups/g1/members/alice'), { muted: deleteField() }),
+    );
+    await assertSucceeds(
+      setDoc(doc(db, 'events/e1/members/alice'), { muted: true }, { merge: true }),
+    );
+    await assertFails(
+      setDoc(doc(as('bob'), 'breed_groups/g1/members/alice'), { muted: true }, { merge: true }),
+    );
+    await assertFails(getDoc(doc(as('bob'), 'breed_groups/g1/members/alice')));
+  });
+});

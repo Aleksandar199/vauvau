@@ -8,6 +8,12 @@ abstract class EventsRepository {
 
   Stream<DateTime?> watchLastRead(String eventId);
 
+  /// True when I muted this thread's notifications (`members/{me}.muted`).
+  /// Muted threads still count as unread, but get no push or sound.
+  Stream<bool> watchMuted(String eventId);
+
+  Future<void> setMuted(String eventId, bool muted);
+
   Future<void> joinEvent(String eventId);
 
   Future<void> markRead(String eventId);

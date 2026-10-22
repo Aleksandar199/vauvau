@@ -39,6 +39,11 @@ class EventsController extends Notifier<List<EventModel>> {
     return ref.read(eventsRepositoryProvider).markRead(eventId);
   }
 
+  /// No push / sound for this event chat (it still shows as unread).
+  Future<void> setMuted(String eventId, bool muted) {
+    return ref.read(eventsRepositoryProvider).setMuted(eventId, muted);
+  }
+
   Future<void> sendText(
     String eventId,
     String text, {
@@ -223,6 +228,11 @@ final eventVenuesProvider = Provider.family<List<String>, String>((ref, cityId) 
 final eventMessagesProvider =
     StreamProvider.family<List<GroupMessage>, String>((ref, eventId) {
   return ref.watch(eventsRepositoryProvider).watchMessages(eventId);
+});
+
+/// True when I muted this event chat's notifications.
+final eventMutedProvider = StreamProvider.family<bool, String>((ref, eventId) {
+  return ref.watch(eventsRepositoryProvider).watchMuted(eventId);
 });
 
 final eventLastReadProvider =

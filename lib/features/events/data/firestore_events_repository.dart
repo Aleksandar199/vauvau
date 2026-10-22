@@ -169,6 +169,34 @@ class FirestoreEventsRepository implements EventsRepository {
   }
 
   @override
+  Stream<bool> watchMuted(String eventId) {
+    if (currentUserId.isEmpty) {
+      return Stream<bool>.value(false);
+    }
+    return FirestoreAuthGuard.guardedStream<bool>(
+      label: 'events.muted',
+      empty: false,
+      create: () => _col
+          .doc(eventId)
+          .collection('members')
+          .doc(currentUserId)
+          .snapshots()
+          .map((snap) => snap.data()?['muted'] == true),
+    );
+  }
+
+  @override
+  Future<void> setMuted(String eventId, bool muted) async {
+    if (currentUserId.isEmpty) {
+      return;
+    }
+    // The push function (functions/index.js) skips members with muted: true.
+    await _col.doc(eventId).collection('members').doc(currentUserId).set({
+      'muted': muted ? true : FieldValue.delete(),
+    }, SetOptions(merge: true));
+  }
+
+  @override
   Future<void> markRead(String eventId) async {
     if (currentUserId.isEmpty) {
       return;
