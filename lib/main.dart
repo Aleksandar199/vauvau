@@ -8,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'app/app.dart';
 import 'app/firebase_init_error_app.dart';
 import 'core/crash/crash_reporting.dart';
+import 'core/firebase/app_check_setup.dart';
 import 'core/services/notification_service.dart';
 import 'core/widgets/feed_state.dart';
 import 'firebase_options.dart';
@@ -34,6 +35,8 @@ Future<void> main() async {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     );
+    // App Check before any Firestore / Storage / Functions request.
+    await activateAppCheck();
     FirebaseFirestore.instance.settings = const Settings(
       persistenceEnabled: true,
       cacheSizeBytes: Settings.CACHE_SIZE_UNLIMITED,
