@@ -4,9 +4,10 @@ const String kPlayStoreWebUrl =
 const String kPlayStoreMarketUrl = 'market://details?id=com.vauvau.app';
 
 /// Apple ID of the iOS app (App Store Connect → App Information → Apple ID,
-/// only digits). Empty until the app exists in the App Store: then iOS shows
-/// no update prompt – it must never send an iPhone to Google Play.
-const String kAppStoreId = '';
+/// only digits). Empty = no update prompt on iOS. The prompt also needs
+/// `app_config/ios` in Firestore (create it only once the app is live in the
+/// App Store). iOS must never be sent to Google Play.
+const String kAppStoreId = '6826107299';
 
 /// Store the update prompt reads its config from and opens.
 enum AppStorePlatform {

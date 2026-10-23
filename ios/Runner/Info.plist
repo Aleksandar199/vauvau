@@ -30,8 +30,8 @@
 			<string>en</string>
 		</array>
 		<!-- Google prijava (dugme je trenutno sakriveno). Vrednost = REVERSED_CLIENT_ID
-		     iz ios/Runner/GoogleService-Info.plist; zameniti kad se u Firebase-u
-		     registruje iOS aplikacija com.vauvau.app (docs/ios_vodic.md, korak 4). -->
+		     iz ios/Runner/GoogleService-Info.plist (Firebase iOS app com.vauvau.app);
+		     menja se zajedno sa plist-om i lib/firebase_options.dart. -->
 		<key>CFBundleURLTypes</key>
 		<array>
 			<dict>
@@ -39,7 +39,7 @@
 				<string>Editor</string>
 				<key>CFBundleURLSchemes</key>
 				<array>
-					<string>com.googleusercontent.apps.461477755452-eukch8env7hqe5d7jfcaf2c82fl2o8cr</string>
+					<string>com.googleusercontent.apps.461477755452-jv0dsh80ic6700mr657ulttlr0iba5an</string>
 				</array>
 			</dict>
 		</array>

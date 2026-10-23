@@ -12,16 +12,18 @@
 | # | Korak | Ko | Status |
 |---|---|---|---|
 | 0 | iOS projekat u repou (bundle id, dozvole, push, target, ikonice, Codemagic) | 🤖 | ✅ |
-| 1 | Apple Developer Program (99 USD/god.) | 🧑 | ⬜ |
-| 2 | App ID `com.vauvau.app` + Push + APNs ključ | 🧑 | ⬜ |
-| 3 | Aplikacija u App Store Connect-u + API ključ | 🧑 | ⬜ |
-| 4 | Firebase: iOS aplikacija `com.vauvau.app`, novi `GoogleService-Info.plist`, APNs ključ | 🧑 + 💬 | ⬜ |
-| 5 | Codemagic: nalog, API ključ, sertifikat, profil | 🧑 | ⬜ |
-| 6 | Prvi build → TestFlight (interni testeri) | 🧑 pokreće, 🤖 builduje | ⬜ |
+| 1 | Apple Developer Program (99 USD/god.) | 🧑 | ✅ |
+| 2 | App ID `com.vauvau.app` + Push + APNs ključ | 🧑 | ✅ |
+| 3 | Aplikacija u App Store Connect-u + API ključ | 🧑 | ✅ |
+| 4 | Firebase: iOS aplikacija `com.vauvau.app`, novi `GoogleService-Info.plist`, APNs ključ | 🧑 + 💬 | ✅ |
+| 5 | Codemagic: nalog, API ključ, sertifikat, profil | 🧑 | ✅ |
+| 6 | Prvi build → TestFlight (interni testeri) | 🧑 pokreće, 🤖 builduje | ✅ |
 | 7 | Testiranje na pozajmljenom iPhone-u | 🧑 | ⬜ |
 | 8 | Eksterni testeri (Beta App Review) | 🧑 | ⬜ |
 | 9 | App Store: opis, slike, privatnost, demo nalog, slanje na pregled | 🧑 | ⬜ |
-| 10 | Posle objave: App Store ID u kod (poruka „Ažuriraj“ na iOS-u) | 💬 | ⬜ |
+| 10 | App Store ID u kodu (✅ 2026-10-23); posle objave ručno `app_config/ios` | 🧑 | ⬜ |
+
+> **Stanje 2026-10-23:** koraci 1–6 urađeni (build 13 na TestFlight-u, App Store Connect ID `6826107299`). Build 13 je pravljen PRE usklađivanja `lib/firebase_options.dart` sa novom Firebase iOS aplikacijom – radi sa starom (`com.example.vauvau`), pa push i Crashlytics na njemu ne idu u novu aplikaciju. Za testiranje push-a koristiti build 14 ili noviji. Codemagic build se pokreće RUČNO (Start new build, grana `master`) – push na GitHub ga ne pokreće sam.
 
 **Mac nije potreban ni u jednom koraku.** Build radi Codemagic na svom Mac-u u oblaku,
 sve ostalo je u web pregledaču. iPhone je potreban samo za probu (korak 7) i za

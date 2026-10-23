@@ -27,11 +27,13 @@ class DefaultFirebaseOptions {
   );
 
   static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'AIzaSyD2WpCWpsaj0lM15ort_OpVd1-l-0g0vCI',
-    appId: '1:461477755452:ios:44694b8fcf6cfa67912139',
+    apiKey: 'AIzaSyB_HVvq7j8Yf_VyO7I7FrSKWT1_yviagUs',
+    // Firebase iOS app for bundle com.vauvau.app (not com.example.vauvau).
+    appId: '1:461477755452:ios:c24497b80ebc6f38912139',
     messagingSenderId: '461477755452',
     projectId: 'vauvau-3195a',
     storageBucket: 'vauvau-3195a.firebasestorage.app',
-    iosBundleId: 'com.example.vauvau',
+    iosClientId: '461477755452-jv0dsh80ic6700mr657ulttlr0iba5an.apps.googleusercontent.com',
+    iosBundleId: 'com.vauvau.app',
   );
 }
