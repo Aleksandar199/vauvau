@@ -20,11 +20,26 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   // local notifications when the user taps the banner.
   try {
     if (Firebase.apps.isEmpty) {
-      await Firebase.initializeApp(
-        options: DefaultFirebaseOptions.currentPlatform,
-      );
+      await _initializeFirebase();
     }
   } catch (_) {}
+}
+
+/// iOS (and Android with google-services) configure the native "[DEFAULT]"
+/// app from GoogleService-Info.plist / google-services.json before Dart runs.
+/// When the Dart options differ from that file (e.g. API key),
+/// initializeApp(options:) throws `duplicate-app` and the app never starts –
+/// then the native app is used as is (it is the source of truth on device).
+Future<FirebaseApp> _initializeFirebase() async {
+  try {
+    return await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+  } on FirebaseException catch (error) {
+    if (error.code != 'duplicate-app') rethrow;
+    debugPrint('Firebase: using the natively configured default app.');
+    return Firebase.app();
+  }
 }
 
 Future<void> main() async {
@@ -32,9 +47,7 @@ Future<void> main() async {
   installGlobalErrorHandlers();
   await NotificationService().initialize();
   try {
-    await Firebase.initializeApp(
-      options: DefaultFirebaseOptions.currentPlatform,
-    );
+    await _initializeFirebase();
     // App Check before any Firestore / Storage / Functions request.
     await activateAppCheck();
     FirebaseFirestore.instance.settings = const Settings(
