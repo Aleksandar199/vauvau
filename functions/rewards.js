@@ -98,12 +98,55 @@ function haversineMeters(a, b) {
   return 2 * 6371000 * Math.asin(Math.min(1, Math.sqrt(h)));
 }
 
+const CONFIG_TTL_MS = 60 * 1000;
+let configCache = { at: 0, value: null };
+
+const clampNumber = (value, min, max, fallback) => {
+  const n = Number(value);
+  return Number.isFinite(n) ? Math.min(max, Math.max(min, Math.floor(n))) : fallback;
+};
+
+/** Merges `app_config/rewards` over [RULES]; bad values fall back, all clamped. */
+function effectiveRules(data) {
+  const cfg = data && typeof data === 'object' ? data : {};
+  return {
+    enabled: cfg.enabled !== false,
+    rules: {
+      ...RULES,
+      pointsPerKm: clampNumber(cfg.pointsPerKm, 0, 50, RULES.pointsPerKm),
+      dailyKmPointsCap: clampNumber(cfg.dailyKmPointsCap, 0, 500, RULES.dailyKmPointsCap),
+      minRewardKm: clampNumber(cfg.minRewardKm, 1, 10, RULES.minRewardKm),
+    },
+  };
+}
+
+/**
+ * Server-driven rules (admin edits `app_config/rewards`, no app update):
+ * { enabled, pointsPerKm, dailyKmPointsCap, minRewardKm }. Cached 60 s; a
+ * missing document or a read error keeps the built-in [RULES].
+ */
+async function loadRewardConfig(db, { force = false } = {}) {
+  const now = Date.now();
+  if (!force && configCache.value && now - configCache.at < CONFIG_TTL_MS) {
+    return configCache.value;
+  }
+  let data = null;
+  try {
+    const snap = await db.doc('app_config/rewards').get();
+    data = snap.exists ? snap.data() : null;
+  } catch (error) {
+    logger.warn('Reward config unreadable, using defaults', { error: String(error) });
+  }
+  configCache = { at: now, value: effectiveRules(data) };
+  return configCache.value;
+}
+
 /** Points paid for [meters] given what was already paid today. */
-function rewardFor(meters, paidTodayPoints) {
+function rewardFor(meters, paidTodayPoints, rules = RULES) {
   const km = Math.floor(meters / 1000);
-  if (km < RULES.minRewardKm) return 0;
-  const raw = km * RULES.pointsPerKm;
-  const room = RULES.dailyKmPointsCap - paidTodayPoints;
+  if (km < rules.minRewardKm) return 0;
+  const raw = km * rules.pointsPerKm;
+  const room = rules.dailyKmPointsCap - paidTodayPoints;
   if (room <= 0) return 0;
   return Math.min(raw, room);
 }
@@ -281,10 +324,23 @@ async function awardWalk(db, { uid, walkId, walk, createMs }) {
   const ledgerRef = userRef.collection('reward_ledger').doc(`walk_${walkId}`);
   const summaryRef = userRef.collection('rewards').doc('summary');
   const assessment = assessWalk(walk, createMs);
+  const config = await loadRewardConfig(db, { force: true });
+  const rules = config.rules;
 
   const outcome = await db.runTransaction(async (tx) => {
     const existing = await tx.get(resultRef);
     if (existing.exists) return { duplicate: true, data: existing.data() };
+
+    if (assessment.status === 'rewardable' && !config.enabled) {
+      // Kill switch: the walk stays saved but is not paid.
+      const data = {
+        status: 'ignored',
+        reason: 'rewards_disabled',
+        createdAt: FieldValue.serverTimestamp(),
+      };
+      tx.set(resultRef, data);
+      return { data };
+    }
 
     if (assessment.status !== 'rewardable') {
       const data = {
@@ -350,8 +406,12 @@ async function awardWalk(db, { uid, walkId, walk, createMs }) {
     const dayData = day.exists ? day.data() : {};
     const weekData = week.exists ? week.data() : {};
     const km = assessment.km;
-    const points = rewardFor(assessment.meters, Number(dayData.walkPoints) || 0);
-    const counted = km >= RULES.minRewardKm ? 1 : 0;
+    const points = rewardFor(
+      assessment.meters,
+      Number(dayData.walkPoints) || 0,
+      rules,
+    );
+    const counted = km >= rules.minRewardKm ? 1 : 0;
     const entryId = `walk_${walkId}`;
 
     tx.set(ledgerRef, {
@@ -396,7 +456,7 @@ async function awardWalk(db, { uid, walkId, walk, createMs }) {
       reason: '',
       xp: points,
       points,
-      capped: points < km * RULES.pointsPerKm,
+      capped: points < km * rules.pointsPerKm,
       km,
       meters: assessment.meters,
       dayKey,
@@ -505,6 +565,8 @@ module.exports = {
   belgradeDayKey,
   belgradeWeekKey,
   rewardFor,
+  effectiveRules,
+  loadRewardConfig,
   analyzeRoute,
   assessWalk,
   routeFingerprint,

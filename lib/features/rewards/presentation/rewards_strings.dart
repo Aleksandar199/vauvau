@@ -289,6 +289,10 @@ abstract final class RewardsStrings {
       'Poeni se dobijaju samo u Android i iOS aplikaciji.',
       'Points are only earned in the Android and iOS app.',
     ),
+    WalkIneligibleReason.rewardsPaused => L10n.tr(
+      'Nagrade su privremeno pauzirane – šetnja je sačuvana, ali se ne boduje.',
+      'Rewards are temporarily paused – the walk is saved but not scored.',
+    ),
     WalkIneligibleReason.serverRejected => L10n.tr(
       'Server nije prihvatio šetnju (ruta nije verodostojna) – ne boduje se.',
       'The server did not accept the walk (route not credible) – not scored.',

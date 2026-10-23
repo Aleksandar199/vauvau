@@ -8,6 +8,7 @@ const {
   belgradeWeekKey,
   assessWalk,
   rewardFor,
+  effectiveRules,
   routeFingerprint,
 } = require('../rewards');
 const { START, M, naturalRoute, walkDoc } = require('./route_fixtures');
@@ -130,7 +131,7 @@ describe('assessWalk', () => {
     const fastPoints = [];
     let north = 0;
     for (let i = 0; i <= 120; i++) {
-      north += i % 2 ? 11 : 12.5; // 7.9–9 km/h: fast, but not a vehicle
+      north += i % 2 ? 11 : 12.5; // 7.9â€“9 km/h: fast, but not a vehicle
       fastPoints.push({
         lat: 45.25 + north * M,
         lng: 19.84,
@@ -168,7 +169,7 @@ describe('assessWalk', () => {
 });
 
 describe('route fingerprint', () => {
-  test('same route → same hash, other route → other hash, short → none', () => {
+  test('same route â†’ same hash, other route â†’ other hash, short â†’ none', () => {
     const a = naturalRoute({ meters: 2000, seed: 1 });
     const same = naturalRoute({ meters: 2000, seed: 1 });
     const other = naturalRoute({ meters: 2000, seed: 1, lat: 45.30 });
@@ -179,5 +180,26 @@ describe('route fingerprint', () => {
     assert.equal(cells(a), cells(same));
     assert.notEqual(cells(a), cells(other));
     assert.equal(routeFingerprint(['1:1', '1:2']), null);
+  });
+});
+
+describe('server-driven rules (app_config/rewards)', () => {
+  test('missing config keeps the built-in rules and rewards stay on', () => {
+    const cfg = effectiveRules(null);
+    assert.equal(cfg.enabled, true);
+    assert.equal(cfg.rules.pointsPerKm, RULES.pointsPerKm);
+  });
+
+  test('admin overrides apply and are clamped', () => {
+    const cfg = effectiveRules({ pointsPerKm: 8, dailyKmPointsCap: 99999, minRewardKm: 0 });
+    assert.equal(cfg.rules.pointsPerKm, 8);
+    assert.equal(cfg.rules.dailyKmPointsCap, 500);
+    assert.equal(cfg.rules.minRewardKm, 1);
+    assert.equal(rewardFor(2000, 0, cfg.rules), 16);
+  });
+
+  test('kill switch and garbage values', () => {
+    assert.equal(effectiveRules({ enabled: false }).enabled, false);
+    assert.equal(effectiveRules({ pointsPerKm: 'abc' }).rules.pointsPerKm, RULES.pointsPerKm);
   });
 });

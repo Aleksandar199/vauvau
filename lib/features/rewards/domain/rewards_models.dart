@@ -482,6 +482,9 @@ enum WalkIneligibleReason {
   /// The server rejected the walk (route not credible / sparse / invalid).
   serverRejected,
 
+  /// Admin paused rewards (kill switch in `app_config/rewards`).
+  rewardsPaused,
+
   /// The server got the walk more than 48 h after it ended.
   walkExpired,
 

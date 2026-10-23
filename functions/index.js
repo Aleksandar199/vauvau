@@ -275,3 +275,12 @@ exports.rewardWalk = onDocumentCreated(
   'users/{uid}/walks/{walkId}',
   rewardWalkHandler,
 );
+
+// cleanupDeletedUser: when an Auth account disappears (the user deleted it in
+// the app, or an admin did in the console) everything that still belongs to
+// the uid is removed – dogs, posts, stories, chat messages, files. See
+// account.js. 1st-gen trigger: Auth events do not exist in 2nd gen.
+const functionsV1 = require('firebase-functions/v1');
+const { onUserDeleted } = require('./account');
+
+exports.cleanupDeletedUser = functionsV1.auth.user().onDelete(onUserDeleted);

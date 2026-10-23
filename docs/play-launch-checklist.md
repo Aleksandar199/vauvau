@@ -25,8 +25,13 @@ Use this before Production. Check boxes as you complete them.
 - [x] Firestore indexes deployed: `.\firebase.cmd deploy --only firestore:indexes`
 - [ ] Confirm indexes are **Enabled** in Firebase Console → Firestore → Indexes (may take a few minutes after deploy)
 - [x] Hosting still serves `/privacy` and `/terms` after any hosting change
-- [ ] (Optional later) Cloud Functions for FCM send
-- [ ] (Optional later) App Check
+- [x] Cloud Functions deployed (push, rewardWalk) – project is on Blaze
+- [ ] Deploy `cleanupDeletedUser` (Auth trigger) + `firestore.indexes.json` (messages.senderId override), then check Functions logs
+- [ ] App Check: Play Integrity API on, Play Console linked, Play app-signing SHA-256 added, provider enabled, debug token registered, release build from Internal testing shows Verified, THEN Enforce (see `docs/app_check.md`)
+- [ ] Budget alert in Google Cloud Billing (e.g. 10 EUR), see `docs/video_cuvanje.md`
+- [ ] Firestore backup: daily scheduled backup (Console → Firestore → Disaster recovery) and/or point-in-time recovery
+- [ ] TTL policy on `stories`, `story_views`, `story_likes` (`expiresAt`) + Storage lifecycle for `stories/` (CLAUDE.md 6b)
+- [ ] Optional `app_config/rewards` document: `enabled` (kill switch), `pointsPerKm`, `dailyKmPointsCap`, `minRewardKm` – the server reads it within 60 s, no app update needed
 
 ### Release fingerprints (upload keystore)
 
@@ -45,6 +50,10 @@ Use this before Production. Check boxes as you complete them.
 - [ ] Content rating questionnaire
 - [ ] Target audience / news apps / COVID declarations as prompted
 - [ ] Sensitive permissions justification (location + foreground service for walks)
+  - Foreground service type `location`: walk tracking keeps GPS running while the screen is locked (user starts and sees it); demo video of the walk screen needed
+  - Data safety – location: precise location (route) collected, stored in owner-only `users/{uid}/walks`; other users only see an approximate point (~200 m) while walking; used for app functionality and rewards, not shared or sold
+  - Data safety – device or other IDs: FCM token, App Check / Play Integrity attestation (fraud prevention)
+  - Privacy policy must mention: walk route, reward points, anti-fraud checks (Play Integrity), account deletion removes data (server cleanup too)
 - [ ] Contact email for store listing
 
 ## Build & upload

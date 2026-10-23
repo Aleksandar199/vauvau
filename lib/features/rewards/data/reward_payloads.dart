@@ -204,5 +204,6 @@ WalkIneligibleReason walkReasonFromServer(Object? reason) => switch (reason) {
   'too_short' => WalkIneligibleReason.tooShort,
   'expired' => WalkIneligibleReason.walkExpired,
   'duplicate_route' => WalkIneligibleReason.duplicateRoute,
+  'rewards_disabled' => WalkIneligibleReason.rewardsPaused,
   _ => WalkIneligibleReason.serverRejected,
 };

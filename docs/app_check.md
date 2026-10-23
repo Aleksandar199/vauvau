@@ -42,3 +42,15 @@ Ne hvata: lažnu lokaciju na pravom telefonu (to radi `isMocked` + server).
 ## Kvota
 Play Integrity: podrazumevano 10 000 provera dnevno po projektu (token se obnavlja
 retko, nije jedna provera po zahtevu); ako treba više, traži se povećanje u Google Cloud-u.
+
+## Preostali koraci za vlasnika (3, 5, 6)
+- **SHA-256 Play app signing ključa:** Play Console → Test and release → App integrity
+  (ili Setup → App signing) → *App signing key certificate* → kopiraj SHA-256 i pošalji
+  ga; dodaje se komandom `firebase apps:android:sha:create <appId> <sha256>`
+  (appId aplikacije `com.vauvau.app` je `1:461477755452:android:13d12fdcbb5f9d68912139`).
+  Bez njega Play Integrity tokeni sa korisničkih telefona ne prolaze proveru.
+- **Debug token:** `flutter run` na telefonu → u logu traži „Debug App Check token“ →
+  Firebase Console → App Check → Apps → VauVau → ⋮ → *Manage debug tokens* → Add.
+- **Enforce:** tek kad App Check → APIs pokazuje *Verified* za zahteve iz release
+  build-a sa Internal testinga. Prvo Firestore, pa Storage. Ako nešto ne radi,
+  isključi Enforce (odmah važi).

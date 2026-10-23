@@ -12,6 +12,6 @@
   },
   "scripts": {
     "test": "node --test test/rewards_logic.test.js",
-    "test:emulator": "node --test test/rewards_award.test.js"
+    "test:emulator": "node --test --test-concurrency=1 test/rewards_award.test.js test/account_cleanup.test.js"
   }
 }
