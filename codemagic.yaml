@@ -30,7 +30,7 @@ workflows:
         BUNDLE_ID: com.vauvau.app
         # Apple ID aplikacije iz App Store Connect-a (nije tajna). Prazno =
         # build broj se uzima samo iz pubspec.yaml (+N).
-        APP_STORE_APPLE_ID: ""
+        APP_STORE_APPLE_ID: "6826107299"
     scripts:
       - name: Provera Firebase iOS konfiguracije
         script: |
