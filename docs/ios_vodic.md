@@ -23,7 +23,7 @@
 | 9 | App Store: opis, slike, privatnost, demo nalog, slanje na pregled | 🧑 | ⬜ |
 | 10 | App Store ID u kodu (✅ 2026-10-23); posle objave ručno `app_config/ios` | 🧑 | ⬜ |
 
-> **Stanje 2026-10-23:** koraci 1–6 urađeni (build 13 na TestFlight-u, App Store Connect ID `6826107299`). Build 13 je pravljen PRE usklađivanja `lib/firebase_options.dart` sa novom Firebase iOS aplikacijom – radi sa starom (`com.example.vauvau`), pa push i Crashlytics na njemu ne idu u novu aplikaciju. Za testiranje push-a koristiti build 14 ili noviji. Codemagic build se pokreće RUČNO (Start new build, grana `master`) – push na GitHub ga ne pokreće sam.
+> **Stanje 2026-10-23:** koraci 1–6 urađeni (build 13 na TestFlight-u, App Store Connect ID `6826107299`). Build 13 je pravljen PRE usklađivanja `lib/firebase_options.dart` sa novom Firebase iOS aplikacijom – radi sa starom (`com.example.vauvau`), pa push i Crashlytics na njemu ne idu u novu aplikaciju. Za testiranje push-a koristiti build 14 ili noviji. Codemagic build se pokreće RUČNO (Start new build, grana `main`) – push na GitHub ga ne pokreće sam.
 
 **Mac nije potreban ni u jednom koraku.** Build radi Codemagic na svom Mac-u u oblaku,
 sve ostalo je u web pregledaču. iPhone je potreban samo za probu (korak 7) i za
